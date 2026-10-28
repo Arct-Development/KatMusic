@@ -1,0 +1,2 @@
+-keep class com.itzfallenme.katmusic.data.** { *; }
+-keepattributes *Annotation*
