@@ -293,7 +293,6 @@ fun KatMusicTheme(
     light: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val dark = !light && !isSystemInDarkTheme().not()
     val isDark = !light
     val scheme = if (isDark) ColorEngine.darkScheme(seed, amoled) else ColorEngine.lightScheme(seed)
     MaterialTheme(
