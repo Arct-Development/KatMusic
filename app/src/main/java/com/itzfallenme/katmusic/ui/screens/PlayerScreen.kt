@@ -209,18 +209,6 @@ fun PlayerScreen(nav: Navigator) {
                 translationY = dragOffset
                 alpha = dragAlpha
             }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onVerticalDrag = { _, delta ->
-                        if (delta > 0 || dragOffset > 0f) dragOffset = (dragOffset + delta).coerceAtLeast(0f)
-                    },
-                    onDragEnd = {
-                        if (dragOffset > 180f) nav.playerOpen = false
-                        dragOffset = 0f
-                    },
-                    onDragCancel = { dragOffset = 0f }
-                )
-            }
     ) {
         // Blurred, oversized artwork gives the page its colour; the ambient blobs keep it moving.
         AsyncImage(
@@ -256,7 +244,21 @@ fun PlayerScreen(nav: Navigator) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { _, delta ->
+                                if (delta > 0 || dragOffset > 0f) {
+                                    dragOffset = (dragOffset + delta).coerceAtLeast(0f)
+                                }
+                            },
+                            onDragEnd = {
+                                if (dragOffset > 160f) nav.playerOpen = false
+                                dragOffset = 0f
+                            },
+                            onDragCancel = { dragOffset = 0f }
+                        )
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 GlassIconButton(

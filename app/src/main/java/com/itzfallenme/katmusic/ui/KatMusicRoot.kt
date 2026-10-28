@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
@@ -214,8 +215,9 @@ private fun Dock(nav: Navigator) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize(Motion.spatialDefault())
                 .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEach { tab ->
@@ -232,8 +234,8 @@ private fun Dock(nav: Navigator) {
                 )
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
+                        .height(50.dp)
+                        .animateContentSize(Motion.spatialDefault())
                         .clip(CircleShape)
                         .then(
                             if (selected) {
@@ -242,7 +244,8 @@ private fun Dock(nav: Navigator) {
                                 Modifier
                             }
                         )
-                        .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) },
+                        .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) }
+                        .padding(horizontal = if (selected) 16.dp else 12.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
