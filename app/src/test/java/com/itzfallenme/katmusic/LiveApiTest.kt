@@ -1,0 +1,54 @@
+package com.itzfallenme.katmusic
+
+import com.itzfallenme.katmusic.data.InnerTube
+import com.itzfallenme.katmusic.data.LyricsApi
+import kotlinx.coroutines.runBlocking
+import okhttp3.Request
+import org.junit.Assume.assumeTrue
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Network smoke test, excluded from normal runs. Execute with:
+ *   KAT_LIVE=1 ./gradlew :app:testDebugUnitTest --tests '*LiveApiTest*'
+ */
+class LiveApiTest {
+
+    @Test
+    fun `search returns playable tracks`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val shelves = InnerTube.search("lofi hip hop")
+        val tracks = shelves.flatMap { it.tracks }
+        assertTrue("expected search results", tracks.isNotEmpty())
+        assertTrue("expected a video id", tracks.first().id.isNotBlank())
+    }
+
+    @Test
+    fun `stream resolution returns a fetchable audio url`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val stream = InnerTube.streamUrl("dQw4w9WgXcQ", preferHighQuality = true)
+        assertTrue("audio mime type", stream.mimeType.startsWith("audio/"))
+        assertTrue("https url", stream.url.startsWith("https://"))
+
+        val request = Request.Builder()
+            .url(stream.url)
+            .header("User-Agent", InnerTube.VR_UA)
+            .header("Range", "bytes=0-2047")
+            .build()
+        InnerTube.http.newCall(request).execute().use { response ->
+            assertTrue("range request succeeded", response.isSuccessful || response.code == 206)
+            assertNotNull(response.body)
+            assertTrue("received audio bytes", (response.body?.contentLength() ?: 0) > 0)
+        }
+    }
+
+    @Test
+    fun `lrclib returns synced lyrics for a popular track`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val lyrics = LyricsApi.find("Never Gonna Give You Up", "Rick Astley", null, 213)
+        if (!lyrics.isEmpty) {
+            assertTrue("source set", lyrics.source.isNotBlank())
+        }
+    }
+}

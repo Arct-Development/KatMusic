@@ -251,25 +251,44 @@ object InnerTube {
     internal fun parseShelves(root: JsonObject): List<Shelf> {
         val out = ArrayList<Shelf>()
         val seen = HashSet<String>()
+        val seenTracks = HashSet<String>()
+
+        fun add(parsed: Shelf) {
+            if (parsed.isEmpty) return
+            val tracks = parsed.tracks.filter { seenTracks.add(it.id) }
+            val trimmed = parsed.copy(tracks = tracks)
+            if (trimmed.isEmpty) return
+            val key = trimmed.title + "|" +
+                trimmed.tracks.take(3).joinToString { it.title } +
+                trimmed.cards.take(3).joinToString { it.title }
+            if (seen.add(key)) out.add(trimmed)
+        }
+
         findAll(root, "musicCarouselShelfRenderer").forEach { shelf ->
-            val parsed = parseShelf(shelf)
-            if (parsed.isEmpty) return@forEach
-            val key = parsed.title + "|" + parsed.cards.take(3).joinToString { it.title }
-            if (seen.add(key)) out.add(parsed)
+            add(parseShelf(shelf))
         }
         findAll(root, "musicShelfRenderer").forEach { shelf ->
-            val parsed = parseShelf(shelf)
-            if (parsed.isEmpty) return@forEach
-            val key = parsed.title + "|" + parsed.tracks.take(3).joinToString { it.title } +
-                parsed.cards.take(3).joinToString { it.title }
-            if (seen.add(key)) out.add(parsed)
+            add(parseShelf(shelf))
         }
         findAll(root, "musicGridRenderer").forEach { grid ->
             val items = grid.arr("items")?.mapNotNull { it as? JsonObject }.orEmpty()
             val cards = items.mapNotNull { entry ->
                 entry.obj("musicTwoRowItemRenderer")?.let { cardFromTwoRow(it) }
             }
-            if (cards.isNotEmpty()) out.add(Shelf(title = null, cards = cards))
+            if (cards.isNotEmpty()) add(Shelf(title = null, cards = cards))
+        }
+        // Search results arrive as bare list items inside itemSectionRenderer,
+        // with no musicShelfRenderer wrapper.
+        findAll(root, "itemSectionRenderer").forEach { section ->
+            val entries = section.arr("contents")?.mapNotNull { it as? JsonObject }.orEmpty()
+            val tracks = entries.mapNotNull { entry ->
+                entry.obj("musicResponsiveListItemRenderer")?.let { trackFromResponsive(it) }
+            }
+            val cards = entries.mapNotNull { entry ->
+                entry.obj("musicTwoRowItemRenderer")?.let { cardFromTwoRow(it) }
+            }
+            if (tracks.isNotEmpty()) add(Shelf(title = "Songs", tracks = tracks))
+            else if (cards.isNotEmpty()) add(Shelf(title = "Albums & playlists", cards = cards))
         }
         return out
     }

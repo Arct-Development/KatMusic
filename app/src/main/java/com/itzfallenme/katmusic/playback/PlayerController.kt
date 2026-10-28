@@ -160,10 +160,22 @@ class PlayerController(
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                _state.value = _state.value.copy(
-                    error = "Playback failed: ${error.errorCodeName}",
-                    buffering = false
-                )
+                // Unavailable tracks are common (region locks, removed videos). Skip on
+                // instead of dead-ending the queue.
+                if (exo.hasNextMediaItem()) {
+                    _state.value = _state.value.copy(
+                        error = "Skipped an unavailable track",
+                        buffering = false
+                    )
+                    exo.seekToNextMediaItem()
+                    exo.prepare()
+                    exo.play()
+                } else {
+                    _state.value = _state.value.copy(
+                        error = "Playback failed: ${error.errorCodeName}",
+                        buffering = false
+                    )
+                }
             }
         })
         exo.repeatMode = Player.REPEAT_MODE_OFF
