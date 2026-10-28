@@ -1,5 +1,9 @@
 package com.itzfallenme.katmusic.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +21,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,6 +68,11 @@ import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.Screen
 import com.itzfallenme.katmusic.ui.TrackRow
 import com.itzfallenme.katmusic.ui.formatDuration
+import com.itzfallenme.katmusic.ui.theme.GlassIconButton
+import com.itzfallenme.katmusic.ui.theme.Motion
+import com.itzfallenme.katmusic.ui.theme.bounceClickable
+import com.itzfallenme.katmusic.ui.theme.liquidGlass
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val homeMoods = listOf(
@@ -109,7 +121,16 @@ fun HomeScreen(nav: Navigator) {
     val listeningMinutes = library.history.sumOf { it.listenedMs } / 60_000
     val homeMixes = remember(library.history) { ServiceLocator.library.generatedMixes() }
 
+    val listState = rememberLazyListState()
+    val collapse by remember {
+        derivedStateOf {
+            (listState.firstVisibleItemScrollOffset / 260f).coerceIn(0f, 1f)
+        }
+    }
+    val headerScale = 1f - collapse * 0.14f
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 30.dp)
     ) {
@@ -121,10 +142,18 @@ fun HomeScreen(nav: Navigator) {
                         .padding(horizontal = 20.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(Modifier.weight(1f)) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .graphicsLayer {
+                                scaleX = headerScale
+                                scaleY = headerScale
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                            }
+                    ) {
                         Text(
                             text = "KatMusic",
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Black
                         )
                         Text(
@@ -133,9 +162,12 @@ fun HomeScreen(nav: Navigator) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { nav.go(Screen.Settings) }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                    }
+                    GlassIconButton(
+                        icon = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        onClick = { nav.go(Screen.Settings) },
+                        size = 44.dp
+                    )
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -207,13 +239,17 @@ fun HomeScreen(nav: Navigator) {
             }
             if (hero != null) {
                 item {
-                    HeroCard(card = hero, onClick = { openCard(hero) })
+                    Reveal(index = 0) {
+                        HeroCard(card = hero, onClick = { openCard(hero) })
+                    }
                     Spacer(Modifier.height(18.dp))
                 }
             }
 
             items(shelves, key = { (it.title ?: "") + it.cards.size + it.tracks.size }) { shelf ->
-                ShelfBlock(shelf = shelf, nav = nav, onCardClick = { openCard(it) })
+                Reveal(index = shelves.indexOf(shelf) + 1) {
+                    ShelfBlock(shelf = shelf, nav = nav, onCardClick = { openCard(it) })
+                }
                 Spacer(Modifier.height(18.dp))
             }
         }
@@ -308,7 +344,7 @@ private fun FloatingStatsCard(
     GlassCard(modifier = modifier.fillMaxWidth()) {
         Row(
             Modifier
-                .clickable(onClick = onOpenStats)
+                .bounceClickable(targetScale = 0.98f, onClick = onOpenStats)
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -352,15 +388,17 @@ private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .height(190.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .clickable(onClick = onClick)
+            .height(196.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .bounceClickable(targetScale = 0.975f, onClick = onClick)
     ) {
         AsyncImage(
             model = card.artwork,
             contentDescription = card.title,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = 0.96f }
         )
         Box(
             Modifier
@@ -396,9 +434,10 @@ private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Box(
                 Modifier
-                    .size(48.dp)
+                    .size(52.dp)
                     .clip(CircleShape)
-                    .background(scheme.primary),
+                    .liquidGlass(shape = CircleShape, fillAlpha = 0.32f)
+                    .background(scheme.primary.copy(alpha = 0.92f)),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressOrPlay()
@@ -420,4 +459,20 @@ private fun CircularProgressOrPlay() {
 @Composable
 fun DurationLabel(ms: Long) {
     Text(formatDuration(ms), style = MaterialTheme.typography.bodySmall)
+}
+
+/** Fades and lifts content in once, slightly after the item above it. */
+@Composable
+private fun Reveal(index: Int, content: @Composable () -> Unit) {
+    val visibleState = remember { MutableTransitionState(false) }
+    LaunchedEffect(Unit) {
+        delay((index.coerceAtMost(6) * 45).toLong())
+        visibleState.targetState = true
+    }
+    AnimatedVisibility(
+        visibleState = visibleState,
+        enter = fadeIn(Motion.effectsDefault()) + slideInVertically(Motion.spatialDefault()) { it / 10 }
+    ) {
+        content()
+    }
 }

@@ -35,6 +35,11 @@ fun ImportPlaylistScreen(nav: Navigator) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var success by remember { mutableStateOf(false) }
+    var listText by remember { mutableStateOf("") }
+    var listName by remember { mutableStateOf("") }
+    var listBusy by remember { mutableStateOf(false) }
+    var listMessage by remember { mutableStateOf<String?>(null) }
+    var listSuccess by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -110,15 +115,78 @@ fun ImportPlaylistScreen(nav: Navigator) {
             Spacer(Modifier.height(14.dp))
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("Other services", style = MaterialTheme.typography.titleMedium)
+                    Text("From a list of songs", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Spotify and Apple Music links require their developer APIs and a " +
-                            "conversion step. Export the playlist to YouTube Music first (there " +
-                            "are free converters), then paste the YouTube Music link here.",
+                        "Exported a playlist from Spotify or Apple Music? Paste the song list - one " +
+                            "track per line as \"Artist - Title\". Each line is matched on YouTube " +
+                            "Music and saved as a new playlist.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = listName,
+                        onValueChange = { listName = it },
+                        label = { Text("Playlist name (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = listText,
+                        onValueChange = { listText = it; listMessage = null; listSuccess = false },
+                        label = { Text("Artist - Title") },
+                        placeholder = { Text("Radiohead - Everything In Its Right Place") },
+                        minLines = 4,
+                        maxLines = 10,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        enabled = !listBusy && listText.isNotBlank(),
+                        onClick = {
+                            listBusy = true
+                            listMessage = null
+                            scope.launch {
+                                val result = PlaylistImporter.importTrackList(
+                                    listText,
+                                    ServiceLocator.library,
+                                    listName
+                                )
+                                when (result) {
+                                    is PlaylistImporter.Result.Success -> {
+                                        listSuccess = true
+                                        listMessage = "Matched ${result.playlist.tracks.size} of " +
+                                            "${PlaylistImporter.parseTrackList(listText).size} songs"
+                                    }
+                                    is PlaylistImporter.Result.Failure -> {
+                                        listSuccess = false
+                                        listMessage = result.message
+                                    }
+                                }
+                                listBusy = false
+                            }
+                        }
+                    ) {
+                        if (listBusy) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Match and import")
+                        }
+                    }
+                    if (listMessage != null) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            listMessage ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (listSuccess) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(24.dp))

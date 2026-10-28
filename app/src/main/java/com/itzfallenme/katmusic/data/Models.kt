@@ -14,9 +14,12 @@ data class Track(
     val albumId: String? = null,
     val durationMs: Long = 0L,
     val artwork: String = "",
-    val explicit: Boolean = false
+    val explicit: Boolean = false,
+    /** Set when the item is a file on this device instead of a YouTube Music video. */
+    val localPath: String? = null
 ) {
     val isPlayable: Boolean get() = id.isNotBlank()
+    val isLocal: Boolean get() = !localPath.isNullOrBlank()
 }
 
 enum class CardKind { ALBUM, PLAYLIST, ARTIST, MIX, SONG, SHOW }

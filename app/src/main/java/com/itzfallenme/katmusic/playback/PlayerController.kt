@@ -95,6 +95,9 @@ class PlayerController(
         buildPlayer()
     }
 
+    /** Resolves a downloaded file for a track id so offline copies play from disk. */
+    var localFileResolver: ((String) -> java.io.File?)? = null
+
     private fun buildPlayer(): ExoPlayer {
         val okHttpFactory = OkHttpDataSource.Factory(InnerTube.http)
             .setUserAgent(InnerTube.VR_UA)
@@ -136,11 +139,13 @@ class PlayerController(
                     positionMs = 0
                 )
                 track?.let { onTrackStarted(it) }
+                refreshWidget()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _state.value = _state.value.copy(playing = isPlaying)
                 if (isPlaying) ensureService()
+                refreshWidget()
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -149,6 +154,13 @@ class PlayerController(
                     durationMs = if (exo.duration > 0) exo.duration else _state.value.durationMs
                 )
                 if (playbackState == Player.STATE_ENDED) handleEnded()
+                refreshWidget()
+            }
+
+            private fun refreshWidget() {
+                runCatching {
+                    com.itzfallenme.katmusic.widget.WidgetUpdater.refresh(context, _state.value)
+                }
             }
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -199,8 +211,17 @@ class PlayerController(
         val extras = Bundle().apply {
             putString("track", json.encodeToString(Track.serializer(), track))
         }
+        val local = track.localPath
+            ?.let { java.io.File(it) }
+            ?.takeIf { it.exists() }
+            ?: localFileResolver?.invoke(track.id)
+        val uri = if (local != null) {
+            android.net.Uri.fromFile(local)
+        } else {
+            android.net.Uri.parse("https://katmusic.local/watch?v=${track.id}")
+        }
         return MediaItem.Builder()
-            .setUri("https://katmusic.local/watch?v=${track.id}")
+            .setUri(uri)
             .setMediaId(track.id)
             .setMediaMetadata(
                 MediaMetadata.Builder()

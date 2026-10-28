@@ -2,6 +2,8 @@ package com.itzfallenme.katmusic.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +30,9 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.ServiceLocator
+import com.itzfallenme.katmusic.data.RestoreResult
 import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.Screen
@@ -73,6 +78,43 @@ fun SettingsScreen(nav: Navigator) {
     var lastFmDialog by remember { mutableStateOf(false) }
     var pendingToken by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
+    var backupStatus by remember { mutableStateOf<String?>(null) }
+
+    val createBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val payload = ServiceLocator.backup.export()
+        val written = runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(payload.encodeToByteArray())
+            } ?: error("Could not write to that file")
+        }
+        backupStatus = written.fold(
+            onSuccess = { "Backup saved" },
+            onFailure = { it.message ?: "Backup failed" }
+        )
+    }
+
+    val openBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        }.getOrNull()
+        if (text == null) {
+            backupStatus = "Could not read that file"
+            return@rememberLauncherForActivityResult
+        }
+        backupStatus = when (val result = ServiceLocator.backup.restore(text)) {
+            is RestoreResult.Success -> buildString {
+                append("Restored ${result.likes} likes and ${result.playlists} playlists")
+                if (result.settingsRestored) append(" plus your settings")
+            }
+            is RestoreResult.Failure -> result.message
+        }
+    }
 
     fun update(transform: (com.itzfallenme.katmusic.data.AppSettings) -> com.itzfallenme.katmusic.data.AppSettings) {
         ServiceLocator.settings.update(transform)
@@ -406,6 +448,21 @@ fun SettingsScreen(nav: Navigator) {
 
             SettingsCard(title = "Data", icon = Icons.Filled.Storage) {
                 SettingRow(
+                    title = "Backup library",
+                    subtitle = "Save likes, playlists, history and settings to a JSON file",
+                    icon = Icons.Filled.Upload
+                ) { createBackup.launch(ServiceLocator.backup.fileName()) }
+                SettingRow(
+                    title = "Restore backup",
+                    subtitle = "Replace this library with a previously saved file",
+                    icon = Icons.Filled.Storage
+                ) { openBackup.launch(arrayOf("application/json", "text/*")) }
+                SettingRow(
+                    title = "Music on this device",
+                    subtitle = "Play audio files already stored on your phone",
+                    icon = Icons.Filled.MusicNote
+                ) { nav.go(Screen.LocalMusic) }
+                SettingRow(
                     title = "Import a playlist",
                     subtitle = "Copy a public YouTube Music playlist into your library",
                     icon = Icons.Filled.PlaylistAdd
@@ -425,6 +482,14 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "${library.recentSearches.size} saved searches",
                     icon = Icons.Filled.Storage
                 ) { ServiceLocator.library.clearRecentSearches() }
+                if (backupStatus != null) {
+                    Text(
+                        backupStatus ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
             }
 
             GlassCard(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {

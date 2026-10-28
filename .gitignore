@@ -12,3 +12,7 @@
 *.aab
 *.keystore
 !debug.keystore
+
+# Local assistant transcripts and scratch notes
+freebuff-chat-*.md
+*.local.md

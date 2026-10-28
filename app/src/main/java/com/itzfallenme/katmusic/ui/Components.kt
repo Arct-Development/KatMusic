@@ -2,7 +2,16 @@ package com.itzfallenme.katmusic.ui
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,6 +73,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -83,7 +95,15 @@ import com.itzfallenme.katmusic.data.Playlist
 import com.itzfallenme.katmusic.data.Shelf
 import com.itzfallenme.katmusic.data.Track
 import com.itzfallenme.katmusic.playback.PlayerUiState
+import com.itzfallenme.katmusic.ui.theme.GlassIconButton
+import com.itzfallenme.katmusic.ui.theme.GlassSurface
+import com.itzfallenme.katmusic.ui.theme.Motion
+import com.itzfallenme.katmusic.ui.theme.bounceClickable
+import com.itzfallenme.katmusic.ui.theme.liquidGlass
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.sin
 
 fun formatDuration(ms: Long): String {
     if (ms <= 0) return "--:--"
@@ -133,38 +153,25 @@ fun Artwork(
                 model = url,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = 0.98f }
             )
         }
     }
 }
 
-/** Soft, translucent container used across the app in place of flat cards. */
+/** Frosted glass container used across the app in place of flat cards. */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     corner: Dp = 26.dp,
     content: @Composable () -> Unit
 ) {
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(corner))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        scheme.surfaceContainerHigh.copy(alpha = 0.86f),
-                        scheme.surfaceContainer.copy(alpha = 0.72f)
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.02f))
-                ),
-                RoundedCornerShape(corner)
-            )
+    GlassSurface(
+        modifier = modifier,
+        shape = RoundedCornerShape(corner),
+        fillAlpha = 0.62f
     ) {
         content()
     }
@@ -201,12 +208,18 @@ fun SectionHeader(
             }
         }
         if (onMore != null) {
-            IconButton(onClick = onMore) {
+            Box(
+                Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .bounceClickable(targetScale = 0.88f, onClick = onMore),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     Icons.Filled.ArrowForwardIos,
                     contentDescription = "See all",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
@@ -224,14 +237,15 @@ fun MediaCardItem(
     Column(
         modifier = modifier
             .width(width)
-            .clickable(onClick = onClick)
+            .bounceClickable(targetScale = 0.95f, onClick = onClick)
     ) {
         Artwork(
             url = card.artwork,
             modifier = Modifier
                 .size(width)
+                .shadow(14.dp, RoundedCornerShape(if (round) 100.dp else 22.dp))
                 .then(if (round) Modifier.clip(CircleShape) else Modifier),
-            corner = if (round) 100.dp else 20.dp,
+            corner = if (round) 100.dp else 22.dp,
             fallbackIcon = when (card.kind) {
                 CardKind.ARTIST -> Icons.Filled.Verified
                 CardKind.MIX -> Icons.Filled.Radio
@@ -313,7 +327,10 @@ fun TrackRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
+            .then(
+                if (isCurrent) Modifier.background(accent.copy(alpha = 0.10f)) else Modifier
+            )
+            .bounceClickable(targetScale = 0.985f, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -599,32 +616,31 @@ fun MiniPlayer(
         targetValue = if (state.durationMs > 0) {
             (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
         } else 0f,
+        animationSpec = Motion.effectsDefault(),
         label = "progress"
     )
-    GlassCard(modifier = modifier.fillMaxWidth(), corner = 22.dp) {
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = 14.dp,
+        fillAlpha = 0.8f
+    ) {
         Column {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(progress)
-                        .height(2.dp)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onOpen)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .bounceClickable(targetScale = 0.98f, onClick = onOpen)
+                    .padding(start = 8.dp, end = 6.dp, top = 8.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Artwork(url = track.artwork, modifier = Modifier.size(42.dp), corner = 12.dp)
-                Spacer(Modifier.width(10.dp))
+                Artwork(
+                    url = track.artwork,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .shadow(10.dp, RoundedCornerShape(14.dp)),
+                    corner = 14.dp
+                )
+                Spacer(Modifier.width(11.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         track.title,
@@ -632,28 +648,85 @@ fun MiniPlayer(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        track.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                IconButton(onClick = { ServiceLocator.player.togglePlayPause() }) {
-                    if (state.buffering) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(
-                            if (state.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (state.playing) "Pause" else "Play"
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            track.artist.ifBlank { "KatMusic" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (state.playing) {
+                            Spacer(Modifier.width(8.dp))
+                            PlayingBars()
+                        }
                     }
                 }
-                IconButton(onClick = { ServiceLocator.player.next() }) {
-                    Icon(Icons.Filled.SkipNext, contentDescription = "Next")
-                }
+                GlassIconButton(
+                    icon = if (state.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (state.playing) "Pause" else "Play",
+                    onClick = { ServiceLocator.player.togglePlayPause() },
+                    size = 40.dp,
+                    iconSize = 22.dp
+                )
+                Spacer(Modifier.width(6.dp))
+                GlassIconButton(
+                    icon = Icons.Filled.SkipNext,
+                    contentDescription = "Next",
+                    onClick = { ServiceLocator.player.next() },
+                    size = 40.dp,
+                    iconSize = 20.dp
+                )
             }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .padding(bottom = 9.dp)
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress)
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
+        }
+    }
+}
+
+/** Tiny animated equaliser shown next to the artist while a song is playing. */
+@Composable
+fun PlayingBars(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    bars: Int = 3
+) {
+    val transition = rememberInfiniteTransition(label = "playingBars")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1100, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "barsPhase"
+    )
+    Canvas(modifier.size(width = 14.dp, height = 12.dp)) {
+        val barWidth = size.width / (bars * 2f - 1f)
+        repeat(bars) { index ->
+            val height = size.height * (0.35f + 0.32f * abs(sin(phase + index * 1.1f)))
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(index * barWidth * 2f, size.height - height),
+                size = androidx.compose.ui.geometry.Size(barWidth, height),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2f)
+            )
         }
     }
 }
@@ -704,14 +777,32 @@ fun Chip(
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val background by animateColorAsState(
+        targetValue = if (selected) scheme.primary else scheme.surfaceContainerHigh.copy(alpha = 0.65f),
+        animationSpec = Motion.effectsDefault(),
+        label = "chipBackground"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.985f,
+        animationSpec = Motion.spatialFast(),
+        label = "chipScale"
+    )
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
         modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
-            .background(if (selected) scheme.primary else scheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
+            .background(background)
+            .then(
+                if (selected) Modifier
+                else Modifier.liquidGlass(shape = CircleShape, fillAlpha = 0.42f)
+            )
+            .bounceClickable(targetScale = 0.94f, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 9.dp)
     )
 }

@@ -1,13 +1,19 @@
 package com.itzfallenme.katmusic.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,11 +43,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,11 +64,17 @@ import com.itzfallenme.katmusic.ui.screens.GeneratorScreen
 import com.itzfallenme.katmusic.ui.screens.HomeScreen
 import com.itzfallenme.katmusic.ui.screens.ImportPlaylistScreen
 import com.itzfallenme.katmusic.ui.screens.LibraryScreen
+import com.itzfallenme.katmusic.ui.screens.LocalMusicScreen
 import com.itzfallenme.katmusic.ui.screens.PlayerScreen
 import com.itzfallenme.katmusic.ui.screens.SearchScreen
 import com.itzfallenme.katmusic.ui.screens.SettingsScreen
 import com.itzfallenme.katmusic.ui.screens.StatsScreen
+import com.itzfallenme.katmusic.ui.theme.AmbientBackdrop
+import com.itzfallenme.katmusic.ui.theme.GlassSurface
 import com.itzfallenme.katmusic.ui.theme.KatMusicTheme
+import com.itzfallenme.katmusic.ui.theme.Motion
+import com.itzfallenme.katmusic.ui.theme.bounceClickable
+import com.itzfallenme.katmusic.ui.theme.liquidGlass
 import com.itzfallenme.katmusic.ui.theme.rememberArtworkSeed
 
 private data class Tab(val screen: Screen, val label: String, val icon: ImageVector)
@@ -108,58 +123,78 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
         BackHandler(enabled = nav.canGoBack || nav.playerOpen || nav.queueOpen) {
             nav.back()
         }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+        Box(Modifier.fillMaxSize()) {
+            AmbientBackdrop(
+                accent = seed,
+                intensity = if (playerState.track != null) 1f else 0.55f
+            )
             Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = Color.Transparent,
                 bottomBar = {
                     Column(
                         Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        if (playerState.track != null) {
+                        AnimatedVisibility(
+                            visible = playerState.track != null && !nav.playerOpen,
+                            enter = slideInVertically(Motion.spatialDefault()) { it } + fadeIn(Motion.effectsDefault()),
+                            exit = slideOutVertically(Motion.spatialFast()) { it } + fadeOut(Motion.effectsFast())
+                        ) {
                             MiniPlayer(
                                 state = playerState,
                                 onOpen = { nav.openPlayer() },
-                                modifier = Modifier.padding(bottom = 8.dp)
+                                modifier = Modifier.padding(bottom = 10.dp)
                             )
                         }
-                        BottomNav(nav = nav)
+                        Dock(nav = nav)
                     }
                 }
             ) { padding ->
-                Box(
-                    Modifier
+                var lastDepth by remember { mutableIntStateOf(nav.stack.size) }
+                LaunchedEffect(nav.current) { lastDepth = nav.stack.size }
+                AnimatedContent(
+                    targetState = nav.current,
+                    transitionSpec = {
+                        val forward = nav.stack.size >= lastDepth
+                        val enter = if (forward) Motion.forwardEnter() else Motion.backEnter()
+                        val exit = if (forward) Motion.forwardExit() else Motion.backExit()
+                        enter togetherWith exit
+                    },
+                    modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = padding.calculateTopPadding())
-                ) {
-                    val screen = nav.current
-                    when (screen) {
-                        Screen.Home -> HomeScreen(nav)
-                        Screen.Explore -> ExploreScreen(nav)
-                        Screen.Search -> SearchScreen(nav)
-                        Screen.Library -> LibraryScreen(nav)
-                        Screen.Settings -> SettingsScreen(nav)
-                        Screen.Downloads -> DownloadsScreen(nav)
-                        Screen.Stats -> StatsScreen(nav)
-                        Screen.Equalizer -> EqualizerScreen(nav)
-                        Screen.Import -> ImportPlaylistScreen(nav)
-                        Screen.Account -> AccountScreen(nav)
-                        Screen.Generator -> GeneratorScreen(nav)
-                        is Screen.Detail -> DetailScreen(nav, screen)
+                        .padding(top = padding.calculateTopPadding()),
+                    label = "screens"
+                ) { screen ->
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                    ) {
+                        when (screen) {
+                            Screen.Home -> HomeScreen(nav)
+                            Screen.Explore -> ExploreScreen(nav)
+                            Screen.Search -> SearchScreen(nav)
+                            Screen.Library -> LibraryScreen(nav)
+                            Screen.Settings -> SettingsScreen(nav)
+                            Screen.Downloads -> DownloadsScreen(nav)
+                            Screen.Stats -> StatsScreen(nav)
+                            Screen.Equalizer -> EqualizerScreen(nav)
+                            Screen.Import -> ImportPlaylistScreen(nav)
+                            Screen.Account -> AccountScreen(nav)
+                            Screen.Generator -> GeneratorScreen(nav)
+                            Screen.LocalMusic -> LocalMusicScreen(nav)
+                            is Screen.Detail -> DetailScreen(nav, screen)
+                        }
                     }
                 }
             }
 
             AnimatedVisibility(
                 visible = nav.playerOpen,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                enter = slideInVertically(Motion.spatialSlow()) { it } + fadeIn(Motion.effectsDefault()),
+                exit = slideOutVertically(Motion.spatialDefault()) { it } + fadeOut(Motion.effectsFast())
             ) {
                 PlayerScreen(nav = nav)
             }
@@ -168,41 +203,77 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
 }
 
 @Composable
-private fun BottomNav(nav: Navigator) {
+private fun Dock(nav: Navigator) {
     val scheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(scheme.surfaceContainerHigh.copy(alpha = 0.92f))
-            .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        elevation = 18.dp,
+        fillAlpha = 0.72f
     ) {
-        tabs.forEach { tab ->
-            val selected = nav.current == tab.screen
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(if (selected) scheme.primary.copy(alpha = 0.16f) else Color.Transparent)
-                    .clickable { nav.switchTab(tab.screen) }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = tab.icon,
-                    contentDescription = tab.label,
-                    modifier = Modifier.size(23.dp),
-                    tint = if (selected) scheme.primary else scheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEach { tab ->
+                val selected = nav.current == tab.screen
+                val iconTint by animateColorAsState(
+                    targetValue = if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                    animationSpec = Motion.effectsDefault(),
+                    label = "tabTint"
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = tab.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (selected) scheme.primary else scheme.onSurfaceVariant
+                val scale by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0.94f,
+                    animationSpec = Motion.spatialFast(),
+                    label = "tabScale"
                 )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (selected) {
+                                Modifier.background(scheme.primary)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.label,
+                        tint = iconTint,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    )
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = expandHorizontally(Motion.spatialDefault()) + fadeIn(Motion.effectsDefault()),
+                        exit = shrinkHorizontally(Motion.spatialFast()) + fadeOut(Motion.effectsFast())
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = scheme.onPrimary
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -226,22 +297,21 @@ fun SimpleTopBar(
             Box(
                 Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable(onClick = onBack),
+                    .liquidGlass(shape = CircleShape, fillAlpha = 0.45f)
+                    .bounceClickable(targetScale = 0.9f, onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
             Spacer(Modifier.width(12.dp))
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.weight(1f)
         )
         actions()

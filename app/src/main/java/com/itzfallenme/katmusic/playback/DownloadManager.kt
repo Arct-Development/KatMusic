@@ -1,7 +1,12 @@
 package com.itzfallenme.katmusic.playback
 
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
+import kotlinx.coroutines.withContext
 import com.itzfallenme.katmusic.data.DownloadEntry
 import com.itzfallenme.katmusic.data.InnerTube
 import com.itzfallenme.katmusic.data.LibraryRepository
@@ -148,6 +153,52 @@ class DownloadManager(
         val entry = library.downloadFor(trackId) ?: return null
         val file = File(entry.path)
         return file.takeIf { it.exists() }
+    }
+
+    /**
+     * Copies a downloaded file into the shared Music collection, tagged with title, artist
+     * and album so other players show it correctly. Files are copied, not moved, so the
+     * offline copy keeps working when the download is later removed.
+     */
+    suspend fun exportToMediaStore(entry: DownloadEntry): Result<Uri> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                error("Exporting needs Android 10 or newer")
+            }
+            val source = File(entry.path)
+            if (!source.exists()) error("The downloaded file is missing")
+            val resolver = context.contentResolver
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, source.name)
+                put(MediaStore.Audio.Media.TITLE, entry.track.title)
+                put(MediaStore.Audio.Media.ARTIST, entry.track.artist)
+                put(MediaStore.Audio.Media.ALBUM, entry.track.album ?: "KatMusic")
+                put(MediaStore.Audio.Media.DURATION, entry.track.durationMs)
+                put(
+                    MediaStore.Audio.Media.MIME_TYPE,
+                    if (source.extension.equals("webm", true)) "audio/webm" else "audio/mp4"
+                )
+                put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                put(
+                    MediaStore.Audio.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_MUSIC + "/KatMusic"
+                )
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                ?: error("Could not create a media entry")
+            runCatching {
+                resolver.openOutputStream(uri)?.use { output ->
+                    source.inputStream().use { input -> input.copyTo(output) }
+                } ?: error("Could not write the exported file")
+            }.onFailure {
+                resolver.delete(uri, null, null)
+                throw it
+            }
+            val done = ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }
+            resolver.update(uri, done, null, null)
+            uri
+        }
     }
 
     fun totalBytes(): Long = library.state.value.downloads.sumOf { it.bytes }

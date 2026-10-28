@@ -36,6 +36,9 @@ class LibraryRepository(private val context: Context) {
 
     private fun edit(block: (LibraryData) -> LibraryData) = persist(block(_state.value))
 
+    /** Replaces the whole library, used by backup restore. */
+    fun replaceAll(data: LibraryData) = persist(data)
+
     fun isLiked(trackId: String): Boolean = _state.value.liked.any { it.id == trackId }
 
     fun toggleLike(track: Track) = edit { data ->

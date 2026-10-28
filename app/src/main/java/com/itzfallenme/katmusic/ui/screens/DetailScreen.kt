@@ -1,5 +1,6 @@
 package com.itzfallenme.katmusic.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,9 +47,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,6 +72,11 @@ import com.itzfallenme.katmusic.ui.PlaylistPickerDialog
 import com.itzfallenme.katmusic.ui.Screen
 import com.itzfallenme.katmusic.ui.TrackRow
 import com.itzfallenme.katmusic.ui.formatDuration
+import com.itzfallenme.katmusic.ui.theme.GlassIconButton
+import com.itzfallenme.katmusic.ui.theme.Motion
+import com.itzfallenme.katmusic.ui.theme.bounceClickable
+import com.itzfallenme.katmusic.ui.theme.liquidGlass
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 @Composable
@@ -109,13 +119,26 @@ fun DetailScreen(nav: Navigator, screen: Screen.Detail) {
     ) {
         item {
             Box(Modifier.fillMaxWidth()) {
+                if (artworkUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = artworkUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(320.dp)
+                            .blur(60.dp)
+                            .graphicsLayer { alpha = 0.5f }
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.75f),
                                     MaterialTheme.colorScheme.background
                                 )
                             )
@@ -129,14 +152,21 @@ fun DetailScreen(nav: Navigator, screen: Screen.Detail) {
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        IconButton(onClick = { nav.back() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+                        GlassIconButton(
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = { nav.back() },
+                            size = 42.dp,
+                            iconSize = 20.dp
+                        )
                         Spacer(Modifier.weight(1f))
                         Box {
-                            IconButton(onClick = { menu = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "More")
-                            }
+                            GlassIconButton(
+                                icon = Icons.Filled.MoreVert,
+                                contentDescription = "More",
+                                onClick = { menu = true },
+                                size = 42.dp
+                            )
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 DropdownMenuItem(
                                     text = { Text("Download all") },
@@ -172,15 +202,22 @@ fun DetailScreen(nav: Navigator, screen: Screen.Detail) {
                     }
                     Artwork(
                         url = artworkUrl,
-                        modifier = Modifier.size(190.dp),
-                        corner = if (screen.kind == CardKind.ARTIST) 95.dp else 26.dp,
+                        modifier = Modifier
+                            .size(206.dp)
+                            .shadow(
+                                26.dp,
+                                CircleShape.takeIf { screen.kind == CardKind.ARTIST }
+                                    ?: RoundedCornerShape(28.dp),
+                                spotColor = MaterialTheme.colorScheme.primary
+                            ),
+                        corner = if (screen.kind == CardKind.ARTIST) 103.dp else 28.dp,
                         fallbackIcon = if (screen.kind == CardKind.ARTIST) Icons.Filled.Verified
                         else Icons.Filled.PlayArrow
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
                         textAlign = TextAlign.Center,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -337,8 +374,8 @@ private fun BigPlayButton(enabled: Boolean, onClick: () -> Unit) {
                 if (enabled) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.surfaceContainerHigh
             )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 12.dp),
+            .bounceClickable(enabled = enabled, targetScale = 0.93f, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -363,10 +400,9 @@ private fun CircleAction(
 ) {
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick),
+            .size(46.dp)
+            .liquidGlass(shape = CircleShape, fillAlpha = 0.5f)
+            .bounceClickable(targetScale = 0.9f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)

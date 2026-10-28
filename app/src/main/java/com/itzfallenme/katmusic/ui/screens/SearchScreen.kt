@@ -60,6 +60,7 @@ import com.itzfallenme.katmusic.ui.Chip
 import com.itzfallenme.katmusic.ui.LoadingRow
 import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.TrackRow
+import com.itzfallenme.katmusic.ui.theme.liquidGlass
 import kotlinx.coroutines.delay
 
 @Composable
@@ -112,9 +113,9 @@ fun SearchScreen(nav: Navigator) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Text(
             text = "Search",
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 10.dp)
+            modifier = Modifier.padding(start = 20.dp, top = 10.dp, bottom = 12.dp)
         )
         TextField(
             value = query,
@@ -128,7 +129,8 @@ fun SearchScreen(nav: Navigator) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .focusRequester(focus),
+                .focusRequester(focus)
+                .liquidGlass(shape = RoundedCornerShape(24.dp), fillAlpha = 0.5f),
             placeholder = { Text("Songs, albums, artists…") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
@@ -141,8 +143,8 @@ fun SearchScreen(nav: Navigator) {
             singleLine = true,
             shape = RoundedCornerShape(22.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),

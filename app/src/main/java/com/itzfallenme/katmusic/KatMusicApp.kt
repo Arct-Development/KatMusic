@@ -3,7 +3,9 @@ package com.itzfallenme.katmusic
 import android.app.Application
 import android.content.Context
 import com.itzfallenme.katmusic.data.AccountStore
+import com.itzfallenme.katmusic.data.BackupManager
 import com.itzfallenme.katmusic.data.InnerTube
+import com.itzfallenme.katmusic.data.LocalMusicRepository
 import com.itzfallenme.katmusic.data.LastFm
 import com.itzfallenme.katmusic.data.LibraryRepository
 import com.itzfallenme.katmusic.data.SettingsRepository
@@ -39,6 +41,10 @@ object ServiceLocator {
         private set
     lateinit var downloads: DownloadManager
         private set
+    lateinit var backup: BackupManager
+        private set
+    lateinit var localMusic: LocalMusicRepository
+        private set
 
     val eq = EqualizerManager()
 
@@ -52,6 +58,9 @@ object ServiceLocator {
         InnerTube.authHeaders = { account.cookieHeaders() }
         player = PlayerController(context, settings, library)
         downloads = DownloadManager(context, library, settings)
+        backup = BackupManager(library, settings)
+        localMusic = LocalMusicRepository(context)
+        player.localFileResolver = { trackId -> downloads.existingFile(trackId) }
     }
 
     fun lastFm(): LastFm? {

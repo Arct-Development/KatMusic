@@ -45,6 +45,8 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 ### Sound
 
 - 10-band equalizer with the device's built-in presets
+- **AutoEq headphone profiles** – paste or open any ParametricEQ, GraphicEQ or CSV
+  export and the correction curve is mapped onto your bands
 - Bass boost and virtualizer
 - High-bitrate Opus stream preference
 - Crossfade between tracks
@@ -61,8 +63,12 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 
 - Liked songs, playlists and listening history
 - Automatic taste mixes built from your listening: *On repeat*, artist mix and rediscover
-- Import public YouTube Music playlists from a link or id
-- Offline downloads with matching `.lrc` lyric files
+- Import public YouTube Music playlists from a link or id, or paste a plain
+  `Artist - Title` list exported from Spotify or Apple Music and let KatMusic match it
+- Offline downloads with matching `.lrc` lyric files, plus one-tap export into the
+  phone's shared music library
+- Music already on your device – scan, browse and play local files
+- Backup and restore the whole library and settings as a single JSON file
 - Recent searches
 
 ### Discover
@@ -74,8 +80,11 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 
 ### Personalise
 
-- Material 3 Expressive dark theme seeded from the current artwork
+- Material 3 Expressive theme seeded from the current artwork, with a spring-driven
+  motion language: glass surfaces, a floating dock, breathing artwork, morphing
+  play/pause, ambient colour blobs and animated lyrics
 - AMOLED mode and a hand-picked accent palette
+- Home-screen **now playing widget** with play/pause and skip
 - Listening stats: minutes, plays, top artists, top tracks and a listening clock
 - Shareable stats summary
 
@@ -198,7 +207,7 @@ please read the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go throu
 
 Planned work, roughly in priority order. Feature requests are welcome – open an issue.
 
-- [ ] Home-screen widgets (turntable, playlists, listening insights)
+- [x] Now-playing home-screen widget (insight and playlist widgets still planned)
 - [ ] Android Auto and Android TV entry points
 - [ ] Google Cast support
 - [ ] Discord rich presence
@@ -207,19 +216,23 @@ Planned work, roughly in priority order. Feature requests are welcome – open a
 - [ ] Video playback with captions and audio-track selection
 - [ ] Word-by-word lyrics, romanisation and share-as-image
 - [ ] Multi-source lyrics (SimpMusic lyrics, Spotify, YouTube transcript)
-- [ ] Tagged downloads (embedded cover art and metadata) plus MediaStore export
-- [ ] Local file playback and a device-music browser
-- [ ] Backup / restore of the whole library
-- [ ] AutoEq headphone profiles for the equalizer
+- [x] MediaStore export of downloads with title, artist and album tags
+- [ ] Embedded cover art and ID3 tagging inside downloaded files
+- [x] Local file playback and a device-music browser
+- [x] Backup / restore of the whole library
+- [x] AutoEq headphone profiles for the equalizer
 - [ ] Genre DNA and a discovery feed built from listening stats
-- [ ] Spotify / Apple Music playlist conversion
+- [x] Spotify / Apple Music song lists (pasted, matched automatically)
+- [ ] Spotify / Apple Music playlists read directly through their APIs
 
 ## Credits
 
 KatMusic is an independent implementation inspired by the feature sets and interface
 ideas of two excellent open-source projects:
 
-- [LastWave](https://github.com/Clash-Projects/LastWave-native) by Clash Projects
+- [LastWave](https://github.com/Clash-Projects/LastWave-native) by Clash Projects – the
+  expressive glass design language, tonal palette builder and motion rhythm are adapted
+  from LastWave (GPL-3.0).
 - [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
 Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Icons from

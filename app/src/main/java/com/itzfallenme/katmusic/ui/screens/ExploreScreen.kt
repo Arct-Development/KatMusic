@@ -89,7 +89,7 @@ fun ExploreScreen(nav: Navigator) {
             Column(Modifier.statusBarsPadding().padding(top = 8.dp)) {
                 Text(
                     text = "Explore",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )

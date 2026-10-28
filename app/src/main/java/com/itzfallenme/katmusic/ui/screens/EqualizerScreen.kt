@@ -1,5 +1,7 @@
 package com.itzfallenme.katmusic.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,18 +16,26 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.ServiceLocator
+import com.itzfallenme.katmusic.data.AutoEq
 import com.itzfallenme.katmusic.ui.Chip
 import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
@@ -35,6 +45,28 @@ import com.itzfallenme.katmusic.ui.SimpleTopBar
 fun EqualizerScreen(nav: Navigator) {
     val eqState by ServiceLocator.eq.state.collectAsState()
     val settings by ServiceLocator.settings.state.collectAsState()
+    val context = LocalContext.current
+    var importOpen by remember { mutableStateOf(false) }
+    var pasted by remember { mutableStateOf("") }
+    var importStatus by remember { mutableStateOf<String?>(null) }
+    var profileName by remember { mutableStateOf("AutoEq profile") }
+
+    val openProfileFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val text = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }.getOrNull()
+            if (text == null) {
+                importStatus = "Could not read that file"
+            } else {
+                pasted = text
+                profileName = uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.') ?: profileName
+                importStatus = "Loaded ${text.length} characters - tap Apply"
+            }
+        }
+    }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         SimpleTopBar(title = "Equalizer", onBack = { nav.back() })
@@ -133,6 +165,36 @@ fun EqualizerScreen(nav: Navigator) {
 
             GlassCard(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 Column(Modifier.padding(18.dp)) {
+                    Text(
+                        "Headphone correction",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Load any AutoEq profile (parametric, GraphicEQ or CSV) and its curve is " +
+                            "mapped onto these bands.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TextButton(onClick = { importOpen = true }) { Text("Paste profile") }
+                        TextButton(onClick = {
+                            openProfileFile.launch(arrayOf("text/*", "application/octet-stream"))
+                        }) { Text("Open file") }
+                    }
+                    if (importStatus != null) {
+                        Text(
+                            importStatus ?: "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            GlassCard(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                Column(Modifier.padding(18.dp)) {
                     Text("Extra effects", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                     Text("Bass boost", style = MaterialTheme.typography.titleSmall)
@@ -151,5 +213,67 @@ fun EqualizerScreen(nav: Navigator) {
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (importOpen) {
+        AlertDialog(
+            onDismissRequest = { importOpen = false },
+            title = { Text("AutoEq profile") },
+            text = {
+                Column {
+                    Text(
+                        "Paste the contents of a ParametricEQ.txt, GraphicEQ.txt or CSV file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pasted,
+                        onValueChange = { pasted = it },
+                        label = { Text("Profile text") },
+                        minLines = 4,
+                        maxLines = 8,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (importStatus != null) {
+                        Text(
+                            importStatus ?: "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val profile = AutoEq.parse(pasted, profileName)
+                    if (profile.isEmpty) {
+                        importStatus = "No AutoEq filters or curve found in that text"
+                        return@TextButton
+                    }
+                    val gains = AutoEq.gainsFor(profile, eqState.bands)
+                    if (gains.isEmpty()) {
+                        importStatus = "Start playback so the equalizer can bind first"
+                        return@TextButton
+                    }
+                    gains.forEachIndexed { index, gain ->
+                        ServiceLocator.eq.setBandLevel(index, gain)
+                    }
+                    ServiceLocator.settings.update { s ->
+                        s.copy(
+                            equalizerPreset = profile.name.ifBlank { profileName },
+                            equalizerBands = gains,
+                            equalizerEnabled = true
+                        )
+                    }
+                    importStatus = "Applied ${profile.name.ifBlank { profileName }}"
+                    importOpen = false
+                }) { Text("Apply") }
+            },
+            dismissButton = {
+                TextButton(onClick = { importOpen = false }) { Text("Close") }
+            }
+        )
     }
 }

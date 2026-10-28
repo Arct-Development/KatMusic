@@ -23,6 +23,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,12 +36,16 @@ import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.SimpleTopBar
 import com.itzfallenme.katmusic.ui.TrackRow
+import kotlinx.coroutines.launch
 
 @Composable
 fun DownloadsScreen(nav: Navigator) {
     val library by ServiceLocator.library.state.collectAsState()
     val playerState by ServiceLocator.player.state.collectAsState()
     val progress = ServiceLocator.downloads.progress.value
+    val scope = rememberCoroutineScope()
+    var exportStatus by remember { mutableStateOf<String?>(null) }
+    var exporting by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         SimpleTopBar(title = "Downloads", onBack = { nav.back() })
@@ -75,6 +83,41 @@ fun DownloadsScreen(nav: Navigator) {
                                 Icon(Icons.Filled.Delete, contentDescription = null)
                                 Text("Delete all")
                             }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            TextButton(
+                                enabled = library.downloads.isNotEmpty() && !exporting,
+                                onClick = {
+                                    exporting = true
+                                    exportStatus = null
+                                    scope.launch {
+                                        var copied = 0
+                                        var failed = 0
+                                        library.downloads.forEach { entry ->
+                                            ServiceLocator.downloads.exportToMediaStore(entry)
+                                                .onSuccess { copied++ }
+                                                .onFailure { failed++ }
+                                        }
+                                        exporting = false
+                                        exportStatus = when {
+                                            copied == 0 && failed > 0 ->
+                                                "Nothing was exported - the files may have been deleted"
+                                            failed > 0 -> "Exported $copied songs, $failed failed"
+                                            else -> "Exported $copied songs to Music/KatMusic"
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(if (exporting) "Exporting…" else "Export to device library")
+                            }
+                        }
+                        if (exportStatus != null) {
+                            Text(
+                                exportStatus ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }

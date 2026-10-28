@@ -129,7 +129,7 @@ fun LibraryScreen(nav: Navigator) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = "Library",
-                            style = MaterialTheme.typography.headlineLarge,
+                            style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Black
                         )
                         Text(
@@ -138,12 +138,19 @@ fun LibraryScreen(nav: Navigator) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { nav.go(Screen.Stats) }) {
-                        Icon(Icons.Filled.BarChart, contentDescription = "Stats")
-                    }
-                    IconButton(onClick = { nav.go(Screen.Settings) }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                    }
+                    com.itzfallenme.katmusic.ui.theme.GlassIconButton(
+                        icon = Icons.Filled.BarChart,
+                        contentDescription = "Stats",
+                        onClick = { nav.go(Screen.Stats) },
+                        size = 42.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    com.itzfallenme.katmusic.ui.theme.GlassIconButton(
+                        icon = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        onClick = { nav.go(Screen.Settings) },
+                        size = 42.dp
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(

@@ -4,6 +4,31 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.1.0] – 2026-10-28
+
+### Added
+
+- Backup and restore of the whole library and settings to a JSON file
+- AutoEq headphone profile import (parametric, GraphicEQ and CSV formats)
+- Device music browser that scans MediaStore and plays local files
+- Now-playing home-screen widget built with Glance
+- Import of pasted `Artist - Title` song lists with automatic matching
+- Export of downloads into the phone's shared music library with metadata
+- Offline playback prefers the downloaded file when one exists
+
+### Changed
+
+- New expressive design system: glass cards, floating dock, artwork-seeded tonal
+  palette, ambient colour blobs and a single spring motion language
+- Full player rebuilt with breathing artwork, morphing play/pause, animated lyric
+  highlighting, drag-to-dismiss and an animated queue sheet
+- Screen changes now animate with directional spring transitions
+- Home feed reveals content with a staggered entrance and a collapsing header
+
+### Fixed
+
+- Downloads no longer stream from the network when an offline copy is present
+
 ## [1.0.0] – 2026-10-28
 
 First public build.

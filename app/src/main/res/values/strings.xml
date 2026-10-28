@@ -3,4 +3,6 @@
     <string name="app_name">KatMusic</string>
     <string name="playback_channel_name">Playback</string>
     <string name="download_channel_name">Downloads</string>
+    <string name="widget_name">KatMusic now playing</string>
+    <string name="widget_description">Shows the current song with play and skip controls.</string>
 </resources>
