@@ -79,6 +79,13 @@ object YtMusic {
         return shelves
     }
 
+    suspend fun podcasts(): List<Shelf> {
+        cached(homeCache, "podcasts", 30 * 60_000L)?.let { return it }
+        val shelves = InnerTube.podcasts()
+        homeCache["podcasts"] = CacheEntry(shelves, System.currentTimeMillis())
+        return shelves
+    }
+
     suspend fun newReleases(): List<Shelf> {
         cached(homeCache, "new", 30 * 60_000L)?.let { return it }
         val shelves = InnerTube.newReleases()

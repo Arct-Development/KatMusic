@@ -1,97 +1,218 @@
+<div align="center">
+
 # KatMusic
 
-<p align="center">
-  <b>A native Android music client for YouTube Music, built with Kotlin and Jetpack Compose.</b><br/>
-  Created by <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>
-</p>
+**A native Android client for YouTube Music.** Ad-free streaming, offline downloads,
+synced lyrics, Last.fm scrobbling and an interface that recolours itself from the
+album art you're listening to.
 
-KatMusic streams the YouTube Music catalogue without ads, keeps playing in the
-background, downloads tracks for offline listening, follows along with synced
-lyrics and scrobbles everything to Last.fm. The interface is a dark,
-glass-and-gradient Material 3 Expressive design that recolours itself from the
-album art you are listening to.
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![CI](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml/badge.svg)](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml)
+
+Created by [ItzFallenMe](https://github.com/ItzFallenMe)
+
+</div>
+
+---
+
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Install](#install)
+- [Build from source](#build-from-source)
+- [How it works](#how-it-works)
+- [Privacy](#privacy)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+- [Credits](#credits)
+- [License](#license)
 
 ## Features
 
-**Listening**
-- Stream songs, albums, playlists, artists and mixes from YouTube Music
+### Listen
+
+- Stream songs, albums, playlists, artist pages and mixes from the YouTube Music catalogue
 - Background playback with a media notification and lock-screen controls
-- Queue management: play next, add to queue, reorder, remove
-- Shuffle, repeat one/all, autoplay radio that keeps the queue going
+- Queue control: play next, add to queue, reorder, remove, clear
+- Shuffle, repeat one/all and autoplay radio that keeps recommending while you listen
 - Sleep timer with quick presets
-- Playback speed control
-- Skip-silence and audio focus handling
+- Playback speed from 0.75× to 2×
 
-**Sound**
-- 10-band equalizer with device presets
+### Sound
+
+- 10-band equalizer with the device's built-in presets
 - Bass boost and virtualizer
-- High-quality Opus stream preference
+- High-bitrate Opus stream preference
+- Crossfade between tracks
+- Skip-silence
 
-**Lyrics**
-- Millisecond-synced lyrics from LRCLIB
-- Karaoke-style highlighting with automatic scrolling
-- Playback-timing offset and text-size controls
-- Plain-lyrics fallback when no sync is available
+### Lyrics
 
-**Library**
-- Liked songs, local playlists, listening history
-- Automatic taste mixes ("On repeat", artist mix, rediscover) built from history
-- Follow artists and jump straight to their page
-- Offline downloads with `.lrc` sidecar files
+- Millisecond-synced lyrics from [LRCLIB](https://lrclib.net)
+- Karaoke highlighting that follows playback and scrolls itself
+- Timing offset and text-size controls
+- Plain-text fallback when no synchronised version exists
+
+### Library
+
+- Liked songs, playlists and listening history
+- Automatic taste mixes built from your listening: *On repeat*, artist mix and rediscover
+- Import public YouTube Music playlists from a link or id
+- Offline downloads with matching `.lrc` lyric files
 - Recent searches
 
-**Discovery**
-- Home feed from the YouTube Music home page
-- Charts, moods & genres, new releases
-- Search with typeahead suggestions
-- Album, playlist and artist pages
-- Song radio / up-next recommendations
+### Discover
 
-**Personalisation & stats**
-- Artwork-derived dynamic colour theme, AMOLED mode, accent picker
-- Listening stats: minutes, plays, top artists, top tracks, listening clock
+- Home feed straight from YouTube Music
+- Charts, moods & genres, new releases and podcasts
+- Search with typeahead suggestions, albums, artists and playlists
+- Song radio built from up-next recommendations
+
+### Personalise
+
+- Material 3 Expressive dark theme seeded from the current artwork
+- AMOLED mode and a hand-picked accent palette
+- Listening stats: minutes, plays, top artists, top tracks and a listening clock
 - Shareable stats summary
 
-**Last.fm**
-- API-key login flow with browser authorisation
-- Now-playing updates and scrobbling
-- Offline scrobble queue that syncs later
+### Integrations
 
-## Build
+- **YouTube Music account** – sign in to personalise the feed and sync your library
+- **Last.fm** – authorise in the browser, send now-playing updates and scrobbles; failed
+  scrobbles are queued and retried
+
+## Screenshots
+
+<!--
+Drop PNGs into docs/screenshots/ and reference them here, for example:
+
+<p align="center">
+  <img src="docs/screenshots/home.png" width="30%" />
+  <img src="docs/screenshots/player.png" width="30%" />
+  <img src="docs/screenshots/lyrics.png" width="30%" />
+</p>
+-->
+
+Screenshots are welcome from contributors – add them to `docs/screenshots/` and open a PR.
+
+## Install
+
+KatMusic is built from source at the moment. Release APKs will be attached to GitHub
+releases once the first signed build ships.
+
+1. Download `app-debug.apk` from the CI artifacts of the latest `main` build (or build it yourself).
+2. Allow installing apps from unknown sources for your file manager or browser.
+3. Open the APK and install. Android 8.0 (API 26) or newer is required.
+
+> KatMusic streams from YouTube Music. It is an unofficial client and is not affiliated
+> with YouTube or Google.
+
+## Build from source
+
+Requirements:
+
+- JDK 17 or newer
+- Android SDK platform 35 and build tools 35.0.0
+- `ANDROID_HOME` pointing at your SDK, or a `local.properties` with `sdk.dir=...`
 
 ```bash
-./gradlew :app:assembleDebug
+git clone https://github.com/ItzFallenMe/KatMusic.git
+cd KatMusic
+./gradlew :app:assembleDebug          # APK → app/build/outputs/apk/debug/
+./gradlew :app:testDebugUnitTest      # parsing unit tests
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+Open the folder in Android Studio for the full IDE experience; no extra setup is needed.
 
-Requires JDK 17+ and Android SDK 35.
-
-## Architecture
+## How it works
 
 ```
 app/src/main/java/com/itzfallenme/katmusic
-├── data/        InnerTube client, lyrics, models, library & settings storage
-├── playback/    Media3 player controller, media session service, downloads, EQ
-└── ui/          Compose theme, shared components, screens
+├── data/        InnerTube client, JSON parsing, lyrics, accounts, storage
+├── playback/    Media3 controller, media session service, downloads, equalizer
+└── ui/          Theme engine, shared components, screens
 ```
 
-- Kotlin + Jetpack Compose (Material 3)
-- AndroidX Media3 / ExoPlayer with a custom stream-resolving data source, so
-  fresh audio URLs are fetched lazily as each track loads
-- OkHttp + kotlinx.serialization for the InnerTube and LRCLIB APIs
-- JSON-backed local storage for the library and settings (no database needed)
+| Layer | Implementation |
+| --- | --- |
+| UI | Kotlin, Jetpack Compose, Material 3 |
+| Playback | AndroidX Media3 / ExoPlayer with a custom `ResolvingDataSource` that fetches a fresh audio URL as each track loads |
+| Networking | OkHttp + kotlinx.serialization |
+| Lyrics | LRCLIB public API |
+| Storage | JSON files for library and settings, SharedPreferences for the account session |
+| Images | Coil + AndroidX Palette for artwork colours |
+
+Notable implementation details:
+
+- **Stream resolution** happens inside the player's data source, so queue items hold
+  only video ids and never expire while sitting in the queue.
+- **Playlists, likes, history and downloads** are plain serialisable models. There is no
+  database, which keeps backups trivial and the APK small.
+- **Theming** converts the dominant artwork colour into a full dark palette in HSL space.
+- **Scrobbling** queues failed calls locally and retries them from Settings.
+
+## Privacy
+
+KatMusic has no analytics, no crash reporting and no KatMusic server. Your library,
+settings and downloads stay on the device. Network calls go only to:
+
+- `music.youtube.com` / `www.youtube.com` (catalogue, playback)
+- `lrclib.net` (lyrics)
+- `ws.audioscrobbler.com` (only if you connect Last.fm)
+
+A signed-in YouTube Music session is stored in the app's private storage and is cleared
+when you sign out. See [SECURITY.md](SECURITY.md) for details.
+
+## FAQ
+
+**Why does playback stop after a while?**
+YouTube rotates stream URLs and occasionally rate-limits clients. Skip to the next track
+or restart playback; the resolver fetches a fresh URL each time.
+
+**Lyrics are missing or out of sync.**
+LRCLIB is community-maintained. Adjust the timing offset in Settings → Lyrics, or open
+the track on LRCLIB and contribute a sync.
+
+**Can I import Spotify playlists?**
+Not directly: Spotify's API needs its own developer keys. Convert the playlist to YouTube
+Music with any converter, then paste that link into Settings → Data → Import a playlist.
+
+**Does it work without an account?**
+Yes. Signing in only personalises recommendations and unlocks your YouTube Music library.
+
+**Is my data backed up?**
+The library and settings are plain JSON inside the app sandbox, so `adb backup` or a
+rooted copy works. Android's auto-backup is enabled by default.
+
+## Contributing
+
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and
+please read the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go through
+[SECURITY.md](SECURITY.md).
 
 ## Credits
 
-Design and feature inspiration:
-[LastWave](https://github.com/Clash-Projects/LastWave-native) and
-[SimpMusic](https://github.com/maxrave-dev/SimpMusic). KatMusic is an
-independent implementation.
+KatMusic is an independent implementation inspired by the feature sets and interface
+ideas of two excellent open-source projects:
 
-Lyrics by [LRCLIB](https://lrclib.net). Metadata and audio from YouTube Music.
+- [LastWave](https://github.com/Clash-Projects/LastWave-native) by Clash Projects
+- [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
-## Disclaimer
+Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Icons from
+Material Symbols. Built with [Jetpack Compose](https://developer.android.com/jetpack/compose).
 
-KatMusic is an unofficial client and is not affiliated with YouTube or Google.
-Use it with an account and in a region where streaming the catalogue is allowed.
+## License
+
+KatMusic is released under the [GNU General Public License v3.0](LICENSE).
+
+```
+Copyright (C) 2026 ItzFallenMe
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version.
+```

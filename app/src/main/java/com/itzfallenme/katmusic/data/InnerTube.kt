@@ -43,6 +43,10 @@ object InnerTube {
 
     private val JSON_TYPE = "application/json; charset=utf-8".toMediaType()
 
+    /** Optional signed-in session headers, supplied by [AccountStore]. */
+    @Volatile
+    var authHeaders: () -> Map<String, String> = { emptyMap() }
+
     private fun webContext(hl: String = "en", gl: String = "US") = buildJsonObject {
         putJsonObject("client") {
             put("clientName", "WEB_REMIX")
@@ -75,13 +79,13 @@ object InnerTube {
         host: String = "https://music.youtube.com",
         ua: String = WEB_UA
     ): JsonObject = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
+        val builder = Request.Builder()
             .url("$host/youtubei/v1/$path?prettyPrint=false")
             .header("User-Agent", ua)
             .header("Content-Type", "application/json")
             .header("X-Goog-Api-Format-Version", "2")
-            .post(body.toString().toRequestBody(JSON_TYPE))
-            .build()
+        authHeaders().forEach { (key, value) -> builder.header(key, value) }
+        val request = builder.post(body.toString().toRequestBody(JSON_TYPE)).build()
         http.newCall(request).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful || payload.isBlank()) {
@@ -123,26 +127,30 @@ object InnerTube {
         var albumId: String? = null
         var year: String? = null
         subtitleRuns.forEach { run ->
+            val runText = run.str("text").orEmpty()
             val browse = run.obj("navigationEndpoint")?.obj("browseEndpoint")
             val browseId = browse?.str("browseId")
             when {
                 browseId == null -> Unit
                 browseId.startsWith("UC") && artist.isBlank() -> {
-                    artist = text(run)
+                    artist = runText
                     artistId = browseId
                 }
                 browseId.startsWith("MPREb_") -> {
-                    album = text(run)
+                    album = runText
                     albumId = browseId
                 }
             }
-            text(run).takeIf { yearRegex.matches(it) }?.let { year = it }
+            runText.takeIf { yearRegex.matches(it) }?.let { year = it }
         }
         if (artist.isBlank()) {
-            artist = subtitleRuns.map { text(it) }
-                .filter { it.isNotBlank() && !durationRegex.matches(it) && !yearRegex.matches(it) }
-                .take(2)
-                .joinToString(", ")
+            artist = subtitleRuns.mapNotNull { run ->
+                val value = run.str("text").orEmpty().trim()
+                value.takeIf {
+                    it.isNotBlank() && it != "•" && it != "&" &&
+                        !durationRegex.matches(it) && !yearRegex.matches(it)
+                }
+            }.take(2).joinToString(", ")
         }
 
         var durationText = ""
@@ -151,7 +159,8 @@ object InnerTube {
             durationText = text(obj?.obj("musicResponsiveListItemFixedColumnRenderer")?.obj("text"))
         }
         if (durationText.isBlank()) {
-            durationText = subtitleRuns.map { text(it) }.lastOrNull { durationRegex.matches(it) }.orEmpty()
+            durationText = subtitleRuns.map { it.str("text").orEmpty() }
+                .lastOrNull { durationRegex.matches(it) }.orEmpty()
         }
 
         val videoId = item.obj("playlistItemData")?.str("videoId")
@@ -239,7 +248,7 @@ object InnerTube {
         return Shelf(title = shelfTitle(shelf), cards = cards, tracks = tracks)
     }
 
-    private fun parseShelves(root: JsonObject): List<Shelf> {
+    internal fun parseShelves(root: JsonObject): List<Shelf> {
         val out = ArrayList<Shelf>()
         val seen = HashSet<String>()
         findAll(root, "musicCarouselShelfRenderer").forEach { shelf ->
@@ -339,6 +348,8 @@ object InnerTube {
     suspend fun moodsAndGenres(): List<Shelf> = parseShelves(browse("FEmusic_moods_and_genres"))
 
     suspend fun newReleases(): List<Shelf> = parseShelves(browse("FEmusic_new_releases"))
+
+    suspend fun podcasts(): List<Shelf> = parseShelves(browse("FEmusic_podcasts"))
 
     suspend fun explore(): List<Shelf> = parseShelves(browse("FEmusic_explore"))
 
@@ -490,6 +501,14 @@ object InnerTube {
     }
 
     /** Typeahead suggestions from the music search box. */
+    /** Signed-in profile from the account menu. Returns name to avatar url. */
+    suspend fun accountInfo(): Pair<String, String>? = runCatching {
+        val root = post("account/account_menu", buildJsonObject { put("context", webContext()) })
+        val name = findAll(root, "accountName").firstOrNull()?.let { text(it) }
+        val photo = findAll(root, "accountPhoto").firstOrNull()?.let { artwork(it) }
+        if (name.isNullOrBlank()) null else name to photo.orEmpty()
+    }.getOrNull()
+
     suspend fun searchSuggestions(query: String): List<String> {
         if (query.isBlank()) return emptyList()
         val body = buildJsonObject {

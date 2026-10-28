@@ -2,6 +2,7 @@ package com.itzfallenme.katmusic
 
 import android.app.Application
 import android.content.Context
+import com.itzfallenme.katmusic.data.AccountStore
 import com.itzfallenme.katmusic.data.InnerTube
 import com.itzfallenme.katmusic.data.LastFm
 import com.itzfallenme.katmusic.data.LibraryRepository
@@ -32,6 +33,8 @@ object ServiceLocator {
         private set
     lateinit var library: LibraryRepository
         private set
+    lateinit var account: AccountStore
+        private set
     lateinit var player: PlayerController
         private set
     lateinit var downloads: DownloadManager
@@ -45,6 +48,8 @@ object ServiceLocator {
         if (::settings.isInitialized) return
         settings = SettingsRepository(context)
         library = LibraryRepository(context)
+        account = AccountStore(context)
+        InnerTube.authHeaders = { account.cookieHeaders() }
         player = PlayerController(context, settings, library)
         downloads = DownloadManager(context, library, settings)
     }

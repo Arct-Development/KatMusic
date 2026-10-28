@@ -41,7 +41,8 @@ import com.itzfallenme.katmusic.ui.TrackRow
 private enum class ExploreTab(val label: String) {
     CHARTS("Charts"),
     MOODS("Moods & genres"),
-    NEW("New releases")
+    NEW("New releases"),
+    PODCASTS("Podcasts")
 }
 
 @Composable
@@ -59,6 +60,7 @@ fun ExploreScreen(nav: Navigator) {
                 ExploreTab.CHARTS -> YtMusic.charts()
                 ExploreTab.MOODS -> YtMusic.moods()
                 ExploreTab.NEW -> YtMusic.newReleases()
+                ExploreTab.PODCASTS -> YtMusic.podcasts()
             }
         }.onSuccess {
             shelves = it

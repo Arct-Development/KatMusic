@@ -25,7 +25,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -84,6 +86,49 @@ fun SettingsScreen(nav: Navigator) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
+            val account by ServiceLocator.account.state.collectAsState()
+            SettingsCard(title = "YouTube Music account", icon = Icons.Filled.Person) {
+                if (account.signedIn) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.itzfallenme.katmusic.ui.Artwork(
+                            url = account.avatar,
+                            modifier = Modifier.size(44.dp),
+                            corner = 22.dp,
+                            fallbackIcon = Icons.Filled.Person
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                account.name.ifBlank { "YouTube Music account" },
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "Library, likes and history sync with this account",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { nav.go(Screen.Account) }) { Text("Switch account") }
+                        TextButton(onClick = {
+                            ServiceLocator.account.signOut()
+                            status = "Signed out"
+                        }) { Text("Sign out") }
+                    }
+                } else {
+                    Text(
+                        "Sign in to personalise your home feed and sync your YouTube Music library.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick = { nav.go(Screen.Account) }) { Text("Sign in with YouTube Music") }
+                    TextButton(onClick = { nav.go(Screen.Account) }) { Text("Continue as guest") }
+                }
+            }
+
             SettingsCard(title = "Appearance", icon = Icons.Filled.Palette) {
                 SettingToggle(
                     title = "Artwork colours",
@@ -145,6 +190,20 @@ fun SettingsScreen(nav: Navigator) {
                 ) {
                     update { s -> s.copy(skipSilence = it) }
                     ServiceLocator.player.applySkipSilence(it)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Crossfade: ${settings.crossfadeSeconds}s",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0, 3, 6, 9).forEach { seconds ->
+                        com.itzfallenme.katmusic.ui.Chip(
+                            text = if (seconds == 0) "Off" else "${seconds}s",
+                            selected = settings.crossfadeSeconds == seconds,
+                            onClick = { update { s -> s.copy(crossfadeSeconds = seconds) } }
+                        )
+                    }
                 }
                 SettingRow(
                     title = "Equalizer",
@@ -328,6 +387,11 @@ fun SettingsScreen(nav: Navigator) {
             }
 
             SettingsCard(title = "Data", icon = Icons.Filled.Storage) {
+                SettingRow(
+                    title = "Import a playlist",
+                    subtitle = "Copy a public YouTube Music playlist into your library",
+                    icon = Icons.Filled.PlaylistAdd
+                ) { nav.go(Screen.Import) }
                 SettingRow(
                     title = "Listening stats",
                     subtitle = "${library.history.size} plays recorded",

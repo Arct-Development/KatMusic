@@ -15,6 +15,8 @@ sealed interface Screen {
     data object Downloads : Screen
     data object Stats : Screen
     data object Equalizer : Screen
+    data object Import : Screen
+    data object Account : Screen
     data class Detail(
         val browseId: String,
         val title: String,

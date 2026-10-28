@@ -392,8 +392,30 @@ class PlayerController(
                     positionMs = player.currentPosition.coerceAtLeast(0),
                     durationMs = player.duration.takeIf { it > 0 } ?: _state.value.durationMs
                 )
+                applyCrossfade()
             }
             delay(500)
+        }
+    }
+
+    /** Ramps the volume down over the tail of a track and back up at the start. */
+    private fun applyCrossfade() {
+        val fadeMs = settings.state.value.crossfadeSeconds * 1000L
+        if (fadeMs <= 0) {
+            if (player.volume != 1f) player.volume = 1f
+            return
+        }
+        val duration = player.duration
+        val position = player.currentPosition
+        if (duration <= 0 || position < 0) {
+            player.volume = 1f
+            return
+        }
+        val remaining = duration - position
+        player.volume = when {
+            remaining in 1..fadeMs -> (remaining.toFloat() / fadeMs).coerceIn(0f, 1f)
+            position < fadeMs / 2 -> (position.toFloat() / (fadeMs / 2f)).coerceIn(0.15f, 1f)
+            else -> 1f
         }
     }
 

@@ -191,6 +191,12 @@ fun LibraryScreen(nav: Navigator) {
                             modifier = Modifier.weight(1f),
                             onClick = { nav.go(Screen.Downloads) }
                         )
+                        QuickAction(
+                            icon = Icons.Filled.LibraryMusic,
+                            label = "Import",
+                            modifier = Modifier.weight(1f),
+                            onClick = { nav.go(Screen.Import) }
+                        )
                     }
                 }
                 items(library.playlists, key = { it.id }) { playlist ->
