@@ -79,7 +79,10 @@ data class AppSettings(
     val showExplicit: Boolean = true,
     val reducedMotion: Boolean = false,
     val combinedLibrarySections: Boolean = true,
-    val statsEnabled: Boolean = true
+    val statsEnabled: Boolean = true,
+    val sponsorBlockEnabled: Boolean = false,
+    val playerStyle: String = "expressive",
+    val romanizedLyrics: Boolean = false
 )
 
 @Serializable

@@ -108,6 +108,10 @@ object YtMusic {
         InnerTube.searchSuggestions(query)
     }.getOrDefault(emptyList())
 
-    suspend fun lyricsFor(track: Track): Lyrics =
-        LyricsApi.find(track.title, track.artist, track.album, track.durationMs / 1000)
+    suspend fun lyricsFor(track: Track): Lyrics {
+        val primary = LyricsApi.find(track.title, track.artist, track.album, track.durationMs / 1000)
+        if (!primary.isEmpty) return primary
+        val captions = runCatching { InnerTube.captionLyrics(track.id) }.getOrDefault(Lyrics())
+        return if (captions.isEmpty) primary else captions
+    }
 }

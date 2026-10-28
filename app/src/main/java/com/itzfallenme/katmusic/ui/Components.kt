@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -299,8 +300,11 @@ fun TrackRow(
     onGoToArtist: (Track) -> Unit = {},
     onRemove: ((Track) -> Unit)? = null
 ) {
-    val liked = ServiceLocator.library.isLiked(track.id)
-    val downloaded = ServiceLocator.library.downloadFor(track.id) != null
+    val libraryState by ServiceLocator.library.state.collectAsState()
+    val downloadState by ServiceLocator.downloads.progress.collectAsState()
+    val liked = libraryState.liked.any { it.id == track.id }
+    val downloaded = libraryState.downloads.any { it.track.id == track.id }
+    val activeDownload = downloadState[track.id]
     val accent = MaterialTheme.colorScheme.primary
     var menuOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -364,6 +368,13 @@ fun TrackRow(
                         contentDescription = "Downloaded",
                         modifier = Modifier.size(13.dp),
                         tint = accent
+                    )
+                } else if (activeDownload?.running == true) {
+                    Spacer(Modifier.width(6.dp))
+                    CircularProgressIndicator(
+                        progress = { activeDownload.fraction },
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 1.5.dp
                     )
                 }
             }

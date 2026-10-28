@@ -101,8 +101,9 @@ fun PlayerScreen(nav: Navigator) {
     var picker by remember { mutableStateOf<Track?>(null) }
     var lyrics by remember(track?.id) { mutableStateOf<Lyrics?>(null) }
     var lyricsLoading by remember(track?.id) { mutableStateOf(false) }
-    val liked = track != null && ServiceLocator.library.isLiked(track.id)
-    val downloaded = track != null && ServiceLocator.library.downloadFor(track.id) != null
+    val libraryState by ServiceLocator.library.state.collectAsState()
+    val liked = track != null && libraryState.liked.any { it.id == track.id }
+    val downloaded = track != null && libraryState.downloads.any { it.track.id == track.id }
 
     LaunchedEffect(track?.id, settings.lyricsEnabled) {
         val current = track ?: return@LaunchedEffect
@@ -282,7 +283,7 @@ fun PlayerScreen(nav: Navigator) {
                         scale = settings.lyricsTextScale
                     )
                     2 -> QueuePane(nav)
-                    else -> ArtworkPane(track = track, playing = state.playing)
+                    else -> ArtworkPane(track = track, playing = state.playing, style = settings.playerStyle)
                 }
             }
 
@@ -510,7 +511,17 @@ fun PlayerScreen(nav: Navigator) {
 }
 
 @Composable
-private fun ArtworkPane(track: Track, playing: Boolean) {
+private fun ArtworkPane(track: Track, playing: Boolean, style: String = "expressive") {
+    val artworkHeight = when (style) {
+        "classic" -> 280.dp
+        "apple" -> 350.dp
+        else -> 320.dp
+    }
+    val corner = when (style) {
+        "classic" -> 18.dp
+        "apple" -> 34.dp
+        else -> 28.dp
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -520,7 +531,7 @@ private fun ArtworkPane(track: Track, playing: Boolean) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
+                .clip(RoundedCornerShape(corner))
         ) {
             AsyncImage(
                 model = track.artwork,
@@ -528,13 +539,13 @@ private fun ArtworkPane(track: Track, playing: Boolean) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(330.dp)
+                    .height(artworkHeight)
             )
             if (track.artwork.isBlank()) {
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(330.dp)
+                        .height(artworkHeight)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                     contentAlignment = Alignment.Center
                 ) {

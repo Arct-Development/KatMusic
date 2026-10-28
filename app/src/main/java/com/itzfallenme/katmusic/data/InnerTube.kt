@@ -500,6 +500,57 @@ object InnerTube {
         return LyricsApi.find(title, artist, album, durationSec)
     }
 
+    /**
+     * Fallback lyrics source: the video's own caption track. Useful for live sessions,
+     * covers and videos that LRCLIB has never seen.
+     */
+    suspend fun captionLyrics(videoId: String): Lyrics {
+        val body = buildJsonObject {
+            put("context", vrContext())
+            put("videoId", videoId)
+            put("contentCheckOk", true)
+            put("racyCheckOk", true)
+        }
+        val root = runCatching {
+            post("player", body, host = "https://www.youtube.com", ua = VR_UA)
+        }.getOrNull() ?: return Lyrics()
+        val tracklist = find(root, "playerCaptionsTracklistRenderer") ?: return Lyrics()
+        val tracks = tracklist.arr("captionTracks")?.mapNotNull { it as? JsonObject }.orEmpty()
+        val track = tracks.firstOrNull { it.str("kind") != "asr" } ?: tracks.firstOrNull()
+        val baseUrl = track?.str("baseUrl") ?: return Lyrics()
+        val payload = getText(baseUrl + "&fmt=json3") ?: return Lyrics()
+        val parsed = runCatching { json.parseToJsonElement(payload) as? JsonObject }.getOrNull()
+            ?: return Lyrics()
+        val events = parsed.arr("events")?.mapNotNull { it as? JsonObject }.orEmpty()
+        val lines = ArrayList<LyricLine>()
+        events.forEach { event ->
+            val start = event.long("tStartMs") ?: return@forEach
+            val text = event.arr("segs")
+                ?.mapNotNull { seg -> (seg as? JsonObject)?.str("utf8") }
+                ?.joinToString("")
+                ?.replace("\n", " ")
+                ?.trim()
+                .orEmpty()
+            if (text.isBlank()) return@forEach
+            lines.add(LyricLine(start, text))
+        }
+        if (lines.isEmpty()) return Lyrics()
+        return Lyrics(
+            synced = lines.distinctBy { it.timeMs },
+            plain = lines.joinToString("\n") { it.text },
+            source = "YouTube captions"
+        )
+    }
+
+    private suspend fun getText(url: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder().url(url).header("User-Agent", VR_UA).build()
+            http.newCall(request).execute().use { response ->
+                if (response.isSuccessful) response.body?.string() else null
+            }
+        }.getOrNull()
+    }
+
     /** Typeahead suggestions from the music search box. */
     /** Signed-in profile from the account menu. Returns name to avatar url. */
     suspend fun accountInfo(): Pair<String, String>? = runCatching {

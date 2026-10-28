@@ -356,6 +356,24 @@ fun LibraryScreen(nav: Navigator) {
             }
 
             else -> {
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Smart mixes", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Generated from the artists you play most",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = { nav.go(Screen.Generator) }) { Text("Generate") }
+                    }
+                }
                 items(mixes, key = { it.id }) { mix ->
                     PlaylistRow(
                         playlist = mix,

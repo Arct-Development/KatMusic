@@ -194,6 +194,26 @@ Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.
 please read the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go through
 [SECURITY.md](SECURITY.md).
 
+## Roadmap
+
+Planned work, roughly in priority order. Feature requests are welcome – open an issue.
+
+- [ ] Home-screen widgets (turntable, playlists, listening insights)
+- [ ] Android Auto and Android TV entry points
+- [ ] Google Cast support
+- [ ] Discord rich presence
+- [ ] Listen Together (synced rooms)
+- [ ] Multi-account switching for YouTube Music
+- [ ] Video playback with captions and audio-track selection
+- [ ] Word-by-word lyrics, romanisation and share-as-image
+- [ ] Multi-source lyrics (SimpMusic lyrics, Spotify, YouTube transcript)
+- [ ] Tagged downloads (embedded cover art and metadata) plus MediaStore export
+- [ ] Local file playback and a device-music browser
+- [ ] Backup / restore of the whole library
+- [ ] AutoEq headphone profiles for the equalizer
+- [ ] Genre DNA and a discovery feed built from listening stats
+- [ ] Spotify / Apple Music playlist conversion
+
 ## Credits
 
 KatMusic is an independent implementation inspired by the feature sets and interface

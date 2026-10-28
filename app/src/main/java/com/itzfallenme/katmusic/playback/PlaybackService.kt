@@ -30,10 +30,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        // The ExoPlayer instance is owned by PlayerController and reused when the
+        // service restarts, so only the session is released here.
+        mediaSession?.release()
         mediaSession = null
         super.onDestroy()
     }

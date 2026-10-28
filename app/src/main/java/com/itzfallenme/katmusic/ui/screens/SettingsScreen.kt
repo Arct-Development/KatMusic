@@ -141,6 +141,19 @@ fun SettingsScreen(nav: Navigator) {
                     checked = settings.amoled
                 ) { update { s -> s.copy(amoled = it) } }
                 Spacer(Modifier.height(12.dp))
+                Text("Now playing style", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("expressive" to "Expressive", "classic" to "Classic", "apple" to "Apple").forEach {
+                        (value, label) ->
+                        com.itzfallenme.katmusic.ui.Chip(
+                            text = label,
+                            selected = settings.playerStyle == value,
+                            onClick = { update { s -> s.copy(playerStyle = value) } }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 Text(
                     "Accent colour",
                     style = MaterialTheme.typography.titleSmall
@@ -183,6 +196,11 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "Keep the music going with related tracks",
                     checked = settings.autoplayRadio
                 ) { update { s -> s.copy(autoplayRadio = it) } }
+                SettingToggle(
+                    title = "SponsorBlock",
+                    subtitle = "Skip sponsor and intro segments in videos",
+                    checked = settings.sponsorBlockEnabled
+                ) { update { s -> s.copy(sponsorBlockEnabled = it) } }
                 SettingToggle(
                     title = "Skip silence",
                     subtitle = "Jump over silent intros and gaps",

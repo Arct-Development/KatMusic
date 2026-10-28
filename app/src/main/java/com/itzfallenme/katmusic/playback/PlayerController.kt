@@ -29,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -85,6 +86,9 @@ class PlayerController(
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private var sleepJob: Job? = null
+    private var lastPositionMs = 0L
+    private var skipSegments: List<Pair<Long, Long>> = emptyList()
+    private var lastSkippedSegment = -1L
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     val player: ExoPlayer by lazy {
@@ -115,6 +119,16 @@ class PlayerController(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val index = exo.currentMediaItemIndex
                 val track = _state.value.queue.getOrNull(index)
+                val previous = _state.value.track
+                if (previous != null && previous.id != track?.id) {
+                    val threshold = if (previous.durationMs > 0) {
+                        minOf(previous.durationMs / 2, 240_000L)
+                    } else 240_000L
+                    if (lastPositionMs >= threshold && lastPositionMs > 30_000L) {
+                        scrobbleIfNeeded(previous)
+                    }
+                }
+                lastPositionMs = 0L
                 _state.value = _state.value.copy(
                     track = track,
                     index = index,
@@ -354,6 +368,10 @@ class PlayerController(
 
     private fun onTrackStarted(track: Track) {
         library.recordPlay(track)
+        skipSegments = emptyList()
+        lastSkippedSegment = -1L
+        if (settings.state.value.sponsorBlockEnabled) loadSponsorSegments(track.id)
+        if (settings.state.value.skipSilence) applySkipSilence(true)
         val config = settings.state.value
         if (config.scrobblingEnabled && config.lastFmSessionKey.isNotBlank()) {
             val client = ServiceLocator.lastFm()
@@ -388,8 +406,10 @@ class PlayerController(
     fun startPositionUpdates(): Job = scope.launch {
         while (isActive) {
             if (player.isPlaying) {
+                lastPositionMs = player.currentPosition.coerceAtLeast(0)
+                applySponsorSkip()
                 _state.value = _state.value.copy(
-                    positionMs = player.currentPosition.coerceAtLeast(0),
+                    positionMs = lastPositionMs,
                     durationMs = player.duration.takeIf { it > 0 } ?: _state.value.durationMs
                 )
                 applyCrossfade()
@@ -399,6 +419,40 @@ class PlayerController(
     }
 
     /** Ramps the volume down over the tail of a track and back up at the start. */
+    private fun loadSponsorSegments(videoId: String) = scope.launch(Dispatchers.IO) {
+        val url = "https://sponsor.ajay.app/api/skipSegments?videoID=$videoId" +
+            "&categories=%5B%22sponsor%22%2C%22selfpromo%22%2C%22intro%22%5D"
+        val body = runCatching {
+            InnerTube.http.newCall(okhttp3.Request.Builder().url(url).build()).execute().use {
+                if (it.isSuccessful) it.body?.string() else null
+            }
+        }.getOrNull() ?: return@launch
+        val parsed = runCatching {
+            YtJson.json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonArray
+        }.getOrNull() ?: return@launch
+        val segments = parsed.mapNotNull { entry ->
+            val obj = entry as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+            val segment = obj["segment"] as? kotlinx.serialization.json.JsonArray ?: return@mapNotNull null
+            val start = (segment.getOrNull(0) as? kotlinx.serialization.json.JsonPrimitive)
+                ?.content?.toDoubleOrNull() ?: return@mapNotNull null
+            val end = (segment.getOrNull(1) as? kotlinx.serialization.json.JsonPrimitive)
+                ?.content?.toDoubleOrNull() ?: return@mapNotNull null
+            (start * 1000).toLong() to (end * 1000).toLong()
+        }
+        withContext(Dispatchers.Main) { skipSegments = segments }
+    }
+
+    private fun applySponsorSkip() {
+        if (skipSegments.isEmpty()) return
+        val position = player.currentPosition
+        val hit = skipSegments.firstOrNull { (start, end) ->
+            position >= start && position < end
+        } ?: return
+        if (hit.first == lastSkippedSegment) return
+        lastSkippedSegment = hit.first
+        player.seekTo(hit.second)
+    }
+
     private fun applyCrossfade() {
         val fadeMs = settings.state.value.crossfadeSeconds * 1000L
         if (fadeMs <= 0) {

@@ -117,6 +117,30 @@ fun StatsScreen(nav: Navigator) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(Modifier.height(10.dp))
+                        androidx.compose.material3.OutlinedButton(onClick = {
+                            val calendar = java.util.Calendar.getInstance().apply {
+                                set(java.util.Calendar.DAY_OF_MONTH, 1)
+                                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                set(java.util.Calendar.MINUTE, 0)
+                            }
+                            val tracks = com.itzfallenme.katmusic.data.SmartMix.recapTracks(
+                                ServiceLocator.library,
+                                calendar.timeInMillis
+                            )
+                            if (tracks.isNotEmpty()) {
+                                val month = java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
+                                    .format(java.util.Date())
+                                val playlist = ServiceLocator.library.createPlaylist(
+                                    "$month recap",
+                                    "Your most played tracks this month"
+                                )
+                                ServiceLocator.library.addToPlaylist(playlist.id, tracks)
+                                nav.openDetail(playlist.id, playlist.name, com.itzfallenme.katmusic.data.CardKind.PLAYLIST)
+                            }
+                        }) {
+                            Text("Save monthly recap playlist")
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))

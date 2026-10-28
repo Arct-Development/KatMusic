@@ -51,6 +51,7 @@ import com.itzfallenme.katmusic.ui.screens.DetailScreen
 import com.itzfallenme.katmusic.ui.screens.DownloadsScreen
 import com.itzfallenme.katmusic.ui.screens.EqualizerScreen
 import com.itzfallenme.katmusic.ui.screens.ExploreScreen
+import com.itzfallenme.katmusic.ui.screens.GeneratorScreen
 import com.itzfallenme.katmusic.ui.screens.HomeScreen
 import com.itzfallenme.katmusic.ui.screens.ImportPlaylistScreen
 import com.itzfallenme.katmusic.ui.screens.LibraryScreen
@@ -149,6 +150,7 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                         Screen.Equalizer -> EqualizerScreen(nav)
                         Screen.Import -> ImportPlaylistScreen(nav)
                         Screen.Account -> AccountScreen(nav)
+                        Screen.Generator -> GeneratorScreen(nav)
                         is Screen.Detail -> DetailScreen(nav, screen)
                     }
                 }
