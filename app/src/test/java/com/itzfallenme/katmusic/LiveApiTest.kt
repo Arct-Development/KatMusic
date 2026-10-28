@@ -44,6 +44,23 @@ class LiveApiTest {
     }
 
     @Test
+    fun `newpipe resolver returns playable audio`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val stream = com.itzfallenme.katmusic.data.StreamResolver.resolve("dQw4w9WgXcQ", true)
+        assertTrue("https url", stream.url.startsWith("https://"))
+        val request = Request.Builder()
+            .url(stream.url)
+            .header("User-Agent", InnerTube.VR_UA)
+            .header("Accept", "audio/*,*/*;q=0.8")
+            .build()
+        InnerTube.http.newCall(request).execute().use { response ->
+            assertTrue("status ${response.code}", response.code == 200 || response.code == 206)
+            val read = response.body?.byteStream()?.read(ByteArray(2048)) ?: 0
+            assertTrue("received audio bytes", read > 0)
+        }
+    }
+
+    @Test
     fun `lrclib returns synced lyrics for a popular track`() = runBlocking {
         assumeTrue(System.getenv("KAT_LIVE") == "1")
         val lyrics = LyricsApi.find("Never Gonna Give You Up", "Rick Astley", null, 213)

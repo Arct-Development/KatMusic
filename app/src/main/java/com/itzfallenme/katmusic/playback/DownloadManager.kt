@@ -60,7 +60,7 @@ class DownloadManager(
         scope.launch {
             runCatching {
                 val quality = settings.state.value.highQualityStream
-                val info = InnerTube.streamUrl(track.id, quality)
+                val info = com.itzfallenme.katmusic.data.StreamResolver.resolve(track.id, quality)
                 val extension = if (info.mimeType.contains("webm")) "webm" else "m4a"
                 val fileName = "${safeName(track.artist)} - ${safeName(track.title)}"
                     .ifBlank { track.id }

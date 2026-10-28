@@ -53,8 +53,8 @@ data class PlayerUiState(
     val radioLoading: Boolean = false
 )
 
-/** Resolves katmusic://watch?v=ID URIs into fresh googlevideo audio URLs at load time. */
-private class StreamResolver(private val highQuality: Boolean) : ResolvingDataSource.Resolver {
+/** Resolves katmusic://watch?v=ID URIs into fresh, probe-checked audio URLs at load time. */
+private class PlaybackUrlResolver(private val highQuality: Boolean) : ResolvingDataSource.Resolver {
     private val cache = HashMap<String, Pair<String, Long>>()
 
     override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec): androidx.media3.datasource.DataSpec {
@@ -66,9 +66,10 @@ private class StreamResolver(private val highQuality: Boolean) : ResolvingDataSo
             }
         }
         val info = runBlocking {
-            runCatching { InnerTube.streamUrl(videoId, highQuality) }.getOrNull()
+            runCatching { com.itzfallenme.katmusic.data.StreamResolver.resolve(videoId, highQuality) }
+                .getOrNull()
         } ?: throw IOException("Could not resolve audio stream")
-        synchronized(cache) { cache[videoId] = info.url to now + 3 * 60 * 60 * 1000 }
+        synchronized(cache) { cache[videoId] = info.url to now + 40 * 60 * 1000 }
         return dataSpec.withUri(info.url.toUri())
     }
 
@@ -104,7 +105,7 @@ class PlayerController(
             .setDefaultRequestProperties(mapOf("Referer" to "https://music.youtube.com/"))
         val dataSourceFactory = ResolvingDataSource.Factory(
             okHttpFactory,
-            StreamResolver(settings.state.value.highQualityStream)
+            PlaybackUrlResolver(settings.state.value.highQualityStream)
         )
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         val exo = ExoPlayer.Builder(context)
@@ -174,6 +175,9 @@ class PlayerController(
             override fun onPlayerError(error: PlaybackException) {
                 // Unavailable tracks are common (region locks, removed videos). Skip on
                 // instead of dead-ending the queue.
+                _state.value.track?.let { current ->
+                    runCatching { com.itzfallenme.katmusic.data.StreamResolver.invalidate(current.id) }
+                }
                 if (exo.hasNextMediaItem()) {
                     _state.value = _state.value.copy(
                         error = "Skipped an unavailable track",

@@ -496,8 +496,15 @@ fun SettingsScreen(nav: Navigator) {
                 Column(Modifier.padding(18.dp)) {
                     Text("KatMusic", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Version 1.0.0 • built by ItzFallenMe",
+                        "Version ${com.itzfallenme.katmusic.BuildConfig.VERSION_NAME} " +
+                            "(${com.itzfallenme.katmusic.BuildConfig.BUILD_TYPE}) • " +
+                            "built ${com.itzfallenme.katmusic.BuildConfig.BUILD_STAMP}",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Design language adapted from LastWave • GPL-3.0",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))

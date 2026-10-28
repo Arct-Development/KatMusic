@@ -141,7 +141,7 @@ Open the folder in Android Studio for the full IDE experience; no extra setup is
 
 ```
 app/src/main/java/com/itzfallenme/katmusic
-├── data/        InnerTube client, JSON parsing, lyrics, accounts, storage
+├── data/        InnerTube client, stream resolution, JSON parsing, lyrics, storage
 ├── playback/    Media3 controller, media session service, downloads, equalizer
 └── ui/          Theme engine, shared components, screens
 ```
@@ -150,6 +150,7 @@ app/src/main/java/com/itzfallenme/katmusic
 | --- | --- |
 | UI | Kotlin, Jetpack Compose, Material 3 |
 | Playback | AndroidX Media3 / ExoPlayer with a custom `ResolvingDataSource` that fetches a fresh audio URL as each track loads |
+| Stream resolution | [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) handles YouTube's signed/throttled URLs, every candidate is probed before playback, and the InnerTube player endpoint stays as a fallback |
 | Networking | OkHttp + kotlinx.serialization |
 | Lyrics | LRCLIB public API |
 | Storage | JSON files for library and settings, SharedPreferences for the account session |
@@ -235,7 +236,8 @@ ideas of two excellent open-source projects:
   from LastWave (GPL-3.0).
 - [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
-Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Icons from
+Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Stream
+signing by [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor). Icons from
 Material Symbols. Built with [Jetpack Compose](https://developer.android.com/jetpack/compose).
 
 ## License

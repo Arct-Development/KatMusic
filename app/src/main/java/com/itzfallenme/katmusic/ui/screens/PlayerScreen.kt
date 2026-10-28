@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.ui.screens
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,6 +18,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -27,9 +29,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -84,6 +88,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -112,6 +117,7 @@ import com.itzfallenme.katmusic.ui.theme.Motion
 import com.itzfallenme.katmusic.ui.theme.bounceClickable
 import com.itzfallenme.katmusic.ui.theme.liquidGlass
 import com.itzfallenme.katmusic.ui.theme.rememberArtworkSeed
+import kotlinx.coroutines.isActive
 import kotlin.math.abs
 
 @Composable
@@ -649,26 +655,51 @@ private fun PlayerTabs(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun PlayPauseButton(playing: Boolean, buffering: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Box(
-        Modifier
-            .size(72.dp)
-            .shadow(18.dp, CircleShape, ambientColor = scheme.primary, spotColor = scheme.primary)
-            .clip(CircleShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(scheme.primary, scheme.primaryContainer)
+    val spin = rememberInfiniteTransition(label = "playRing")
+    val sweepAngle by spin.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3600, easing = LinearEasing),
+            repeatMode = AnimationRepeatMode.Restart
+        ),
+        label = "sweep"
+    )
+    Box(contentAlignment = Alignment.Center) {
+        // Slowly sweeping light ring: the button reads as alive even when the
+        // artwork is still loading.
+        Box(
+            Modifier
+                .size(84.dp)
+                .graphicsLayer { rotationZ = sweepAngle }
+                .clip(CircleShape)
+                .background(
+                    Brush.sweepGradient(
+                        listOf(
+                            Color.Transparent,
+                            scheme.primary.copy(alpha = 0.55f),
+                            Color.White.copy(alpha = 0.35f),
+                            Color.Transparent
+                        )
+                    )
                 )
-            )
-            .bounceClickable(targetScale = 0.92f, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        if (buffering) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(28.dp),
-                strokeWidth = 2.5.dp,
-                color = scheme.onPrimary
-            )
-        } else {
+        )
+        Box(
+            Modifier
+                .size(72.dp)
+                .shadow(18.dp, CircleShape, ambientColor = scheme.primary, spotColor = scheme.primary)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        listOf(scheme.primary, scheme.primaryContainer)
+                    )
+                )
+                .bounceClickable(targetScale = 0.92f, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            if (buffering) {
+                BufferingDots(color = scheme.onPrimary)
+            } else {
             AnimatedContent(
                 targetState = playing,
                 transitionSpec = {
@@ -684,6 +715,82 @@ private fun PlayPauseButton(playing: Boolean, buffering: Boolean, onClick: () ->
                     modifier = Modifier.size(36.dp)
                 )
             }
+        }
+        }
+    }
+}
+
+/** A record that keeps turning while music plays, tucked behind the sleeve. */
+@Composable
+private fun SpinningVinyl(playing: Boolean, modifier: Modifier = Modifier) {
+    val angle = remember { Animatable(0f) }
+    val scheme = MaterialTheme.colorScheme
+    LaunchedEffect(playing) {
+        if (!playing) return@LaunchedEffect
+        while (isActive) {
+            angle.animateTo(
+                targetValue = angle.value + 360f,
+                animationSpec = tween(26_000, easing = LinearEasing)
+            )
+        }
+    }
+    Canvas(modifier.graphicsLayer { rotationZ = angle.value }) {
+        val center = this.center
+        val radius = size.minDimension / 2f
+        drawCircle(Color(0xFF07070A), radius = radius, center = center)
+        var groove = radius * 0.95f
+        val step = 5.dp.toPx()
+        while (groove > radius * 0.32f) {
+            drawCircle(
+                color = Color.White.copy(alpha = 0.055f),
+                radius = groove,
+                center = center,
+                style = Stroke(width = 1f)
+            )
+            groove -= step
+        }
+        drawCircle(
+            color = scheme.primary.copy(alpha = 0.12f),
+            radius = radius * 0.3f,
+            center = center
+        )
+        drawCircle(color = Color(0xFF101015), radius = radius * 0.26f, center = center)
+        drawCircle(
+            color = Color.White.copy(alpha = 0.75f),
+            radius = radius * 0.035f,
+            center = center
+        )
+    }
+}
+
+/** Three dots that pulse in sequence while a stream is buffering. */
+@Composable
+private fun BufferingDots(color: Color) {
+    val transition = rememberInfiniteTransition(label = "bufferDots")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = AnimationRepeatMode.Restart
+        ),
+        label = "dots"
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(3) { index ->
+            val distance = abs(phase - index).coerceAtMost(1.5f)
+            val scale = 0.6f + 0.4f * (1f - distance)
+            Box(
+                Modifier
+                    .size(7.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = 0.45f + 0.55f * scale
+                    }
+                    .clip(CircleShape)
+                    .background(color)
+            )
         }
     }
 }
@@ -712,6 +819,15 @@ private fun ArtworkPane(track: Track, playing: Boolean, playingFraction: Float) 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.72f)
+                .offset(x = 26.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            SpinningVinyl(playing = playing, modifier = Modifier.fillMaxSize())
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
                 .graphicsLayer {
                     scaleX = scale * breath
                     scaleY = scale * breath

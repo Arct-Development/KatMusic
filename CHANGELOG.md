@@ -28,6 +28,10 @@ All notable changes to KatMusic are documented here. The format follows
 ### Fixed
 
 - Downloads no longer stream from the network when an offline copy is present
+- Audio now resolves through NewPipeExtractor with a probe before playback, so
+  signed or throttled YouTube URLs no longer fail silently; InnerTube stays as a
+  fallback
+- Rejected streams invalidate their cached URL automatically
 
 ## [1.0.0] – 2026-10-28
 
