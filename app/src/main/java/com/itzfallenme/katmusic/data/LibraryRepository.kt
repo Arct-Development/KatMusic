@@ -5,34 +5,29 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.serialization.json.Json
-import java.io.File
 import java.util.UUID
 
 /** Local library: liked songs, playlists, history, downloads and recent searches. */
-class LibraryRepository(private val context: Context) {
+class LibraryRepository(context: Context) {
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        isLenient = true
-    }
-    private val file = File(context.filesDir, "katmusic-library.json")
-    private val _state = MutableStateFlow(load())
+    private val store = JsonStore(
+        context = context,
+        fileName = "katmusic-library.json",
+        serializer = LibraryData.serializer(),
+        defaultValue = { LibraryData() }
+    )
+
+    private val _state = MutableStateFlow(store.load())
     val state: StateFlow<LibraryData> = _state.asStateFlow()
 
-    private fun load(): LibraryData = runCatching {
-        if (file.exists()) json.decodeFromString<LibraryData>(file.readText()) else LibraryData()
-    }.getOrDefault(LibraryData())
-
+    /** State changes immediately; the JSON write is coalesced in the background. */
     private fun persist(data: LibraryData) {
         _state.value = data
-        runCatching {
-            val tmp = File(file.parentFile, file.name + ".tmp")
-            tmp.writeText(json.encodeToString(LibraryData.serializer(), data))
-            tmp.renameTo(file)
-        }
+        store.save(data)
     }
+
+    /** Forces pending changes to disk, used when the app goes to the background. */
+    fun flush() = store.flush()
 
     private fun edit(block: (LibraryData) -> LibraryData) = persist(block(_state.value))
 

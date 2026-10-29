@@ -53,7 +53,7 @@ fun GeneratorScreen(nav: Navigator) {
         selected = seeds.take(4).map { it.name }.toSet()
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(title = "Smart mix", onBack = { nav.back() })
         Column(
             Modifier

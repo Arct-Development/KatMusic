@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
@@ -88,7 +89,7 @@ fun LocalMusicScreen(nav: Navigator) {
 
     LaunchedEffect(granted) { if (granted) load() }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(title = "On this device", onBack = { nav.back() }) {
             TextButton(onClick = { load() }) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Rescan")
@@ -96,7 +97,7 @@ fun LocalMusicScreen(nav: Navigator) {
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().wobbleOverscroll(),
             contentPadding = PaddingValues(bottom = 28.dp)
         ) {
             item {

@@ -68,7 +68,7 @@ fun EqualizerScreen(nav: Navigator) {
         }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(title = "Equalizer", onBack = { nav.back() })
         Column(
             Modifier

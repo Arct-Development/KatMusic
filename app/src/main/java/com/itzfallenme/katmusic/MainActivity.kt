@@ -38,6 +38,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Settings and library writes are debounced; push the last changes out before
+        // the process can be killed in the background.
+        runCatching { ServiceLocator.flush() }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.getBooleanExtra("open_player", false)) {

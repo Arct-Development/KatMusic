@@ -42,7 +42,7 @@ fun ImportPlaylistScreen(nav: Navigator) {
     var listSuccess by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(title = "Import playlist", onBack = { nav.back() })
         Column(
             Modifier

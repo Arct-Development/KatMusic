@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,7 +76,7 @@ fun StatsScreen(nav: Navigator) {
     val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
     val backgroundArgb = MaterialTheme.colorScheme.background.toArgb()
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(
             title = "Your listening",
             onBack = { nav.back() },
@@ -142,7 +143,7 @@ fun StatsScreen(nav: Navigator) {
         }
 
         LazyColumn(
-            Modifier.fillMaxSize(),
+            Modifier.fillMaxSize().wobbleOverscroll(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
         ) {
             item {

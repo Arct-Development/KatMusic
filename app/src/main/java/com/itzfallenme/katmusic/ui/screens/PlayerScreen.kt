@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,6 +114,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.ServiceLocator
+import com.itzfallenme.katmusic.playback.QueueStats
 import com.itzfallenme.katmusic.data.CardKind
 import com.itzfallenme.katmusic.data.Lyrics
 import com.itzfallenme.katmusic.ui.player.KaraokeLyrics
@@ -654,14 +656,21 @@ fun PlayerScreen(nav: Navigator) {
                         .padding(horizontal = 20.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Up next",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f)
+                    Column(Modifier.weight(1f)) {
+                        Text("Up next", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            QueueStats.format(state.queue),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    QueueActions(
+                        tracks = state.queue,
+                        upcomingCount = state.queue.size - (state.index + 1)
                     )
                     TextButton(onClick = { nav.queueOpen = false }) { Text("Done") }
                 }
-                QueuePane(nav, height = 380.dp)
+                QueuePane(nav, height = 380.dp, showHeader = false)
             }
         }
     }
@@ -1157,38 +1166,118 @@ private fun LoadingLyrics() {
     }
 }
 
+/**
+ * Save-to-playlist and clear-up-next, shared by the player's queue tab and the queue
+ * sheet. Clearing only drops what has not played yet, so the current song keeps going.
+ */
 @Composable
-private fun QueuePane(nav: Navigator, height: androidx.compose.ui.unit.Dp? = null) {
-    val state by ServiceLocator.player.state.collectAsState()
-    val modifier = if (height != null) Modifier.fillMaxWidth().height(height)
-    else Modifier.fillMaxSize()
-    if (state.queue.isEmpty()) {
-        Box(modifier, contentAlignment = Alignment.Center) {
-            Text("Queue is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun QueueActions(tracks: List<com.itzfallenme.katmusic.data.Track>, upcomingCount: Int) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    IconButton(
+        enabled = tracks.isNotEmpty(),
+        onClick = {
+            val name = "Queue · " + java.text.SimpleDateFormat(
+                "d MMM",
+                java.util.Locale.getDefault()
+            ).format(java.util.Date())
+            val playlist = ServiceLocator.library.createPlaylist(name, "Saved from the queue")
+            ServiceLocator.library.addToPlaylist(playlist.id, tracks)
+            android.widget.Toast.makeText(
+                context,
+                "Saved ${tracks.size} songs to $name",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
-        return
+    ) {
+        Icon(
+            Icons.Filled.PlaylistAdd,
+            contentDescription = "Save queue as a playlist",
+            modifier = Modifier.size(20.dp)
+        )
     }
-    LazyColumn(modifier = modifier, contentPadding = PaddingValues(bottom = 16.dp)) {
-        items(state.queue, key = { it.id + state.queue.indexOf(it) }) { track ->
-            TrackRow(
-                track = track,
-                isCurrent = state.track?.id == track.id,
-                isPlaying = state.playing,
-                onClick = {
-                    val index = state.queue.indexOfFirst { it.id == track.id }
-                    if (index >= 0) {
-                        ServiceLocator.player.player.seekTo(index, 0)
-                        ServiceLocator.player.player.play()
-                    }
-                },
-                onRemove = {
-                    val index = state.queue.indexOfFirst { it.id == track.id }
-                    if (index >= 0) ServiceLocator.player.removeFromQueue(index)
-                },
-                onToggleLike = { ServiceLocator.library.toggleLike(it) },
-                onStartRadio = { ServiceLocator.player.playRadio(it) },
-                onDownload = { ServiceLocator.downloads.download(it) }
-            )
+    IconButton(
+        enabled = upcomingCount > 0,
+        onClick = { ServiceLocator.player.clearUpNext() }
+    ) {
+        Icon(
+            Icons.Filled.ClearAll,
+            contentDescription = "Clear up next",
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun QueuePane(
+    nav: Navigator,
+    height: androidx.compose.ui.unit.Dp? = null,
+    // The sheet already prints its own "Up next" header, so only the player tab
+    // shows this one.
+    showHeader: Boolean = height == null
+) {
+    val state by ServiceLocator.player.state.collectAsState()
+    val upcoming = state.queue.drop((state.index + 1).coerceAtLeast(0))
+    Column(
+        modifier = if (height != null) Modifier.fillMaxWidth().height(height)
+        else Modifier.fillMaxSize()
+    ) {
+        if (showHeader) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 8.dp, top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        QueueStats.format(state.queue),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        if (upcoming.isEmpty()) "Nothing after this track" else "${upcoming.size} up next",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                QueueActions(tracks = state.queue, upcomingCount = upcoming.size)
+            }
+        }
+
+        if (state.queue.isEmpty()) {
+            Box(
+                Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Queue is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            return@Column
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            // Key on position, not on track id. The same song can sit in the queue more
+            // than once, and `indexOf` returned the first match for every copy, so two
+            // rows got the same key and LazyColumn crashed with "Key was already used"
+            // the moment the queue was opened.
+            itemsIndexed(state.queue, key = { index, track -> "$index:${track.id}" }) { index, track ->
+                TrackRow(
+                    track = track,
+                    isCurrent = state.index == index,
+                    isPlaying = state.playing,
+                    onClick = {
+                        if (index in state.queue.indices) {
+                            ServiceLocator.player.player.seekTo(index, 0)
+                            ServiceLocator.player.player.play()
+                        }
+                    },
+                    onRemove = { ServiceLocator.player.removeFromQueue(index) },
+                    onToggleLike = { ServiceLocator.library.toggleLike(it) },
+                    onStartRadio = { ServiceLocator.player.playRadio(it) },
+                    onDownload = { ServiceLocator.downloads.download(it) }
+                )
+            }
         }
     }
 }

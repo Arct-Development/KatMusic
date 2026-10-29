@@ -4,6 +4,64 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Download queue** with one transfer at a time: every tap joins a visible queue instead
+  of opening another parallel socket, and each item shows queued / waiting for Wi-Fi /
+  running with progress. Items can be cancelled mid-transfer or retried after a failure,
+  and a failed item no longer disappears without a word
+- **Wi-Fi-only downloads now actually apply.** The setting existed but nothing read it; a
+  queued download pauses on mobile data, says so, resumes on its own when Wi-Fi returns,
+  and can be released with one tap
+- Downloads screen rebuilt around that queue: storage bar with used and free space, a
+  Retry-all action, per-item cancel/retry, a confirmation before deleting everything, and
+  live progress (the old screen read the progress map without observing it, so the bars
+  never moved)
+- **Expressive header** on every screen, in the LastWave style: full-bleed surface that
+  paints behind the status bar, only the bottom corners rounded, a soft accent wash behind
+  the title, and tonal circular action buttons. Home and Library were rebuilt around it:
+  the wordmark and the library title are fixed headers now, with the greeting, quick
+  picks, stats card and library tabs scrolling underneath instead of drifting away with
+  the content
+- **Rubber-band overscroll** on the Home, Explore, Library, Search, Discover, Detail,
+  Stats, Friends, Local music and Downloads lists, ported from LastWave; the platform's
+  own stretch is turned off so only one overscroll system runs at a time
+- Offline Home: the last successful feed is saved and restored on the next launch, with
+  an "Offline — showing your saved feed" row and a retry action
+
+### Changed
+
+- Library and settings writes are coalesced onto one background thread. Dragging a slider
+  or a like toggle used to serialise and rewrite the whole JSON file on the main thread
+  for every change; the UI now updates immediately and the file is written once after a
+  short quiet period, and flushed when the app goes to the background
+- Download records whose file has vanished (cleared data, deleted elsewhere) are pruned at
+  startup, instead of leaving a row that plays nothing
+- Downloads respect the streaming-quality tier, so Data saver downloads data-saver audio
+
+### Fixed
+
+- **Crash when opening a queue that contains the same song twice.** Queue rows were keyed
+  by `id + indexOf(track)`, and `indexOf` returns the first match for every copy, so two
+  rows shared one key and Compose threw "Key was already used" the moment the queue
+  screen opened. Rows are now keyed by position, and tapping or removing a row acts on
+  that row rather than on the first copy of the song
+- The same duplicate-key crash in the Home shelves, shelf card rows, Explore genre chips
+  and playlist track lists (two items with the same title / id produced one key)
+- Crash on Share from a track row when the popup's context was not an Activity
+  ("Calling startActivity() from outside of an Activity context requires the
+  FLAG_ACTIVITY_NEW_TASK flag"): external intents now add that flag when needed and turn a
+  missing handler into a toast instead of an exception
+- The service locator could be built twice from different threads (activity, media
+  service, widget action, sleep-timer receiver); a second caller slipping past the guard
+  while the first was still assigning fields crashed on an uninitialised service. Init is
+  now locked and completes before anything reads it
+- Crash reports now include the last log lines, and release builds keep a small
+  warnings-and-errors log, so a crash on a shipped build is diagnosable from
+  Settings → Data → Debug log
+
 ## [1.8.0] – 2026-10-29
 
 ### Added

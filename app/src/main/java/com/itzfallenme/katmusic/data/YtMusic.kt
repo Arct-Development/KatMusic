@@ -1,10 +1,18 @@
 package com.itzfallenme.katmusic.data
 
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import java.io.File
 
 /** Thin, cached facade over [InnerTube] used by the UI layer. */
 object YtMusic {
@@ -14,9 +22,16 @@ object YtMusic {
     private val homeCache = java.util.concurrent.ConcurrentHashMap<String, CacheEntry<List<Shelf>>>()
     private val detailCache = java.util.concurrent.ConcurrentHashMap<String, CacheEntry<DetailPage>>()
     private val resolveMutex = Mutex()
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private var homeCacheFile: File? = null
 
     private val _home = MutableStateFlow<List<Shelf>>(emptyList())
     val home: StateFlow<List<Shelf>> = _home.asStateFlow()
+
+    /** True when the visible feed came from disk because the network failed. */
+    private val _homeStale = MutableStateFlow(false)
+    val homeStale: StateFlow<Boolean> = _homeStale.asStateFlow()
 
     private val _homeLoading = MutableStateFlow(false)
     val homeLoading: StateFlow<Boolean> = _homeLoading.asStateFlow()
@@ -29,11 +44,44 @@ object YtMusic {
         return if (System.currentTimeMillis() - entry.at < ttlMs) entry.value else null
     }
 
+    /**
+     * Wires the on-disk feed snapshot. Called once from ServiceLocator; the last
+     * successful home feed is restored on the next launch so the app opens with
+     * content instead of an empty spinner, even offline.
+     */
+    fun attach(context: Context) {
+        if (homeCacheFile != null) return
+        homeCacheFile = File(context.filesDir, "katmusic-home-cache.json")
+        ioScope.launch { restoreHomeSnapshot() }
+    }
+
+    private suspend fun restoreHomeSnapshot() = withContext(Dispatchers.IO) {
+        val file = homeCacheFile ?: return@withContext
+        if (!file.exists()) return@withContext
+        val shelves = runCatching {
+            json.decodeFromString<List<Shelf>>(file.readText())
+        }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return@withContext
+        if (_home.value.isEmpty()) {
+            _home.value = shelves
+            _homeStale.value = true
+        }
+    }
+
+    private suspend fun persistHomeSnapshot(shelves: List<Shelf>) = withContext(Dispatchers.IO) {
+        val file = homeCacheFile ?: return@withContext
+        runCatching {
+            val tmp = File(file.parentFile, file.name + ".tmp")
+            tmp.writeText(json.encodeToString(kotlinx.serialization.builtins.ListSerializer(Shelf.serializer()), shelves))
+            tmp.renameTo(file)
+        }
+    }
+
     suspend fun loadHome(force: Boolean = false) {
         if (_homeLoading.value) return
         if (!force) {
             cached(homeCache, "home", 10 * 60_000L)?.let {
                 _home.value = it
+                _homeStale.value = false
                 return
             }
         }
@@ -42,9 +90,17 @@ object YtMusic {
         runCatching { InnerTube.homeShelves() }
             .onSuccess { shelves ->
                 _home.value = shelves
+                _homeStale.value = false
                 homeCache["home"] = CacheEntry(shelves, System.currentTimeMillis())
+                persistHomeSnapshot(shelves)
             }
-            .onFailure { _homeError.value = it.message ?: "Could not reach YouTube Music" }
+            .onFailure {
+                _homeError.value = it.message ?: "Could not reach YouTube Music"
+                if (_home.value.isEmpty()) {
+                    restoreHomeSnapshot()
+                }
+                if (_home.value.isNotEmpty()) _homeStale.value = true
+            }
         _homeLoading.value = false
     }
 

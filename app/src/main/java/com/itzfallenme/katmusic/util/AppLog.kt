@@ -12,30 +12,37 @@ import java.util.Locale
  * Debug-build file logger.
  *
  * The app has no server-side telemetry, and `adb logcat` is not always at hand
- * when a user reports "it broke". In debug builds every event written here is
- * appended to `filesDir/katmusic-debug.log`, readable from Settings → Debug log
- * and copyable to a bug report. Release builds log nothing to disk: the same
- * calls become plain Logcat no-ops, so shipping behaviour is unchanged.
+ * when a user reports "it broke". Every event written here is appended to
+ * `filesDir/katmusic-debug.log`, readable from Settings → Debug log and
+ * copyable to a bug report.
  *
- * Writes are synchronous and small, and the file rotates at [MAX_BYTES], so a
+ * Debug builds keep everything. Release builds keep only warnings and errors,
+ * capped much smaller, because that is the part a crash report needs - debug
+ * logging being unavailable in the build users actually run used to leave
+ * nothing to look at after a crash.
+ *
+ * Writes are synchronous and small, and the file rotates at [maxBytes], so a
  * crash trace written from the uncaught-exception handler always survives.
  */
 object AppLog {
 
     private const val FILE_NAME = "katmusic-debug.log"
     private const val MAX_BYTES = 512 * 1024
+    private const val RELEASE_MAX_BYTES = 128 * 1024
     private val stamp = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
 
     @Volatile
     private var file: File? = null
 
+    private val maxBytes: Long
+        get() = if (BuildConfig.DEBUG) MAX_BYTES.toLong() else RELEASE_MAX_BYTES.toLong()
+
     fun init(context: Context) {
-        if (!BuildConfig.DEBUG) return
         file = File(context.applicationContext.filesDir, FILE_NAME)
         i("AppLog", "log started, version ${BuildConfig.VERSION_NAME} (${BuildConfig.BUILD_STAMP})")
     }
 
-    val enabled: Boolean get() = BuildConfig.DEBUG && file != null
+    val enabled: Boolean get() = file != null
 
     fun d(tag: String, message: String) = write("D", tag, message, null)
 
@@ -54,8 +61,11 @@ object AppLog {
             else -> Log.i(tag, message, error)
         }
         val target = file ?: return
+        // Release builds keep warnings and errors only: that is the part that
+        // explains a crash, and the file stays small.
+        if (!BuildConfig.DEBUG && (level == "D" || level == "I")) return
         runCatching {
-            if (target.exists() && target.length() > MAX_BYTES) {
+            if (target.exists() && target.length() > maxBytes) {
                 val kept = target.readLines().takeLast(600)
                 target.writeText(kept.joinToString("\n", postfix = "\n"))
             }
@@ -82,7 +92,7 @@ object AppLog {
 
     /** The last [lines] entries, for the in-app viewer. */
     fun tail(lines: Int = 400): String {
-        val target = file ?: return "Debug logging is only available in debug builds."
+        val target = file ?: return "The log is not available on this build."
         if (!target.exists()) return "No log entries yet."
         return runCatching {
             target.readLines().takeLast(lines).joinToString("\n")

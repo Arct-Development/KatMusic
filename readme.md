@@ -96,8 +96,10 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - Automatic taste mixes built from your listening: *On repeat*, artist mix and rediscover
 - Import public YouTube Music playlists from a link or id, or paste a plain
   `Artist - Title` list exported from Spotify or Apple Music and let KatMusic match it
-- Offline downloads with matching `.lrc` lyric files, plus one-tap export into the
-  phone's shared music library
+- Offline downloads as a real queue: one transfer at a time, per-item cancel and retry,
+  a Wi-Fi-only gate that pauses and resumes by itself, a free-space check, matching
+  `.lrc` lyric files, a storage bar, and one-tap export into the phone's shared music
+  library
 - Music already on your device – scan, browse and play local files
 - Backup and restore the whole library and settings as a single JSON file
 - **Several accounts** – save more than one YouTube Music session and switch between
@@ -120,6 +122,8 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - System / Light / Dark mode, Material You wallpaper colours, AMOLED black and a
   hand-picked accent palette
 - Waveform seek bar with three flowing layers over the played part of the track
+- Full-bleed expressive headers with an accent wash and bottom-rounded corners on every
+  pushed screen, and a rubber-band overscroll on the main lists
 - Motion with a **Reduce motion** switch that snaps transitions and stops ambient drift
 - **Search** with an animated hint, type filters (All / Songs / Albums / Artists /
   Playlists), a top-result card, recent searches and a browse grid

@@ -54,7 +54,7 @@ fun ListenTogetherScreen(nav: Navigator) {
     var code by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(
             title = "Listen together",
             subtitle = "Sync playback on the same Wi-Fi",

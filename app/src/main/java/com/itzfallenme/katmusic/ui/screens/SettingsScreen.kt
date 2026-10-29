@@ -142,7 +142,7 @@ fun SettingsScreen(nav: Navigator, categoryId: String? = null) {
         ServiceLocator.settings.update(transform)
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(
             title = category?.title ?: "Settings",
             subtitle = category?.subtitle,

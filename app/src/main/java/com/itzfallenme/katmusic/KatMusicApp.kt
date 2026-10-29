@@ -57,14 +57,35 @@ object ServiceLocator {
 
     val music: YtMusic get() = YtMusic
 
+    private val initLock = Any()
+    @Volatile
+    private var ready = false
+
+    /**
+     * Builds the services once. Called from the activity, the media service, the
+     * widget's action callbacks and the sleep-timer receiver, which can arrive
+     * on different threads; without the lock a second caller could slip past the
+     * guard while the first was still assigning fields and then touch a lateinit
+     * property that had not been set yet.
+     */
     fun init(context: Context) {
-        if (::settings.isInitialized) return
+        if (ready) return
+        synchronized(initLock) {
+            if (ready) return
+            build(context)
+            ready = true
+        }
+    }
+
+    private fun build(context: Context) {
         settings = SettingsRepository(context)
         library = LibraryRepository(context)
+        YtMusic.attach(context)
         account = AccountStore(context)
         InnerTube.authHeaders = { account.cookieHeaders() }
         player = PlayerController(context, settings, library)
         downloads = DownloadManager(context, library, settings)
+        downloads.verifyDownloads()
         backup = BackupManager(library, settings)
         localMusic = LocalMusicRepository(context)
         player.localFileResolver = { trackId -> downloads.existingFile(trackId) }
@@ -77,7 +98,14 @@ object ServiceLocator {
             player,
             settings
         )
-        discord.start()
+        runCatching { discord.start() }
+    }
+
+    /** Writes any queued library/settings changes to disk right away. */
+    fun flush() {
+        if (!::settings.isInitialized) return
+        settings.flush()
+        library.flush()
     }
 
     fun lastFm(): LastFm? {

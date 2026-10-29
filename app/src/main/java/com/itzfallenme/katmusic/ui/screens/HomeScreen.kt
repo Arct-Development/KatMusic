@@ -20,7 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.ExpressiveHeader
+import com.itzfallenme.katmusic.ui.theme.HeaderActionIcon
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -94,6 +98,7 @@ fun HomeScreen(nav: Navigator) {
     val shelves by YtMusic.home.collectAsState()
     val loading by YtMusic.homeLoading.collectAsState()
     val error by YtMusic.homeError.collectAsState()
+    val stale by YtMusic.homeStale.collectAsState()
     val playerState by ServiceLocator.player.state.collectAsState()
     val library by ServiceLocator.library.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -128,72 +133,39 @@ fun HomeScreen(nav: Navigator) {
     val homeMixes = remember(library.history) { ServiceLocator.library.generatedMixes() }
 
     val listState = rememberLazyListState()
-    val collapse by remember {
-        derivedStateOf {
-            (listState.firstVisibleItemScrollOffset / 260f).coerceIn(0f, 1f)
-        }
-    }
-    val headerScale = 1f - collapse * 0.14f
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 30.dp)
-    ) {
+    Column(Modifier.fillMaxSize()) {
+        // The wordmark lives in the same header as every pushed screen: full-bleed,
+        // bottom-rounded, accent wash behind the title, tonal action circles.
+        ExpressiveHeader(
+            title = "KatMusic",
+            subtitle = greeting,
+            actions = {
+                HeaderActionIcon(
+                    icon = Icons.Filled.Explore,
+                    contentDescription = "Discover",
+                    onClick = { nav.go(Screen.Discover) }
+                )
+                HeaderActionIcon(
+                    icon = Icons.Filled.Search,
+                    contentDescription = "Search",
+                    onClick = { nav.go(Screen.Search) }
+                )
+                HeaderActionIcon(
+                    icon = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    onClick = { nav.go(Screen.Settings) }
+                )
+            }
+        )
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().wobbleOverscroll(),
+            contentPadding = PaddingValues(bottom = 30.dp)
+        ) {
         item {
-            Column(Modifier.statusBarsPadding().padding(top = 8.dp)) {
-                // M3 top app bar: the wordmark sits directly on the surface, with
-                // trailing tonal icon buttons. No container card.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 12.dp, top = 4.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .graphicsLayer {
-                                scaleX = headerScale
-                                scaleY = headerScale
-                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
-                            }
-                    ) {
-                        Text(
-                            text = "KatMusic",
-                            style = MaterialTheme.typography.displaySmall,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = greeting,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    GlassIconButton(
-                        icon = Icons.Filled.Explore,
-                        contentDescription = "Discover",
-                        onClick = { nav.go(Screen.Discover) },
-                        size = 42.dp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    GlassIconButton(
-                        icon = Icons.Filled.Search,
-                        contentDescription = "Search",
-                        onClick = { nav.go(Screen.Search) },
-                        size = 42.dp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    GlassIconButton(
-                        icon = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        onClick = { nav.go(Screen.Settings) },
-                        size = 42.dp
-                    )
-                }
-
-                Spacer(Modifier.height(10.dp))
-
+            Column(Modifier.padding(top = 16.dp)) {
                 ExpressiveSegmentedRow(
                     options = listOf("Chill", "Energize", "Focus", "Radio"),
                     selectedIndex = quickPick,
@@ -226,6 +198,40 @@ fun HomeScreen(nav: Navigator) {
                 )
 
                 Spacer(Modifier.height(18.dp))
+            }
+        }
+
+        if (stale && shelves.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(18.dp, 0.55f)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.CloudOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Offline — showing your saved feed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { scope.launch { YtMusic.loadHome(force = true) } }) {
+                        Text("Retry")
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
             }
         }
 
@@ -272,8 +278,10 @@ fun HomeScreen(nav: Navigator) {
                 }
             }
 
-            items(shelves, key = { (it.title ?: "") + it.cards.size + it.tracks.size }) { shelf ->
-                Reveal(index = shelves.indexOf(shelf) + 1) {
+            // Two shelves can share a title and size (the feed repeats rows), which
+            // used to give them one key and crash the list.
+            itemsIndexed(shelves, key = { index, shelf -> "$index:" + (shelf.title ?: "") }) { index, shelf ->
+                Reveal(index = index + 1) {
                     ShelfBlock(shelf = shelf, nav = nav, onCardClick = { openCard(it) })
                 }
                 Spacer(Modifier.height(18.dp))
@@ -318,6 +326,7 @@ fun HomeScreen(nav: Navigator) {
                     .padding(vertical = 20.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+        }
         }
     }
 }

@@ -244,6 +244,10 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                     }
                 }
             ) { padding ->
+                // The custom rubber-band overscroll is the only overscroll effect in
+                // the app; leaving the platform stretch on top of it makes lists
+                // visibly settle twice at the end of a fling.
+                com.itzfallenme.katmusic.ui.theme.WithoutPlatformOverscroll {
                 var lastDepth by remember { mutableIntStateOf(nav.stack.size) }
                 LaunchedEffect(nav.current) { lastDepth = nav.stack.size }
                 AnimatedContent(
@@ -284,6 +288,7 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                             is Screen.Detail -> DetailScreen(nav, screen)
                         }
                     }
+                }
                 }
             }
 
@@ -410,54 +415,17 @@ fun SimpleTopBar(
     title: String,
     onBack: (() -> Unit)? = null,
     subtitle: String? = null,
-    actions: @Composable () -> Unit = {}
+    modifier: Modifier = Modifier,
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp)
-            .padding(top = 6.dp, bottom = 10.dp)
-    ) {
-        if (onBack != null) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .bounceClickable(targetScale = 0.9f, onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 36.sp),
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) { actions() }
-        }
-    }
+    // Every pushed screen uses the same header: full-bleed, bottom-rounded, with
+    // an accent wash behind the title. Screens must not add their own status-bar
+    // padding - the header pads for the insets itself.
+    com.itzfallenme.katmusic.ui.theme.ExpressiveHeader(
+        title = title,
+        subtitle = subtitle,
+        onBack = onBack,
+        modifier = modifier,
+        actions = actions
+    )
 }
