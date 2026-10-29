@@ -59,7 +59,11 @@ class DownloadManager(
         update(track.id) { it.copy(running = true, done = false, error = null, fraction = 0f) }
         scope.launch {
             runCatching {
-                val quality = settings.state.value.highQualityStream
+                val quality = if (settings.state.value.highQualityStream) {
+                    com.itzfallenme.katmusic.data.StreamQuality.MAX
+                } else {
+                    com.itzfallenme.katmusic.data.StreamQuality.HIGH
+                }
                 val info = com.itzfallenme.katmusic.data.StreamResolver.resolve(track.id, quality)
                 val extension = if (info.mimeType.contains("webm")) "webm" else "m4a"
                 val fileName = "${safeName(track.artist)} - ${safeName(track.title)}"

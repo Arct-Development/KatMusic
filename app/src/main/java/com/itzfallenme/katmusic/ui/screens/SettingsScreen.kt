@@ -274,11 +274,25 @@ fun SettingsScreen(nav: Navigator, categoryId: String? = null) {
                 icon = Icons.Filled.PlayCircle,
                 section = SettingsCategory.PLAYBACK
             ) {
-                SettingToggle(
-                    title = "High quality audio",
-                    subtitle = "Prefer the highest bitrate Opus stream",
-                    checked = settings.highQualityStream
-                ) { update { s -> s.copy(highQualityStream = it) } }
+                val streamQuality = com.itzfallenme.katmusic.data.StreamQuality.fromId(settings.streamQuality)
+                Text("Streaming quality", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                com.itzfallenme.katmusic.ui.theme.ExpressiveSegmentedRow(
+                    options = com.itzfallenme.katmusic.data.StreamQuality.entries.map { it.label },
+                    selectedIndex = com.itzfallenme.katmusic.data.StreamQuality.entries.indexOf(streamQuality),
+                    onSelect = { index ->
+                        val chosen = com.itzfallenme.katmusic.data.StreamQuality.entries[index]
+                        update { s -> s.copy(streamQuality = chosen.id) }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+                Text(
+                    streamQuality.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+                Spacer(Modifier.height(4.dp))
                 SettingToggle(
                     title = "Autoplay radio",
                     subtitle = "Keep the music going with related tracks",

@@ -487,7 +487,10 @@ object InnerTube {
     )
 
     /** Resolves a progressive audio stream URL straight from the player endpoint. */
-    suspend fun streamUrl(videoId: String, preferHighQuality: Boolean = true): StreamInfo {
+    suspend fun streamUrl(
+        videoId: String,
+        quality: StreamQuality = StreamQuality.HIGH
+    ): StreamInfo {
         var lastError: String? = null
         for (attempt in playerAttempts(videoId)) {
             val response = runCatching {
@@ -506,7 +509,7 @@ object InnerTube {
             val formats = (data.arr("adaptiveFormats") ?: JsonArray(emptyList()))
                 .mapNotNull { it as? JsonObject }
                 .filter { it.str("mimeType")?.startsWith("audio/") == true }
-            val chosen = pickAudio(formats, preferHighQuality) ?: continue
+            val chosen = pickAudio(formats, quality) ?: continue
             val url = chosen.str("url") ?: continue
             return StreamInfo(
                 url = url,
@@ -520,11 +523,14 @@ object InnerTube {
         error(lastError ?: "No playable audio stream found")
     }
 
-    private fun pickAudio(formats: List<JsonObject>, highQuality: Boolean): JsonObject? {
-        val opus = formats.filter { it.str("mimeType")?.contains("opus") == true }
-        val aac = formats.filter { it.str("mimeType")?.contains("mp4a") == true }
-        val pool = if (highQuality) (opus + aac) else (aac + opus)
-        return pool.maxByOrNull { it.long("bitrate") ?: 0L } ?: formats.firstOrNull()
+    private fun pickAudio(formats: List<JsonObject>, quality: StreamQuality): JsonObject? {
+        val withinTier = formats.filter { quality.allows((it.long("bitrate") ?: 0L).toInt()) }
+            .ifEmpty { formats }
+        val opus = withinTier.filter { it.str("mimeType")?.contains("opus") == true }
+        val aac = withinTier.filter { it.str("mimeType")?.contains("mp4a") == true }
+        // Data saver prefers AAC, which is more efficient at low bitrates.
+        val pool = if (quality == StreamQuality.SAVER) (aac + opus) else (opus + aac)
+        return pool.maxByOrNull { it.long("bitrate") ?: 0L } ?: withinTier.firstOrNull()
     }
 
     suspend fun lyricsSearch(title: String, artist: String, album: String?, durationSec: Long): Lyrics {

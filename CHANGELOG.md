@@ -20,6 +20,9 @@ All notable changes to KatMusic are documented here. The format follows
   continuous playback
 - Library multi-select: long-press any liked, downloaded or history row to select several
   tracks, then play, play next, queue, like, add to a playlist or download them in one go
+- Streaming quality tiers in Settings → Playback: Max (best Opus/AAC rendition), High
+  (≤256 kbps) and Data saver (≤128 kbps). The resolver filters renditions by the cap and
+  caches each tier separately, so switching quality never serves a stale stream
 
 ### Changed
 
@@ -28,7 +31,10 @@ All notable changes to KatMusic are documented here. The format follows
   morphs, player transport uses the elastic push row, selection chips morph shape as well
   as colour, stats and quick-pick rows use segmented controls, and loading/progress now use
   shape-morph and wavy indicators
-- The KatMusic logo from the project root is shown in Settings → About
+- The KatMusic logo is now the launcher icon (adaptive, black background) and appears in
+  Settings → About
+- Housekeeping: removed the committed crash log, the local chat transcript, the unused
+  vector launcher art and the empty scratch folders
 
 ## [1.5.1] – 2026-10-29
 

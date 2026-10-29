@@ -53,6 +53,8 @@ data class LibraryData(
 @Serializable
 data class AppSettings(
     val highQualityStream: Boolean = true,
+    /** Max / High / Data saver, see [StreamQuality]. */
+    val streamQuality: String = StreamQuality.HIGH.id,
     val wifiOnlyDownloads: Boolean = false,
     val dynamicArtworkTheme: Boolean = true,
     val amoled: Boolean = false,

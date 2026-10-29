@@ -57,18 +57,21 @@ object StreamResolver {
     }
 
     /** Fresh, probe-checked audio URL for [videoId], preferring Opus for quality. */
-    suspend fun resolve(videoId: String, preferHighQuality: Boolean = true): com.itzfallenme.katmusic.data.StreamInfo =
+    suspend fun resolve(
+        videoId: String,
+        quality: StreamQuality = StreamQuality.HIGH
+    ): com.itzfallenme.katmusic.data.StreamInfo =
         withContext(Dispatchers.IO) {
-            val key = "$videoId|$preferHighQuality"
+            val key = "$videoId|${quality.id}"
             cache[key]?.let { cached ->
                 if (System.currentTimeMillis() - cached.storedAt < CACHE_TTL_MS) {
                     return@withContext cached.info
                 }
             }
-            val extracted = runCatching { fromNewPipe(videoId, preferHighQuality, key) }
+            val extracted = runCatching { fromNewPipe(videoId, quality, key) }
                 .getOrElse { error ->
                     if (error is kotlinx.coroutines.CancellationException) throw error
-                    runCatching { InnerTube.streamUrl(videoId, preferHighQuality) }
+                    runCatching { InnerTube.streamUrl(videoId, quality) }
                         .getOrElse { throw IOException("Could not resolve audio for $videoId", error) }
                 }
             extracted
@@ -76,7 +79,7 @@ object StreamResolver {
 
     private fun fromNewPipe(
         videoId: String,
-        preferHighQuality: Boolean,
+        quality: StreamQuality,
         key: String
     ): StreamInfo {
         initialize()
@@ -88,8 +91,14 @@ object StreamResolver {
         } catch (error: ExtractionException) {
             throw IOException("NewPipe extraction failed", error)
         }
-        val ordered = info.audioStreams.sortedWith(
-            compareBy<AudioStream> { preference(it, preferHighQuality) }
+        // Keep only renditions inside the tier's bitrate ceiling; if the tier is
+        // stricter than anything YouTube returned, fall back to the full list
+        // rather than refusing to play.
+        val withinTier = info.audioStreams.filter {
+            quality.allows(maxOf(it.averageBitrate, it.bitrate))
+        }.ifEmpty { info.audioStreams }
+        val ordered = withinTier.sortedWith(
+            compareBy<AudioStream> { preference(it, quality) }
                 .thenByDescending { maxOf(it.averageBitrate, it.bitrate) }
         )
         if (ordered.isEmpty()) throw IOException("No audio streams returned")
@@ -110,15 +119,17 @@ object StreamResolver {
         return resolved
     }
 
-    private fun preference(stream: AudioStream, highQuality: Boolean): Int {
+    private fun preference(stream: AudioStream, quality: StreamQuality): Int {
         val mime = stream.format?.mimeType.orEmpty().lowercase()
         val opus = mime.contains("webm") || stream.codec?.contains("opus", true) == true
         val m4a = mime.contains("mp4") || mime.contains("m4a")
+        // At low bitrates AAC holds up better; Opus wins when there is headroom.
+        val preferOpus = quality != StreamQuality.SAVER
         return when {
-            highQuality && opus -> 0
-            !highQuality && m4a -> 0
-            highQuality && m4a -> 1
-            !highQuality && opus -> 1
+            preferOpus && opus -> 0
+            !preferOpus && m4a -> 0
+            preferOpus && m4a -> 1
+            !preferOpus && opus -> 1
             else -> 2
         }
     }

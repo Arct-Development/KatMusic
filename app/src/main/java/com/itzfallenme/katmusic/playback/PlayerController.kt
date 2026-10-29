@@ -78,22 +78,25 @@ private class MonoRenderersFactory(
 }
 
 /** Resolves katmusic://watch?v=ID URIs into fresh, probe-checked audio URLs at load time. */
-private class PlaybackUrlResolver(private val highQuality: Boolean) : ResolvingDataSource.Resolver {
-    private val cache = HashMap<String, Pair<String, Long>>()
+private class PlaybackUrlResolver(
+    private val quality: () -> com.itzfallenme.katmusic.data.StreamQuality
+) : ResolvingDataSource.Resolver {
+    private val cache = HashMap<String, Triple<String, Long, String>>()
 
     override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec): androidx.media3.datasource.DataSpec {
         val videoId = dataSpec.uri.getQueryParameter("v") ?: return dataSpec
         val now = System.currentTimeMillis()
+        val tier = quality().id
         synchronized(cache) {
-            cache[videoId]?.let { (url, expires) ->
-                if (now < expires) return dataSpec.withUri(url.toUri())
+            cache[videoId]?.let { (url, expires, cachedTier) ->
+                if (now < expires && cachedTier == tier) return dataSpec.withUri(url.toUri())
             }
         }
         val info = runBlocking {
-            runCatching { com.itzfallenme.katmusic.data.StreamResolver.resolve(videoId, highQuality) }
+            runCatching { com.itzfallenme.katmusic.data.StreamResolver.resolve(videoId, quality()) }
                 .getOrNull()
         } ?: throw IOException("Could not resolve audio stream")
-        synchronized(cache) { cache[videoId] = info.url to now + 40 * 60 * 1000 }
+        synchronized(cache) { cache[videoId] = Triple(info.url, now + 40 * 60 * 1000, tier) }
         return dataSpec.withUri(info.url.toUri())
     }
 
@@ -136,7 +139,9 @@ class PlayerController(
             .setDefaultRequestProperties(mapOf("Referer" to "https://music.youtube.com/"))
         val dataSourceFactory = ResolvingDataSource.Factory(
             okHttpFactory,
-            PlaybackUrlResolver(settings.state.value.highQualityStream)
+            PlaybackUrlResolver {
+                com.itzfallenme.katmusic.data.StreamQuality.fromId(settings.state.value.streamQuality)
+            }
         )
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         val exo = ExoPlayer.Builder(context)

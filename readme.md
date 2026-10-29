@@ -62,8 +62,11 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - 10-band equalizer with the device's built-in presets
 - **AutoEq headphone profiles** – paste or open any ParametricEQ, GraphicEQ or CSV
   export and the correction curve is mapped onto your bands
+- **Streaming quality tiers** – Max, High (≤256 kbps) or Data saver (≤128 kbps); the
+  resolver keeps the best Opus/AAC rendition under the cap and caches per tier
 - Bass boost and virtualizer
-- High-bitrate Opus stream preference
+- **Mono audio** for single-earbud listening, a **volume limit** as a percentage of the
+  device maximum, and an optional **listening-break reminder** after 30–90 minutes
 - Crossfade between tracks
 - Skip-silence
 
@@ -86,6 +89,8 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 ### Library
 
 - Liked songs, playlists and listening history
+- **Multi-select** – long-press liked, downloaded or history rows, then play, queue, like,
+  add to a playlist or download the whole selection at once
 - Automatic taste mixes built from your listening: *On repeat*, artist mix and rediscover
 - Import public YouTube Music playlists from a link or id, or paste a plain
   `Artist - Title` list exported from Spotify or Apple Music and let KatMusic match it
@@ -114,7 +119,12 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
   hand-picked accent palette
 - Waveform seek bar with three flowing layers over the played part of the track
 - Home-screen **now playing widget** with play/pause and skip
-- Listening stats: minutes, plays, top artists, top tracks and a listening clock
+- **Settings search** – type a setting's name and land on the section that owns it, or
+  browse Account, Appearance, Playback, Audio & safety, Lyrics, Downloads, AI, Discord,
+  Last.fm and Data as their own pages
+- Listening stats by period: Today, This week, This month or All time, with minutes
+  compared against the previous window, a weekday strip and Songs / Artists / Albums
+  rankings
 - Shareable stats summary
 
 ### Integrations

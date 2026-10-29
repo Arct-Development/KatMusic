@@ -71,7 +71,7 @@ val settingsIndex: List<SettingItem> = listOf(
     SettingItem(SettingsCategory.APPEARANCE, "Artwork colours", "Recolour the app from album art"),
     SettingItem(SettingsCategory.APPEARANCE, "Pure black", "AMOLED friendly backgrounds"),
     SettingItem(SettingsCategory.APPEARANCE, "Accent colour", "Seed palette swatches"),
-    SettingItem(SettingsCategory.PLAYBACK, "High quality audio", "Bitrate, Opus"),
+    SettingItem(SettingsCategory.PLAYBACK, "Streaming quality", "Max, High or Data saver bitrate"),
     SettingItem(SettingsCategory.PLAYBACK, "Autoplay radio", "Keep the music going"),
     SettingItem(SettingsCategory.PLAYBACK, "SponsorBlock", "Skip sponsor and intro segments"),
     SettingItem(SettingsCategory.PLAYBACK, "Skip silence", "Jump over silent intros"),

@@ -27,7 +27,10 @@ class LiveApiTest {
     @Test
     fun `stream resolution returns a fetchable audio url`() = runBlocking {
         assumeTrue(System.getenv("KAT_LIVE") == "1")
-        val stream = InnerTube.streamUrl("dQw4w9WgXcQ", preferHighQuality = true)
+        val stream = InnerTube.streamUrl(
+            "dQw4w9WgXcQ",
+            com.itzfallenme.katmusic.data.StreamQuality.MAX
+        )
         assertTrue("audio mime type", stream.mimeType.startsWith("audio/"))
         assertTrue("https url", stream.url.startsWith("https://"))
 
@@ -46,7 +49,10 @@ class LiveApiTest {
     @Test
     fun `newpipe resolver returns playable audio`() = runBlocking {
         assumeTrue(System.getenv("KAT_LIVE") == "1")
-        val stream = com.itzfallenme.katmusic.data.StreamResolver.resolve("dQw4w9WgXcQ", true)
+        val stream = com.itzfallenme.katmusic.data.StreamResolver.resolve(
+            "dQw4w9WgXcQ",
+            com.itzfallenme.katmusic.data.StreamQuality.MAX
+        )
         assertTrue("https url", stream.url.startsWith("https://"))
         val request = Request.Builder()
             .url(stream.url)
