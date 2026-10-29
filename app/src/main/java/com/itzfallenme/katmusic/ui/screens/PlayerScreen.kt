@@ -141,6 +141,7 @@ import com.itzfallenme.katmusic.ui.theme.GlassSurface
 import com.itzfallenme.katmusic.ui.theme.Motion
 import com.itzfallenme.katmusic.ui.theme.bounceClickable
 import com.itzfallenme.katmusic.ui.theme.liquidGlass
+import com.itzfallenme.katmusic.ui.theme.liquidGlassSource
 import com.itzfallenme.katmusic.ui.theme.rememberArtworkSeed
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -238,6 +239,13 @@ fun PlayerScreen(nav: Navigator) {
     }
 
     val seed = rememberArtworkSeed(track.artwork, scheme.primary)
+    // The artwork wash is captured as a layer so the queue sheet can refract the
+    // player's own colours instead of painting an opaque slab over them.
+    val pageColor = scheme.background
+    val playerBackdrop = com.itzfallenme.katmusic.ui.theme.rememberLayerBackdrop {
+        drawRect(pageColor)
+        drawContent()
+    }
     val playing by animateFloatAsState(
         targetValue = if (state.playing) 1f else 0f,
         animationSpec = Motion.spatialDefault(),
@@ -258,30 +266,42 @@ fun PlayerScreen(nav: Navigator) {
                 scaleY = shrink
             }
     ) {
-        // Blurred, oversized artwork gives the page its colour; the ambient blobs keep it moving.
-        AsyncImage(
-            model = track.artwork,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(70.dp)
-                .graphicsLayer { alpha = 0.55f }
-        )
-        AmbientBackdrop(accent = seed, intensity = 1.15f)
         Box(
             Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            scheme.background.copy(alpha = 0.62f),
-                            scheme.background.copy(alpha = 0.88f),
-                            scheme.background.copy(alpha = 0.98f)
+                .then(
+                    if (playerBackdrop != null) {
+                        Modifier.liquidGlassSource(playerBackdrop)
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
+            // Blurred, oversized artwork gives the page its colour; the ambient blobs keep it moving.
+            AsyncImage(
+                model = track.artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(70.dp)
+                    .graphicsLayer { alpha = 0.55f }
+            )
+            AmbientBackdrop(accent = seed, intensity = 1.15f)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                scheme.background.copy(alpha = 0.62f),
+                                scheme.background.copy(alpha = 0.88f),
+                                scheme.background.copy(alpha = 0.98f)
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Column(
             Modifier
@@ -638,9 +658,19 @@ fun PlayerScreen(nav: Navigator) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .liquidGlass(
-                        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                        fillAlpha = 0.94f
+                    .then(
+                        if (playerBackdrop != null) {
+                            Modifier.liquidGlass(
+                                backdrop = playerBackdrop,
+                                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                                interactive = false
+                            )
+                        } else {
+                            Modifier.liquidGlass(
+                                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                                fillAlpha = 0.94f
+                            )
+                        }
                     )
                     .navigationBarsPadding()
                     .padding(top = 10.dp)
