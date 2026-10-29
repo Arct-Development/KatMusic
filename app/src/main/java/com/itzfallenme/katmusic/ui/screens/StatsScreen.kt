@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +40,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,18 +49,48 @@ import com.itzfallenme.katmusic.ui.EmptyState
 import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.SimpleTopBar
+import kotlinx.coroutines.launch
 
 @Composable
 fun StatsScreen(nav: Navigator) {
     val library by ServiceLocator.library.state.collectAsState()
     val stats = remember(library.history) { ServiceLocator.library.stats() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Captured before the button lambda: theme access is a composable call.
+    val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
+    val backgroundArgb = MaterialTheme.colorScheme.background.toArgb()
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         SimpleTopBar(
             title = "Your listening",
             onBack = { nav.back() },
             actions = {
+                IconButton(onClick = {
+                    scope.launch {
+                        val card = runCatching {
+                            com.itzfallenme.katmusic.data.ReceiptCard.render(
+                                context = context,
+                                stats = stats,
+                                periodLabel = "All time",
+                                accent = accentArgb,
+                                background = backgroundArgb
+                            )
+                        }.getOrNull()
+                        if (card != null) {
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent.createChooser(
+                                        com.itzfallenme.katmusic.data.LyricsShareCard.shareIntent(context, card),
+                                        "Share receipt"
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }) {
+                    Icon(Icons.Filled.Receipt, contentDescription = "Share receipt")
+                }
                 IconButton(onClick = {
                     val text = buildString {
                         appendLine("My KatMusic wrapped")

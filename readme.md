@@ -53,6 +53,9 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - **Discovery radar** – unheard tracks pulled from the artists you play, interleaved and
   topped up from the catalogue when your history is thin
 - One-tap genre radios and a Smart Mix generator that alternates between your seed artists
+- **AI picks** – describe a mood and an OpenAI-compatible model of your choosing curates
+  it from your history; suggestions are matched against the catalogue before they are
+  shown, and your key never leaves the endpoint you configure
 
 ### Sound
 
@@ -89,6 +92,7 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - Backup and restore the whole library and settings as a single JSON file
 - **Several accounts** – save more than one YouTube Music session and switch between
   them; the active one supplies your library and recommendations
+- **Listening receipt** – your stats rendered as a tall, barcode-bottomed receipt image
 - Recent searches
 
 ### Explore
@@ -251,6 +255,7 @@ Planned work, roughly in priority order. Feature requests are welcome – open a
 - [x] Discord Rich Presence
 - [x] Multi-account switching for YouTube Music
 - [x] Android Auto and Android TV entry points
+- [x] AI song suggestions with a user-supplied API key
 - [ ] Google Cast support
 - [ ] Listen Together (synced rooms)
 - [ ] Video playback with captions and audio-track selection

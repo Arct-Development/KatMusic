@@ -17,8 +17,13 @@ All notable changes to KatMusic are documented here. The format follows
   whole list instead of a single song
 - Multi-account switching: several YouTube Music sessions can be saved and switched from
   the account screen; the active one supplies library and recommendations
-- Share lyrics as an image: the current lines are rendered with the album art into a
-  1080×1350 card and handed to the system share sheet
+- AI picks: an OpenAI-compatible model curates songs from your listening history. The
+  endpoint, model and API key are yours, entered in Settings and sent nowhere else;
+  every suggestion is resolved against YouTube Music before it is shown
+- Listening receipt: the stats screen renders a tall receipt card (minutes, plays, top
+  artists, listening clock, barcode) and shares it as an image
+- Rows across Explore, Search, Library and Discover cascade in with a short staggered
+  spring instead of appearing all at once
 - Player styles now change the player: Expressive keeps the vinyl and breathing cover,
   Classic and Apple use a still, tighter artwork
 

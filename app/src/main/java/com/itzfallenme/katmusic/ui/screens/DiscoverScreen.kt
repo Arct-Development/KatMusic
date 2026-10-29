@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -80,6 +82,11 @@ fun DiscoverScreen(nav: Navigator) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var genreBusy by remember { mutableStateOf<String?>(null) }
+    val settings by ServiceLocator.settings.state.collectAsState()
+    var aiPrompt by remember { mutableStateOf("") }
+    var aiBusy by remember { mutableStateOf(false) }
+    var aiResult by remember { mutableStateOf<com.itzfallenme.katmusic.data.AiSuggest.Result?>(null) }
+    var aiError by remember { mutableStateOf<String?>(null) }
 
     suspend fun load() {
         loading = true
@@ -153,6 +160,60 @@ fun DiscoverScreen(nav: Navigator) {
                     }
                 }
 
+                item {
+                    AiPicksCard(
+                        configured = com.itzfallenme.katmusic.data.AiSuggest.isConfigured(settings),
+                        prompt = aiPrompt,
+                        onPrompt = { aiPrompt = it },
+                        busy = aiBusy,
+                        result = aiResult,
+                        error = aiError,
+                        onAsk = {
+                            if (!aiBusy) {
+                                aiBusy = true
+                                aiError = null
+                                scope.launch {
+                                    val history = library.history
+                                    val result = runCatching {
+                                        com.itzfallenme.katmusic.data.AiSuggest.suggest(
+                                            settings = settings,
+                                            topArtists = history.groupBy { it.track.artist }
+                                                .entries.sortedByDescending { it.value.size }
+                                                .map { it.key }.take(12),
+                                            topTracks = history.take(12).map { it.track.title },
+                                            request = aiPrompt,
+                                            count = 20
+                                        )
+                                    }
+                                    aiBusy = false
+                                    val value = result.getOrNull()
+                                    if (value == null || value.tracks.isEmpty()) {
+                                        aiError = result.exceptionOrNull()?.message
+                                            ?: value?.answer?.takeIf { it.isNotBlank() }
+                                            ?: "No suggestions came back"
+                                    } else {
+                                        aiResult = value
+                                    }
+                                }
+                            }
+                        },
+                        onPlay = { aiResult?.tracks?.let { ServiceLocator.player.playTracks(it) } },
+                        onSave = {
+                            val result = aiResult ?: return@AiPicksCard
+                            if (result.tracks.isEmpty()) return@AiPicksCard
+                            val name = aiPrompt.ifBlank { "AI picks" }.take(48)
+                            val playlist = ServiceLocator.library.createPlaylist(name, result.answer)
+                            ServiceLocator.library.addToPlaylist(playlist.id, result.tracks)
+                            nav.openDetail(
+                                playlist.id,
+                                playlist.name,
+                                com.itzfallenme.katmusic.data.CardKind.PLAYLIST
+                            )
+                        }
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
+
                 if (tracks.isNotEmpty()) {
                     item {
                         Row(
@@ -221,6 +282,122 @@ fun DiscoverScreen(nav: Navigator) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * AI picks. The key is the listener's own, so the card explains what is missing instead of
+ * hiding the feature when it is not configured yet.
+ */
+@Composable
+private fun AiPicksCard(
+    configured: Boolean,
+    prompt: String,
+    onPrompt: (String) -> Unit,
+    busy: Boolean,
+    result: com.itzfallenme.katmusic.data.AiSuggest.Result?,
+    error: String?,
+    onAsk: () -> Unit,
+    onPlay: () -> Unit,
+    onSave: () -> Unit
+) {
+    GlassCard(Modifier.padding(horizontal = 16.dp)) {
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("AI picks", style = MaterialTheme.typography.titleMedium)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (configured) {
+                    "Describe what you want and the model curates it from your taste."
+                } else {
+                    "Add your own API key in Settings → AI to let a model curate from your taste."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = onPrompt,
+                label = { Text("Something like: rainy night, slow soul") },
+                singleLine = true,
+                enabled = configured,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onAsk, enabled = configured && !busy) {
+                    if (busy) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Ask for picks")
+                    }
+                }
+                if (result != null && result.tracks.isNotEmpty()) {
+                    TextButton(onClick = onPlay) { Text("Play all") }
+                    TextButton(onClick = onSave) { Text("Save playlist") }
+                }
+            }
+            if (error != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            result?.let { picked ->
+                if (picked.answer.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        picked.answer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (picked.missing > 0) {
+                    Text(
+                        "${picked.missing} suggestion(s) had no catalogue match",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                picked.tracks.take(8).forEachIndexed { index, track ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(22.dp)
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                track.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                track.artist,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

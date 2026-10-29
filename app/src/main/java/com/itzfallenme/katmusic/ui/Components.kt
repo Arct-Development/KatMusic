@@ -63,6 +63,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -323,9 +324,33 @@ fun TrackRow(
     var menuOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    // Rows cascade in on first composition; the animation only runs once per row so
+    // scrolling back does not replay it.
+    var entered by remember { mutableStateOf(index == null) }
+    LaunchedEffect(Unit) {
+        if (!entered) {
+            kotlinx.coroutines.delay((((index ?: 1) - 1).coerceIn(0, 8) * 40L))
+            entered = true
+        }
+    }
+    val entranceAlpha by animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = Motion.effectsDefault(),
+        label = "rowAlpha"
+    )
+    val entranceOffset by animateFloatAsState(
+        targetValue = if (entered) 0f else 26f,
+        animationSpec = Motion.spatialDefault(),
+        label = "rowOffset"
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                alpha = entranceAlpha
+                translationY = entranceOffset
+            }
             .clip(RoundedCornerShape(18.dp))
             .then(
                 if (isCurrent) Modifier.background(accent.copy(alpha = 0.10f)) else Modifier
