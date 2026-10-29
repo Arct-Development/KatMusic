@@ -38,6 +38,20 @@ import java.io.IOException
 
 enum class RepeatMode { OFF, ALL, ONE }
 
+/** How long the sleep timer spends ramping the volume down before it stops. */
+internal const val SLEEP_FADE_MS = 20_000L
+
+/**
+ * Volume for a sleep-timer fade, [remainingMs] before playback stops. Kept pure
+ * so the ramp can be tested without an audio pipeline; never returns silence
+ * while the timer is still running, which would look like a stalled player.
+ */
+internal fun sleepFadeVolume(remainingMs: Long): Float = when {
+    remainingMs <= 0L -> 0f
+    remainingMs >= SLEEP_FADE_MS -> 1f
+    else -> (remainingMs.toFloat() / SLEEP_FADE_MS).coerceIn(0.05f, 1f)
+}
+
 data class PlayerUiState(
     val track: Track? = null,
     val queue: List<Track> = emptyList(),
@@ -49,6 +63,8 @@ data class PlayerUiState(
     val shuffle: Boolean = false,
     val repeat: RepeatMode = RepeatMode.OFF,
     val sleepAtMs: Long = 0L,
+    /** Stop when the current song ends rather than at a wall-clock time. */
+    val sleepEndOfTrack: Boolean = false,
     val error: String? = null,
     val radioLoading: Boolean = false,
     /** Non-zero when a listening-break reminder is due, in minutes. */
@@ -120,6 +136,9 @@ class PlayerController(
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private var sleepJob: Job? = null
+
+    /** Volume the user had before a sleep fade started, restored on cancel. */
+    private var sleepVolumeBeforeFade = 1f
     private var lastPositionMs = 0L
     private var skipSegments: List<Pair<Long, Long>> = emptyList()
     private var lastSkippedSegment = -1L
@@ -164,6 +183,13 @@ class PlayerController(
             .build()
         exo.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
+                    _state.value.sleepEndOfTrack
+                ) {
+                    exo.pause()
+                    _state.value = _state.value.copy(sleepEndOfTrack = false)
+                }
+                exo.volume = 1f
                 val index = exo.currentMediaItemIndex
                 val track = _state.value.queue.getOrNull(index)
                 val previous = _state.value.track
@@ -487,25 +513,62 @@ class PlayerController(
         settings.update { it.copy(playbackSpeed = speed) }
     }
 
+    /**
+     * Sleep timer with a fade. The stream ramps down over the last
+     * [SLEEP_FADE_MS] so playback does not stop mid-word at full volume, which
+     * is jarring in bed and the reason most timers are left unused.
+     */
     fun setSleepTimer(minutes: Int) {
         sleepJob?.cancel()
+        restoreSleepVolume()
         if (minutes <= 0) {
-            _state.value = _state.value.copy(sleepAtMs = 0L)
+            _state.value = _state.value.copy(sleepAtMs = 0L, sleepEndOfTrack = false)
             return
         }
         val end = System.currentTimeMillis() + minutes * 60_000L
-        _state.value = _state.value.copy(sleepAtMs = end)
+        _state.value = _state.value.copy(sleepAtMs = end, sleepEndOfTrack = false)
         sleepJob = scope.launch {
-            delay(minutes * 60_000L)
-            player.pause()
-            _state.value = _state.value.copy(sleepAtMs = 0L)
+            var faded = false
+            while (isActive) {
+                val remaining = end - System.currentTimeMillis()
+                if (remaining <= 0L) {
+                    player.pause()
+                    restoreSleepVolume()
+                    _state.value = _state.value.copy(sleepAtMs = 0L)
+                    break
+                }
+                if (remaining < SLEEP_FADE_MS) {
+                    if (!faded) {
+                        sleepVolumeBeforeFade = player.volume
+                        faded = true
+                    }
+                    player.volume = sleepVolumeBeforeFade * sleepFadeVolume(remaining)
+                }
+                delay(200)
+            }
         }
+    }
+
+    /** Stops after the song playing now, with the same fade over its last seconds. */
+    fun setSleepAtEndOfTrack(enabled: Boolean = true) {
+        sleepJob?.cancel()
+        restoreSleepVolume()
+        _state.value = _state.value.copy(
+            sleepAtMs = 0L,
+            sleepEndOfTrack = enabled
+        )
+    }
+
+    private fun restoreSleepVolume() {
+        if (player.volume != sleepVolumeBeforeFade) player.volume = sleepVolumeBeforeFade
+        sleepVolumeBeforeFade = 1f
     }
 
     fun cancelSleepTimer() {
         sleepJob?.cancel()
         sleepJob = null
-        _state.value = _state.value.copy(sleepAtMs = 0L)
+        restoreSleepVolume()
+        _state.value = _state.value.copy(sleepAtMs = 0L, sleepEndOfTrack = false)
     }
 
     private fun skipWithRadio() {
@@ -577,6 +640,7 @@ class PlayerController(
                     durationMs = player.duration.takeIf { it > 0 } ?: _state.value.durationMs
                 )
                 applyCrossfade()
+                if (_state.value.sleepEndOfTrack) fadeTowardsEndOfTrack()
                 if (config.volumeLimitEnabled) volumeGuard.enforce(config.volumeLimitPercent)
                 trackListeningTime(config.listeningReminderMinutes)
             } else if (config.listeningReminderMinutes == 0 && _state.value.listeningReminderMinutes != 0) {
@@ -584,6 +648,13 @@ class PlayerController(
             }
             delay(500)
         }
+    }
+
+    /** Ramps the volume down over the last seconds of the song, for the sleep timer. */
+    private fun fadeTowardsEndOfTrack() {
+        val duration = player.duration
+        if (duration <= 0L) return
+        player.volume = sleepFadeVolume(duration - player.currentPosition)
     }
 
     /** Counts continuous playback and raises a break reminder once the threshold is crossed. */

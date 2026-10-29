@@ -192,9 +192,14 @@ fun PlayerScreen(nav: Navigator) {
     if (sleepDialog) {
         SleepTimerDialog(
             activeUntil = state.sleepAtMs,
+            endOfTrack = state.sleepEndOfTrack,
             onDismiss = { sleepDialog = false },
             onSelect = { minutes ->
                 ServiceLocator.player.setSleepTimer(minutes)
+                sleepDialog = false
+            },
+            onEndOfTrack = {
+                ServiceLocator.player.setSleepAtEndOfTrack()
                 sleepDialog = false
             },
             onCancelTimer = {
@@ -607,7 +612,11 @@ fun PlayerScreen(nav: Navigator) {
                             onClick = { sleepDialog = true },
                             size = 40.dp,
                             iconSize = 19.dp,
-                            tint = if (state.sleepAtMs > 0) scheme.primary else scheme.onSurfaceVariant
+                            tint = if (state.sleepAtMs > 0 || state.sleepEndOfTrack) {
+                                scheme.primary
+                            } else {
+                                scheme.onSurfaceVariant
+                            }
                         )
                         Box(
                             Modifier
@@ -1318,8 +1327,10 @@ private fun QueuePane(
 @Composable
 private fun SleepTimerDialog(
     activeUntil: Long,
+    endOfTrack: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
+    onEndOfTrack: () -> Unit,
     onCancelTimer: () -> Unit
 ) {
     AlertDialog(
@@ -1327,15 +1338,28 @@ private fun SleepTimerDialog(
         title = { Text("Sleep timer") },
         text = {
             Column {
-                if (activeUntil > 0) {
-                    val remaining = ((activeUntil - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
-                    Text(
-                        "Playing for another $remaining min",
+                when {
+                    endOfTrack -> Text(
+                        "Stopping when this song ends",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(10.dp))
+                    activeUntil > 0 -> {
+                        val remaining = ((activeUntil - System.currentTimeMillis()) / 60_000)
+                            .coerceAtLeast(0)
+                        Text(
+                            "Playing for another $remaining min",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> Text(
+                        "The music fades out over the last 20 seconds instead of cutting off.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+                Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(5, 15, 30).forEach { minutes ->
                         Chip(text = "$minutes min", onClick = { onSelect(minutes) })
@@ -1347,10 +1371,19 @@ private fun SleepTimerDialog(
                         Chip(text = "$minutes min", onClick = { onSelect(minutes) })
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                Chip(
+                    text = if (endOfTrack) "End of track ✓" else "End of track",
+                    onClick = {
+                        if (endOfTrack) onCancelTimer() else onEndOfTrack()
+                    }
+                )
             }
         },
         confirmButton = {
-            if (activeUntil > 0) TextButton(onClick = onCancelTimer) { Text("Turn off") }
+            if (activeUntil > 0 || endOfTrack) {
+                TextButton(onClick = onCancelTimer) { Text("Turn off") }
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
