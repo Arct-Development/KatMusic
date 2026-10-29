@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -115,7 +116,7 @@ fun FriendsScreen(nav: Navigator) {
     Column(Modifier.fillMaxSize()) {
         SimpleTopBar(title = "Friends", onBack = { nav.back() })
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().wobbleOverscroll(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp
             ),

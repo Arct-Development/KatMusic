@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -114,7 +116,7 @@ fun DetailScreen(nav: Navigator, screen: Screen.Detail) {
     val tracks: List<Track> = localPlaylist?.tracks ?: remote?.tracks.orEmpty()
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().wobbleOverscroll(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
@@ -325,13 +327,15 @@ fun DetailScreen(nav: Navigator, screen: Screen.Detail) {
                 }
             }
         } else {
-            items(tracks, key = { it.id + it.title }) { track ->
+            // Position-keyed: a playlist may contain the same track twice, and
+            // duplicate keys make the whole list throw.
+            itemsIndexed(tracks, key = { index, track -> "$index:${track.id}" }) { index, track ->
                 TrackRow(
                     track = track,
-                    index = tracks.indexOf(track) + 1,
+                    index = index + 1,
                     isCurrent = playerState.track?.id == track.id,
                     isPlaying = playerState.playing,
-                    onClick = { ServiceLocator.player.playTracks(tracks, tracks.indexOf(track)) },
+                    onClick = { ServiceLocator.player.playTracks(tracks, index) },
                     onToggleLike = { ServiceLocator.library.toggleLike(it) },
                     onStartRadio = { ServiceLocator.player.playRadio(it) },
                     onPlayNext = { ServiceLocator.player.playNext(it) },

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -115,7 +116,7 @@ fun DiscoverScreen(nav: Navigator) {
         }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(
             title = "Discover",
             onBack = { nav.back() },
@@ -146,7 +147,7 @@ fun DiscoverScreen(nav: Navigator) {
             )
 
             else -> LazyColumn(
-                Modifier.fillMaxSize(),
+                Modifier.fillMaxSize().wobbleOverscroll(),
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
                 if (dna.isNotEmpty()) {

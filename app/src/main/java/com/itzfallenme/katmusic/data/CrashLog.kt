@@ -46,6 +46,16 @@ object CrashLog {
                 appendLine("version: ${context.packageManager.getPackageInfo(context.packageName, 0).versionName}")
                 appendLine()
                 append(stack.toString())
+                // The last few log lines usually say what the app was doing when it
+                // died; a bare stack trace alone rarely explains a user report.
+                val trail = runCatching {
+                    com.itzfallenme.katmusic.util.AppLog.tail(40)
+                }.getOrNull()
+                if (!trail.isNullOrBlank()) {
+                    appendLine()
+                    appendLine("recent log")
+                    appendLine(trail)
+                }
             }
         )
     }

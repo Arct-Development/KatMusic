@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.ExpressiveHeader
+import com.itzfallenme.katmusic.ui.theme.HeaderActionIcon
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -136,59 +139,32 @@ fun LibraryScreen(nav: Navigator) {
     }
 
     Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
+    ExpressiveHeader(
+        title = "Library",
+        subtitle = "${library.liked.size} liked • ${library.playlists.size} playlists",
+        actions = {
+            HeaderActionIcon(Icons.Filled.BarChart, "Stats") { nav.go(Screen.Stats) }
+            HeaderActionIcon(Icons.Filled.Settings, "Settings") { nav.go(Screen.Settings) }
+        }
+    )
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().wobbleOverscroll(),
         contentPadding = PaddingValues(bottom = if (selection.isEmpty()) 30.dp else 110.dp)
     ) {
         item {
-            Column(Modifier.statusBarsPadding()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = "Library",
-                            style = MaterialTheme.typography.displaySmall,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = "${library.liked.size} liked • ${library.playlists.size} playlists",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    com.itzfallenme.katmusic.ui.theme.GlassIconButton(
-                        icon = Icons.Filled.BarChart,
-                        contentDescription = "Stats",
-                        onClick = { nav.go(Screen.Stats) },
-                        size = 42.dp
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    com.itzfallenme.katmusic.ui.theme.GlassIconButton(
-                        icon = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        onClick = { nav.go(Screen.Settings) },
-                        size = 42.dp
-                    )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                libraryTabs.forEachIndexed { index, label ->
+                    Chip(text = label, selected = tab == index, onClick = {
+                        tab = index
+                        selection = emptyList()
+                    })
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    libraryTabs.forEachIndexed { index, label ->
-                        Chip(text = label, selected = tab == index, onClick = {
-                            tab = index
-                            selection = emptyList()
-                        })
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
             }
         }
 
@@ -444,6 +420,7 @@ fun LibraryScreen(nav: Navigator) {
                 }
             }
         }
+    }
     }
 
     androidx.compose.animation.AnimatedVisibility(

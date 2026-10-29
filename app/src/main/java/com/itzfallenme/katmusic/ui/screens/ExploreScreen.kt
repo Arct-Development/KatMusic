@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import com.itzfallenme.katmusic.ui.theme.wobbleOverscroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.Icon
@@ -90,7 +92,7 @@ fun ExploreScreen(nav: Navigator) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().wobbleOverscroll(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
@@ -198,7 +200,7 @@ fun ExploreScreen(nav: Navigator) {
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(favoriteGenres, key = { it.browseId + it.title }) { card ->
+                        itemsIndexed(favoriteGenres, key = { index, card -> "$index:${card.browseId}" }) { _, card ->
                             Chip(text = card.title, onClick = { openCard(card) })
                         }
                     }

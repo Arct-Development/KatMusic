@@ -101,7 +101,7 @@ fun AccountScreen(nav: Navigator) {
         }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize()) {
         SimpleTopBar(
             title = "YouTube Music account",
             onBack = { nav.back() },

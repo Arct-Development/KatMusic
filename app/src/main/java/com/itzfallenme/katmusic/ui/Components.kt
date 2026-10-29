@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Explicit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -52,6 +54,7 @@ import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -88,6 +91,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.itzfallenme.katmusic.playback.DownloadState
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.ServiceLocator
@@ -289,7 +293,7 @@ fun CardShelf(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            items(shelf.cards, key = { it.browseId + it.title }) { card ->
+            itemsIndexed(shelf.cards, key = { index, card -> "$index:${card.browseId}" }) { _, card ->
                 MediaCardItem(
                     card = card,
                     onClick = { onCardClick(card) },
@@ -431,7 +435,23 @@ fun TrackRow(
                         modifier = Modifier.size(13.dp),
                         tint = accent
                     )
-                } else if (activeDownload?.running == true) {
+                } else if (activeDownload?.state == DownloadState.FAILED) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Filled.ErrorOutline,
+                        contentDescription = "Download failed",
+                        modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                } else if (activeDownload?.state == DownloadState.WAITING_NETWORK) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Filled.WifiOff,
+                        contentDescription = "Waiting for Wi-Fi",
+                        modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (activeDownload?.active == true) {
                     Spacer(Modifier.width(6.dp))
                     CircularProgressIndicator(
                         progress = { activeDownload.fraction },
@@ -526,14 +546,9 @@ fun TrackRow(
                     leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
                     onClick = {
                         menuOpen = false
-                        val share = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                "https://music.youtube.com/watch?v=${track.id}"
-                            )
-                        }
-                        context.startActivity(Intent.createChooser(share, "Share track"))
+                        // The popup's context is not always an Activity, so this adds
+                        // FLAG_ACTIVITY_NEW_TASK and never throws.
+                        context.shareLink("https://music.youtube.com/watch?v=${track.id}")
                     }
                 )
                 if (onRemove != null) {
@@ -807,9 +822,18 @@ fun PlayingBars(
 
 @Composable
 fun DownloadStatusChip(track: Track, onClick: () -> Unit) {
-    val progress = ServiceLocator.downloads.progress.value[track.id]
+    val progressMap by ServiceLocator.downloads.progress.collectAsState()
+    val progress = progressMap[track.id]
     val downloaded = ServiceLocator.library.downloadFor(track.id) != null
     if (!downloaded && progress == null) return
+    val label = when {
+        downloaded -> "Downloaded"
+        progress?.state == DownloadState.WAITING_NETWORK -> "Waiting for Wi-Fi"
+        progress?.state == DownloadState.QUEUED -> "Queued"
+        progress?.state == DownloadState.FAILED -> "Retry download"
+        progress?.state == DownloadState.RUNNING -> "${(progress.fraction * 100).toInt()}%"
+        else -> "Download"
+    }
     Row(
         modifier = Modifier
             .clip(CircleShape)
@@ -819,16 +843,18 @@ fun DownloadStatusChip(track: Track, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            if (downloaded) Icons.Filled.DownloadDone else Icons.Filled.Download,
+            when (progress?.state) {
+                DownloadState.FAILED -> Icons.Filled.ErrorOutline
+                DownloadState.WAITING_NETWORK -> Icons.Filled.WifiOff
+                else -> if (downloaded) Icons.Filled.DownloadDone else Icons.Filled.Download
+            },
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = if (progress?.state == DownloadState.FAILED) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.width(6.dp))
-        Text(
-            text = if (downloaded) "Downloaded" else "${(progress?.fraction ?: 0f) * 100}%",
-            style = MaterialTheme.typography.labelSmall
-        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
     }
 }
 

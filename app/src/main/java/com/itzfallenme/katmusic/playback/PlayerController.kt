@@ -384,6 +384,24 @@ class PlayerController(
         _state.value = _state.value.copy(queue = queue)
     }
 
+    /**
+     * Drops everything after the current track. The playing song keeps playing;
+     * only the upcoming part of the queue is cleared, so the queue sheet's "Clear"
+     * action never stops playback by accident.
+     */
+    fun clearUpNext() {
+        val current = player.currentMediaItemIndex
+        if (current < 0) return
+        val keep = current + 1
+        while (player.mediaItemCount > keep) {
+            player.removeMediaItem(player.mediaItemCount - 1)
+        }
+        _state.value = _state.value.copy(
+            queue = _state.value.queue.take(keep),
+            index = player.currentMediaItemIndex
+        )
+    }
+
     fun moveInQueue(from: Int, to: Int) {
         val queue = _state.value.queue
         if (from !in queue.indices || to !in queue.indices) return

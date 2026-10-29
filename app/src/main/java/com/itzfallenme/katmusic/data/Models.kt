@@ -37,6 +37,7 @@ data class MediaCard(
     val id: String get() = browseId
 }
 
+@Serializable
 data class Shelf(
     val title: String? = null,
     val cards: List<MediaCard> = emptyList(),
