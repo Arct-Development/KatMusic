@@ -4,20 +4,18 @@ Thanks for wanting to help. This document keeps contributions consistent and eas
 
 ## Getting set up
 
-1. Install JDK 17 or newer and the Android SDK (API 35). Android Studio works out of the box.
-2. Clone the repository and open it in Android Studio, or build from the terminal:
+APKs are built by the GitHub Actions workflow, so you do not need an Android SDK on your
+machine to ship one.
 
-   ```bash
-   ./gradlew :app:assembleDebug
-   ```
+1. Fork the repository and push a branch to your fork.
+2. Open **Actions → Build APK → Run workflow** and wait for the run to finish.
+3. Download the `katmusic-debug-apk` artifact from that run and unzip it to get
+   `app-debug.apk`.
 
-3. Run the unit tests before opening a pull request (PR):
-
-   ```bash
-   ./gradlew :app:testDebugUnitTest
-   ```
-
-The debug APK lands in `app/build/outputs/apk/debug/app-debug.apk`.
+Pull requests run the same workflow (unit tests plus a debug build), and its log is the
+first thing reviewers look at. If you do use Android Studio locally, `./gradlew
+:app:assembleDebug` and `./gradlew :app:testDebugUnitTest` behave as usual – but CI is the
+supported way to produce an APK.
 
 ## Project layout
 
@@ -38,8 +36,8 @@ The debug APK lands in `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Pull request checklist
 
-- [ ] The project builds (`./gradlew :app:assembleDebug`)
-- [ ] Unit tests pass (`./gradlew :app:testDebugUnitTest`)
+- [ ] The **Build APK** workflow is green on the pull request
+- [ ] The debug artifact installs and the changed screen actually works on a device
 - [ ] New behaviour has been exercised on a device or emulator
 - [ ] No credentials, API keys or personal tokens are committed
 - [ ] The PR description explains *why*, not just *what*

@@ -23,7 +23,7 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Install](#install)
-- [Build from source](#build-from-source)
+- [Build from source](#build-the-apk)
 - [How it works](#how-it-works)
 - [Privacy](#privacy)
 - [FAQ](#faq)
@@ -158,48 +158,63 @@ Screenshots are welcome from contributors – add them to `docs/screenshots/` an
 
 ## Install
 
-KatMusic is built from source at the moment. Release APKs will be attached to GitHub
-releases once the first signed build ships.
+There is no Play Store listing: every APK comes out of GitHub Actions.
 
-1. Download `app-debug.apk` from the CI artifacts of the latest `main` build (or build it yourself).
-2. Allow installing apps from unknown sources for your file manager or browser.
-3. Open the APK and install. Android 8.0 (API 26) or newer is required.
+1. Open the [Actions](../../actions/workflows/android.yml) tab and pick the newest
+   successful **Build APK** run on `main`.
+2. Download the `katmusic-debug-apk` artifact and unzip it; the APK inside is
+   `app-debug.apk`.
+3. Allow installing apps from unknown sources for your file manager or browser.
+4. Open the APK and install. Android 8.0 (API 26) or newer is required.
+
+Tagged builds (`v*`) also attach a release APK to the
+[Releases](../../releases) page.
 
 > KatMusic streams from YouTube Music. It is an unofficial client and is not affiliated
 > with YouTube or Google.
 
-## Build from source
+## Build the APK
 
-Requirements:
+The only supported build path is the GitHub Actions workflow in
+[`.github/workflows/android.yml`](.github/workflows/android.yml); you never need an
+Android SDK, a JDK or Gradle on your own machine.
 
-- JDK 17 or newer
-- Android SDK platform 35 and build tools 35.0.0
-- `ANDROID_HOME` pointing at your SDK, or a `local.properties` with `sdk.dir=...`
+### Debug APK
+
+1. **Fork** this repository (or push a branch to it).
+2. Open **Actions → Build APK → Run workflow**, choose `main` and start it.
+3. When the run turns green, open it and download the **katmusic-debug-apk** artifact.
+4. Unzip it to get `app-debug.apk` and install it on your phone.
+
+Every push to `main` and every pull request runs the same workflow, so the artifact is
+always one click away.
+
+### Release APK
+
+Push a tag and the workflow builds a release APK and publishes it as a GitHub release:
 
 ```bash
-git clone https://github.com/ItzFallenMe/KatMusic.git
-cd KatMusic
-./gradlew :app:assembleDebug          # APK → app/build/outputs/apk/debug/
-./gradlew :app:testDebugUnitTest      # parsing unit tests
-./gradlew :app:assembleRelease        # signed APK → app/build/outputs/apk/release/
+git tag v1.8.0
+git push origin v1.8.0
 ```
 
-Release builds are signed from `keystore.properties` at the repository root:
+To sign that build with your own key instead of the debug key, add these repository
+secrets under **Settings → Secrets and variables → Actions**:
 
-```properties
-storeFile=release.keystore
-storePassword=…
-keyAlias=…
-keyPassword=…
-```
+| Secret | Value |
+| --- | --- |
+| `RELEASE_KEYSTORE_BASE64` | your keystore, base64-encoded (`base64 -w0 release.keystore`) |
+| `RELEASE_STORE_PASSWORD` | the keystore password |
+| `RELEASE_KEY_ALIAS` | the key alias |
+| `RELEASE_KEY_PASSWORD` | the key password |
 
-The same four keys can be supplied as environment variables (`storeFile`, `storePassword`,
-`keyAlias`, `keyPassword`) so CI can sign without committing secrets. When neither is
-present the release build falls back to the debug key, which installs fine on a phone but
-cannot be published. Keep the keystore backed up: Android refuses updates signed with a
-different key.
+Without them the release APK still builds, but it is signed with the debug key, which
+installs fine on a phone yet cannot be published or updated in place. Keep the keystore
+backed up: Android refuses updates signed with a different key.
 
-Open the folder in Android Studio for the full IDE experience; no extra setup is needed.
+Local Gradle commands (`./gradlew :app:assembleDebug`, `:app:testDebugUnitTest`) still
+work in Android Studio if you are developing, but CI is the source of every distributed
+APK.
 
 ## How it works
 
@@ -291,6 +306,10 @@ Planned work, roughly in priority order. Feature requests are welcome – open a
 - [x] Spotify / Apple Music song lists (pasted, matched automatically)
 - [ ] Spotify / Apple Music playlists read directly through their APIs
 
+Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Stream
+signing by [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor). Icons from
+Material Symbols. Built with [Jetpack Compose](https://developer.android.com/jetpack/compose).
+
 ## Credits
 
 KatMusic is an independent implementation inspired by the feature sets and interface
@@ -301,12 +320,9 @@ ideas of two excellent open-source projects:
   TTML lyrics pipeline, the karaoke surface (`KaraokeLyrics.kt`, ported from its
   `ModernLyricsView`), the Discord RPC transport (including the three
   `com.discord.socialsdk.rpc` AIDL stubs) and the genre resolver. A read-only clone of the
-  upstream project is kept at `lastwave/` for reference and is git-ignored.
+  upstream project is kept at `LastWave-native/` for reference and is git-ignored.
 - [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
-Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Stream
-signing by [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor). Icons from
-Material Symbols. Built with [Jetpack Compose](https://developer.android.com/jetpack/compose).
 
 ## License
 
