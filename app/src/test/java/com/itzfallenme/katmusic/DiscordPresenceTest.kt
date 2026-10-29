@@ -103,6 +103,44 @@ class DiscordPresenceTest {
     }
 
     @Test
+    fun `state line reports the codec bitrate and sample rate the decoder saw`() {
+        val activity = DiscordPresence.buildActivity(
+            track = track,
+            playing = true,
+            positionMs = 0,
+            durationMs = 213_000,
+            nowMs = 1L,
+            codecMime = "audio/opus",
+            bitrateKbps = 256,
+            sampleRateHz = 48_000
+        )
+        assertEquals("Rick Astley\n · Opus · 256 kbps · 48 kHz", activity.field("state"))
+    }
+
+    @Test
+    fun `unknown stream facts collapse to the artist alone`() {
+        val activity = DiscordPresence.buildActivity(
+            track = track.copy(album = null),
+            playing = true,
+            positionMs = 0,
+            durationMs = 213_000,
+            nowMs = 1L,
+            bitrateKbps = 0,
+            sampleRateHz = 0
+        )
+        assertEquals("Rick Astley", activity.field("state"))
+        assertEquals("Opus", DiscordPresence.codecLabel("audio/opus"))
+        assertEquals(null, DiscordPresence.codecLabel("audio/unknown"))
+    }
+
+    @Test
+    fun `signature includes the measured format so a late codec repushes the card`() {
+        val before = DiscordPresence.signature(track, true, 213_000)
+        val after = DiscordPresence.signature(track, true, 213_000, "audio/opus", 256, 48_000)
+        assertTrue(before != after)
+    }
+
+    @Test
     fun `set and clear frames use the activity command`() {
         val activity = DiscordPresence.buildActivity(track, true, 0, 213_000, 1L)
         val set = DiscordPresence.setActivityFrame(activity, 42, "nonce")

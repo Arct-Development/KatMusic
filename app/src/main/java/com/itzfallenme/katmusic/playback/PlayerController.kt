@@ -52,7 +52,13 @@ data class PlayerUiState(
     val error: String? = null,
     val radioLoading: Boolean = false,
     /** Non-zero when a listening-break reminder is due, in minutes. */
-    val listeningReminderMinutes: Int = 0
+    val listeningReminderMinutes: Int = 0,
+    /** Sample MIME of the audio decoder actually in use, once known. */
+    val audioCodec: String? = null,
+    /** Bitrate the decoder reported for the current stream; 0 when unknown. */
+    val audioBitrateKbps: Int = 0,
+    /** Output sample rate the decoder reported; 0 when unknown. */
+    val audioSampleRateHz: Int = 0
 )
 
 /**
@@ -174,7 +180,12 @@ class PlayerController(
                     track = track,
                     index = index,
                     durationMs = track?.durationMs ?: exo.duration.coerceAtLeast(0),
-                    positionMs = 0
+                    positionMs = 0,
+                    // The next stream has not been decoded yet, so its format is
+                    // unknown until the decoder reports it.
+                    audioCodec = null,
+                    audioBitrateKbps = 0,
+                    audioSampleRateHz = 0
                 )
                 track?.let { onTrackStarted(it) }
                 refreshWidget()
@@ -235,6 +246,22 @@ class PlayerController(
                         buffering = false
                     )
                 }
+            }
+        })
+        // The decoder is the only honest source of the stream's format: the tier
+        // the user picked is a ceiling, not what was served. Publishing this lets
+        // Discord show a real codec/bitrate line instead of a guessed one.
+        exo.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onAudioInputFormatChanged(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                format: androidx.media3.common.Format,
+                decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?
+            ) {
+                _state.value = _state.value.copy(
+                    audioCodec = format.sampleMimeType,
+                    audioBitrateKbps = (format.averageBitrate.takeIf { it > 0 } ?: format.bitrate) / 1000,
+                    audioSampleRateHz = format.sampleRate
+                )
             }
         })
         exo.repeatMode = Player.REPEAT_MODE_OFF

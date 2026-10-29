@@ -31,6 +31,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The app compiles against API 37, which runner images do not ship yet.
+      - name: Install Android SDK 37
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
@@ -71,6 +78,12 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK 37
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"
 
       # Optional: a repository owner can add RELEASE_KEYSTORE_BASE64 plus the
       # three password/alias secrets so tagged builds are signed with a stable

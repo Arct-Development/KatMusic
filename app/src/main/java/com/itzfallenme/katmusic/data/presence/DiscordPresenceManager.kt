@@ -100,7 +100,14 @@ class DiscordPresenceManager(
 
             // Discord runs the progress bar from the timestamps, so an unchanged card
             // needs no repush at all - position ticks never reach the wire.
-            val signature = DiscordPresence.signature(track, playing, state.durationMs)
+            val signature = DiscordPresence.signature(
+                track = track,
+                playing = playing,
+                durationMs = state.durationMs,
+                codecMime = state.audioCodec,
+                bitrateKbps = state.audioBitrateKbps,
+                sampleRateHz = state.audioSampleRateHz
+            )
             if (!force && signature == lastSignature) return
 
             val appId = configuredAppId.toLongOrNull()
@@ -121,7 +128,10 @@ class DiscordPresenceManager(
                 playing = playing,
                 positionMs = state.positionMs,
                 durationMs = state.durationMs,
-                nowMs = System.currentTimeMillis()
+                nowMs = System.currentTimeMillis(),
+                codecMime = state.audioCodec,
+                bitrateKbps = state.audioBitrateKbps,
+                sampleRateHz = state.audioSampleRateHz
             )
             val sent = transport?.setActivity(activity) == true
             if (sent) {

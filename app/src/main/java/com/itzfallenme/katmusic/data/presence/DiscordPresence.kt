@@ -16,10 +16,14 @@ import kotlinx.serialization.json.putJsonArray
  * ```
  *   Listening to KatMusic
  *   ┌────┐  Song title
- *   │art │  Artist · Album
- *   └────┘  ▁▁▁▁▁▁ 1:04 / 3:47
+ *   │art │  Artist
+ *   └────┘   · Opus · 256 kbps · 48 kHz
+ *           ▁▁▁▁▁▁ 1:04 / 3:47
  *   [ Listen on YouTube ]   [ Get KatMusic ]
  * ```
+ *
+ * The second state line only ever carries facts the decoder reported, so it can
+ * shrink to just the artist when nothing about the stream is known yet.
  *
  * Timestamps are pushed as a start/end pair so Discord runs the progress bar on its own
  * clock: one presence per track stays correct to the end, and position ticks never need
@@ -60,9 +64,36 @@ object DiscordPresence {
         return if (trimmed.length > limit) trimmed.take(limit - 1) + "…" else trimmed
     }
 
-    private fun stateLine(artist: String, album: String?): String {
+    /** "Opus · 256 kbps · 48 kHz": only the parts the decoder actually reported. */
+    fun qualityLine(codecMime: String?, bitrateKbps: Int, sampleRateHz: Int): String {
+        val parts = mutableListOf<String>()
+        codecLabel(codecMime)?.let { parts += it }
+        if (bitrateKbps > 0) parts += "$bitrateKbps kbps"
+        if (sampleRateHz > 0) {
+            val khz = sampleRateHz / 1000.0
+            val rounded = kotlin.math.round(khz).toInt()
+            parts += if (kotlin.math.abs(khz - rounded) < 0.05) "$rounded kHz" else "%.1f kHz".format(khz)
+        }
+        return parts.joinToString(" · ")
+    }
+
+    /** Friendly name for a sample MIME type; null when the codec is unknown. */
+    fun codecLabel(codecMime: String?): String? = when (codecMime?.trim()?.lowercase()) {
+        "audio/opus" -> "Opus"
+        "audio/mp4a-latm", "audio/aac" -> "AAC"
+        "audio/flac" -> "FLAC"
+        "audio/mpeg", "audio/mp3" -> "MP3"
+        "audio/vorbis", "audio/x-vorbis" -> "Vorbis"
+        "audio/eac3" -> "E-AC3"
+        "audio/ac3" -> "AC3"
+        else -> null
+    }
+
+    /** Artist, then the measured quality; the album falls back in when it is all we know. */
+    private fun stateLine(artist: String, album: String?, quality: String): String {
         val head = artist.trim().ifEmpty { album?.trim().orEmpty() }.ifEmpty { "KatMusic" }
-        val line = if (album.isNullOrBlank()) clip(head) else clip(head) + "\n · " + clip(album)
+        val tail = quality.ifBlank { clip(album.orEmpty()) }
+        val line = if (tail.isBlank()) clip(head) else clip(head) + "\n · " + tail
         return if (line.length > MAX_STATE) line.take(MAX_STATE - 1) + "…" else line
     }
 
@@ -77,11 +108,19 @@ object DiscordPresence {
     }
 
     /** Identity of everything the card shows, for throttling repushes. */
-    fun signature(track: Track?, playing: Boolean, durationMs: Long): String {
+    fun signature(
+        track: Track?,
+        playing: Boolean,
+        durationMs: Long,
+        codecMime: String? = null,
+        bitrateKbps: Int = 0,
+        sampleRateHz: Int = 0
+    ): String {
         if (track == null) return "none"
         return listOf(
             track.id, track.title, track.artist, track.album.orEmpty(),
-            track.artwork, playing.toString(), durationMs.toString()
+            track.artwork, playing.toString(), durationMs.toString(),
+            codecMime.orEmpty(), bitrateKbps.toString(), sampleRateHz.toString()
         ).joinToString("|")
     }
 
@@ -90,7 +129,10 @@ object DiscordPresence {
         playing: Boolean,
         positionMs: Long,
         durationMs: Long,
-        nowMs: Long
+        nowMs: Long,
+        codecMime: String? = null,
+        bitrateKbps: Int = 0,
+        sampleRateHz: Int = 0
     ): JsonObject {
         val title = clip(track.title)
         val duration = durationMs.takeIf { it > 0 } ?: track.durationMs
@@ -107,7 +149,14 @@ object DiscordPresence {
             put("type", TYPE_LISTENING)
             put("name", "KatMusic")
             put("details", title)
-            put("state", stateLine(track.artist, track.album))
+            put(
+                "state",
+                stateLine(
+                    track.artist,
+                    track.album,
+                    qualityLine(codecMime, bitrateKbps, sampleRateHz)
+                )
+            )
             timestamps?.let { put("timestamps", it) }
             largeImage(track)?.let { image ->
                 put("assets", buildJsonObject {
