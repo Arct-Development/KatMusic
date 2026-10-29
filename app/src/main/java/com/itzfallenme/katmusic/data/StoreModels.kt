@@ -61,6 +61,8 @@ data class AppSettings(
     val lyricsEnabled: Boolean = true,
     val lyricsOffsetMs: Long = 0L,
     val lyricsTextScale: Float = 1f,
+    /** Prefer the Apple-Music TTML catalogue so every word lights up as it is sung. */
+    val wordByWordLyrics: Boolean = true,
     val autoplayRadio: Boolean = true,
     val crossfadeSeconds: Int = 0,
     val skipSilence: Boolean = false,

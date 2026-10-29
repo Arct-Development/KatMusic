@@ -279,6 +279,11 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "Synced lyrics from LRCLIB",
                     checked = settings.lyricsEnabled
                 ) { update { s -> s.copy(lyricsEnabled = it) } }
+                SettingToggle(
+                    title = "Word-by-word lyrics",
+                    subtitle = "Apple Music TTML timing, karaoke highlight",
+                    checked = settings.wordByWordLyrics
+                ) { update { s -> s.copy(wordByWordLyrics = it) } }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "Timing offset: ${settings.lyricsOffsetMs} ms",

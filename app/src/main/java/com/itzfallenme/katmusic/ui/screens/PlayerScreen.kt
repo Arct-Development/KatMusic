@@ -24,6 +24,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,6 +76,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +96,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,7 +106,9 @@ import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.data.CardKind
 import com.itzfallenme.katmusic.data.LyricLine
 import com.itzfallenme.katmusic.data.Lyrics
+import com.itzfallenme.katmusic.data.LyricSyllable
 import com.itzfallenme.katmusic.data.Track
+import com.itzfallenme.katmusic.data.WordLyricsApi
 import com.itzfallenme.katmusic.data.YtMusic
 import com.itzfallenme.katmusic.playback.RepeatMode
 import com.itzfallenme.katmusic.ui.Chip
@@ -144,11 +151,21 @@ fun PlayerScreen(nav: Navigator) {
         label = "dragAlpha"
     )
 
-    LaunchedEffect(track?.id, settings.lyricsEnabled) {
+    LaunchedEffect(track?.id, settings.lyricsEnabled, settings.wordByWordLyrics) {
         val current = track ?: return@LaunchedEffect
         if (!settings.lyricsEnabled) return@LaunchedEffect
         lyricsLoading = true
-        lyrics = YtMusic.lyricsFor(current)
+        val wordSynced = if (settings.wordByWordLyrics) {
+            runCatching {
+                WordLyricsApi.find(
+                    title = current.title,
+                    artist = current.artist,
+                    album = current.album,
+                    durationSec = current.durationMs / 1000
+                )
+            }.getOrNull()
+        } else null
+        lyrics = wordSynced ?: YtMusic.lyricsFor(current)
         lyricsLoading = false
     }
 
@@ -352,7 +369,8 @@ fun PlayerScreen(nav: Navigator) {
                         loading = lyricsLoading,
                         positionMs = state.positionMs,
                         offsetMs = settings.lyricsOffsetMs,
-                        scale = settings.lyricsTextScale
+                        scale = settings.lyricsTextScale,
+                        playing = state.playing
                     )
                     2 -> QueuePane(nav)
                     else -> ArtworkPane(
@@ -886,16 +904,36 @@ private fun LyricsPane(
     loading: Boolean,
     positionMs: Long,
     offsetMs: Long,
-    scale: Float
+    scale: Float,
+    playing: Boolean
 ) {
     val listState = rememberLazyListState()
     val synced = lyrics?.synced.orEmpty()
-    val activeIndex = synced.indexOfLast { it.timeMs <= positionMs + offsetMs }
+    // Frame-accurate clock: the player only publishes a position a few times a second,
+    // which would make word highlighting stutter, so interpolate between updates.
+    var smoothMs by remember { mutableLongStateOf(positionMs + offsetMs) }
+    LaunchedEffect(positionMs, playing, offsetMs) {
+        if (!playing) {
+            smoothMs = positionMs + offsetMs
+            return@LaunchedEffect
+        }
+        val base = positionMs + offsetMs
+        val startedAt = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now ->
+                smoothMs = base + (now - startedAt) / 1_000_000L
+            }
+        }
+    }
+    val activeIndex = synced.indexOfLast { it.timeMs <= smoothMs }
 
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0) {
+            // Park the line being sung around the upper third so the next lines stay visible.
+            val viewport = listState.layoutInfo.viewportSize.height
+            val anchor = if (viewport > 0) (viewport * 0.38f).toInt() else 140
             runCatching {
-                listState.animateScrollToItem(activeIndex.coerceAtLeast(0), scrollOffset = -140)
+                listState.animateScrollToItem(activeIndex.coerceAtLeast(0), scrollOffset = -anchor)
             }
         }
     }
@@ -912,7 +950,7 @@ private fun LyricsPane(
             Text("No lyrics found", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(6.dp))
             Text(
-                "LRCLIB doesn't have ${track.title} yet.",
+                "No synced lyrics available for ${track.title}.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -936,26 +974,49 @@ private fun LyricsPane(
                 )
             }
         }
-        else -> LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 26.dp, vertical = 36.dp)
-        ) {
-            items(synced.size) { index ->
-                val line: LyricLine = synced[index]
-                LyricRow(
-                    line = line,
-                    active = index == activeIndex,
-                    distance = abs(index - activeIndex),
-                    scale = scale
-                )
+        else -> Column(Modifier.fillMaxSize()) {
+            if (lyrics.hasWordTiming) {
+                Row(
+                    Modifier.padding(horizontal = 26.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            "Word-by-word • ${lyrics.source.ifBlank { "synced" }}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 26.dp, vertical = 18.dp)
+            ) {
+                items(synced.size) { index ->
+                    val line: LyricLine = synced[index]
+                    LyricRow(
+                        line = line,
+                        active = index == activeIndex,
+                        distance = abs(index - activeIndex),
+                        scale = scale,
+                        positionMs = smoothMs
+                    )
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Float) {
+private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Float, positionMs: Long) {
     val scheme = MaterialTheme.colorScheme
     val emphasis by animateFloatAsState(
         targetValue = if (active) 1f else 0f,
@@ -968,11 +1029,34 @@ private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Flo
         distance == 2 -> 0.4f
         else -> 0.26f
     }
+    if (line.hasSyllables) {
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationX = 10f * emphasis
+                    alpha = lineAlpha
+                }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            line.syllables.forEach { syllable ->
+                SyllableWord(
+                    syllable = syllable,
+                    active = active,
+                    positionMs = positionMs,
+                    scale = scale
+                )
+            }
+        }
+        return
+    }
     Text(
         text = line.text,
         style = MaterialTheme.typography.titleLarge.copy(
             fontSize = MaterialTheme.typography.titleLarge.fontSize * scale * (1f + 0.05f * emphasis),
-            fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold
+            fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+            textAlign = TextAlign.Center
         ),
         color = if (active) scheme.primary else scheme.onSurface.copy(alpha = lineAlpha),
         modifier = Modifier
@@ -982,6 +1066,48 @@ private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Flo
                 alpha = lineAlpha
             }
             .padding(vertical = 8.dp)
+    )
+}
+
+/**
+ * A single karaoke token: the fill sweeps across the word in sync with its timing,
+ * so every syllable lights up exactly when it is sung.
+ */
+@Composable
+private fun SyllableWord(
+    syllable: LyricSyllable,
+    active: Boolean,
+    positionMs: Long,
+    scale: Float
+) {
+    val scheme = MaterialTheme.colorScheme
+    val fraction = if (syllable.durationMs > 0) {
+        ((positionMs - syllable.timeMs).toFloat() / syllable.durationMs).coerceIn(0f, 1f)
+    } else if (positionMs >= syllable.timeMs) 1f else 0f
+    val sung = if (syllable.isBackground) scheme.onSurfaceVariant else scheme.primary
+    val pending = scheme.onSurface.copy(alpha = if (active) 0.32f else 0.24f)
+    val metrics = MaterialTheme.typography.titleLarge
+    val size = metrics.fontSize * scale * (if (syllable.isBackground) 0.82f else 1f)
+    val weight = if (active) FontWeight.Black else FontWeight.SemiBold
+    val style = when {
+        fraction <= 0f -> TextStyle(color = pending, fontSize = size, fontWeight = weight, fontFamily = metrics.fontFamily)
+        fraction >= 1f -> TextStyle(color = sung, fontSize = size, fontWeight = weight, fontFamily = metrics.fontFamily)
+        else -> TextStyle(
+            brush = Brush.horizontalGradient(
+                0f to sung,
+                fraction to sung,
+                fraction to pending,
+                1f to pending
+            ),
+            fontSize = size,
+            fontWeight = weight,
+            fontFamily = metrics.fontFamily
+        )
+    }
+    Text(
+        text = syllable.text,
+        style = style,
+        modifier = Modifier.padding(end = 5.dp, top = 2.dp, bottom = 2.dp)
     )
 }
 

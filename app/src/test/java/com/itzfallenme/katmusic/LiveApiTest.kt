@@ -61,6 +61,20 @@ class LiveApiTest {
     }
 
     @Test
+    fun `word lyrics provider returns syllable timing`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val lyrics = com.itzfallenme.katmusic.data.WordLyricsApi.find(
+            "Shape of You", "Ed Sheeran", "÷ (Divide)", 234
+        )
+        assertNotNull("expected word-timed lyrics", lyrics)
+        assertTrue("expected lines", lyrics!!.synced.isNotEmpty())
+        assertTrue("expected syllables", lyrics.hasWordTiming)
+        val line = lyrics.synced.first { it.hasSyllables }
+        println("WORD LINE: ${line.syllables.joinToString(" | ") { "${it.text}@${it.timeMs}+${it.durationMs}" }}")
+        assertTrue("syllable order", line.syllables.zipWithNext().all { (a, b) -> a.timeMs <= b.timeMs })
+    }
+
+    @Test
     fun `lrclib returns synced lyrics for a popular track`() = runBlocking {
         assumeTrue(System.getenv("KAT_LIVE") == "1")
         val lyrics = LyricsApi.find("Never Gonna Give You Up", "Rick Astley", null, 213)

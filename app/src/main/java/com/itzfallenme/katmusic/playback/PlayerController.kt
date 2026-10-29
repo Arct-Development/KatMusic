@@ -100,7 +100,7 @@ class PlayerController(
     var localFileResolver: ((String) -> java.io.File?)? = null
 
     private fun buildPlayer(): ExoPlayer {
-        val okHttpFactory = OkHttpDataSource.Factory(InnerTube.http)
+        val okHttpFactory = OkHttpDataSource.Factory(InnerTube.streamHttp)
             .setUserAgent(InnerTube.VR_UA)
             .setDefaultRequestProperties(mapOf("Referer" to "https://music.youtube.com/"))
         val dataSourceFactory = ResolvingDataSource.Factory(

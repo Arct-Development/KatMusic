@@ -4,6 +4,23 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Word-by-word lyrics: Apple Music TTML from the Better Lyrics API, parsed into
+  per-word timings (background vocals, translation tracks and the global
+  `lyricOffset` handled) and drawn with a karaoke fill that sweeps across every
+  word, interpolated at frame rate between player position updates
+- Word-by-word switch in Settings; LRCLIB line lyrics stay the fallback
+
+### Fixed
+
+- Playback no longer dies mid-song: audio streaming and downloads now use a client
+  without a whole-call timeout (the shared 45 s call timeout aborted every stream)
+- Word lyrics lookup retries the provider's cache-key combinations, so cached
+  songs are found with or without album and duration metadata
+
 ## [1.1.0] – 2026-10-28
 
 ### Added

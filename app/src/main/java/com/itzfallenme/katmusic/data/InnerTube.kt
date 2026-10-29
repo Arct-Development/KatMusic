@@ -41,6 +41,18 @@ object InnerTube {
         .retryOnConnectionFailure(true)
         .build()
 
+    /**
+     * Client for long-lived response bodies: audio streaming and file downloads.
+     *
+     * [http]'s call timeout covers the entire call including body reads, so reusing it
+     * for playback aborted every song 45 seconds in. Here only the idle socket timeouts
+     * apply, which is what ExoPlayer and the downloader need.
+     */
+    val streamHttp: OkHttpClient = http.newBuilder()
+        .callTimeout(0, TimeUnit.MILLISECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private val JSON_TYPE = "application/json; charset=utf-8".toMediaType()
 
     /** Optional signed-in session headers, supplied by [AccountStore]. */

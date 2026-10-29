@@ -94,10 +94,13 @@ object LyricsApi {
             .trim()
 
     /** Parses standard LRC, including lines that carry several timestamps. */
+    private val wordStamp = Regex("<(\\d{1,2}):(\\d{1,2})(?:[.:](\\d{1,3}))?>")
+
     fun parseLrc(lrc: String): List<LyricLine> {
         if (lrc.isBlank()) return emptyList()
         val out = ArrayList<LyricLine>()
         val stamp = Regex("\\[(\\d{1,2}):(\\d{1,2})(?:[.:](\\d{1,3}))?]")
+        val rawLines = ArrayList<Pair<Long, String>>()
         lrc.lineSequence().forEach { raw ->
             val matches = stamp.findAll(raw).toList()
             if (matches.isEmpty()) return@forEach
@@ -113,9 +116,69 @@ object LyricsApi {
                     2 -> fractionRaw.toLong() * 10
                     else -> fractionRaw.take(3).toLong()
                 }
-                out.add(LyricLine(minutes * 60_000 + seconds * 1000 + fraction, content))
+                rawLines.add(minutes * 60_000 + seconds * 1000 + fraction to content)
+            }
+        }
+        rawLines.sortBy { it.first }
+        rawLines.forEachIndexed { index, (startMs, content) ->
+            val nextStart = rawLines.getOrNull(index + 1)?.first
+            val words = parseWordRuns(content, startMs, nextStart)
+            val plainText = content.replace(wordStamp, "").trim()
+            if (words.isEmpty()) {
+                if (plainText.isNotEmpty()) {
+                    out.add(LyricLine(timeMs = startMs, text = plainText))
+                }
+            } else {
+                out.add(
+                    LyricLine(
+                        timeMs = minOf(startMs, words.first().timeMs),
+                        text = plainText.ifBlank { words.joinToString(" ") { it.text } },
+                        durationMs = ((nextStart ?: (words.last().timeMs + words.last().durationMs)) -
+                            startMs).coerceAtLeast(0L),
+                        syllables = words
+                    )
+                )
             }
         }
         return out.sortedBy { it.timeMs }.distinctBy { it.timeMs to it.text }
+    }
+
+    /** Word-level stamps (`<mm:ss.xx>word`) found in enhanced LRC files. */
+    private fun parseWordRuns(body: String, lineStartMs: Long, lineEndMs: Long?): List<LyricSyllable> {
+        val marks = wordStamp.findAll(body).toList()
+        if (marks.size < 2) return emptyList()
+        data class Run(val startMs: Long, val text: String)
+        val runs = marks.mapIndexed { index, mark ->
+            val until = marks.getOrNull(index + 1)?.range?.first ?: body.length
+            val minutes = mark.groupValues[1].toLongOrNull() ?: 0L
+            val seconds = mark.groupValues[2].toLongOrNull() ?: 0L
+            val fractionRaw = mark.groupValues[3]
+            val fraction = when (fractionRaw.length) {
+                0 -> 0L
+                1 -> fractionRaw.toLong() * 100
+                2 -> fractionRaw.toLong() * 10
+                else -> fractionRaw.take(3).toLong()
+            }
+            Run(
+                startMs = minutes * 60_000 + seconds * 1000 + fraction,
+                text = body.substring(mark.range.last + 1, until)
+            )
+        }
+        val words = ArrayList<LyricSyllable>()
+        runs.forEachIndexed { index, run ->
+            val text = run.text.trim()
+            if (text.isEmpty()) return@forEachIndexed
+            val endMs = runs.getOrNull(index + 1)?.startMs
+                ?: lineEndMs
+                ?: (run.startMs + 800L)
+            words.add(
+                LyricSyllable(
+                    timeMs = run.startMs.coerceAtLeast(0L),
+                    durationMs = (endMs - run.startMs).coerceAtLeast(0L),
+                    text = text
+                )
+            )
+        }
+        return words
     }
 }

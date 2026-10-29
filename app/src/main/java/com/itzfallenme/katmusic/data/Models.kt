@@ -66,13 +66,31 @@ data class StreamInfo(
     val expiresAt: Long = 0L
 )
 
-data class LyricLine(val timeMs: Long, val text: String)
+/** One word (or word fragment) with its own timing inside a lyric line. */
+data class LyricSyllable(
+    val timeMs: Long,
+    val durationMs: Long,
+    val text: String,
+    val isBackground: Boolean = false,
+    val appendToPrevious: Boolean = false
+)
+
+data class LyricLine(
+    val timeMs: Long,
+    val text: String,
+    val durationMs: Long = 0L,
+    val syllables: List<LyricSyllable> = emptyList()
+) {
+    val hasSyllables: Boolean get() = syllables.isNotEmpty()
+}
 
 data class Lyrics(
     val synced: List<LyricLine> = emptyList(),
     val plain: String = "",
-    val source: String = ""
+    val source: String = "",
+    val wordSynced: Boolean = false
 ) {
     val isEmpty: Boolean get() = synced.isEmpty() && plain.isBlank()
     val isSynced: Boolean get() = synced.isNotEmpty()
+    val hasWordTiming: Boolean get() = wordSynced || synced.any { it.hasSyllables }
 }

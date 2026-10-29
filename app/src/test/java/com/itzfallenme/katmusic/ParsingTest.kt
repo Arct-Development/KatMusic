@@ -127,6 +127,50 @@ class ParsingTest {
         )
     }
 
+    @Test
+    fun `ttml parser extracts word timing background vocals and offset`() {
+        val ttml = """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+              <head><metadata><audio lyricOffset="-0.5"/></metadata></head>
+              <body><div>
+                <p begin="1.0" end="3.0">
+                  <span begin="1.0" end="1.5">Hel</span><span begin="1.5" end="2.0">lo </span><span begin="2.0" end="2.6">world</span>
+                </p>
+                <p begin="4.0" end="5.0">
+                  <span begin="4.0" end="4.5">Main</span>
+                  <span ttm:role="x-bg" begin="4.5" end="5.0">echo</span>
+                </p>
+              </div></body>
+            </tt>
+        """.trimIndent()
+
+        val lines = com.itzfallenme.katmusic.data.TtmlParser.parse(ttml)
+
+        assertEquals(2, lines.size)
+        assertEquals(500L, lines[0].timeMs)
+        assertEquals("Hello world", lines[0].text)
+        val words = lines[0].syllables.filter { !it.isBackground }
+        assertEquals(2, words.size)
+        // Spans without an interior space are one word, so "Hel"+"lo " merge.
+        assertEquals("Hello", words[0].text)
+        assertEquals(500L, words[0].timeMs)
+        assertEquals(1_000L, words[0].durationMs)
+        assertEquals("world", words[1].text)
+        assertEquals(1_500L, words[1].timeMs)
+
+        assertEquals(3_500L, lines[1].timeMs)
+        assertTrue(lines[1].syllables.any { it.isBackground && it.text == "echo" })
+    }
+
+    @Test
+    fun `ttml parser reads clock formats`() {
+        assertEquals(1_500L, com.itzfallenme.katmusic.data.TtmlParser.parseTime("1.5s"))
+        assertEquals(1_500L, com.itzfallenme.katmusic.data.TtmlParser.parseTime("1500ms"))
+        assertEquals(61_250L, com.itzfallenme.katmusic.data.TtmlParser.parseTime("01:01.250"))
+        assertEquals(3_725_000L, com.itzfallenme.katmusic.data.TtmlParser.parseTime("01:02:05"))
+        assertEquals(null, com.itzfallenme.katmusic.data.TtmlParser.parseTime(""))
+    }
+
     private fun JsonObject.get(key: String) = this[key]
 
     companion object {

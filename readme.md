@@ -54,9 +54,12 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 
 ### Lyrics
 
-- Millisecond-synced lyrics from [LRCLIB](https://lrclib.net)
-- Karaoke highlighting that follows playback and scrolls itself
-- Timing offset and text-size controls
+- **Word-by-word lyrics** from the [Better Lyrics](https://better-lyrics.boidu.dev/)
+  API: Apple Music TTML carries a start and end time for every word, so the fill
+  sweeps across each word exactly as it is sung, background vocals included
+- Millisecond-synced line lyrics from [LRCLIB](https://lrclib.net) as the fallback
+- Karaoke highlighting that follows playback at frame rate and scrolls itself
+- Timing offset, text-size controls and a switch to turn word sync off
 - Plain-text fallback when no synchronised version exists
 
 ### Library

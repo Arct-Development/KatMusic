@@ -72,7 +72,7 @@ class DownloadManager(
                     .url(info.url)
                     .header("User-Agent", InnerTube.VR_UA)
                     .build()
-                InnerTube.http.newCall(request).execute().use { response ->
+                InnerTube.streamHttp.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) error("Download failed (${response.code})")
                     val body = response.body ?: error("Empty download stream")
                     val total = body.contentLength()
