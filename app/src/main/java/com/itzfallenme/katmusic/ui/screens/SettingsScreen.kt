@@ -243,6 +243,22 @@ fun SettingsScreen(nav: Navigator, categoryId: String? = null) {
                     subtitle = "Snap transitions and stop ambient drift, breathing art and spinning vinyl",
                     checked = settings.reducedMotion
                 ) { update { s -> s.copy(reducedMotion = it) } }
+                SettingToggle(
+                    title = "Liquid Glass",
+                    subtitle = "iOS-style translucent materials for the dock, mini player and player",
+                    checked = settings.liquidGlass
+                ) { update { s -> s.copy(liquidGlass = it) } }
+                SettingToggle(
+                    title = "App font",
+                    subtitle = "Bundled Google Sans Flex instead of the system typeface",
+                    checked = settings.useCustomFont
+                ) { update { s -> s.copy(useCustomFont = it) } }
+                SettingToggle(
+                    title = "Bold type",
+                    subtitle = "Heavier headlines and labels; turn off for the light cut",
+                    checked = settings.useBoldFont,
+                    enabled = settings.useCustomFont
+                ) { update { s -> s.copy(useBoldFont = it) } }
                 Spacer(Modifier.height(12.dp))
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -972,6 +988,7 @@ private fun SettingToggle(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onChange: (Boolean) -> Unit
 ) {
     Surface(
@@ -997,7 +1014,7 @@ private fun SettingToggle(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Switch(checked = checked, onCheckedChange = onChange)
+            Switch(checked = checked, enabled = enabled, onCheckedChange = onChange)
         }
     }
 }

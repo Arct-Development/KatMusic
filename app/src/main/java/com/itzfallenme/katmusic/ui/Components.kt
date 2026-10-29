@@ -678,7 +678,8 @@ fun EmptyState(
 fun MiniPlayer(
     state: PlayerUiState,
     onOpen: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backdrop: com.kyant.backdrop.Backdrop? = null
 ) {
     val track = state.track ?: return
     val progress by animateFloatAsState(
@@ -688,11 +689,11 @@ fun MiniPlayer(
         animationSpec = Motion.effectsDefault(),
         label = "progress"
     )
-    GlassSurface(
+    com.itzfallenme.katmusic.ui.theme.GlassChrome(
+        backdrop = backdrop,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        elevation = 14.dp,
-        fillAlpha = 0.8f
+        elevation = 14.dp
     ) {
         Column {
             Row(

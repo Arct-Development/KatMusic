@@ -60,6 +60,12 @@ data class AppSettings(
     val amoled: Boolean = false,
     val seedColor: String = "#8AB4F8",
     val useSystemDynamicColor: Boolean = false,
+    /** iOS-style translucent materials across the app. */
+    val liquidGlass: Boolean = true,
+    /** Use the bundled Google Sans Flex rather than the platform typeface. */
+    val useCustomFont: Boolean = true,
+    /** Bolder cut of the bundled font; ignored when [useCustomFont] is off. */
+    val useBoldFont: Boolean = true,
     val lyricsEnabled: Boolean = true,
     val lyricsOffsetMs: Long = 0L,
     val lyricsTextScale: Float = 1f,

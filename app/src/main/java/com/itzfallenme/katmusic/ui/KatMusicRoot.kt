@@ -82,6 +82,7 @@ import com.itzfallenme.katmusic.ui.screens.StatsScreen
 import com.itzfallenme.katmusic.ui.theme.AmbientBackdrop
 import com.itzfallenme.katmusic.ui.theme.GlassSurface
 import com.itzfallenme.katmusic.ui.theme.KatMusicTheme
+import com.itzfallenme.katmusic.ui.theme.liquidGlassSource
 import com.itzfallenme.katmusic.ui.theme.Motion
 import com.itzfallenme.katmusic.ui.theme.bounceClickable
 import com.itzfallenme.katmusic.ui.theme.liquidGlass
@@ -210,40 +211,41 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
         seed = seed,
         amoled = settings.amoled,
         light = !darkTheme,
-        dynamicColor = settings.useSystemDynamicColor
+        dynamicColor = settings.useSystemDynamicColor,
+        liquidGlass = settings.liquidGlass,
+        useCustomFont = settings.useCustomFont,
+        useBoldFont = settings.useBoldFont
     ) {
         BackHandler(enabled = nav.canGoBack || nav.playerOpen || nav.queueOpen) {
             nav.back()
         }
+        // One backdrop layer captures the wash and the screen content; the dock and
+        // mini player are drawn as siblings above it so their glass refracts what is
+        // really behind them instead of a flat tint.
+        val backdropColor = MaterialTheme.colorScheme.background
+        val backdrop = com.itzfallenme.katmusic.ui.theme.rememberLayerBackdrop {
+            drawRect(backdropColor)
+            drawContent()
+        }
         Box(Modifier.fillMaxSize()) {
-            AmbientBackdrop(
-                accent = seed,
-                intensity = if (playerState.track != null) 1f else 0.55f
-            )
-            Scaffold(
-                containerColor = Color.Transparent,
-                bottomBar = {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        AnimatedVisibility(
-                            visible = playerState.track != null && !nav.playerOpen,
-                            enter = slideInVertically(Motion.spatialDefault()) { it } + fadeIn(Motion.effectsDefault()),
-                            exit = slideOutVertically(Motion.spatialFast()) { it } + fadeOut(Motion.effectsFast())
-                        ) {
-                            MiniPlayer(
-                                state = playerState,
-                                onOpen = { nav.openPlayer() },
-                                modifier = Modifier.padding(bottom = 10.dp)
-                            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (backdrop != null) {
+                            Modifier.liquidGlassSource(backdrop)
+                        } else {
+                            Modifier
                         }
-                        Dock(nav = nav)
-                    }
-                }
-            ) { padding ->
+                    )
+            ) {
+                AmbientBackdrop(
+                    accent = seed,
+                    intensity = if (playerState.track != null) 1f else 0.55f
+                )
+                Scaffold(
+                    containerColor = Color.Transparent
+                ) { padding ->
                 // The custom rubber-band overscroll is the only overscroll effect in
                 // the app; leaving the platform stretch on top of it makes lists
                 // visibly settle twice at the end of a fling.
@@ -291,6 +293,29 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                 }
                 }
             }
+            }
+
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                AnimatedVisibility(
+                    visible = playerState.track != null && !nav.playerOpen,
+                    enter = slideInVertically(Motion.spatialDefault()) { it } + fadeIn(Motion.effectsDefault()),
+                    exit = slideOutVertically(Motion.spatialFast()) { it } + fadeOut(Motion.effectsFast())
+                ) {
+                    MiniPlayer(
+                        state = playerState,
+                        onOpen = { nav.openPlayer() },
+                        modifier = Modifier.padding(bottom = 10.dp),
+                        backdrop = backdrop
+                    )
+                }
+                Dock(nav = nav, backdrop = backdrop)
+            }
 
             AnimatedVisibility(
                 visible = nav.playerOpen,
@@ -309,17 +334,16 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
  * label reveal on the same spring as the width change.
  */
 @Composable
-private fun Dock(nav: Navigator) {
+private fun Dock(nav: Navigator, backdrop: com.kyant.backdrop.Backdrop? = null) {
     val scheme = MaterialTheme.colorScheme
     Box(
         Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.material3.Surface(
+        com.itzfallenme.katmusic.ui.theme.GlassChrome(
+            backdrop = backdrop,
             shape = CircleShape,
-            color = scheme.surfaceContainerHigh,
-            tonalElevation = 2.dp,
-            shadowElevation = 10.dp
+            elevation = 10.dp
         ) {
             Row(
                 modifier = Modifier

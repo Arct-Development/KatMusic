@@ -79,6 +79,42 @@ fun GlassSurface(
     }
 }
 
+/**
+ * Chrome container for floating surfaces: refracts [backdrop] when Liquid Glass is
+ * on and the device supports it, otherwise renders the plain tonal surface.
+ */
+@Composable
+fun GlassChrome(
+    backdrop: com.kyant.backdrop.Backdrop?,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    elevation: Dp = 0.dp,
+    forceDark: Boolean = false,
+    contentAlignment: Alignment = Alignment.TopStart,
+    content: @Composable BoxScope.() -> Unit
+) {
+    if (backdrop != null && isLiquidGlassBackdropSupported()) {
+        Box(
+            modifier = modifier.liquidGlass(
+                backdrop = backdrop,
+                shape = shape,
+                interactive = false,
+                forceDark = forceDark
+            ),
+            contentAlignment = contentAlignment,
+            content = content
+        )
+        return
+    }
+    GlassSurface(
+        modifier = modifier,
+        shape = shape,
+        elevation = elevation,
+        contentAlignment = contentAlignment,
+        content = content
+    )
+}
+
 /** Circular tonal button, the M3 Expressive default for player and header actions. */
 @Composable
 fun GlassIconButton(
