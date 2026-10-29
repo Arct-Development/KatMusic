@@ -70,7 +70,10 @@ class DiscordPresenceManager(
 
     private suspend fun publish(force: Boolean) {
         val config = settings.state.value
-        val wanted = config.discordPresenceEnabled && config.discordAppId.isNotBlank()
+        // Installations created before the app ID shipped store an empty string;
+        // fall back to KatMusic's registered application instead of forcing a reset.
+        val configuredAppId = config.discordAppId.trim().ifBlank { DiscordPresence.DEFAULT_APP_ID }
+        val wanted = config.discordPresenceEnabled
         val state = player.state.value
         val now = SystemClock.elapsedRealtime()
 
@@ -100,7 +103,7 @@ class DiscordPresenceManager(
             val signature = DiscordPresence.signature(track, playing, state.durationMs)
             if (!force && signature == lastSignature) return
 
-            val appId = config.discordAppId.trim().toLongOrNull()
+            val appId = configuredAppId.toLongOrNull()
             if (appId == null || appId <= 0L) {
                 Log.d(TAG, "Discord presence is on but the application ID is not a number")
                 return

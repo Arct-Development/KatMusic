@@ -384,7 +384,18 @@ private fun Dock(nav: Navigator, backdrop: com.kyant.backdrop.Backdrop? = null) 
                                 clip = true
                             }
                             .then(
-                                if (selected) Modifier.background(scheme.primaryContainer) else Modifier
+                                // KatMusic's active tab is a two-tone container wash rather
+                                // than a flat fill, so the dock reads as its own thing
+                                // while staying inside the same shape language.
+                                if (selected) {
+                                    Modifier.background(
+                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                            listOf(scheme.primaryContainer, scheme.secondaryContainer)
+                                        )
+                                    )
+                                } else {
+                                    Modifier
+                                }
                             )
                             .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) },
                         horizontalArrangement = Arrangement.Center,

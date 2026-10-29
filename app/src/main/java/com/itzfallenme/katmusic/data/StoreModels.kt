@@ -101,7 +101,7 @@ data class AppSettings(
     /** Publish the playing track to Discord as a Rich Presence card. */
     val discordPresenceEnabled: Boolean = false,
     /** Discord application ID the card is attributed to (from the Developer Portal). */
-    val discordAppId: String = "",
+    val discordAppId: String = "1563081601254953002",
     /** OpenAI-compatible endpoint used for AI picks; the key stays on this device. */
     val aiBaseUrl: String = "https://api.openai.com/v1",
     val aiApiKey: String = "",

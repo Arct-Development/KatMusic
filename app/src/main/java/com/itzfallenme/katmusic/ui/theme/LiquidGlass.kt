@@ -154,24 +154,29 @@ fun rememberGlassInteraction(): GlassInteraction {
 }
 
 /**
- * Single source of truth for every glass surface's frost level, so the nav bar,
- * dock, mini player and player controls cannot drift apart.
+ * KatMusic's own frost recipe. The structure follows the iOS-style material we
+ * take our cues from, but the numbers are tuned for this app: slightly deeper
+ * blur, a gentler scrim, and a lower lens curvature so artwork stays legible
+ * underneath instead of melting into a soap bubble.
  */
-private object GlassRecipe {
-    const val BLUR_BASE_DP = 12f
-    const val BLUR_BRIGHT_DP = 20f
-    const val BLUR_DARK_DP = 6f
+private object KatGlass {
+    const val BLUR_BASE_DP = 14f
+    const val BLUR_BRIGHT_DP = 22f
+    const val BLUR_DARK_DP = 7f
 
-    const val BRIGHTNESS = 0.05f
-    const val CONTRAST = 1f
-    const val SATURATION = 1.1f
+    const val BRIGHTNESS = 0.04f
+    const val CONTRAST = 1.02f
+    const val SATURATION = 1.08f
 
-    const val LENS_DIVISOR = 6f
+    const val LENS_DIVISOR = 7f
 
-    const val MIN_SCRIM = 0.18f
-    const val MAX_SCRIM = 0.56f
+    const val MIN_SCRIM = 0.16f
+    const val MAX_SCRIM = 0.52f
 
     const val PRESS_BLUR_DP = 2f
+
+    /** Seed-coloured wash that makes KatMusic glass read as tinted, not neutral. */
+    const val ACCENT_WASH = 0.08f
 }
 
 /**
@@ -185,11 +190,12 @@ fun Modifier.drawInteractiveGlass(
     luminanceAnimation: Float,
     shape: Shape,
     interaction: GlassInteraction?,
+    accent: Color = Color.Transparent,
     pressedScale: Float = 1.12f,
     highlight: Highlight = Highlight.Default,
     blurScale: Float = 1f,
-    minScrim: Float = GlassRecipe.MIN_SCRIM,
-    maxScrim: Float = GlassRecipe.MAX_SCRIM
+    minScrim: Float = KatGlass.MIN_SCRIM,
+    maxScrim: Float = KatGlass.MAX_SCRIM
 ): Modifier = this
     .drawBackdrop(
         backdrop = backdrop,
@@ -199,21 +205,21 @@ fun Modifier.drawInteractiveGlass(
             val l = (luminanceAnimation * 2f - 1f).let { sign(it) * it * it }
             val press = interaction?.pressProgress ?: 0f
             colorControls(
-                brightness = GlassRecipe.BRIGHTNESS,
-                contrast = GlassRecipe.CONTRAST,
-                saturation = GlassRecipe.SATURATION
+                brightness = KatGlass.BRIGHTNESS,
+                contrast = KatGlass.CONTRAST,
+                saturation = KatGlass.SATURATION
             )
             blur(
                 (
                     if (l > 0f) {
-                        lerp(GlassRecipe.BLUR_BASE_DP.dp.toPx(), GlassRecipe.BLUR_BRIGHT_DP.dp.toPx(), l)
+                        lerp(KatGlass.BLUR_BASE_DP.dp.toPx(), KatGlass.BLUR_BRIGHT_DP.dp.toPx(), l)
                     } else {
-                        lerp(GlassRecipe.BLUR_BASE_DP.dp.toPx(), GlassRecipe.BLUR_DARK_DP.dp.toPx(), -l)
+                        lerp(KatGlass.BLUR_BASE_DP.dp.toPx(), KatGlass.BLUR_DARK_DP.dp.toPx(), -l)
                     }
-                ) * blurScale + GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press
+                ) * blurScale + KatGlass.PRESS_BLUR_DP.dp.toPx() * press
             )
             lens(
-                size.minDimension / GlassRecipe.LENS_DIVISOR + GlassRecipe.PRESS_BLUR_DP.dp.toPx() * press,
+                size.minDimension / KatGlass.LENS_DIVISOR + KatGlass.PRESS_BLUR_DP.dp.toPx() * press,
                 size.minDimension / 2f,
                 false
             )
@@ -224,6 +230,11 @@ fun Modifier.drawInteractiveGlass(
         onDrawSurface = {
             val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
             drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
+            // The accent wash is what makes this read as KatMusic's glass rather
+            // than a neutral frosted panel: it follows the current seed colour.
+            if (accent.alpha > 0f) {
+                drawRect(accent.copy(alpha = KatGlass.ACCENT_WASH))
+            }
             val press = interaction?.pressProgress ?: 0f
             if (press > 0f) {
                 drawRect(
@@ -278,6 +289,7 @@ fun Modifier.liquidGlass(
 ): Modifier {
     if (!isLiquidGlassBackdropSupported()) return opaqueGlassFallback(shape)
     val isDark = forceDark || LocalIsDarkTheme.current
+    val accent = MaterialTheme.colorScheme.primary
     val layer = rememberGraphicsLayer()
     val interaction = rememberGlassInteraction()
     return this.drawInteractiveGlass(
@@ -287,6 +299,7 @@ fun Modifier.liquidGlass(
         luminanceAnimation = 0.5f,
         shape = shape,
         interaction = if (interactive) interaction else null,
+        accent = accent,
         highlight = highlight
     )
 }
@@ -299,12 +312,13 @@ fun Modifier.liquidGlass(
     shape: Shape = CircleShape,
     interactive: Boolean = true,
     blurScale: Float = 1f,
-    minScrim: Float = GlassRecipe.MIN_SCRIM,
-    maxScrim: Float = GlassRecipe.MAX_SCRIM,
+    minScrim: Float = KatGlass.MIN_SCRIM,
+    maxScrim: Float = KatGlass.MAX_SCRIM,
     forceDark: Boolean = false
 ): Modifier {
     if (!isLiquidGlassBackdropSupported()) return opaqueGlassFallback(shape)
     val isDark = forceDark || LocalIsDarkTheme.current
+    val accent = MaterialTheme.colorScheme.primary
     val interaction = rememberGlassInteraction()
     return this.drawInteractiveGlass(
         isDark = isDark,
@@ -312,6 +326,7 @@ fun Modifier.liquidGlass(
         luminanceAnimation = luminanceAnimation,
         shape = shape,
         interaction = if (interactive) interaction else null,
+        accent = accent,
         pressedScale = 1.04f,
         blurScale = blurScale,
         minScrim = minScrim,

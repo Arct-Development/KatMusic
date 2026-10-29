@@ -30,6 +30,13 @@ import kotlinx.serialization.json.putJsonArray
  */
 object DiscordPresence {
 
+    /**
+     * The KatMusic application registered on the Discord Developer Portal. Rich
+     * Presence needs one so Discord can attribute the card, show the app name and
+     * resolve its artwork; users can still override it in Settings.
+     */
+    const val DEFAULT_APP_ID = "1563081601254953002"
+
     const val PROJECT_URL = "https://github.com/ItzFallenMe/KatMusic"
     const val RELEASES_URL = "$PROJECT_URL/releases"
     const val BUTTON_LISTEN = "Listen on YouTube"
