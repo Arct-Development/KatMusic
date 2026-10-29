@@ -395,8 +395,7 @@ fun PlayerScreen(nav: Navigator) {
                     else -> ArtworkPane(
                         track = track,
                         playing = state.playing,
-                        playingFraction = playing,
-                        style = settings.playerStyle
+                        playingFraction = playing
                     )
                 }
             }
@@ -868,23 +867,17 @@ private fun BufferingDots(color: Color) {
 private fun ArtworkPane(
     track: Track,
     playing: Boolean,
-    playingFraction: Float,
-    style: String = "expressive"
+    playingFraction: Float
 ) {
     val scheme = MaterialTheme.colorScheme
-    // The three player styles differ in how much theatre the artwork gets: the
-    // expressive layout spins a vinyl behind a breathing cover, the others stay still.
-    val expressive = style == "expressive"
-    val corner = when (style) {
-        "classic" -> 10.dp
-        "apple" -> 14.dp
-        else -> 30.dp
-    }
-    val widthFraction = if (style == "apple") 0.82f else 0.9f
+    // One artwork treatment everywhere: a spinning vinyl behind a breathing
+    // cover. There is no "classic" or "apple" variant to switch between.
+    val corner = 30.dp
+    val widthFraction = 0.9f
     val transition = rememberInfiniteTransition(label = "breathing")
     val breath by transition.animateFloat(
-        initialValue = if (expressive) 0.995f else 1f,
-        targetValue = if (expressive) 1.012f else 1f,
+        initialValue = 0.995f,
+        targetValue = 1.012f,
         animationSpec = infiniteRepeatable(
             animation = tween(4200, easing = LinearEasing),
             repeatMode = AnimationRepeatMode.Reverse
@@ -899,16 +892,14 @@ private fun ArtworkPane(
             .padding(horizontal = 26.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (expressive) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.72f)
-                    .offset(x = 26.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                SpinningVinyl(playing = playing, modifier = Modifier.fillMaxSize())
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.72f)
+                .offset(x = 26.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            SpinningVinyl(playing = playing, modifier = Modifier.fillMaxSize())
         }
         Box(
             modifier = Modifier
@@ -917,7 +908,7 @@ private fun ArtworkPane(
                     scaleX = scale * breath
                     scaleY = scale * breath
                 }
-                .shadow(if (expressive) 26.dp else 12.dp, RoundedCornerShape(corner), spotColor = scheme.primary)
+                .shadow(26.dp, RoundedCornerShape(corner), spotColor = scheme.primary)
                 .clip(RoundedCornerShape(corner))
         ) {
             AsyncImage(

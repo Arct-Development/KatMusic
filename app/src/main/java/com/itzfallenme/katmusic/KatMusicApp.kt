@@ -19,8 +19,10 @@ class KatMusicApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        com.itzfallenme.katmusic.util.AppLog.init(this)
         com.itzfallenme.katmusic.data.CrashLog.install(this)
         ServiceLocator.init(this)
+        com.itzfallenme.katmusic.util.AppLog.i("App", "application created, services ready")
     }
 
     companion object {

@@ -4,6 +4,21 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.5.0] – 2026-10-29
+
+### Added
+
+- Debug-build logger: events, warnings and errors are appended to a rotating log file,
+  readable and copyable from Settings → Data → Debug log, so a bug report can include what
+  the app was doing instead of only the stack trace. Release builds log to Logcat only
+  and write nothing to disk
+
+### Changed
+
+- One player design. The Expressive / Classic / Apple style switch is gone; the artwork
+  always uses the spinning vinyl behind a breathing cover, so there is a single visual
+  language to keep consistent
+
 ## [1.4.2] – 2026-10-29
 
 ### Fixed

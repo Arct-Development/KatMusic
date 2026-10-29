@@ -208,6 +208,8 @@ class PlayerController(
         val intent = Intent(context, PlaybackService::class.java)
         runCatching {
             ContextCompat.startForegroundService(context, intent)
+        }.onFailure {
+            com.itzfallenme.katmusic.util.AppLog.e("Playback", "could not start the media service", it)
         }
     }
 

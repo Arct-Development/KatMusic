@@ -85,7 +85,6 @@ data class AppSettings(
     val combinedLibrarySections: Boolean = true,
     val statsEnabled: Boolean = true,
     val sponsorBlockEnabled: Boolean = false,
-    val playerStyle: String = "expressive",
     /** system | light | dark */
     val themeMode: String = "system",
     /** Bloomy halo behind the line/word being sung. */

@@ -34,6 +34,7 @@ object CrashLog {
 
     private fun write(context: Context, thread: Thread, throwable: Throwable) {
         val stack = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }
+        com.itzfallenme.katmusic.util.AppLog.e("Crash", "uncaught in ${thread.name}", throwable)
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         file(context).writeText(
             buildString {

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Download
@@ -87,6 +88,7 @@ fun SettingsScreen(nav: Navigator) {
     var pendingToken by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var backupStatus by remember { mutableStateOf<String?>(null) }
+    var showDebugLog by remember { mutableStateOf(false) }
 
     val createBackup = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -209,18 +211,6 @@ fun SettingsScreen(nav: Navigator) {
                     checked = settings.amoled
                 ) { update { s -> s.copy(amoled = it) } }
                 Spacer(Modifier.height(12.dp))
-                Text("Now playing style", style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("expressive" to "Expressive", "classic" to "Classic", "apple" to "Apple").forEach {
-                        (value, label) ->
-                        com.itzfallenme.katmusic.ui.Chip(
-                            text = label,
-                            selected = settings.playerStyle == value,
-                            onClick = { update { s -> s.copy(playerStyle = value) } }
-                        )
-                    }
-                }
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Accent colour",
@@ -576,6 +566,16 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "Play audio files already stored on your phone",
                     icon = Icons.Filled.MusicNote
                 ) { nav.go(Screen.LocalMusic) }
+                if (com.itzfallenme.katmusic.BuildConfig.DEBUG) {
+                    SettingRow(
+                        title = "Debug log",
+                        subtitle = "${com.itzfallenme.katmusic.util.AppLog.sizeBytes() / 1024} KB of events, warnings and errors",
+                        icon = Icons.Filled.BugReport
+                    ) { showDebugLog = true }
+                    if (showDebugLog) {
+                        DebugLogDialog(onDismiss = { showDebugLog = false })
+                    }
+                }
                 SettingRow(
                     title = "Import a playlist",
                     subtitle = "Copy a public YouTube Music playlist into your library",
@@ -765,4 +765,44 @@ private fun SettingRow(
             )
         }
     }
+}
+
+/** Debug-build log viewer: last few hundred events, copyable for a bug report. */
+@Composable
+private fun DebugLogDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var contents by remember { mutableStateOf(com.itzfallenme.katmusic.util.AppLog.tail()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Debug log") },
+        text = {
+            Column(
+                Modifier
+                    .height(320.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    contents,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    as? android.content.ClipboardManager
+                clipboard?.setPrimaryClip(
+                    android.content.ClipData.newPlainText("KatMusic debug log", contents)
+                )
+            }) { Text("Copy") }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                com.itzfallenme.katmusic.util.AppLog.clear()
+                contents = com.itzfallenme.katmusic.util.AppLog.tail()
+            }) { Text("Clear") }
+        }
+    )
 }
