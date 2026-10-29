@@ -4,7 +4,13 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import androidx.media3.common.MediaItem
+import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.itzfallenme.katmusic.R
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -32,9 +38,35 @@ class PlaybackService : MediaLibraryService() {
         ServiceLocator.init(this)
         val player = ServiceLocator.player.player
         player.skipSilenceEnabled = ServiceLocator.settings.state.value.skipSilence
+        // A dedicated, quiet playback channel: a LOW-importance channel hides the
+        // lockscreen media card on several ROMs, and the default one is easy to
+        // silence by accident.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setChannelId("katmusic-playback")
+                .setChannelName(R.string.notification_channel_playback)
+                .setNotificationId(1102)
+                .build()
+        )
         librarySession = MediaLibrarySession.Builder(this, player, AutoBrowserCallback())
             .setSessionActivity(nowPlayingIntent(this))
             .build()
+        // Shuffle and repeat are not part of the stock transport, so they are
+        // exposed as custom commands and appended to the expanded notification.
+        librarySession?.setCustomLayout(
+            listOf(
+                CommandButton.Builder()
+                    .setDisplayName("Shuffle")
+                    .setIconResId(R.drawable.ic_shuffle)
+                    .setSessionCommand(SessionCommand(ACTION_SHUFFLE, Bundle.EMPTY))
+                    .build(),
+                CommandButton.Builder()
+                    .setDisplayName("Repeat")
+                    .setIconResId(R.drawable.ic_repeat)
+                    .setSessionCommand(SessionCommand(ACTION_REPEAT, Bundle.EMPTY))
+                    .build()
+            )
+        )
         // Safety net for the startForegroundService contract: if playback never
         // actually begins (resolution failed, the user backed out while the
         // stream was loading), stop instead of staying alive past the 5s window
@@ -70,6 +102,20 @@ class PlaybackService : MediaLibraryService() {
 
     /** Serves the local library to external browsers. */
     private inner class AutoBrowserCallback : MediaLibrarySession.Callback {
+
+            override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                ACTION_SHUFFLE -> ServiceLocator.player.toggleShuffle()
+                ACTION_REPEAT -> ServiceLocator.player.cycleRepeat()
+                else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
 
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
@@ -145,6 +191,9 @@ class SleepTimerReceiver : BroadcastReceiver() {
         ServiceLocator.player.player.pause()
     }
 }
+
+private const val ACTION_SHUFFLE = "com.itzfallenme.katmusic.SHUFFLE"
+private const val ACTION_REPEAT = "com.itzfallenme.katmusic.REPEAT"
 
 internal fun nowPlayingIntent(context: Context): PendingIntent {
     val intent = Intent(context, MainActivity::class.java).apply {
