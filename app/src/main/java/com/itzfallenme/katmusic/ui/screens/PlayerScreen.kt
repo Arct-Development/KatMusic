@@ -110,6 +110,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.data.CardKind
@@ -420,24 +421,31 @@ fun PlayerScreen(nav: Navigator) {
                     Column {
                         Text(
                             text = track.title,
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontSize = 30.sp,
+                                lineHeight = 36.sp
+                            ),
+                            fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(Modifier.height(2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = track.artist.ifBlank { "Unknown artist" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = scheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = scheme.onSurface.copy(alpha = 0.9f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier
-                                    .weight(1f, fill = false)
+                                    .clip(CircleShape)
+                                    .background(scheme.surfaceContainerHigh)
                                     .clickable {
                                         track.artistId?.let {
                                             nav.openDetail(it, track.artist, CardKind.ARTIST)
                                         }
                                     }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             val shareContext = LocalContext.current

@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.ui.screens.AccountScreen
 import com.itzfallenme.katmusic.ui.screens.DetailScreen
@@ -282,7 +283,7 @@ private fun Dock(nav: Navigator) {
             tabs.forEach { tab ->
                 val selected = nav.current == tab.screen
                 val iconTint by animateColorAsState(
-                    targetValue = if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                    targetValue = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
                     animationSpec = Motion.effectsDefault(),
                     label = "tabTint"
                 )
@@ -298,7 +299,7 @@ private fun Dock(nav: Navigator) {
                         .clip(CircleShape)
                         .then(
                             if (selected) {
-                                Modifier.background(scheme.primary)
+                                Modifier.background(scheme.surfaceContainerHighest)
                             } else {
                                 Modifier
                             }
@@ -330,7 +331,7 @@ private fun Dock(nav: Navigator) {
                                 text = tab.label,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = scheme.onPrimary
+                                color = scheme.onSurface
                             )
                             Spacer(Modifier.width(6.dp))
                         }
@@ -341,41 +342,64 @@ private fun Dock(nav: Navigator) {
     }
 }
 
-/** Shared top bar used by secondary screens. */
+/**
+ * Shared top bar used by secondary screens, in the reference's shape: the back
+ * button sits on its own row as a tonal circle, and the title is a large
+ * left-aligned wordmark with actions on the same baseline.
+ */
 @Composable
 fun SimpleTopBar(
     title: String,
     onBack: (() -> Unit)? = null,
+    subtitle: String? = null,
     actions: @Composable () -> Unit = {}
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp)
+            .padding(top = 6.dp, bottom = 10.dp)
     ) {
         if (onBack != null) {
             Box(
                 Modifier
                     .size(40.dp)
-                    .liquidGlass(shape = CircleShape, fillAlpha = 0.45f)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .bounceClickable(targetScale = 0.9f, onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.height(10.dp))
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.weight(1f)
-        )
-        actions()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 36.sp),
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) { actions() }
+        }
     }
 }

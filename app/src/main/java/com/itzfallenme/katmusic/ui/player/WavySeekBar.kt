@@ -119,11 +119,11 @@ fun WavySeekBar(
     ) {
         Canvas(Modifier.matchParentSize()) {
             val centerY = size.height / 2f
-            val trackThickness = 4.5.dp.toPx()
+            val trackThickness = 5.dp.toPx()
             val thumbX = (shown * size.width).coerceIn(0f, size.width)
-            val half = trackThickness / 2f
 
-            // Rest of the track.
+            // Unplayed: a quiet capsule. Played: the same capsule in the
+            // foreground tone, exactly like the reference player.
             drawLine(
                 color = inactiveColor,
                 start = Offset(0f, centerY),
@@ -131,104 +131,36 @@ fun WavySeekBar(
                 strokeWidth = trackThickness,
                 cap = StrokeCap.Round
             )
-
-            if (thumbX <= 0f) return@Canvas
-
-            clip.reset()
-            clip.addRoundRect(
-                RoundRect(
-                    rect = Rect(-half, 0f, thumbX + half, size.height),
-                    topLeft = CornerRadius(half, half),
-                    bottomLeft = CornerRadius(half, half),
-                    topRight = CornerRadius(half, half),
-                    bottomRight = CornerRadius(half, half)
+            if (thumbX > 0f) {
+                drawLine(
+                    color = activeColor,
+                    start = Offset(0f, centerY),
+                    end = Offset(thumbX, centerY),
+                    strokeWidth = trackThickness,
+                    cap = StrokeCap.Round
                 )
+            }
+
+            // Chapter marker: a short hairline across the track at the quarter
+            // point, so the bar reads as a timeline instead of a plain slider.
+            val tickX = size.width * 0.32f
+            drawLine(
+                color = inactiveColor,
+                start = Offset(tickX, centerY - trackThickness * 0.9f),
+                end = Offset(tickX, centerY + trackThickness * 0.9f),
+                strokeWidth = 1.5.dp.toPx(),
+                cap = StrokeCap.Round
             )
 
-            fun wave(
-                path: Path,
-                wavelength: Float,
-                amp: Float,
-                phase: Float,
-                fill: Boolean
-            ) {
-                path.reset()
-                path.moveTo(0f, centerY)
-                var x = 0f
-                val step = 1.5.dp.toPx()
-                val k = (2 * PI / wavelength).toFloat()
-                while (x <= thumbX) {
-                    val angle = x * k - phase
-                    path.lineTo(x, centerY - (0.5f + 0.5f * sin(angle)) * amp)
-                    x += step
-                }
-                path.lineTo(thumbX, centerY)
-                if (fill) path.close()
-            }
-
-            clipPath(clip) {
-                val p1 = if (wavesOn) phase1 else 0f
-                val p2 = if (wavesOn) phase2 else 0f
-                val p3 = if (wavesOn) phase3 else 0f
-
-                // Broad, quiet body.
-                wave(path1, 150.dp.toPx(), liveAmp * 2.1f, p1, fill = true)
-                drawPath(
-                    path = path1,
-                    brush = Brush.verticalGradient(
-                        listOf(activeColor.copy(alpha = 0.10f), activeColor.copy(alpha = 0.24f)),
-                        startY = centerY - liveAmp * 2f,
-                        endY = centerY
-                    )
-                )
-
-                // Middle layer.
-                wave(path2, 110.dp.toPx(), liveAmp * 1.5f, p2, fill = true)
-                drawPath(
-                    path = path2,
-                    brush = Brush.verticalGradient(
-                        listOf(activeColor.copy(alpha = 0.30f), activeColor.copy(alpha = 0.52f)),
-                        startY = centerY - liveAmp * 1.5f,
-                        endY = centerY
-                    )
-                )
-
-                // Luminous crest.
-                wave(path3, 78.dp.toPx(), liveAmp, p3, fill = false)
-                drawPath(
-                    path = path3,
-                    brush = Brush.horizontalGradient(
-                        listOf(activeColor.copy(alpha = 0.85f), activeColor)
-                    ),
-                    style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round)
-                )
-            }
-
-            // Thumb: only while scrubbing, so the resting bar stays a pure waveform.
-            if (isDragging > 0f) {
-                drawCircle(
-                    color = activeColor.copy(alpha = 0.22f),
-                    radius = 13.dp.toPx(),
-                    center = Offset(thumbX, centerY)
-                )
-                drawCircle(
-                    color = activeColor,
-                    radius = 7.dp.toPx(),
-                    center = Offset(thumbX, centerY)
-                )
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.92f),
-                    radius = 2.6.dp.toPx(),
-                    center = Offset(thumbX, centerY)
-                )
-            } else {
-                // A small travelling dot marks the playhead.
-                drawCircle(
-                    color = activeColor,
-                    radius = 3.dp.toPx(),
-                    center = Offset(thumbX, centerY - liveAmp * 0.3f)
-                )
-            }
+            // Thumb: a slim rounded bar, taller than the track and always visible.
+            val thumbWidth = if (isDragging > 0f) 4.5.dp.toPx() else 3.5.dp.toPx()
+            val thumbHeight = (trackThickness * (if (isDragging > 0f) 5.4f else 4.4f))
+            drawRoundRect(
+                color = activeColor,
+                topLeft = Offset(thumbX - thumbWidth / 2f, centerY - thumbHeight / 2f),
+                size = androidx.compose.ui.geometry.Size(thumbWidth, thumbHeight),
+                cornerRadius = CornerRadius(thumbWidth / 2f, thumbWidth / 2f)
+            )
         }
     }
 }
