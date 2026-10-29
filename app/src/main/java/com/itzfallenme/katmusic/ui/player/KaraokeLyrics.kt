@@ -57,6 +57,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.itzfallenme.katmusic.data.LyricLine
+import com.itzfallenme.katmusic.ui.common.wobbleOverscroll
 import com.itzfallenme.katmusic.data.LyricSyllable
 import kotlinx.coroutines.delay
 
@@ -123,6 +124,9 @@ fun KaraokeLyrics(
         state = listState,
         modifier = modifier
             .fillMaxSize()
+            // LastWave's rubber-band overscroll, so pulling past the last line
+            // answers with a spring instead of a platform glow.
+            .wobbleOverscroll()
             .lyricsFadingEdge(topFadeDp = 32.dp, bottomFadeDp = 88.dp),
         contentPadding = PaddingValues(top = 36.dp, bottom = 120.dp, start = 18.dp, end = 18.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
