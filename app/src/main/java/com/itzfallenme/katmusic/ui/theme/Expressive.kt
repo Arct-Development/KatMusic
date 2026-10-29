@@ -83,43 +83,88 @@ class SmoothCornerShape(
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
-        val radius = with(density) {
-            min(cornerRadius.toPx(), min(size.width, size.height) / 2f)
-        }
         val smooth = smoothing.coerceIn(0f, 1f)
-        // How far the curve reaches along each edge before turning the corner.
-        val shoulder = radius * (1f + smooth * 0.35f)
-        val control = shoulder * (1f - smooth * 0.55f)
+        // A corner can never be larger than half the shortest edge, otherwise the
+        // cubic control points cross over each other and the path renders as a
+        // rectangle. Clamping first keeps every size valid.
+        val radius = with(density) { cornerRadius.toPx() }
+            .coerceIn(0f, min(size.width, size.height) / 2f)
+        if (radius <= 0.5f) {
+            return Outline.Rectangle(androidx.compose.ui.geometry.Rect(Offset.Zero, size))
+        }
+        // Pulling the control point in from the corner gives the continuous
+        // shoulder; 0 smoothing behaves like a circular arc.
+        val control = radius * (1f - smooth * 0.55f)
         val path = Path().apply {
-            moveTo(shoulder, 0f)
-            lineTo(size.width - shoulder, 0f)
+            moveTo(radius, 0f)
+            lineTo(size.width - radius, 0f)
             cubicTo(
                 size.width - control, 0f,
                 size.width, control,
-                size.width, shoulder
+                size.width, radius
             )
-            lineTo(size.width, size.height - shoulder)
+            lineTo(size.width, size.height - radius)
             cubicTo(
                 size.width, size.height - control,
                 size.width - control, size.height,
-                size.width - shoulder, size.height
+                size.width - radius, size.height
             )
-            lineTo(shoulder, size.height)
+            lineTo(radius, size.height)
             cubicTo(
                 control, size.height,
                 0f, size.height - control,
-                0f, size.height - shoulder
+                0f, size.height - radius
             )
-            lineTo(0f, shoulder)
+            lineTo(0f, radius)
             cubicTo(
                 0f, control,
                 control, 0f,
-                shoulder, 0f
+                radius, 0f
             )
             close()
         }
         return Outline.Generic(path)
     }
+}
+
+/**
+ * One-shot "pop" whenever [key] changes: scales up and settles back. Used for
+ * likes and other toggles, where a plain colour swap is easy to miss.
+ */
+@Composable
+fun Modifier.popWhen(key: Any?): Modifier {
+    val scale = remember { Animatable(1f) }
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(key) {
+        if (first) {
+            first = false
+            return@LaunchedEffect
+        }
+        if (Motion.reduced) return@LaunchedEffect
+        scale.animateTo(1.28f, tween(120))
+        scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
+    return graphicsLayer {
+        scaleX = scale.value
+        scaleY = scale.value
+    }
+}
+
+/** Counts up to [value] instead of swapping the digits instantly. */
+@Composable
+fun RollingNumber(
+    value: Int,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color = Color.Unspecified,
+    modifier: Modifier = Modifier
+) {
+    val animated by androidx.compose.animation.core.animateIntAsState(
+        targetValue = value,
+        animationSpec = if (Motion.reduced) androidx.compose.animation.core.snap()
+        else tween(700, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "rollingNumber"
+    )
+    Text(text = animated.toString(), style = style, color = color, modifier = modifier)
 }
 
 /** Corner tokens for the expressive surfaces used across the app. */

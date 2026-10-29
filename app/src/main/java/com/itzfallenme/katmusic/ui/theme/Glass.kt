@@ -124,7 +124,7 @@ fun AmbientBackdrop(
 ) {
     val dark = LocalIsDarkTheme.current
     val transition = rememberInfiniteTransition(label = "ambient")
-    val drift by transition.animateFloat(
+    val animatedDrift by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -133,6 +133,8 @@ fun AmbientBackdrop(
         ),
         label = "drift"
     )
+    // Reduce motion: keep the wash but park it at its midpoint.
+    val drift = if (Motion.reduced) 0.5f else animatedDrift
     val secondary = ColorEngine.hsl((ColorEngine.hueOf(accent) + 55) % 360, 30, if (dark) 40 else 60)
     Box(
         modifier

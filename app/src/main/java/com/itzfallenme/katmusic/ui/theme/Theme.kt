@@ -81,14 +81,16 @@ object ColorEngine {
         val hSecondary = (h + 20) % 360
         val hTertiary = (h + 60) % 360
         val bg = if (amoled) 0 else 6
-        val container = if (amoled) 4 else 11
-        val containerHigh = if (amoled) 8 else 16
-        val containerHighest = if (amoled) 12 else 20
+        // Wider steps between container levels: rows sink into the page, cards
+        // lift out of it, and the active pill clearly sits on top.
+        val container = if (amoled) 4 else 12
+        val containerHigh = if (amoled) 9 else 19
+        val containerHighest = if (amoled) 14 else 26
         return darkColorScheme(
-            primary = hsl(h, CHROMA_PRIMARY, 82),
-            onPrimary = hsl(h, CHROMA_PRIMARY, 16),
-            primaryContainer = hsl(h, CHROMA_PRIMARY, if (amoled) 24 else 30),
-            onPrimaryContainer = hsl(h, CHROMA_PRIMARY - 5, 90),
+            primary = hsl(h, CHROMA_PRIMARY + 6, 85),
+            onPrimary = hsl(h, CHROMA_PRIMARY, 14),
+            primaryContainer = hsl(h, CHROMA_PRIMARY + 2, if (amoled) 26 else 32),
+            onPrimaryContainer = hsl(h, CHROMA_PRIMARY - 3, 92),
             inversePrimary = hsl(h, CHROMA_PRIMARY, 40),
             secondary = hsl(hSecondary, CHROMA_SECONDARY, 80),
             onSecondary = hsl(hSecondary, CHROMA_SECONDARY, 16),
@@ -112,12 +114,12 @@ object ColorEngine {
             surfaceContainerHigh = hsl(h, CHROMA_NEUTRAL, containerHigh),
             surfaceContainerHighest = hsl(h, CHROMA_NEUTRAL, containerHighest),
             surfaceVariant = hsl(h, CHROMA_NEUTRAL_VARIANT, containerHigh + 4),
-            onSurfaceVariant = hsl(h, CHROMA_NEUTRAL_VARIANT, 80),
+            onSurfaceVariant = hsl(h, CHROMA_NEUTRAL_VARIANT, 82),
             surfaceBright = hsl(h, CHROMA_NEUTRAL + 2, if (amoled) 14 else 24),
             surfaceDim = hsl(h, CHROMA_NEUTRAL, (bg - 2).coerceAtLeast(0)),
             surfaceTint = hsl(h, CHROMA_PRIMARY, 82),
-            outline = hsl(h, CHROMA_NEUTRAL_VARIANT, 60),
-            outlineVariant = hsl(h, CHROMA_NEUTRAL_VARIANT, 28),
+            outline = hsl(h, CHROMA_NEUTRAL_VARIANT, 64),
+            outlineVariant = hsl(h, CHROMA_NEUTRAL_VARIANT, 32),
             inverseSurface = hsl(h, CHROMA_NEUTRAL_VARIANT, 90),
             inverseOnSurface = hsl(h, CHROMA_NEUTRAL_VARIANT, 20),
             scrim = Color.Black,
@@ -153,10 +155,10 @@ object ColorEngine {
             surface = hsl(h, 4, 98),
             onSurface = hsl(h, 6, 10),
             surfaceContainerLowest = Color.White,
-            surfaceContainerLow = hsl(h, 4, 96),
-            surfaceContainer = hsl(h, 4, 94),
-            surfaceContainerHigh = hsl(h, 4, 92),
-            surfaceContainerHighest = hsl(h, 4, 90),
+            surfaceContainerLow = hsl(h, 5, 96),
+            surfaceContainer = hsl(h, 5, 93),
+            surfaceContainerHigh = hsl(h, 5, 89),
+            surfaceContainerHighest = hsl(h, 5, 85),
             surfaceVariant = hsl(h, 6, 90),
             onSurfaceVariant = hsl(h, 6, 30),
             outline = hsl(h, 6, 50),
@@ -276,18 +278,21 @@ val KatTypography = Typography(
 )
 
 /** Expressive corner scale, matching the app's card and dock shapes. */
+// Material's Shapes container is typed to CornerBasedShape, so stock components
+// keep the rounded-corner tokens; the expressive silhouette is applied by the
+// app's own cards, buttons and sheets.
 val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
+    extraSmall = RoundedCornerShape(9.dp),
+    small = RoundedCornerShape(13.dp),
+    medium = RoundedCornerShape(17.dp),
     large = RoundedCornerShape(22.dp),
     extraLarge = RoundedCornerShape(30.dp)
 )
 
-val HeroShape = RoundedCornerShape(32.dp)
-val DockShape = RoundedCornerShape(30.dp)
-val CardShape = RoundedCornerShape(26.dp)
-val ArtworkShape = RoundedCornerShape(22.dp)
+val HeroShape = SmoothCornerShape(32.dp, 0.6f)
+val DockShape = SmoothCornerShape(30.dp, 0.6f)
+val CardShape = SmoothCornerShape(26.dp, 0.55f)
+val ArtworkShape = SmoothCornerShape(22.dp, 0.55f)
 val PillShape = RoundedCornerShape(percent = 50)
 
 @Composable

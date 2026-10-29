@@ -70,6 +70,7 @@ val settingsIndex: List<SettingItem> = listOf(
     SettingItem(SettingsCategory.APPEARANCE, "Wallpaper colours", "Material You palette"),
     SettingItem(SettingsCategory.APPEARANCE, "Artwork colours", "Recolour the app from album art"),
     SettingItem(SettingsCategory.APPEARANCE, "Pure black", "AMOLED friendly backgrounds"),
+    SettingItem(SettingsCategory.APPEARANCE, "Reduce motion", "Stop animations and ambient drift"),
     SettingItem(SettingsCategory.APPEARANCE, "Accent colour", "Seed palette swatches"),
     SettingItem(SettingsCategory.PLAYBACK, "Streaming quality", "Max, High or Data saver bitrate"),
     SettingItem(SettingsCategory.PLAYBACK, "Autoplay radio", "Keep the music going"),

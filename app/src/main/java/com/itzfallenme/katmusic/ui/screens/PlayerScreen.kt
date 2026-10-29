@@ -131,6 +131,7 @@ import com.itzfallenme.katmusic.ui.formatDuration
 import com.itzfallenme.katmusic.ui.player.WavySeekBar
 import com.itzfallenme.katmusic.ui.theme.AmbientBackdrop
 import com.itzfallenme.katmusic.ui.theme.GlassIconButton
+import com.itzfallenme.katmusic.ui.theme.popWhen
 import com.itzfallenme.katmusic.ui.theme.GlassSurface
 import com.itzfallenme.katmusic.ui.theme.Motion
 import com.itzfallenme.katmusic.ui.theme.bounceClickable
@@ -418,6 +419,13 @@ fun PlayerScreen(nav: Navigator) {
             ) {
                 Column(Modifier.padding(horizontal = 22.dp, vertical = 12.dp)) {
                     Column {
+                        // Each new track slides its title in instead of swapping text.
+                        val titleReveal = remember(track.id) { Animatable(if (Motion.reduced) 1f else 0f) }
+                        LaunchedEffect(track.id) {
+                            if (Motion.reduced) return@LaunchedEffect
+                            titleReveal.snapTo(0f)
+                            titleReveal.animateTo(1f, Motion.spatialDefault())
+                        }
                         Text(
                             text = track.title,
                             style = MaterialTheme.typography.headlineLarge.copy(
@@ -426,7 +434,11 @@ fun PlayerScreen(nav: Navigator) {
                             ),
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = titleReveal.value
+                                translationY = (1f - titleReveal.value) * 12f
+                            }
                         )
                         Spacer(Modifier.height(2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -559,6 +571,7 @@ fun PlayerScreen(nav: Navigator) {
                             icon = Icons.Filled.Favorite,
                             contentDescription = "Like",
                             onClick = { ServiceLocator.library.toggleLike(track) },
+                            modifier = Modifier.popWhen(liked),
                             size = 40.dp,
                             iconSize = 19.dp,
                             tint = if (liked) scheme.primary else scheme.onSurfaceVariant
@@ -784,8 +797,8 @@ private fun PlayPauseButton(playing: Boolean, buffering: Boolean, onClick: () ->
 private fun SpinningVinyl(playing: Boolean, modifier: Modifier = Modifier) {
     val angle = remember { Animatable(0f) }
     val scheme = MaterialTheme.colorScheme
-    LaunchedEffect(playing) {
-        if (!playing) return@LaunchedEffect
+    LaunchedEffect(playing, Motion.reduced) {
+        if (!playing || Motion.reduced) return@LaunchedEffect
         while (isActive) {
             angle.animateTo(
                 targetValue = angle.value + 360f,
@@ -866,7 +879,7 @@ private fun ArtworkPane(
     val corner = 30.dp
     val widthFraction = 0.9f
     val transition = rememberInfiniteTransition(label = "breathing")
-    val breath by transition.animateFloat(
+    val animatedBreath by transition.animateFloat(
         initialValue = 0.995f,
         targetValue = 1.012f,
         animationSpec = infiniteRepeatable(
@@ -875,7 +888,15 @@ private fun ArtworkPane(
         ),
         label = "breath"
     )
+    val breath = if (Motion.reduced) 1f else animatedBreath
     val scale = 0.94f + 0.06f * playingFraction
+    // New artwork settles in with a small scale lift; the vinyl and scrim stay put.
+    val entry = remember(track.id) { Animatable(if (Motion.reduced) 1f else 0f) }
+    LaunchedEffect(track.id) {
+        if (Motion.reduced) return@LaunchedEffect
+        entry.snapTo(0f)
+        entry.animateTo(1f, Motion.spatialSlow())
+    }
 
     Box(
         modifier = Modifier
@@ -896,8 +917,10 @@ private fun ArtworkPane(
             modifier = Modifier
                 .fillMaxWidth(widthFraction)
                 .graphicsLayer {
-                    scaleX = scale * breath
-                    scaleY = scale * breath
+                    val lift = 0.92f + 0.08f * entry.value
+                    scaleX = scale * breath * lift
+                    scaleY = scale * breath * lift
+                    alpha = entry.value
                 }
                 .shadow(26.dp, RoundedCornerShape(corner), spotColor = scheme.primary)
                 .clip(RoundedCornerShape(corner))

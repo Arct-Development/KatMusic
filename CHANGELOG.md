@@ -4,6 +4,30 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.8.0] – 2026-10-29
+
+### Added
+
+- **Reduce motion** (Settings → Appearance): snaps every Motion-driven transition and
+  stops the ambient drift, the breathing album art, the spinning vinyl and the animated
+  playing bars
+- Search was rebuilt around the SimpMusic layout: an animated hint that cycles through
+  songs/albums/artists/playlists, a tonal search bar that lifts on focus, All / Songs /
+  Albums / Artists / Playlists filters, a large **Top result** card with like and play,
+  recent searches and a gradient browse grid
+
+### Changed
+
+- Fixed the continuous-curvature shape: corners larger than half the shortest edge used
+  to produce crossing control points, which is why chips and many buttons rendered almost
+  square. The radius is clamped before the path is built, so pills, chips and cards all
+  curve correctly at every size
+- More colour separation: wider tonal steps between surface containers, a brighter
+  primary, and cards are now opaque instead of a translucent tint over the backdrop
+- More motion: hero artwork parallax on Home, count-up numbers and growing bars in Stats,
+  album artwork and title transitions in the player, a pop on the like button, a bouncier
+  dock icon, mini-player track fade and staggered settings cards
+
 ## [1.7.0] – 2026-10-29
 
 ### Added

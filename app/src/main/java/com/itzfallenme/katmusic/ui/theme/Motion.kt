@@ -4,6 +4,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,19 +32,34 @@ object Motion {
     const val Standard = 300
     const val Emphasized = 440
 
-    fun <T> spatialFast() = spring<T>(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium)
-    fun <T> spatialDefault() = spring<T>(dampingRatio = 0.8f, stiffness = 650f)
-    fun <T> spatialSlow() = spring<T>(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+    /**
+     * Mirrors the "Reduce motion" setting. Every spec below collapses to a
+     * snap while this is true, so the whole app stops animating without each
+     * call site having to check the preference.
+     */
+    @Volatile
+    var reduced: Boolean = false
 
-    fun <T> effectsFast() = spring<T>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
+    fun <T> spatialFast(): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+        if (reduced) snap() else spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium)
 
-    fun <T> effectsDefault() = spring<T>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = 700f
-    )
+    fun <T> spatialDefault(): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+        if (reduced) snap() else spring(dampingRatio = 0.8f, stiffness = 650f)
+
+    fun <T> spatialSlow(): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+        if (reduced) snap() else spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+
+    fun <T> effectsFast(): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+        if (reduced) snap() else spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+
+    fun <T> effectsDefault(): androidx.compose.animation.core.FiniteAnimationSpec<T> =
+        if (reduced) snap() else spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = 700f
+        )
 
     fun forwardEnter(): EnterTransition =
         fadeIn(effectsDefault()) +

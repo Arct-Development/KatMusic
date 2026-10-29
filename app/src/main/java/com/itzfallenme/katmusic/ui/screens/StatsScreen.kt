@@ -1,6 +1,9 @@
 package com.itzfallenme.katmusic.ui.screens
 
 import android.content.Intent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -57,6 +60,7 @@ import com.itzfallenme.katmusic.ui.EmptyState
 import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.SimpleTopBar
+import com.itzfallenme.katmusic.ui.theme.RollingNumber
 import kotlinx.coroutines.launch
 
 @Composable
@@ -151,8 +155,8 @@ fun StatsScreen(nav: Navigator) {
                         )
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                stats.totalMinutes.toString(),
+                            RollingNumber(
+                                value = stats.totalMinutes.toInt(),
                                 style = MaterialTheme.typography.displayLarge
                             )
                             Spacer(Modifier.width(8.dp))
@@ -357,11 +361,16 @@ private fun WeekdayStrip(counts: List<Int>) {
             verticalAlignment = Alignment.Bottom
         ) {
             counts.forEachIndexed { index, count ->
+                val barHeight by animateDpAsState(
+                    targetValue = (6 + 28 * (count.toFloat() / max)).dp,
+                    animationSpec = tween(durationMillis = 550, delayMillis = index * 35),
+                    label = "weekdayBar"
+                )
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height((6 + 28 * (count.toFloat() / max)).dp)
+                            .height(barHeight)
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 if (index == busiest) MaterialTheme.colorScheme.primary
@@ -412,6 +421,11 @@ private fun StatBar(rank: Int, title: String, value: String, fraction: Float) {
             )
         }
         Spacer(Modifier.height(5.dp))
+        val animatedFraction by animateFloatAsState(
+            targetValue = fraction.coerceIn(0.02f, 1f),
+            animationSpec = tween(durationMillis = 650),
+            label = "statBar"
+        )
         Box(
             Modifier
                 .fillMaxWidth()
@@ -421,7 +435,7 @@ private fun StatBar(rank: Int, title: String, value: String, fraction: Float) {
         ) {
             Box(
                 Modifier
-                    .fillMaxWidth(fraction.coerceIn(0.02f, 1f))
+                    .fillMaxWidth(animatedFraction)
                     .height(5.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))

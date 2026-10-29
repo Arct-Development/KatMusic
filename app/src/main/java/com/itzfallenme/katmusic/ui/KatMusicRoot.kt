@@ -200,6 +200,12 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
         else -> androidx.compose.foundation.isSystemInDarkTheme()
     }
 
+    // One switch drives every Motion-based spec in the app; read during
+    // composition so the next animation uses it.
+    androidx.compose.runtime.SideEffect {
+        Motion.reduced = settings.reducedMotion
+    }
+
     KatMusicTheme(
         seed = seed,
         amoled = settings.amoled,
@@ -355,11 +361,21 @@ private fun Dock(nav: Navigator) {
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val iconScale by animateFloatAsState(
+                            targetValue = if (selected) 1.12f else 1f,
+                            animationSpec = Motion.spatialFast(),
+                            label = "tabIconScale"
+                        )
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = tab.label,
                             tint = iconTint,
-                            modifier = Modifier.size(21.dp)
+                            modifier = Modifier
+                                .size(21.dp)
+                                .graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
                         )
                         AnimatedVisibility(
                             visible = selected,

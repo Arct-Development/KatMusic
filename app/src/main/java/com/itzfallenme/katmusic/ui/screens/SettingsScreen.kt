@@ -56,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -236,6 +238,11 @@ fun SettingsScreen(nav: Navigator, categoryId: String? = null) {
                     subtitle = "AMOLED friendly backgrounds",
                     checked = settings.amoled
                 ) { update { s -> s.copy(amoled = it) } }
+                SettingToggle(
+                    title = "Reduce motion",
+                    subtitle = "Snap transitions and stop ambient drift, breathing art and spinning vinyl",
+                    checked = settings.reducedMotion
+                ) { update { s -> s.copy(reducedMotion = it) } }
                 Spacer(Modifier.height(12.dp))
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -794,7 +801,7 @@ private fun SettingsHome(nav: Navigator) {
 
     Column(Modifier.fillMaxWidth()) {
         Surface(
-            shape = RoundedCornerShape(26.dp),
+            shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(26.dp, 0.6f),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
         ) {
@@ -903,10 +910,25 @@ private fun SettingsCard(
     // A section that is not open is skipped entirely, so its rows (and their
     // sliders, text fields and launchers) never enter composition.
     if (LocalSettingsSection.current != section) return
+    // Cards lift in as a section opens instead of appearing as one block.
+    val reveal = remember(section) {
+        androidx.compose.animation.core.Animatable(if (com.itzfallenme.katmusic.ui.theme.Motion.reduced) 1f else 0f)
+    }
+    LaunchedEffect(section) {
+        if (com.itzfallenme.katmusic.ui.theme.Motion.reduced) {
+            reveal.snapTo(1f)
+        } else {
+            reveal.animateTo(1f, com.itzfallenme.katmusic.ui.theme.Motion.spatialDefault())
+        }
+    }
     Column(
         Modifier
             .fillMaxWidth()
             .padding(top = 18.dp, bottom = 2.dp)
+            .graphicsLayer {
+                alpha = reveal.value
+                translationY = (1f - reveal.value) * 22f
+            }
     ) {
         Text(
             title,
@@ -953,7 +975,7 @@ private fun SettingToggle(
     onChange: (Boolean) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(20.dp, 0.55f),
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -989,7 +1011,7 @@ private fun SettingRow(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
+        shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(20.dp, 0.55f),
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {

@@ -260,8 +260,13 @@ fun HomeScreen(nav: Navigator) {
             }
             if (hero != null) {
                 item {
+                    // The artwork drifts slower than the list, so the hero reads as a
+                    // window onto the page rather than another scrolling card.
+                    val parallax = if (listState.firstVisibleItemIndex == 0) {
+                        (listState.firstVisibleItemScrollOffset * 0.32f).coerceAtMost(120f)
+                    } else 0f
                     Reveal(index = 0) {
-                        HeroCard(card = hero, onClick = { openCard(hero) })
+                        HeroCard(card = hero, onClick = { openCard(hero) }, parallax = parallax)
                     }
                     Spacer(Modifier.height(18.dp))
                 }
@@ -403,7 +408,7 @@ private fun FloatingStatsCard(
 }
 
 @Composable
-private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
+private fun HeroCard(card: MediaCard, onClick: () -> Unit, parallax: Float = 0f) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
@@ -422,7 +427,13 @@ private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = 0.96f }
+                .graphicsLayer {
+                    alpha = 0.96f
+                    // Overscan keeps the edges covered while the image drifts.
+                    scaleX = 1.12f
+                    scaleY = 1.12f
+                    translationY = if (Motion.reduced) 0f else parallax * 0.45f
+                }
         )
         Box(
             Modifier

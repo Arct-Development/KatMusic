@@ -178,7 +178,7 @@ fun GlassCard(
     GlassSurface(
         modifier = modifier,
         shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(corner, 0.55f),
-        fillAlpha = 0.62f
+        fillAlpha = 1f
     ) {
         content()
     }
@@ -379,12 +379,16 @@ fun TrackRow(
             index != null -> {
                 Box(Modifier.width(30.dp), contentAlignment = Alignment.Center) {
                     if (isCurrent) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                            contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        if (isPlaying) {
+                            PlayingBars(color = accent)
+                        } else {
+                            Icon(
+                                Icons.Filled.Pause,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     } else {
                         Text(
                             text = index.toString(),
@@ -691,7 +695,25 @@ fun MiniPlayer(
                     corner = 14.dp
                 )
                 Spacer(Modifier.width(11.dp))
-                Column(Modifier.weight(1f)) {
+                // Track changes fade the title block instead of swapping it.
+                val textReveal = remember(track.id) {
+                    androidx.compose.animation.core.Animatable(if (Motion.reduced) 1f else 0f)
+                }
+                LaunchedEffect(track.id) {
+                    if (Motion.reduced) {
+                        textReveal.snapTo(1f)
+                    } else {
+                        textReveal.animateTo(1f, Motion.spatialDefault())
+                    }
+                }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .graphicsLayer {
+                            alpha = textReveal.value
+                            translationY = (1f - textReveal.value) * 8f
+                        }
+                ) {
                     Text(
                         track.title,
                         style = MaterialTheme.typography.titleSmall,
@@ -758,7 +780,7 @@ fun PlayingBars(
     bars: Int = 3
 ) {
     val transition = rememberInfiniteTransition(label = "playingBars")
-    val phase by transition.animateFloat(
+    val animatedPhase by transition.animateFloat(
         initialValue = 0f,
         targetValue = (2f * PI).toFloat(),
         animationSpec = infiniteRepeatable(
@@ -767,10 +789,12 @@ fun PlayingBars(
         ),
         label = "barsPhase"
     )
+    val phase = if (Motion.reduced) 0f else animatedPhase
     Canvas(modifier.size(width = 14.dp, height = 12.dp)) {
         val barWidth = size.width / (bars * 2f - 1f)
         repeat(bars) { index ->
-            val height = size.height * (0.35f + 0.32f * abs(sin(phase + index * 1.1f)))
+            val height = if (Motion.reduced) size.height * 0.45f
+            else size.height * (0.35f + 0.32f * abs(sin(phase + index * 1.1f)))
             drawRoundRect(
                 color = color,
                 topLeft = Offset(index * barWidth * 2f, size.height - height),

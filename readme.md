@@ -120,6 +120,9 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - System / Light / Dark mode, Material You wallpaper colours, AMOLED black and a
   hand-picked accent palette
 - Waveform seek bar with three flowing layers over the played part of the track
+- Motion with a **Reduce motion** switch that snaps transitions and stops ambient drift
+- **Search** with an animated hint, type filters (All / Songs / Albums / Artists /
+  Playlists), a top-result card, recent searches and a browse grid
 - Home-screen **now playing widget** with play/pause and skip
 - **Settings search** – type a setting's name and land on the section that owns it, or
   browse Account, Appearance, Playback, Audio & safety, Lyrics, Downloads, AI, Discord,
