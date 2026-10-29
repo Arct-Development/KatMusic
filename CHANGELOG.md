@@ -4,9 +4,16 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] – 2026-10-29
 
 ### Added
+
+- Discover screen: a radar of unheard tracks built from the artists you play, plus a
+  Genre DNA chart resolved from Last.fm tags or the keyless iTunes catalogue, with one-tap
+  genre radios
+- Romanised lyrics: a Latin-script reading under every line, switched on in Settings
+- Signed release builds via `keystore.properties` or CI environment variables, with a
+  documented fallback to the debug key
 
 - Word-by-word lyrics: Apple Music TTML from the Better Lyrics API, parsed into
   per-word timings (background vocals, translation tracks and the global

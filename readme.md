@@ -42,6 +42,14 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - Sleep timer with quick presets
 - Playback speed from 0.75× to 2×
 
+### Discover
+
+- **Genre DNA** – your listening history resolved into a genre breakdown, weighted by
+  play count (Last.fm tags when configured, the keyless iTunes catalogue otherwise)
+- **Discovery radar** – unheard tracks pulled from the artists you play, interleaved and
+  topped up from the catalogue when your history is thin
+- One-tap genre radios and a Smart Mix generator that alternates between your seed artists
+
 ### Sound
 
 - 10-band equalizer with the device's built-in presets
@@ -136,7 +144,23 @@ git clone https://github.com/ItzFallenMe/KatMusic.git
 cd KatMusic
 ./gradlew :app:assembleDebug          # APK → app/build/outputs/apk/debug/
 ./gradlew :app:testDebugUnitTest      # parsing unit tests
+./gradlew :app:assembleRelease        # signed APK → app/build/outputs/apk/release/
 ```
+
+Release builds are signed from `keystore.properties` at the repository root:
+
+```properties
+storeFile=release.keystore
+storePassword=…
+keyAlias=…
+keyPassword=…
+```
+
+The same four keys can be supplied as environment variables (`storeFile`, `storePassword`,
+`keyAlias`, `keyPassword`) so CI can sign without committing secrets. When neither is
+present the release build falls back to the debug key, which installs fine on a phone but
+cannot be published. Keep the keystore backed up: Android refuses updates signed with a
+different key.
 
 Open the folder in Android Studio for the full IDE experience; no extra setup is needed.
 
@@ -212,20 +236,21 @@ please read the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go throu
 Planned work, roughly in priority order. Feature requests are welcome – open an issue.
 
 - [x] Now-playing home-screen widget (insight and playlist widgets still planned)
+- [x] Genre DNA and a discovery feed built from listening stats
+- [x] Word-by-word lyrics and romanisation
 - [ ] Android Auto and Android TV entry points
 - [ ] Google Cast support
 - [ ] Discord rich presence
 - [ ] Listen Together (synced rooms)
 - [ ] Multi-account switching for YouTube Music
 - [ ] Video playback with captions and audio-track selection
-- [ ] Word-by-word lyrics, romanisation and share-as-image
+- [ ] Share lyrics as an image
 - [ ] Multi-source lyrics (SimpMusic lyrics, Spotify, YouTube transcript)
 - [x] MediaStore export of downloads with title, artist and album tags
 - [ ] Embedded cover art and ID3 tagging inside downloaded files
 - [x] Local file playback and a device-music browser
 - [x] Backup / restore of the whole library
 - [x] AutoEq headphone profiles for the equalizer
-- [ ] Genre DNA and a discovery feed built from listening stats
 - [x] Spotify / Apple Music song lists (pasted, matched automatically)
 - [ ] Spotify / Apple Music playlists read directly through their APIs
 

@@ -75,6 +75,30 @@ class LiveApiTest {
     }
 
     @Test
+    fun `genre resolver labels a mainstream artist`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val genre = com.itzfallenme.katmusic.data.GenreResolver.artistGenre("The Weeknd")
+        println("GENRE: $genre")
+        assertTrue("expected a genre", genre.isNotBlank())
+        val radio = com.itzfallenme.katmusic.data.Discover.genreRadio(genre, 10)
+        assertTrue("expected genre radio tracks", radio.isNotEmpty())
+    }
+
+    @Test
+    fun `romanization returns a reading per line`() = runBlocking {
+        assumeTrue(System.getenv("KAT_LIVE") == "1")
+        val lines = listOf(
+            com.itzfallenme.katmusic.data.LyricLine(0, "愛してる"),
+            com.itzfallenme.katmusic.data.LyricLine(2_000, "今日は晴天")
+        )
+        val romanised = com.itzfallenme.katmusic.data.LyricsTranslation.romanize(lines)
+        println("ROMAN: ${romanised?.texts}")
+        assertNotNull("expected romanised lines", romanised)
+        org.junit.Assert.assertEquals(2, romanised!!.texts.size)
+        assertTrue("kept line order", romanised.texts.first().contains("i", ignoreCase = true))
+    }
+
+    @Test
     fun `lrclib returns synced lyrics for a popular track`() = runBlocking {
         assumeTrue(System.getenv("KAT_LIVE") == "1")
         val lyrics = LyricsApi.find("Never Gonna Give You Up", "Rick Astley", null, 213)

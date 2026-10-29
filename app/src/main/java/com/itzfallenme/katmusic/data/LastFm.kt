@@ -66,6 +66,30 @@ class LastFm(private val apiKey: String, private val apiSecret: String) {
         return name to key
     }
 
+    /** Top tags for an artist, or for one of its tracks, used as genre labels. */
+    suspend fun topTags(artist: String, track: String? = null): List<String> {
+        val params = if (track.isNullOrBlank()) {
+            mapOf("method" to "artist.getTopTags", "artist" to artist, "autocorrect" to "1")
+        } else {
+            mapOf(
+                "method" to "track.getInfo",
+                "artist" to artist,
+                "track" to track,
+                "autocorrect" to "1"
+            )
+        }
+        val root = call(params) ?: return emptyList()
+        val container = if (track.isNullOrBlank()) {
+            root["toptags"]?.jsonObject
+        } else {
+            root["track"]?.jsonObject?.get("toptags")?.jsonObject
+        } ?: return emptyList()
+        val tags = container["tag"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+        return tags.mapNotNull { entry ->
+            (entry as? JsonObject)?.get("name")?.jsonPrimitive?.content
+        }.filter { it.isNotBlank() }
+    }
+
     suspend fun updateNowPlaying(track: Track, sessionKey: String): Boolean {
         val params = mutableMapOf(
             "method" to "track.updateNowPlaying",

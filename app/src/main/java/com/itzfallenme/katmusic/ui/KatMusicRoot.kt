@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.ui.screens.AccountScreen
 import com.itzfallenme.katmusic.ui.screens.DetailScreen
+import com.itzfallenme.katmusic.ui.screens.DiscoverScreen
 import com.itzfallenme.katmusic.ui.screens.DownloadsScreen
 import com.itzfallenme.katmusic.ui.screens.EqualizerScreen
 import com.itzfallenme.katmusic.ui.screens.ExploreScreen
@@ -176,6 +177,7 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                         when (screen) {
                             Screen.Home -> HomeScreen(nav)
                             Screen.Explore -> ExploreScreen(nav)
+                            Screen.Discover -> DiscoverScreen(nav)
                             Screen.Search -> SearchScreen(nav)
                             Screen.Library -> LibraryScreen(nav)
                             Screen.Settings -> SettingsScreen(nav)

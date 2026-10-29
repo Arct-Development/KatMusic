@@ -27,7 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -136,10 +138,16 @@ fun HomeScreen(nav: Navigator) {
     ) {
         item {
             Column(Modifier.statusBarsPadding().padding(top = 8.dp)) {
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    corner = 28.dp
+                ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                        .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
@@ -163,11 +171,26 @@ fun HomeScreen(nav: Navigator) {
                         )
                     }
                     GlassIconButton(
+                        icon = Icons.Filled.Explore,
+                        contentDescription = "Discover",
+                        onClick = { nav.go(Screen.Discover) },
+                        size = 42.dp
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    GlassIconButton(
+                        icon = Icons.Filled.Search,
+                        contentDescription = "Search",
+                        onClick = { nav.go(Screen.Search) },
+                        size = 42.dp
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    GlassIconButton(
                         icon = Icons.Filled.Settings,
                         contentDescription = "Settings",
                         onClick = { nav.go(Screen.Settings) },
-                        size = 44.dp
+                        size = 42.dp
                     )
+                }
                 }
 
                 Spacer(Modifier.height(10.dp))

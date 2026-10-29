@@ -31,6 +31,22 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      - name: Build release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            export storeFile=release.keystore
+            export storePassword="$KEYSTORE_PASSWORD"
+            export keyAlias="$KEY_ALIAS"
+            export keyPassword="$KEY_PASSWORD"
+          fi
+          ./gradlew :app:assembleRelease --stacktrace
+
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,3 +61,10 @@ jobs:
           name: katmusic-debug-apk-${{ github.run_number }}
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: katmusic-release-apk-${{ github.run_number }}
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: ignore

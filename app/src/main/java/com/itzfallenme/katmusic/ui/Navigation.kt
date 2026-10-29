@@ -9,6 +9,7 @@ import com.itzfallenme.katmusic.data.CardKind
 sealed interface Screen {
     data object Home : Screen
     data object Explore : Screen
+    data object Discover : Screen
     data object Search : Screen
     data object Library : Screen
     data object Settings : Screen

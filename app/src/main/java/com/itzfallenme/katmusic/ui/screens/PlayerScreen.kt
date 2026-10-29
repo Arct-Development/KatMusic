@@ -107,6 +107,7 @@ import com.itzfallenme.katmusic.data.CardKind
 import com.itzfallenme.katmusic.data.LyricLine
 import com.itzfallenme.katmusic.data.Lyrics
 import com.itzfallenme.katmusic.data.LyricSyllable
+import com.itzfallenme.katmusic.data.LyricsTranslation
 import com.itzfallenme.katmusic.data.Track
 import com.itzfallenme.katmusic.data.WordLyricsApi
 import com.itzfallenme.katmusic.data.YtMusic
@@ -376,7 +377,8 @@ fun PlayerScreen(nav: Navigator) {
                     else -> ArtworkPane(
                         track = track,
                         playing = state.playing,
-                        playingFraction = playing
+                        playingFraction = playing,
+                        style = settings.playerStyle
                     )
                 }
             }
@@ -814,12 +816,26 @@ private fun BufferingDots(color: Color) {
 }
 
 @Composable
-private fun ArtworkPane(track: Track, playing: Boolean, playingFraction: Float) {
+private fun ArtworkPane(
+    track: Track,
+    playing: Boolean,
+    playingFraction: Float,
+    style: String = "expressive"
+) {
     val scheme = MaterialTheme.colorScheme
+    // The three player styles differ in how much theatre the artwork gets: the
+    // expressive layout spins a vinyl behind a breathing cover, the others stay still.
+    val expressive = style == "expressive"
+    val corner = when (style) {
+        "classic" -> 10.dp
+        "apple" -> 14.dp
+        else -> 30.dp
+    }
+    val widthFraction = if (style == "apple") 0.82f else 0.9f
     val transition = rememberInfiniteTransition(label = "breathing")
     val breath by transition.animateFloat(
-        initialValue = 0.995f,
-        targetValue = 1.012f,
+        initialValue = if (expressive) 0.995f else 1f,
+        targetValue = if (expressive) 1.012f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(4200, easing = LinearEasing),
             repeatMode = AnimationRepeatMode.Reverse
@@ -834,24 +850,26 @@ private fun ArtworkPane(track: Track, playing: Boolean, playingFraction: Float) 
             .padding(horizontal = 26.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.72f)
-                .offset(x = 26.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            SpinningVinyl(playing = playing, modifier = Modifier.fillMaxSize())
+        if (expressive) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.72f)
+                    .offset(x = 26.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                SpinningVinyl(playing = playing, modifier = Modifier.fillMaxSize())
+            }
         }
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(widthFraction)
                 .graphicsLayer {
                     scaleX = scale * breath
                     scaleY = scale * breath
                 }
-                .shadow(26.dp, RoundedCornerShape(30.dp), spotColor = scheme.primary)
-                .clip(RoundedCornerShape(30.dp))
+                .shadow(if (expressive) 26.dp else 12.dp, RoundedCornerShape(corner), spotColor = scheme.primary)
+                .clip(RoundedCornerShape(corner))
         ) {
             AsyncImage(
                 model = track.artwork,
@@ -909,6 +927,19 @@ private fun LyricsPane(
 ) {
     val listState = rememberLazyListState()
     val synced = lyrics?.synced.orEmpty()
+    val settings by ServiceLocator.settings.state.collectAsState()
+    var subLines by remember(lyrics) { mutableStateOf<List<String>?>(null) }
+
+    LaunchedEffect(synced, settings.romanizedLyrics) {
+        if (!settings.romanizedLyrics || synced.isEmpty()) {
+            subLines = null
+            return@LaunchedEffect
+        }
+        subLines = runCatching {
+            LyricsTranslation.romanize(synced)?.texts
+        }.getOrNull()
+    }
+
     // Frame-accurate clock: the player only publishes a position a few times a second,
     // which would make word highlighting stutter, so interpolate between updates.
     var smoothMs by remember { mutableLongStateOf(positionMs + offsetMs) }
@@ -1006,7 +1037,8 @@ private fun LyricsPane(
                         active = index == activeIndex,
                         distance = abs(index - activeIndex),
                         scale = scale,
-                        positionMs = smoothMs
+                        positionMs = smoothMs,
+                        subLine = subLines?.getOrNull(index)
                     )
                 }
             }
@@ -1016,7 +1048,14 @@ private fun LyricsPane(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Float, positionMs: Long) {
+private fun LyricRow(
+    line: LyricLine,
+    active: Boolean,
+    distance: Int,
+    scale: Float,
+    positionMs: Long,
+    subLine: String? = null
+) {
     val scheme = MaterialTheme.colorScheme
     val emphasis by animateFloatAsState(
         targetValue = if (active) 1f else 0f,
@@ -1030,24 +1069,29 @@ private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Flo
         else -> 0.26f
     }
     if (line.hasSyllables) {
-        FlowRow(
-            modifier = Modifier
+        Column(
+            Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
                     translationX = 10f * emphasis
                     alpha = lineAlpha
                 }
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center
+                .padding(vertical = 8.dp)
         ) {
-            line.syllables.forEach { syllable ->
-                SyllableWord(
-                    syllable = syllable,
-                    active = active,
-                    positionMs = positionMs,
-                    scale = scale
-                )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                line.syllables.forEach { syllable ->
+                    SyllableWord(
+                        syllable = syllable,
+                        active = active,
+                        positionMs = positionMs,
+                        scale = scale
+                    )
+                }
             }
+            LyricSubLine(subLine, scale)
         }
         return
     }
@@ -1066,6 +1110,22 @@ private fun LyricRow(line: LyricLine, active: Boolean, distance: Int, scale: Flo
                 alpha = lineAlpha
             }
             .padding(vertical = 8.dp)
+    )
+    LyricSubLine(subLine, scale)
+}
+
+/** Romanised or translated reading of the line, shown smaller and quieter. */
+@Composable
+private fun LyricSubLine(text: String?, scale: Float) {
+    if (text.isNullOrBlank()) return
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = MaterialTheme.typography.bodyMedium.fontSize * scale
+        ),
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
     )
 }
 

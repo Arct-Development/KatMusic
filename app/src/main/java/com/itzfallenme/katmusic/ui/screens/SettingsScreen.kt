@@ -284,6 +284,11 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "Apple Music TTML timing, karaoke highlight",
                     checked = settings.wordByWordLyrics
                 ) { update { s -> s.copy(wordByWordLyrics = it) } }
+                SettingToggle(
+                    title = "Romanise lyrics",
+                    subtitle = "Show a Latin-script reading under each line",
+                    checked = settings.romanizedLyrics
+                ) { update { s -> s.copy(romanizedLyrics = it) } }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "Timing offset: ${settings.lyricsOffsetMs} ms",

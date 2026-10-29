@@ -16,3 +16,7 @@
 # Local assistant transcripts and scratch notes
 freebuff-chat-*.md
 *.local.md
+
+# Release signing material
+/keystore.properties
+/release.keystore
