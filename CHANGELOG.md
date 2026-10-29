@@ -4,6 +4,15 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.4.1] – 2026-10-29
+
+### Added
+
+- Friends' listening feed: follow Last.fm profile names in Settings and see what they are
+  playing, with a now-playing marker, artwork and one-tap playback that resolves the
+  scrobble to a YouTube Music track. Uses the Last.fm key you already configured for
+  scrobbling - public endpoints, nothing posted to their profile
+
 ## [1.4.0] – 2026-10-29
 
 ### Changed

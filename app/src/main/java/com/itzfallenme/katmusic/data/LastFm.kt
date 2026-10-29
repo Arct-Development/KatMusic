@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -11,6 +12,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+
+/** One track a friend has played, as Last.fm reports it. */
+data class FriendScrobble(
+    val title: String,
+    val artist: String,
+    val album: String = "",
+    val artworkUrl: String = "",
+    val playedAtMs: Long = 0L,
+    val nowPlaying: Boolean = false
+)
 
 /**
  * Minimal Last.fm client: auth, now-playing and scrobbling.
@@ -116,4 +127,69 @@ class LastFm(private val apiKey: String, private val apiSecret: String) {
         val result = call(params)
         return result?.containsKey("scrobbles") == true
     }
+
+    /** Whether Last.fm knows this profile; used before adding a friend. */
+    suspend fun userExists(username: String): Boolean {
+        val root = call(mapOf("method" to "user.getInfo", "user" to username)) ?: return false
+        return root["user"] != null
+    }
+
+    /**
+     * A profile's recent listening, newest first. The Last.fm payload marks the
+     * currently playing track with `nowplaying`, which is shown separately.
+     */
+    suspend fun recentTracks(username: String, limit: Int = 20): List<FriendScrobble> {
+        val root = call(
+            mapOf(
+                "method" to "user.getRecentTracks",
+                "user" to username,
+                "limit" to limit.toString(),
+                "extended" to "1"
+            )
+        ) ?: return emptyList()
+        return parseRecentTracks(root)
+    }
 }
+
+/** Pulls a recent-tracks payload apart; split out so it can be unit tested. */
+internal fun parseRecentTracks(root: JsonObject): List<FriendScrobble> {
+    val container = root["recenttracks"]?.jsonObject ?: return emptyList()
+    val entries = when (val raw = container["track"]) {
+            is JsonArray -> raw
+            is JsonObject -> JsonArray(listOf(raw))
+            else -> return emptyList()
+        }
+        return entries.mapNotNull { element ->
+            val track = element as? JsonObject ?: return@mapNotNull null
+            // Last.fm wraps some values (`album`, `date`) in {"#text": ...} objects.
+            fun field(key: String): String = when (val value = track[key]) {
+                null -> ""
+                is JsonObject -> value["#text"]?.jsonPrimitive?.content.orEmpty()
+                else -> runCatching { value.jsonPrimitive.content }.getOrDefault("")
+            }
+            val attributes = track["@attr"]?.jsonObject
+            val nowPlaying = attributes?.get("nowplaying")?.jsonPrimitive?.content == "true"
+            val image = (track["image"] as? JsonArray)
+                ?.mapNotNull { it as? JsonObject }
+                ?.maxByOrNull { it["size"]?.jsonPrimitive?.content.orEmpty().length }
+                ?.get("#text")?.jsonPrimitive?.content
+                .orEmpty()
+            val artist = when (val value = track["artist"]) {
+                is JsonObject -> value["name"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                    ?: value["#text"]?.jsonPrimitive?.content.orEmpty()
+                null -> ""
+                else -> runCatching { value.jsonPrimitive.content }.getOrDefault("")
+            }
+            FriendScrobble(
+                title = field("name"),
+                artist = artist,
+                album = field("album"),
+                artworkUrl = image,
+                playedAtMs = field("date").let { stamp ->
+                    (track["date"] as? JsonObject)?.get("uts")?.jsonPrimitive?.content
+                        ?.toLongOrNull()?.times(1000) ?: 0L
+                },
+                nowPlaying = nowPlaying
+            )
+        }.filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+    }

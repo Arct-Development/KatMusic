@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Lyrics
@@ -538,6 +539,12 @@ fun SettingsScreen(nav: Navigator) {
                         ) { Text("Connect") }
                     }
                 }
+                SettingRow(
+                    title = "Friends' listening",
+                    subtitle = if (settings.lastFmFriends.isEmpty()) "Follow Last.fm profiles and see what they play"
+                    else "Following ${settings.lastFmFriends.size}",
+                    icon = Icons.Filled.Group
+                ) { nav.go(Screen.Friends) }
                 if (status != null) {
                     Text(
                         status ?: "",

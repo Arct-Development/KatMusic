@@ -78,6 +78,8 @@ data class AppSettings(
     val lastFmSessionKey: String = "",
     val lastFmUsername: String = "",
     val scrobblingEnabled: Boolean = false,
+    /** Last.fm profiles whose public listening shows up in the Friends feed. */
+    val lastFmFriends: List<String> = emptyList(),
     val showExplicit: Boolean = true,
     val reducedMotion: Boolean = false,
     val combinedLibrarySections: Boolean = true,
