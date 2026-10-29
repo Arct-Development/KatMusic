@@ -73,7 +73,10 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
   API: Apple Music TTML carries a start and end time for every word, so the fill
   sweeps across each word exactly as it is sung, background vocals included
 - Millisecond-synced line lyrics from [LRCLIB](https://lrclib.net) as the fallback
-- Karaoke highlighting that follows playback at frame rate and scrolls itself
+- **Word glow** – the lit copy of the line is masked to the sung extent with a feathered
+  edge, the current word lifts and settles, and a halo rides the wipe; neighbouring lines
+  fade and soften, and tapping a line seeks to it
+- Frame-rate karaoke clock and self-following scroll that yields while you browse
 - Romanised readings under every line, for Japanese, Korean, Hindi and other scripts
 - **Share lyrics as an image** – the lines around the current moment are rendered with
   the album art into a share-ready card
@@ -104,10 +107,12 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 
 ### Personalise
 
-- Material 3 Expressive theme seeded from the current artwork, with a spring-driven
-  motion language: glass surfaces, a floating dock, breathing artwork, morphing
-  play/pause, ambient colour blobs and animated lyrics
-- AMOLED mode and a hand-picked accent palette
+- Material 3 Expressive theme seeded from the current artwork: flat tonal surfaces,
+  a pill dock, breathing artwork, morphing play/pause and animated lyrics - no
+  glassmorphism, blur panes or rim highlights
+- System / Light / Dark mode, Material You wallpaper colours, AMOLED black and a
+  hand-picked accent palette
+- Waveform seek bar with three flowing layers over the played part of the track
 - Home-screen **now playing widget** with play/pause and skip
 - Listening stats: minutes, plays, top artists, top tracks and a listening clock
 - Shareable stats summary
@@ -273,9 +278,11 @@ KatMusic is an independent implementation inspired by the feature sets and inter
 ideas of two excellent open-source projects:
 
 - [LastWave](https://github.com/Clash-Projects/LastWave-native) by Clash Projects – the
-  expressive glass design language, tonal palette builder and motion rhythm are adapted
-  from LastWave (GPL-3.0), as are the TTML lyrics pipeline, the Discord RPC transport
-  (including the three `com.discord.socialsdk.rpc` AIDL stubs) and the genre resolver.
+  tonal palette builder and motion rhythm are adapted from LastWave (GPL-3.0), as are the
+  TTML lyrics pipeline, the karaoke surface (`KaraokeLyrics.kt`, ported from its
+  `ModernLyricsView`), the Discord RPC transport (including the three
+  `com.discord.socialsdk.rpc` AIDL stubs) and the genre resolver. A read-only clone of the
+  upstream project is kept at `lastwave/` for reference and is git-ignored.
 - [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
 Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Stream

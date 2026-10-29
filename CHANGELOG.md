@@ -4,6 +4,30 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.4.0] – 2026-10-29
+
+### Changed
+
+- The interface is now Material 3 Expressive throughout. Every frosted "glass" sheet,
+  rim highlight and translucent card is gone: cards, the mini player, the dock and the
+  player controls are plain tonal surfaces with a single quiet shadow, and depth comes
+  from tonal elevation instead of blur and borders
+- The player transport no longer floats on a card; it sits on a scrim that fades the
+  artwork out under the text, the way the reference player does
+- Dragging the player down now peels the whole page back into the screen instead of
+  sliding a static image away
+
+### Added
+
+- Word-by-word karaoke lyrics with a real glow: the lit copy of the line is masked to the
+  sung extent with a feathered edge, the current word lifts and settles, and a halo rides
+  the wipe so the light follows the voice. Neighbouring lines fade, soften and lag behind
+  the scroll; tapping a line seeks to it
+- Waveform seek bar: three flowing sine layers fill the played part of the track while the
+  rest stays a flat capsule, flattening into a scrubber with a thumb while you drag
+- Theme mode (System / Light / Dark) and Wallpaper colours (Material You on Android 12+)
+- Lyric glow toggle in Settings, alongside the existing size and offset controls
+
 ## [1.3.0] – 2026-10-29
 
 ### Added

@@ -174,6 +174,24 @@ fun SettingsScreen(nav: Navigator) {
             }
 
             SettingsCard(title = "Appearance", icon = Icons.Filled.Palette) {
+                Text("Theme", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach {
+                        (value, label) ->
+                        com.itzfallenme.katmusic.ui.Chip(
+                            text = label,
+                            selected = settings.themeMode == value,
+                            onClick = { update { s -> s.copy(themeMode = value) } }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                SettingToggle(
+                    title = "Wallpaper colours",
+                    subtitle = "Use the system Material You palette (Android 12+)",
+                    checked = settings.useSystemDynamicColor
+                ) { update { s -> s.copy(useSystemDynamicColor = it) } }
                 SettingToggle(
                     title = "Artwork colours",
                     subtitle = "Recolour the app from the current album art",
@@ -286,6 +304,11 @@ fun SettingsScreen(nav: Navigator) {
                     subtitle = "Apple Music TTML timing, karaoke highlight",
                     checked = settings.wordByWordLyrics
                 ) { update { s -> s.copy(wordByWordLyrics = it) } }
+                SettingToggle(
+                    title = "Lyric glow",
+                    subtitle = "Halo follows the word being sung, with lifted glyphs",
+                    checked = settings.lyricsGlow
+                ) { update { s -> s.copy(lyricsGlow = it) } }
                 SettingToggle(
                     title = "Romanise lyrics",
                     subtitle = "Show a Latin-script reading under each line",

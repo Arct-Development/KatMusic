@@ -7,12 +7,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import android.os.Build
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -291,10 +295,24 @@ fun KatMusicTheme(
     seed: Color = Color(0xFF8AB4F8),
     amoled: Boolean = false,
     light: Boolean = false,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val isDark = !light
-    val scheme = if (isDark) ColorEngine.darkScheme(seed, amoled) else ColorEngine.lightScheme(seed)
+    val context = LocalContext.current
+    val dynamic = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        runCatching {
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }.getOrNull()
+    } else null
+    val scheme = dynamic?.let { base ->
+        if (isDark && amoled) base.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceContainerLowest = Color.Black,
+            surfaceContainerLow = Color.Black
+        ) else base
+    } ?: if (isDark) ColorEngine.darkScheme(seed, amoled) else ColorEngine.lightScheme(seed)
     MaterialTheme(
         colorScheme = scheme,
         typography = KatTypography,

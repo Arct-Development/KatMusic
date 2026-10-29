@@ -84,6 +84,10 @@ data class AppSettings(
     val statsEnabled: Boolean = true,
     val sponsorBlockEnabled: Boolean = false,
     val playerStyle: String = "expressive",
+    /** system | light | dark */
+    val themeMode: String = "system",
+    /** Bloomy halo behind the line/word being sung. */
+    val lyricsGlow: Boolean = true,
     val romanizedLyrics: Boolean = false,
     /** Publish the playing track to Discord as a Rich Presence card. */
     val discordPresenceEnabled: Boolean = false,

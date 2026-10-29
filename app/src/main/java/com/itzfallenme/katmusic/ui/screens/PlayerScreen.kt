@@ -106,8 +106,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.data.CardKind
-import com.itzfallenme.katmusic.data.LyricLine
 import com.itzfallenme.katmusic.data.Lyrics
+import com.itzfallenme.katmusic.ui.player.KaraokeLyrics
 import com.itzfallenme.katmusic.data.LyricSyllable
 import com.itzfallenme.katmusic.data.LyricsShareCard
 import com.itzfallenme.katmusic.data.LyricsTranslation
@@ -236,6 +236,12 @@ fun PlayerScreen(nav: Navigator) {
             .graphicsLayer {
                 translationY = dragOffset
                 alpha = dragAlpha
+                // Dragging down also pulls the whole page back into the
+                // screen, so dismissing feels like the sheet is being peeled
+                // off rather than sliding a static image away.
+                val shrink = (1f - dragOffset / 2200f).coerceIn(0.88f, 1f)
+                scaleX = shrink
+                scaleY = shrink
             }
     ) {
         // Blurred, oversized artwork gives the page its colour; the ambient blobs keep it moving.
@@ -387,16 +393,23 @@ fun PlayerScreen(nav: Navigator) {
                 }
             }
 
-            GlassSurface(
+            // The transport sits directly on the page, M3-style: a scrim that fades
+            // the artwork out under the text instead of a floating glass card.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 10.dp),
-                shape = RoundedCornerShape(30.dp),
-                elevation = 20.dp,
-                fillAlpha = 0.7f
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                scheme.background.copy(alpha = 0.55f),
+                                scheme.background.copy(alpha = 0.92f)
+                            )
+                        )
+                    )
+                    .padding(bottom = 6.dp)
             ) {
-                Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 12.dp)) {
                     Column {
                         Text(
                             text = track.title,
@@ -556,7 +569,8 @@ fun PlayerScreen(nav: Navigator) {
                         Box(
                             Modifier
                                 .size(40.dp)
-                                .liquidGlass(shape = CircleShape, fillAlpha = 0.5f)
+                                .clip(CircleShape)
+                                .background(scheme.surfaceContainerHigh)
                                 .bounceClickable(targetScale = 0.9f) { speedDialog = true },
                             contentAlignment = Alignment.Center
                         ) {
@@ -929,7 +943,6 @@ private fun LyricsPane(
     scale: Float,
     playing: Boolean
 ) {
-    val listState = rememberLazyListState()
     val synced = lyrics?.synced.orEmpty()
     val settings by ServiceLocator.settings.state.collectAsState()
     var subLines by remember(lyrics) { mutableStateOf<List<String>?>(null) }
@@ -961,17 +974,6 @@ private fun LyricsPane(
         }
     }
     val activeIndex = synced.indexOfLast { it.timeMs <= smoothMs }
-
-    LaunchedEffect(activeIndex) {
-        if (activeIndex >= 0) {
-            // Park the line being sung around the upper third so the next lines stay visible.
-            val viewport = listState.layoutInfo.viewportSize.height
-            val anchor = if (viewport > 0) (viewport * 0.38f).toInt() else 140
-            runCatching {
-                listState.animateScrollToItem(activeIndex.coerceAtLeast(0), scrollOffset = -anchor)
-            }
-        }
-    }
 
     when {
         loading -> LoadingLyrics()
@@ -1076,150 +1078,20 @@ private fun LyricsPane(
                     }
                 )
             }
-            LazyColumn(
-                state = listState,
+            KaraokeLyrics(
+                lines = synced,
+                positionMs = { smoothMs },
+                isPlaying = playing,
+                onSeek = { ServiceLocator.player.seekTo(it) },
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 26.dp, vertical = 18.dp)
-            ) {
-                items(synced.size) { index ->
-                    val line: LyricLine = synced[index]
-                    LyricRow(
-                        line = line,
-                        active = index == activeIndex,
-                        distance = abs(index - activeIndex),
-                        scale = scale,
-                        positionMs = smoothMs,
-                        subLine = subLines?.getOrNull(index)
-                    )
-                }
-            }
+                scale = scale,
+                glow = settings.lyricsGlow,
+                subLines = subLines,
+                activeColor = MaterialTheme.colorScheme.primary,
+                inactiveColor = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun LyricRow(
-    line: LyricLine,
-    active: Boolean,
-    distance: Int,
-    scale: Float,
-    positionMs: Long,
-    subLine: String? = null
-) {
-    val scheme = MaterialTheme.colorScheme
-    val emphasis by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
-        animationSpec = Motion.spatialDefault(),
-        label = "lyricEmphasis"
-    )
-    val lineAlpha = when {
-        active -> 1f
-        distance == 1 -> 0.62f
-        distance == 2 -> 0.4f
-        else -> 0.26f
-    }
-    if (line.hasSyllables) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    translationX = 10f * emphasis
-                    alpha = lineAlpha
-                }
-                .padding(vertical = 8.dp)
-        ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                line.syllables.forEach { syllable ->
-                    SyllableWord(
-                        syllable = syllable,
-                        active = active,
-                        positionMs = positionMs,
-                        scale = scale
-                    )
-                }
-            }
-            LyricSubLine(subLine, scale)
-        }
-        return
-    }
-    Text(
-        text = line.text,
-        style = MaterialTheme.typography.titleLarge.copy(
-            fontSize = MaterialTheme.typography.titleLarge.fontSize * scale * (1f + 0.05f * emphasis),
-            fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        ),
-        color = if (active) scheme.primary else scheme.onSurface.copy(alpha = lineAlpha),
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                translationX = 10f * emphasis
-                alpha = lineAlpha
-            }
-            .padding(vertical = 8.dp)
-    )
-    LyricSubLine(subLine, scale)
-}
-
-/** Romanised or translated reading of the line, shown smaller and quieter. */
-@Composable
-private fun LyricSubLine(text: String?, scale: Float) {
-    if (text.isNullOrBlank()) return
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium.copy(
-            fontSize = MaterialTheme.typography.bodyMedium.fontSize * scale
-        ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-/**
- * A single karaoke token: the fill sweeps across the word in sync with its timing,
- * so every syllable lights up exactly when it is sung.
- */
-@Composable
-private fun SyllableWord(
-    syllable: LyricSyllable,
-    active: Boolean,
-    positionMs: Long,
-    scale: Float
-) {
-    val scheme = MaterialTheme.colorScheme
-    val fraction = if (syllable.durationMs > 0) {
-        ((positionMs - syllable.timeMs).toFloat() / syllable.durationMs).coerceIn(0f, 1f)
-    } else if (positionMs >= syllable.timeMs) 1f else 0f
-    val sung = if (syllable.isBackground) scheme.onSurfaceVariant else scheme.primary
-    val pending = scheme.onSurface.copy(alpha = if (active) 0.32f else 0.24f)
-    val metrics = MaterialTheme.typography.titleLarge
-    val size = metrics.fontSize * scale * (if (syllable.isBackground) 0.82f else 1f)
-    val weight = if (active) FontWeight.Black else FontWeight.SemiBold
-    val style = when {
-        fraction <= 0f -> TextStyle(color = pending, fontSize = size, fontWeight = weight, fontFamily = metrics.fontFamily)
-        fraction >= 1f -> TextStyle(color = sung, fontSize = size, fontWeight = weight, fontFamily = metrics.fontFamily)
-        else -> TextStyle(
-            brush = Brush.horizontalGradient(
-                0f to sung,
-                fraction to sung,
-                fraction to pending,
-                1f to pending
-            ),
-            fontSize = size,
-            fontWeight = weight,
-            fontFamily = metrics.fontFamily
-        )
-    }
-    Text(
-        text = syllable.text,
-        style = style,
-        modifier = Modifier.padding(end = 5.dp, top = 2.dp, bottom = 2.dp)
-    )
 }
 
 @Composable

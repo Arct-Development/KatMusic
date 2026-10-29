@@ -20,3 +20,6 @@ freebuff-chat-*.md
 # Release signing material
 /keystore.properties
 /release.keystore
+
+# Reference clone of the upstream LastWave app (read-only reference, not built)
+/lastwave/

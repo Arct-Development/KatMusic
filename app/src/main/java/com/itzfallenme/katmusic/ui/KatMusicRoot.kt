@@ -120,8 +120,18 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
         fallback = baseSeed
     )
     val seed = if (settings.dynamicArtworkTheme) artworkSeed else baseSeed
+    val darkTheme = when (settings.themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
 
-    KatMusicTheme(seed = seed, amoled = settings.amoled) {
+    KatMusicTheme(
+        seed = seed,
+        amoled = settings.amoled,
+        light = !darkTheme,
+        dynamicColor = settings.useSystemDynamicColor
+    ) {
         BackHandler(enabled = nav.canGoBack || nav.playerOpen || nav.queueOpen) {
             nav.back()
         }

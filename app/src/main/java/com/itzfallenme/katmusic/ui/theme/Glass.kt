@@ -7,134 +7,79 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The frosted surface every card, dock and control sits on: a soft two-stop gradient,
- * a specular top sheen and a light-catching rim. Over a dark, artwork-tinted background
- * this reads as glass without needing to sample what is behind it.
+ * Flat Material 3 Expressive container treatment.
+ *
+ * The app used to paint a frosted, rim-lit "glass" sheet behind every card. That
+ * read as a generic glassmorphism theme rather than the M3 Expressive surface
+ * language: stock surfaces are opaque tonal fills with a single quiet shadow,
+ * and depth comes from *tonal elevation*, not from translucency and borders.
+ * This keeps the old call sites working while rendering the plain M3 surface.
  */
 @Composable
 fun Modifier.liquidGlass(
     shape: Shape = CardShape,
     tint: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    fillAlpha: Float = 0.66f,
-    borderWidth: Dp = 1.dp,
+    fillAlpha: Float = 1f,
+    borderWidth: Dp = 0.dp,
     glow: Color = MaterialTheme.colorScheme.primary,
-    sheen: Boolean = true
+    sheen: Boolean = false
 ): Modifier {
-    val dark = LocalIsDarkTheme.current
-    val rim = if (dark) Color.White else Color.White
     return this
         .clip(shape)
-        .drawWithCache {
-            val fill = Brush.linearGradient(
-                colors = listOf(
-                    tint.copy(alpha = (fillAlpha + 0.08f).coerceAtMost(0.96f)),
-                    tint.copy(alpha = (fillAlpha - 0.2f).coerceAtLeast(0.2f))
-                ),
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
-            )
-            val gloss = Brush.verticalGradient(
-                colors = listOf(
-                    rim.copy(alpha = if (dark) 0.10f else 0.5f),
-                    Color.Transparent
-                ),
-                endY = size.height * 0.55f
-            )
-            val cornerGlow = Brush.radialGradient(
-                colors = listOf(glow.copy(alpha = if (dark) 0.16f else 0.22f), Color.Transparent),
-                center = Offset(size.width * 0.15f, 0f),
-                radius = size.maxDimension * 0.8f
-            )
-            onDrawBehind {
-                drawRect(fill)
-                drawRect(cornerGlow)
-                if (sheen) drawRect(gloss)
-                drawInnerEdge(rim, dark)
-            }
-        }
-        .border(
-            width = borderWidth,
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    rim.copy(alpha = if (dark) 0.34f else 0.85f),
-                    rim.copy(alpha = 0.05f),
-                    glow.copy(alpha = 0.14f),
-                    rim.copy(alpha = 0.02f)
-                )
-            ),
-            shape = shape
-        )
+        .background(tint.copy(alpha = fillAlpha.coerceIn(0.6f, 1f)))
 }
 
-private fun DrawScope.drawInnerEdge(rim: Color, dark: Boolean) {
-    // Thin top highlight makes the surface feel lit from above.
-    drawLine(
-        color = rim.copy(alpha = if (dark) 0.16f else 0.5f),
-        start = Offset(size.width * 0.12f, 1f),
-        end = Offset(size.width * 0.88f, 1f),
-        strokeWidth = 1.4f
-    )
-}
-
-/** Glass container with drop shadow, used for cards and floating chrome. */
+/**
+ * M3 surface container used for cards, mini player and floating chrome.
+ * Solid fill, small shadow, no border or gradient.
+ */
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
     shape: Shape = CardShape,
     elevation: Dp = 0.dp,
     tint: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    fillAlpha: Float = 0.66f,
+    fillAlpha: Float = 1f,
     glow: Color = MaterialTheme.colorScheme.primary,
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shadowed = if (elevation > 0.dp) {
-        modifier.shadow(
-            elevation = elevation,
-            shape = shape,
-            clip = false,
-            ambientColor = Color.Black.copy(alpha = 0.5f),
-            spotColor = glow.copy(alpha = 0.35f)
-        )
-    } else modifier
-    Box(
-        modifier = shadowed.liquidGlass(
-            shape = shape,
-            tint = tint,
-            fillAlpha = fillAlpha,
-            glow = glow
-        ),
-        contentAlignment = contentAlignment,
-        content = content
-    )
+    Surface(
+        modifier = modifier,
+        shape = shape,
+        color = tint.copy(alpha = fillAlpha.coerceIn(0.6f, 1f)),
+        shadowElevation = elevation.coerceIn(0.dp, 10.dp),
+    ) {
+        Box(contentAlignment = contentAlignment, content = content)
+    }
 }
 
-/** Circular glass button used in the player and top bars. */
+/** Circular tonal button, the M3 Expressive default for player and header actions. */
 @Composable
 fun GlassIconButton(
     icon: ImageVector,
@@ -144,28 +89,32 @@ fun GlassIconButton(
     size: Dp = 44.dp,
     iconSize: Dp = 21.dp,
     tint: Color = MaterialTheme.colorScheme.onSurface,
-    background: Color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
+    background: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     enabled: Boolean = true
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .liquidGlass(shape = CircleShape, tint = background, fillAlpha = 0.5f)
-            .bounceClickable(enabled = enabled, targetScale = 0.9f, onClick = onClick),
-        contentAlignment = Alignment.Center
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.size(size),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = background,
+            contentColor = tint,
+            disabledContainerColor = background.copy(alpha = 0.4f),
+            disabledContentColor = tint.copy(alpha = 0.38f),
+        ),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = tint,
-            modifier = Modifier.size(iconSize)
+            modifier = Modifier.size(iconSize),
         )
     }
 }
 
 /**
- * Slow-drifting colour blobs behind the content. Seeded from the current album art,
- * it gives every screen the living wallpaper feel the design language is built around.
+ * Slow-drifting colour wash behind the content. Kept deliberately faint so the
+ * tonal surfaces above it stay readable; the artwork tint reads as ambient light,
+ * not as a translucent pane.
  */
 @Composable
 fun AmbientBackdrop(
@@ -179,18 +128,18 @@ fun AmbientBackdrop(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(18_000, easing = LinearEasing),
+            animation = tween(24_000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "drift"
     )
-    val secondary = ColorEngine.hsl((ColorEngine.hueOf(accent) + 55) % 360, 34, if (dark) 42 else 62)
+    val secondary = ColorEngine.hsl((ColorEngine.hueOf(accent) + 55) % 360, 30, if (dark) 40 else 60)
     Box(
         modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .drawWithCache {
-                val baseAlpha = (if (dark) 0.34f else 0.28f) * intensity
+                val baseAlpha = (if (dark) 0.20f else 0.16f) * intensity
                 val top = Offset(
                     x = size.width * (0.15f + drift * 0.25f),
                     y = size.height * (0.05f + drift * 0.08f)
