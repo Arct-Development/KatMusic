@@ -1,5 +1,6 @@
 *.iml
 .gradle/
+.kotlin/
 /local.properties
 /.idea/
 .DS_Store
@@ -22,4 +23,4 @@ freebuff-chat-*.md
 /release.keystore
 
 # Reference clone of the upstream LastWave app (read-only reference, not built)
-/lastwave/
+LastWave-native
