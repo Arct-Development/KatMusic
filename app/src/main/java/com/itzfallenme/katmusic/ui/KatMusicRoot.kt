@@ -302,6 +302,15 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                     .navigationBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
+                // Downloads keep running after the user taps download and moves on;
+                // this is the only place that says so.
+                if (nav.current != Screen.Downloads) {
+                    com.itzfallenme.katmusic.ui.download.DownloadActivityPill(
+                        onOpen = { nav.go(Screen.Downloads) },
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        backdrop = backdrop
+                    )
+                }
                 AnimatedVisibility(
                     visible = playerState.track != null && !nav.playerOpen,
                     enter = slideInVertically(Motion.spatialDefault()) { it } + fadeIn(Motion.effectsDefault()),
