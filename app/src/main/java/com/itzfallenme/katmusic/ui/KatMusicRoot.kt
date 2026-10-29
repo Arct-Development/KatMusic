@@ -156,6 +156,32 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
         )
     }
 
+    // Hearing-safety nudge from PlayerController; counts actual playback time, not
+    // time with the app open.
+    if (playerState.listeningReminderMinutes > 0) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { ServiceLocator.player.acknowledgeListeningReminder() },
+            title = { Text("Time for a break?") },
+            text = {
+                Text(
+                    "You have been listening for ${playerState.listeningReminderMinutes} minutes " +
+                        "without a pause. Give your ears a rest, or turn the volume down a notch."
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    ServiceLocator.player.acknowledgeListeningReminder()
+                    ServiceLocator.player.player.pause()
+                }) { Text("Pause") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    ServiceLocator.player.acknowledgeListeningReminder()
+                }) { Text("Keep listening") }
+            }
+        )
+    }
+
     LaunchedEffect(playerState.track?.id) {
         val session = ServiceLocator.player.player.audioSessionId
         if (session != 0) ServiceLocator.eq.attach(session)
@@ -238,6 +264,7 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                             Screen.Search -> SearchScreen(nav)
                             Screen.Library -> LibraryScreen(nav)
                             Screen.Settings -> SettingsScreen(nav)
+                            is Screen.SettingsSection -> SettingsScreen(nav, screen.id)
                             Screen.Downloads -> DownloadsScreen(nav)
                             Screen.Stats -> StatsScreen(nav)
                             Screen.Equalizer -> EqualizerScreen(nav)
@@ -263,77 +290,90 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
     }
 }
 
+/**
+ * Floating M3 Expressive navigation pill. One opaque tonal surface, a squircle
+ * that grows and shifts to the container colour for the active destination, and
+ * label reveal on the same spring as the width change.
+ */
 @Composable
 private fun Dock(nav: Navigator) {
     val scheme = MaterialTheme.colorScheme
-    GlassSurface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        elevation = 18.dp,
-        fillAlpha = 0.72f
+    Box(
+        Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(Motion.spatialDefault())
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        androidx.compose.material3.Surface(
+            shape = CircleShape,
+            color = scheme.surfaceContainerHigh,
+            tonalElevation = 2.dp,
+            shadowElevation = 10.dp
         ) {
-            tabs.forEach { tab ->
-                val selected = nav.current == tab.screen
-                val iconTint by animateColorAsState(
-                    targetValue = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
-                    animationSpec = Motion.effectsDefault(),
-                    label = "tabTint"
-                )
-                val scale by animateFloatAsState(
-                    targetValue = if (selected) 1f else 0.94f,
-                    animationSpec = Motion.spatialFast(),
-                    label = "tabScale"
-                )
-                Row(
-                    modifier = Modifier
-                        .height(50.dp)
-                        .animateContentSize(Motion.spatialDefault())
-                        .clip(CircleShape)
-                        .then(
-                            if (selected) {
-                                Modifier.background(scheme.surfaceContainerHighest)
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) }
-                        .padding(horizontal = if (selected) 16.dp else 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label,
-                        tint = iconTint,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
+            Row(
+                modifier = Modifier
+                    .height(54.dp)
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEach { tab ->
+                    val selected = nav.current == tab.screen
+                    val weight by animateFloatAsState(
+                        targetValue = if (selected) 1.22f else 0.92f,
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                        ),
+                        label = "tabWeight"
                     )
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = expandHorizontally(Motion.spatialDefault()) + fadeIn(Motion.effectsDefault()),
-                        exit = shrinkHorizontally(Motion.spatialFast()) + fadeOut(Motion.effectsFast())
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(Modifier.width(7.dp))
-                            Text(
-                                text = tab.label,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = scheme.onSurface
+                    val radius by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = if (selected) 18.dp else 27.dp,
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                        ),
+                        label = "tabCorner"
+                    )
+                    val iconTint by animateColorAsState(
+                        targetValue = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+                        animationSpec = Motion.effectsDefault(),
+                        label = "tabTint"
+                    )
+                    Row(
+                        modifier = Modifier
+                            .weight(weight)
+                            .height(44.dp)
+                            .graphicsLayer {
+                                shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(radius, 0.6f)
+                                clip = true
+                            }
+                            .then(
+                                if (selected) Modifier.background(scheme.primaryContainer) else Modifier
                             )
-                            Spacer(Modifier.width(6.dp))
+                            .bounceClickable(targetScale = 0.93f) { nav.switchTab(tab.screen) },
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = tab.icon,
+                            contentDescription = tab.label,
+                            tint = iconTint,
+                            modifier = Modifier.size(21.dp)
+                        )
+                        AnimatedVisibility(
+                            visible = selected,
+                            enter = expandHorizontally(Motion.spatialDefault()) + fadeIn(Motion.effectsDefault()),
+                            exit = shrinkHorizontally(Motion.spatialFast()) + fadeOut(Motion.effectsFast())
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = tab.label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = scheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.width(2.dp))
+                            }
                         }
                     }
                 }

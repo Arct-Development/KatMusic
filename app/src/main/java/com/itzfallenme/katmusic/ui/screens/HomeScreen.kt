@@ -41,6 +41,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ import com.itzfallenme.katmusic.ui.Navigator
 import com.itzfallenme.katmusic.ui.Screen
 import com.itzfallenme.katmusic.ui.TrackRow
 import com.itzfallenme.katmusic.ui.formatDuration
+import com.itzfallenme.katmusic.ui.theme.ExpressiveSegmentedRow
 import com.itzfallenme.katmusic.ui.theme.GlassIconButton
 import com.itzfallenme.katmusic.ui.theme.Motion
 import com.itzfallenme.katmusic.ui.theme.bounceClickable
@@ -94,6 +97,7 @@ fun HomeScreen(nav: Navigator) {
     val playerState by ServiceLocator.player.state.collectAsState()
     val library by ServiceLocator.library.state.collectAsState()
     val scope = rememberCoroutineScope()
+    var quickPick by remember { mutableIntStateOf(-1) }
 
     LaunchedEffect(Unit) { YtMusic.loadHome() }
 
@@ -138,16 +142,12 @@ fun HomeScreen(nav: Navigator) {
     ) {
         item {
             Column(Modifier.statusBarsPadding().padding(top = 8.dp)) {
-                GlassCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    corner = 28.dp
-                ) {
+                // M3 top app bar: the wordmark sits directly on the surface, with
+                // trailing tonal icon buttons. No container card.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                        .padding(start = 20.dp, end = 12.dp, top = 4.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
@@ -191,18 +191,19 @@ fun HomeScreen(nav: Navigator) {
                         size = 42.dp
                     )
                 }
-                }
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    homeMoods.take(3).forEach { (label, query) ->
-                        Chip(text = label, onClick = {
+                ExpressiveSegmentedRow(
+                    options = listOf("Chill", "Energize", "Focus", "Radio"),
+                    selectedIndex = quickPick,
+                    onSelect = { index ->
+                        quickPick = index
+                        if (index == 3) {
+                            val seed = playerState.track ?: library.history.firstOrNull()?.track
+                            if (seed != null) ServiceLocator.player.playRadio(seed)
+                        } else {
+                            val query = homeMoods.getOrNull(index)?.second ?: return@ExpressiveSegmentedRow
                             scope.launch {
                                 val results = runCatching { YtMusic.search(query) }.getOrDefault(emptyList())
                                 val tracks = results.flatMap { it.tracks }.distinctBy { it.id }
@@ -210,13 +211,10 @@ fun HomeScreen(nav: Navigator) {
                                     ServiceLocator.player.playTracks(tracks, 0)
                                 }
                             }
-                        })
-                    }
-                    Chip(text = "Radio", onClick = {
-                        val seed = playerState.track ?: library.history.firstOrNull()?.track
-                        if (seed != null) ServiceLocator.player.playRadio(seed)
-                    })
-                }
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
 
                 Spacer(Modifier.height(14.dp))
 
@@ -412,7 +410,10 @@ private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .height(196.dp)
-            .clip(RoundedCornerShape(32.dp))
+            .graphicsLayer {
+                shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(32.dp, 0.6f)
+                clip = true
+            }
             .bounceClickable(targetScale = 0.975f, onClick = onClick)
     ) {
         AsyncImage(
@@ -458,9 +459,11 @@ private fun HeroCard(card: MediaCard, onClick: () -> Unit) {
             Box(
                 Modifier
                     .size(52.dp)
-                    .clip(CircleShape)
-                    .liquidGlass(shape = CircleShape, fillAlpha = 0.32f)
-                    .background(scheme.primary.copy(alpha = 0.92f)),
+                    .graphicsLayer {
+                        shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(18.dp, 0.65f)
+                        clip = true
+                    }
+                    .background(scheme.primary),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressOrPlay()

@@ -97,7 +97,14 @@ data class AppSettings(
     /** OpenAI-compatible endpoint used for AI picks; the key stays on this device. */
     val aiBaseUrl: String = "https://api.openai.com/v1",
     val aiApiKey: String = "",
-    val aiModel: String = "gpt-4o-mini"
+    val aiModel: String = "gpt-4o-mini",
+    /** Downmix stereo to a single channel for one-earpiece listening. */
+    val monoAudio: Boolean = false,
+    /** Cap the music stream so long sessions cannot creep up to full volume. */
+    val volumeLimitEnabled: Boolean = false,
+    val volumeLimitPercent: Int = 80,
+    /** Ask for a break after this many minutes of playback; 0 turns it off. */
+    val listeningReminderMinutes: Int = 0
 )
 
 @Serializable
@@ -106,5 +113,10 @@ data class WrappedStats(
     val totalPlays: Int = 0,
     val topTracks: List<Pair<String, Int>> = emptyList(),
     val topArtists: List<Pair<String, Int>> = emptyList(),
-    val hourly: List<Int> = List(24) { 0 }
+    val topAlbums: List<Pair<String, Int>> = emptyList(),
+    val hourly: List<Int> = List(24) { 0 },
+    /** Plays per weekday, Monday first. */
+    val byWeekday: List<Int> = List(7) { 0 },
+    /** Minutes in the window before this one, for the "more than last week" line. */
+    val previousMinutes: Long = 0L
 )

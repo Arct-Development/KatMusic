@@ -3,6 +3,8 @@ package com.itzfallenme.katmusic.ui.screens
 import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +33,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +50,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.ServiceLocator
+import com.itzfallenme.katmusic.data.StatsPeriod
+import com.itzfallenme.katmusic.data.weekdayLabels
+import com.itzfallenme.katmusic.ui.Chip
 import com.itzfallenme.katmusic.ui.EmptyState
 import com.itzfallenme.katmusic.ui.GlassCard
 import com.itzfallenme.katmusic.ui.Navigator
@@ -54,7 +62,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun StatsScreen(nav: Navigator) {
     val library by ServiceLocator.library.state.collectAsState()
-    val stats = remember(library.history) { ServiceLocator.library.stats() }
+    var period by remember { mutableStateOf(StatsPeriod.ALL) }
+    var topTab by remember { mutableIntStateOf(0) }
+    val stats = remember(library.history, period) { ServiceLocator.library.stats(period) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // Captured before the button lambda: theme access is a composable call.
@@ -72,7 +82,7 @@ fun StatsScreen(nav: Navigator) {
                             com.itzfallenme.katmusic.data.ReceiptCard.render(
                                 context = context,
                                 stats = stats,
-                                periodLabel = "All time",
+                                periodLabel = period.label,
                                 accent = accentArgb,
                                 background = backgroundArgb
                             )
@@ -110,10 +120,18 @@ fun StatsScreen(nav: Navigator) {
             }
         )
 
+        com.itzfallenme.katmusic.ui.theme.ExpressiveSegmentedRow(
+            options = StatsPeriod.entries.map { it.label },
+            selectedIndex = StatsPeriod.entries.indexOf(period),
+            onSelect = { period = StatsPeriod.entries[it] },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+        )
+
         if (stats.totalPlays == 0) {
             EmptyState(
                 icon = Icons.Filled.TrendingUp,
-                title = "Your story starts with a play",
+                title = if (period == StatsPeriod.ALL) "Your story starts with a play"
+                else "Nothing in ${period.label.lowercase()} yet",
                 subtitle = "Listen to a few tracks and your minutes, top artists and listening clock appear here."
             )
             return@Column
@@ -127,7 +145,7 @@ fun StatsScreen(nav: Navigator) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp)) {
                         Text(
-                            "THIS IS YOUR YEAR",
+                            period.label.uppercase(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -150,6 +168,16 @@ fun StatsScreen(nav: Navigator) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        comparisonLabel(period, stats.totalMinutes, stats.previousMinutes)?.let { line ->
+                            Text(
+                                line,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        WeekdayStrip(stats.byWeekday)
                         Spacer(Modifier.height(10.dp))
                         androidx.compose.material3.OutlinedButton(onClick = {
                             val calendar = java.util.Calendar.getInstance().apply {
@@ -182,7 +210,13 @@ fun StatsScreen(nav: Navigator) {
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp)) {
-                        Text("Listening clock", style = MaterialTheme.typography.titleMedium)
+                        Text("Listening clock", style = MaterialTheme.typography.titleMedium) // period-scoped
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "Plays by hour, ${period.label.lowercase()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(Modifier.height(12.dp))
                         val peakColor = MaterialTheme.colorScheme.primary
                         val dimColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -217,31 +251,31 @@ fun StatsScreen(nav: Navigator) {
             }
 
             item {
-                Text(
-                    "Top artists",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(vertical = 6.dp)
+                com.itzfallenme.katmusic.ui.theme.ExpressiveSegmentedRow(
+                    options = listOf("Songs", "Artists", "Albums"),
+                    selectedIndex = topTab,
+                    onSelect = { topTab = it },
+                    modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
                 )
             }
-            itemsIndexed(stats.topArtists) { index, entry ->
-                val maxCount = stats.topArtists.firstOrNull()?.second ?: 1
-                StatBar(
-                    rank = index + 1,
-                    title = entry.first,
-                    value = "${entry.second} plays",
-                    fraction = entry.second.toFloat() / maxCount
-                )
+            val ranking = when (topTab) {
+                1 -> stats.topArtists
+                2 -> stats.topAlbums
+                else -> stats.topTracks
             }
-
             item {
                 Text(
-                    "Top tracks",
+                    when (topTab) {
+                        1 -> "Top artists"
+                        2 -> "Top albums"
+                        else -> "Top songs"
+                    },
                     style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(top = 18.dp, bottom = 6.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
-            itemsIndexed(stats.topTracks) { index, entry ->
-                val maxCount = stats.topTracks.firstOrNull()?.second ?: 1
+            itemsIndexed(ranking) { index, entry ->
+                val maxCount = ranking.firstOrNull()?.second ?: 1
                 StatBar(
                     rank = index + 1,
                     title = entry.first,
@@ -290,6 +324,66 @@ fun StatsScreen(nav: Navigator) {
                 }
                 Spacer(Modifier.height(30.dp))
             }
+        }
+    }
+}
+
+/** "58 min more than last week" - null when there is nothing to compare against. */
+private fun comparisonLabel(period: StatsPeriod, minutes: Long, previous: Long): String? {
+    if (period == StatsPeriod.ALL || previous <= 0L) return null
+    val reference = when (period) {
+        StatsPeriod.TODAY -> "yesterday"
+        StatsPeriod.WEEK -> "last week"
+        StatsPeriod.MONTH -> "last month"
+        StatsPeriod.ALL -> return null
+    }
+    val diff = minutes - previous
+    return when {
+        diff > 0 -> "$diff min more than $reference"
+        diff < 0 -> "${-diff} min fewer than $reference"
+        else -> "Same as $reference"
+    }
+}
+
+/** Seven bars, Monday first, with the busiest day called out in words. */
+@Composable
+private fun WeekdayStrip(counts: List<Int>) {
+    val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
+    val busiest = counts.indices.maxByOrNull { counts[it] }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            counts.forEachIndexed { index, count ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height((6 + 28 * (count.toFloat() / max)).dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (index == busiest) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                            )
+                    )
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        weekdayLabels[index].take(1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (busiest != null && counts[busiest] > 0) {
+            Text(
+                "Most active on ${weekdayLabels[busiest]}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }

@@ -4,6 +4,32 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.6.0] – 2026-10-29
+
+### Added
+
+- Settings search and drill-down: the root is now a searchable list of sections, and each
+  section opens its own page (Account, Appearance, Playback, Audio & safety, Lyrics,
+  Downloads, AI, Discord, Last.fm, Data). Typing filters every row by name, description or
+  keyword and jumps straight to the section that owns it
+- Listening stats with periods: Today / This week / This month / All time, minutes compared
+  with the previous window, a weekday strip with the busiest day, and Songs / Artists /
+  Albums rankings
+- Audio & safety options: mono downmix for single-earbud listening, a volume limit as a
+  percentage of the device maximum, and an optional break reminder after 30–90 minutes of
+  continuous playback
+- Library multi-select: long-press any liked, downloaded or history row to select several
+  tracks, then play, play next, queue, like, add to a playlist or download them in one go
+
+### Changed
+
+- Material 3 Expressive refresh: continuous-curvature (squircle) surfaces replace circular
+  rounded corners, the bottom dock is a floating tonal pill whose active item grows and
+  morphs, player transport uses the elastic push row, selection chips morph shape as well
+  as colour, stats and quick-pick rows use segmented controls, and loading/progress now use
+  shape-morph and wavy indicators
+- The KatMusic logo from the project root is shown in Settings → About
+
 ## [1.5.1] – 2026-10-29
 
 ### Fixed

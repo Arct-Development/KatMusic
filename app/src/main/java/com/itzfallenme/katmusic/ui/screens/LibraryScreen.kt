@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -18,11 +19,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
@@ -30,7 +34,10 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -57,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.ServiceLocator
 import com.itzfallenme.katmusic.data.CardKind
 import com.itzfallenme.katmusic.data.Playlist
+import com.itzfallenme.katmusic.data.Track
 import com.itzfallenme.katmusic.ui.Artwork
 import com.itzfallenme.katmusic.ui.Chip
 import com.itzfallenme.katmusic.ui.EmptyState
@@ -80,8 +88,21 @@ fun LibraryScreen(nav: Navigator) {
     var newName by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Playlist?>(null) }
     var renameText by remember { mutableStateOf("") }
+    // Long-press selection: keeps the tapped order so "play next" queues the
+    // songs in the order the user picked them.
+    var selection by remember { mutableStateOf<List<Track>>(emptyList()) }
+    var playlistPicker by remember { mutableStateOf(false) }
     val mixes = remember(library.history) { ServiceLocator.library.generatedMixes() }
     val scope = rememberCoroutineScope()
+
+    fun isSelected(track: Track) = selection.any { it.id == track.id }
+    fun toggleSelection(track: Track) {
+        selection = if (isSelected(track)) selection.filterNot { it.id == track.id }
+        else selection + track
+    }
+    fun rowClick(track: Track, action: () -> Unit) {
+        if (selection.isEmpty()) action() else toggleSelection(track)
+    }
 
     if (creating || renaming != null) {
         AlertDialog(
@@ -114,9 +135,10 @@ fun LibraryScreen(nav: Navigator) {
         )
     }
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 30.dp)
+        contentPadding = PaddingValues(bottom = if (selection.isEmpty()) 30.dp else 110.dp)
     ) {
         item {
             Column(Modifier.statusBarsPadding()) {
@@ -160,7 +182,10 @@ fun LibraryScreen(nav: Navigator) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     libraryTabs.forEachIndexed { index, label ->
-                        Chip(text = label, selected = tab == index, onClick = { tab = index })
+                        Chip(text = label, selected = tab == index, onClick = {
+                            tab = index
+                            selection = emptyList()
+                        })
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -276,7 +301,13 @@ fun LibraryScreen(nav: Navigator) {
                         track = track,
                         isCurrent = playerState.track?.id == track.id,
                         isPlaying = playerState.playing,
-                        onClick = { ServiceLocator.player.playTracks(library.liked, library.liked.indexOf(track)) },
+                        onClick = {
+                            rowClick(track) {
+                                ServiceLocator.player.playTracks(library.liked, library.liked.indexOf(track))
+                            }
+                        },
+                        selected = isSelected(track),
+                        onLongClick = { toggleSelection(track) },
                         onToggleLike = { ServiceLocator.library.toggleLike(it) },
                         onStartRadio = { ServiceLocator.player.playRadio(it) },
                         onPlayNext = { ServiceLocator.player.playNext(it) },
@@ -321,8 +352,12 @@ fun LibraryScreen(nav: Navigator) {
                         isCurrent = playerState.track?.id == entry.track.id,
                         isPlaying = playerState.playing,
                         onClick = {
-                            ServiceLocator.player.playTracks(library.downloads.map { it.track })
+                            rowClick(entry.track) {
+                                ServiceLocator.player.playTracks(library.downloads.map { it.track })
+                            }
                         },
+                        selected = isSelected(entry.track),
+                        onLongClick = { toggleSelection(entry.track) },
                         onToggleLike = { ServiceLocator.library.toggleLike(it) },
                         onDownload = { ServiceLocator.downloads.delete(it.id) },
                         onRemove = {
@@ -345,7 +380,13 @@ fun LibraryScreen(nav: Navigator) {
                 items(library.history.distinctBy { it.track.id }.take(100)) { entry ->
                     TrackRow(
                         track = entry.track,
-                        onClick = { ServiceLocator.player.playTracks(listOf(entry.track)) },
+                        onClick = {
+                            rowClick(entry.track) {
+                                ServiceLocator.player.playTracks(listOf(entry.track))
+                            }
+                        },
+                        selected = isSelected(entry.track),
+                        onLongClick = { toggleSelection(entry.track) },
                         onToggleLike = { ServiceLocator.library.toggleLike(it) },
                         onStartRadio = { ServiceLocator.player.playRadio(it) },
                         onDownload = { ServiceLocator.downloads.download(it) }
@@ -403,6 +444,155 @@ fun LibraryScreen(nav: Navigator) {
                 }
             }
         }
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = selection.isNotEmpty(),
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut()
+    ) {
+        SelectionBar(
+            count = selection.size,
+            onClose = { selection = emptyList() },
+            onPlay = {
+                ServiceLocator.player.playTracks(selection)
+                selection = emptyList()
+            },
+            onPlayNext = {
+                selection.asReversed().forEach { ServiceLocator.player.playNext(it) }
+                selection = emptyList()
+            },
+            onQueue = {
+                ServiceLocator.player.addAllToQueue(selection)
+                selection = emptyList()
+            },
+            onLike = {
+                selection.forEach { track ->
+                    if (!ServiceLocator.library.isLiked(track.id)) {
+                        ServiceLocator.library.toggleLike(track)
+                    }
+                }
+                selection = emptyList()
+            },
+            onPlaylist = { playlistPicker = true },
+            onDownload = {
+                selection.forEach { ServiceLocator.downloads.download(it) }
+                selection = emptyList()
+            }
+        )
+    }
+    }
+
+    if (playlistPicker) {
+        AlertDialog(
+            onDismissRequest = { playlistPicker = false },
+            title = { Text("Add to playlist") },
+            text = {
+                Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    if (library.playlists.isEmpty()) {
+                        Text(
+                            "No playlists yet. Create one and these tracks go straight into it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    library.playlists.forEach { playlist ->
+                        Text(
+                            playlist.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    ServiceLocator.library.addToPlaylist(playlist.id, selection)
+                                    selection = emptyList()
+                                    playlistPicker = false
+                                }
+                                .padding(vertical = 12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val playlist = ServiceLocator.library.createPlaylist("Selected songs")
+                    ServiceLocator.library.addToPlaylist(playlist.id, selection)
+                    selection = emptyList()
+                    playlistPicker = false
+                }) { Text("New playlist") }
+            },
+            dismissButton = {
+                TextButton(onClick = { playlistPicker = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+/** Floating batch-action bar shown while tracks are long-pressed. */
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onClose: () -> Unit,
+    onPlay: () -> Unit,
+    onPlayNext: () -> Unit,
+    onQueue: () -> Unit,
+    onLike: () -> Unit,
+    onPlaylist: () -> Unit,
+    onDownload: () -> Unit
+) {
+    androidx.compose.material3.Surface(
+        shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(28.dp, 0.6f),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        shadowElevation = 10.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$count selected",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SelectionAction(Icons.Filled.PlayArrow, "Play", onPlay)
+                SelectionAction(Icons.Filled.SkipNext, "Next", onPlayNext)
+                SelectionAction(Icons.Filled.QueueMusic, "Queue", onQueue)
+                SelectionAction(Icons.Filled.Favorite, "Like", onLike)
+                SelectionAction(Icons.Filled.PlaylistAdd, "Playlist", onPlaylist)
+                SelectionAction(Icons.Filled.Download, "Save", onDownload)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectionAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(3.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 

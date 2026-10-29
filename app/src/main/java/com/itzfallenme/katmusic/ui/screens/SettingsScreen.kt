@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
@@ -37,6 +39,8 @@ import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Storage
@@ -51,12 +55,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,8 +84,12 @@ private val seedColors = listOf(
     "#8AB4F8", "#F8BBD0", "#B2FFDA", "#FFD9A0", "#C7B9FF", "#FF6B6B", "#77E4D4", "#F4F1DE"
 )
 
+/** Which section is open, read by [SettingsCard] so hidden cards never compose. */
+private val LocalSettingsSection = staticCompositionLocalOf<SettingsCategory?> { null }
+
 @Composable
-fun SettingsScreen(nav: Navigator) {
+fun SettingsScreen(nav: Navigator, categoryId: String? = null) {
+    val category = remember(categoryId) { SettingsCategory.fromId(categoryId) }
     val settings by ServiceLocator.settings.state.collectAsState()
     val library by ServiceLocator.library.state.collectAsState()
     val context = LocalContext.current
@@ -131,15 +141,27 @@ fun SettingsScreen(nav: Navigator) {
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        SimpleTopBar(title = "Settings", onBack = { nav.back() })
+        SimpleTopBar(
+            title = category?.title ?: "Settings",
+            subtitle = category?.subtitle,
+            onBack = { nav.back() }
+        )
+        CompositionLocalProvider(LocalSettingsSection provides category) {
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
+            if (category == null) {
+                SettingsHome(nav = nav)
+            }
             val account by ServiceLocator.account.state.collectAsState()
-            SettingsCard(title = "YouTube Music account", icon = Icons.Filled.Person) {
+            SettingsCard(
+                title = "YouTube Music account",
+                icon = Icons.Filled.Person,
+                section = SettingsCategory.ACCOUNT
+            ) {
                 if (account.signedIn) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         com.itzfallenme.katmusic.ui.Artwork(
@@ -181,7 +203,11 @@ fun SettingsScreen(nav: Navigator) {
                 }
             }
 
-            SettingsCard(title = "Appearance", icon = Icons.Filled.Palette) {
+            SettingsCard(
+                title = "Appearance",
+                icon = Icons.Filled.Palette,
+                section = SettingsCategory.APPEARANCE
+            ) {
                 Text("Theme", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -243,7 +269,11 @@ fun SettingsScreen(nav: Navigator) {
                 }
             }
 
-            SettingsCard(title = "Playback", icon = Icons.Filled.PlayCircle) {
+            SettingsCard(
+                title = "Playback",
+                icon = Icons.Filled.PlayCircle,
+                section = SettingsCategory.PLAYBACK
+            ) {
                 SettingToggle(
                     title = "High quality audio",
                     subtitle = "Prefer the highest bitrate Opus stream",
@@ -289,7 +319,71 @@ fun SettingsScreen(nav: Navigator) {
                 ) { nav.go(Screen.Equalizer) }
             }
 
-            SettingsCard(title = "Lyrics", icon = Icons.Filled.Lyrics) {
+            SettingsCard(
+                title = "Audio & safety",
+                icon = Icons.Filled.VolumeUp,
+                section = SettingsCategory.AUDIO
+            ) {
+                SettingToggle(
+                    title = "Mono audio",
+                    subtitle = "Downmix both channels into one for a single earbud. Applies from the next track.",
+                    checked = settings.monoAudio
+                ) { on -> ServiceLocator.player.applyMono(on) }
+                SettingToggle(
+                    title = "Volume limit",
+                    subtitle = if (settings.volumeLimitEnabled)
+                        "Music stays at or below ${settings.volumeLimitPercent}% of the device maximum"
+                    else "Cap the music stream to protect your hearing",
+                    checked = settings.volumeLimitEnabled
+                ) { on ->
+                    update { s -> s.copy(volumeLimitEnabled = on) }
+                    ServiceLocator.player.applyVolumeGuard()
+                }
+                if (settings.volumeLimitEnabled) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Limit: ${settings.volumeLimitPercent}%",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Slider(
+                        value = settings.volumeLimitPercent.toFloat(),
+                        onValueChange = { value ->
+                            update { s -> s.copy(volumeLimitPercent = value.toInt()) }
+                        },
+                        onValueChangeFinished = { ServiceLocator.player.applyVolumeGuard() },
+                        valueRange = 40f..100f,
+                        steps = 5
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Listening break reminder", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    if (settings.listeningReminderMinutes <= 0) "Off — no reminders"
+                    else "A nudge after ${settings.listeningReminderMinutes} minutes of continuous playback",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Off", 30 to "30m", 45 to "45m", 60 to "60m", 90 to "90m").forEach {
+                        (minutes, label) ->
+                        com.itzfallenme.katmusic.ui.Chip(
+                            text = label,
+                            selected = settings.listeningReminderMinutes == minutes,
+                            onClick = {
+                                update { s -> s.copy(listeningReminderMinutes = minutes) }
+                                ServiceLocator.player.acknowledgeListeningReminder()
+                            }
+                        )
+                    }
+                }
+            }
+
+            SettingsCard(
+                title = "Lyrics",
+                icon = Icons.Filled.Lyrics,
+                section = SettingsCategory.LYRICS
+            ) {
                 SettingToggle(
                     title = "Fetch lyrics automatically",
                     subtitle = "Synced lyrics from LRCLIB",
@@ -331,7 +425,11 @@ fun SettingsScreen(nav: Navigator) {
                 )
             }
 
-            SettingsCard(title = "Downloads", icon = Icons.Filled.Download) {
+            SettingsCard(
+                title = "Downloads",
+                icon = Icons.Filled.Download,
+                section = SettingsCategory.DOWNLOADS
+            ) {
                 SettingToggle(
                     title = "Download in high quality",
                     subtitle = "Bigger files, better sound",
@@ -350,7 +448,11 @@ fun SettingsScreen(nav: Navigator) {
                 )
             }
 
-            SettingsCard(title = "AI", icon = Icons.Filled.AutoAwesome) {
+            SettingsCard(
+                title = "AI",
+                icon = Icons.Filled.AutoAwesome,
+                section = SettingsCategory.AI
+            ) {
                 Text(
                     "Suggestions are generated by an OpenAI-compatible model you choose. " +
                         "The key is stored on this device and only sent to the endpoint below.",
@@ -390,7 +492,11 @@ fun SettingsScreen(nav: Navigator) {
                 )
             }
 
-            SettingsCard(title = "Discord", icon = Icons.Filled.GraphicEq) {
+            SettingsCard(
+                title = "Discord",
+                icon = Icons.Filled.GraphicEq,
+                section = SettingsCategory.DISCORD
+            ) {
                 SettingToggle(
                     title = "Discord Rich Presence",
                     subtitle = "Show the playing track on your Discord profile",
@@ -417,7 +523,11 @@ fun SettingsScreen(nav: Navigator) {
                 )
             }
 
-            SettingsCard(title = "Last.fm", icon = Icons.Filled.BarChart) {
+            SettingsCard(
+                title = "Last.fm",
+                icon = Icons.Filled.BarChart,
+                section = SettingsCategory.LASTFM
+            ) {
                 if (settings.lastFmSessionKey.isNotBlank()) {
                     Text(
                         "Connected as ${settings.lastFmUsername.ifBlank { "Last.fm user" }}",
@@ -550,7 +660,11 @@ fun SettingsScreen(nav: Navigator) {
                 }
             }
 
-            SettingsCard(title = "Data", icon = Icons.Filled.Storage) {
+            SettingsCard(
+                title = "Data",
+                icon = Icons.Filled.Storage,
+                section = SettingsCategory.DATA
+            ) {
                 SettingRow(
                     title = "Backup library",
                     subtitle = "Save likes, playlists, history and settings to a JSON file",
@@ -606,8 +720,19 @@ fun SettingsScreen(nav: Navigator) {
                 }
             }
 
-            GlassCard(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+            if (category == null) {
+                GlassCard(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 Column(Modifier.padding(18.dp)) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(
+                            com.itzfallenme.katmusic.R.drawable.katmusic_logo
+                        ),
+                        contentDescription = "KatMusic logo",
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                    )
+                    Spacer(Modifier.height(10.dp))
                     Text("KatMusic", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "Version ${com.itzfallenme.katmusic.BuildConfig.VERSION_NAME} " +
@@ -635,8 +760,109 @@ fun SettingsScreen(nav: Navigator) {
                         }
                     )
                 }
+                }
             }
             Spacer(Modifier.height(24.dp))
+        }
+        }
+    }
+}
+
+/**
+ * Root of the settings tree: one search box over a flat list of sections.
+ * Search matches individual rows from [settingsIndex] and opens the section
+ * that owns them, so the user never has to know where a toggle lives.
+ */
+@Composable
+private fun SettingsHome(nav: Navigator) {
+    var query by remember { mutableStateOf("") }
+    val results = remember(query) { searchSettings(query) }
+
+    Column(Modifier.fillMaxWidth()) {
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.weight(1f).padding(vertical = 14.dp),
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    "Search settings…",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            inner()
+                        }
+                    }
+                )
+                if (query.isNotEmpty()) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "Clear search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { query = "" }
+                    )
+                }
+            }
+        }
+
+        if (query.isNotBlank()) {
+            if (results.isEmpty()) {
+                Text(
+                    "No setting matches \"$query\"",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 18.dp)
+                )
+            }
+            results.forEach { item ->
+                SettingRow(
+                    title = item.title,
+                    subtitle = item.category.title +
+                        if (item.subtitle.isNotBlank()) " • ${item.subtitle}" else "",
+                    icon = item.category.icon
+                ) { nav.go(Screen.SettingsSection(item.category.id)) }
+                Spacer(Modifier.height(8.dp))
+            }
+            return@Column
+        }
+
+        Text(
+            "Browse",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp)
+        )
+        SettingsCategory.entries.forEach { section ->
+            SettingRow(
+                title = section.title,
+                subtitle = section.subtitle,
+                icon = section.icon
+            ) { nav.go(Screen.SettingsSection(section.id)) }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -650,8 +876,12 @@ fun SettingsScreen(nav: Navigator) {
 private fun SettingsCard(
     title: String,
     icon: ImageVector,
+    section: SettingsCategory,
     content: @Composable () -> Unit
 ) {
+    // A section that is not open is skipped entirely, so its rows (and their
+    // sliders, text fields and launchers) never enter composition.
+    if (LocalSettingsSection.current != section) return
     Column(
         Modifier
             .fillMaxWidth()

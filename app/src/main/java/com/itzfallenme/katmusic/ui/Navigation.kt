@@ -13,6 +13,7 @@ sealed interface Screen {
     data object Search : Screen
     data object Library : Screen
     data object Settings : Screen
+    data class SettingsSection(val id: String) : Screen
     data object Downloads : Screen
     data object Stats : Screen
     data object Equalizer : Screen

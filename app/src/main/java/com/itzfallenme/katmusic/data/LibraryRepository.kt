@@ -154,27 +154,10 @@ class LibraryRepository(private val context: Context) {
 
     fun pendingScrobbles(): List<Scrobble> = _state.value.scrobbles.filterNot { it.synced }
 
-    fun stats(): WrappedStats {
-        val history = _state.value.history
-        if (history.isEmpty()) return WrappedStats()
-        val playsByTrack = history.groupingBy { it.track.title }.eachCount()
-        val playsByArtist = history.groupingBy { it.track.artist.ifBlank { "Unknown" } }.eachCount()
-        val hourly = MutableList(24) { 0 }
-        history.forEach {
-            val hour = java.util.Calendar.getInstance().apply { timeInMillis = it.playedAt }
-                .get(java.util.Calendar.HOUR_OF_DAY)
-            hourly[hour] = hourly[hour] + 1
-        }
-        return WrappedStats(
-            totalMinutes = history.sumOf { it.listenedMs } / 60_000,
-            totalPlays = history.size,
-            topTracks = playsByTrack.entries.sortedByDescending { it.value }.take(10)
-                .map { it.key to it.value },
-            topArtists = playsByArtist.entries.sortedByDescending { it.value }.take(10)
-                .map { it.key to it.value },
-            hourly = hourly
-        )
-    }
+    fun stats(
+        period: StatsPeriod = StatsPeriod.ALL,
+        now: Long = System.currentTimeMillis()
+    ): WrappedStats = buildStats(_state.value.history, period, now)
 
     /** Playlists built from listening data — "On repeat" style mixes. */
     fun generatedMixes(): List<Playlist> {

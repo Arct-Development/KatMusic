@@ -15,6 +15,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
@@ -132,7 +134,11 @@ fun Artwork(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(corner))
+            .graphicsLayer {
+                shape = if (corner >= 50.dp) CircleShape
+                else com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(corner, 0.55f)
+                clip = true
+            }
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -171,7 +177,7 @@ fun GlassCard(
 ) {
     GlassSurface(
         modifier = modifier,
-        shape = RoundedCornerShape(corner),
+        shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(corner, 0.55f),
         fillAlpha = 0.62f
     ) {
         content()
@@ -242,10 +248,7 @@ fun MediaCardItem(
     ) {
         Artwork(
             url = card.artwork,
-            modifier = Modifier
-                .size(width)
-                .shadow(14.dp, RoundedCornerShape(if (round) 100.dp else 22.dp))
-                .then(if (round) Modifier.clip(CircleShape) else Modifier),
+            modifier = Modifier.size(width),
             corner = if (round) 100.dp else 22.dp,
             fallbackIcon = when (card.kind) {
                 CardKind.ARTIST -> Icons.Filled.Verified
@@ -297,6 +300,7 @@ fun CardShelf(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -313,7 +317,9 @@ fun TrackRow(
     onPlayNext: (Track) -> Unit = {},
     onAddToQueue: (Track) -> Unit = {},
     onGoToArtist: (Track) -> Unit = {},
-    onRemove: ((Track) -> Unit)? = null
+    onRemove: ((Track) -> Unit)? = null,
+    selected: Boolean = false,
+    onLongClick: (() -> Unit)? = null
 ) {
     val libraryState by ServiceLocator.library.state.collectAsState()
     val downloadState by ServiceLocator.downloads.progress.collectAsState()
@@ -353,9 +359,19 @@ fun TrackRow(
             }
             .clip(RoundedCornerShape(18.dp))
             .then(
-                if (isCurrent) Modifier.background(accent.copy(alpha = 0.10f)) else Modifier
+                when {
+                    selected -> Modifier.background(accent.copy(alpha = 0.18f))
+                    isCurrent -> Modifier.background(accent.copy(alpha = 0.10f))
+                    else -> Modifier
+                }
             )
-            .bounceClickable(targetScale = 0.985f, onClick = onClick)
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier.bounceClickable(targetScale = 0.985f, onClick = onClick)
+                }
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -428,6 +444,15 @@ fun TrackRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+        if (selected) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = "Selected",
+                tint = accent,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(6.dp))
         }
         if (track.durationMs > 0) {
             Text(
@@ -589,7 +614,7 @@ fun LoadingRow(message: String = "Loading…") {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        com.itzfallenme.katmusic.ui.theme.MorphingShapeLoader(size = 24.dp)
         Spacer(Modifier.width(12.dp))
         Text(message, style = MaterialTheme.typography.bodyMedium)
     }
@@ -783,15 +808,13 @@ fun DownloadStatusChip(track: Track, onClick: () -> Unit) {
     }
 }
 
+/** Expressive wavy progress line, used for downloads and track loading. */
 @Composable
 fun InlineProgress(fraction: Float, modifier: Modifier = Modifier) {
-    LinearProgressIndicator(
-        progress = { fraction },
-        modifier = modifier
-            .fillMaxWidth()
-            .height(3.dp),
-        color = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    com.itzfallenme.katmusic.ui.theme.WavyProgressLine(
+        progress = fraction,
+        modifier = modifier,
+        height = 8.dp
     )
 }
 
@@ -803,14 +826,19 @@ fun Chip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val background by animateColorAsState(
-        targetValue = if (selected) scheme.primary else scheme.surfaceContainerHigh.copy(alpha = 0.65f),
+        targetValue = if (selected) scheme.primary else scheme.surfaceContainerHigh,
         animationSpec = Motion.effectsDefault(),
         label = "chipBackground"
     )
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.985f,
-        animationSpec = Motion.spatialFast(),
-        label = "chipScale"
+    // M3 Expressive selection morphs the shape as well as the colour: a pill
+    // settles into a softer squircle when it is the chosen option.
+    val radius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (selected) 12.dp else 26.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        ),
+        label = "chipCorner"
     )
     Text(
         text = text,
@@ -818,15 +846,10 @@ fun Chip(
         color = if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
         modifier = Modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                shape = com.itzfallenme.katmusic.ui.theme.SmoothCornerShape(radius, 0.6f)
+                clip = true
             }
-            .clip(CircleShape)
             .background(background)
-            .then(
-                if (selected) Modifier
-                else Modifier.liquidGlass(shape = CircleShape, fillAlpha = 0.42f)
-            )
             .bounceClickable(targetScale = 0.94f, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 9.dp)
     )

@@ -50,8 +50,32 @@ data class PlayerUiState(
     val repeat: RepeatMode = RepeatMode.OFF,
     val sleepAtMs: Long = 0L,
     val error: String? = null,
-    val radioLoading: Boolean = false
+    val radioLoading: Boolean = false,
+    /** Non-zero when a listening-break reminder is due, in minutes. */
+    val listeningReminderMinutes: Int = 0
 )
+
+/**
+ * Renderers factory whose audio sink carries [processors] - currently the mono
+ * downmixer. ExoPlayer has no public audio-sink setter, but the default
+ * renderers factory builds the sink itself, so this hook is the supported way
+ * to install one.
+ */
+private class MonoRenderersFactory(
+    context: Context,
+    private val processors: Array<androidx.media3.common.audio.AudioProcessor>
+) : androidx.media3.exoplayer.DefaultRenderersFactory(context) {
+    override fun buildAudioSink(
+        context: Context,
+        enableFloatOutput: Boolean,
+        enableAudioTrackPlaybackParams: Boolean
+    ): androidx.media3.exoplayer.audio.AudioSink =
+        androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+            .setAudioProcessors(processors)
+            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .build()
+}
 
 /** Resolves katmusic://watch?v=ID URIs into fresh, probe-checked audio URLs at load time. */
 private class PlaybackUrlResolver(private val highQuality: Boolean) : ResolvingDataSource.Resolver {
@@ -92,6 +116,13 @@ class PlayerController(
     private var lastSkippedSegment = -1L
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    private val monoProcessor = MonoDownmixProcessor().apply {
+        enabled = settings.state.value.monoAudio
+    }
+    private val volumeGuard = VolumeGuard(context)
+    /** Playback milliseconds since the last listening-break acknowledgement. */
+    private var listenedMs = 0L
+
     val player: ExoPlayer by lazy {
         buildPlayer()
     }
@@ -110,6 +141,7 @@ class PlayerController(
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         val exo = ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setRenderersFactory(MonoRenderersFactory(context, arrayOf(monoProcessor)))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -486,6 +518,7 @@ class PlayerController(
 
     fun startPositionUpdates(): Job = scope.launch {
         while (isActive) {
+            val config = settings.state.value
             if (player.isPlaying) {
                 lastPositionMs = player.currentPosition.coerceAtLeast(0)
                 applySponsorSkip()
@@ -494,9 +527,44 @@ class PlayerController(
                     durationMs = player.duration.takeIf { it > 0 } ?: _state.value.durationMs
                 )
                 applyCrossfade()
+                if (config.volumeLimitEnabled) volumeGuard.enforce(config.volumeLimitPercent)
+                trackListeningTime(config.listeningReminderMinutes)
+            } else if (config.listeningReminderMinutes == 0 && _state.value.listeningReminderMinutes != 0) {
+                _state.value = _state.value.copy(listeningReminderMinutes = 0)
             }
             delay(500)
         }
+    }
+
+    /** Counts continuous playback and raises a break reminder once the threshold is crossed. */
+    private fun trackListeningTime(thresholdMinutes: Int) {
+        if (thresholdMinutes <= 0) return
+        listenedMs += 500
+        if (listenedMs >= thresholdMinutes * 60_000L && _state.value.listeningReminderMinutes == 0) {
+            _state.value = _state.value.copy(listeningReminderMinutes = thresholdMinutes)
+        }
+    }
+
+    /** Called when the user dismisses the break reminder; the clock starts over. */
+    fun acknowledgeListeningReminder() {
+        listenedMs = 0L
+        _state.value = _state.value.copy(listeningReminderMinutes = 0)
+    }
+
+    /**
+     * Mono takes effect from the next track: the audio pipeline picks its output
+     * channel count once per format, so switching mid-track would need a stop and
+     * re-buffer that is worse than waiting one song.
+     */
+    fun applyMono(enabled: Boolean) {
+        settings.update { it.copy(monoAudio = enabled) }
+        monoProcessor.enabled = enabled
+    }
+
+    /** Applies the volume ceiling right away after the settings toggle changes. */
+    fun applyVolumeGuard() {
+        val config = settings.state.value
+        if (config.volumeLimitEnabled) volumeGuard.enforce(config.volumeLimitPercent)
     }
 
     /** Ramps the volume down over the tail of a track and back up at the start. */

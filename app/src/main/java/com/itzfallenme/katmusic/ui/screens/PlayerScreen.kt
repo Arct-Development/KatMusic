@@ -505,8 +505,18 @@ fun PlayerScreen(nav: Navigator) {
 
                     Spacer(Modifier.height(10.dp))
 
+                    // Expressive transport: press one control and it expands while
+                    // its neighbours compress, with the play button morphing corners.
+                    com.itzfallenme.katmusic.ui.theme.ExpressiveTransportRow(
+                        isPlaying = state.playing,
+                        onPrevious = { ServiceLocator.player.previous() },
+                        onPlayPause = { ServiceLocator.player.togglePlayPause() },
+                        onNext = { ServiceLocator.player.next() },
+                        buffering = state.buffering,
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    )
                     Row(
-                        Modifier.fillMaxWidth(),
+                        Modifier.fillMaxWidth().padding(top = 6.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -517,25 +527,6 @@ fun PlayerScreen(nav: Navigator) {
                             size = 44.dp,
                             iconSize = 19.dp,
                             tint = if (state.shuffle) scheme.primary else scheme.onSurfaceVariant
-                        )
-                        GlassIconButton(
-                            icon = Icons.Filled.SkipPrevious,
-                            contentDescription = "Previous",
-                            onClick = { ServiceLocator.player.previous() },
-                            size = 52.dp,
-                            iconSize = 30.dp
-                        )
-                        PlayPauseButton(
-                            playing = state.playing,
-                            buffering = state.buffering,
-                            onClick = { ServiceLocator.player.togglePlayPause() }
-                        )
-                        GlassIconButton(
-                            icon = Icons.Filled.SkipNext,
-                            contentDescription = "Next",
-                            onClick = { ServiceLocator.player.next() },
-                            size = 52.dp,
-                            iconSize = 30.dp
                         )
                         GlassIconButton(
                             icon = if (state.repeat == RepeatMode.ONE) Icons.Filled.RepeatOne

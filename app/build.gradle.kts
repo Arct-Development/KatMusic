@@ -34,8 +34,8 @@ android {
         applicationId = "com.itzfallenme.katmusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.6.0"
         vectorDrawables { useSupportLibrary = true }
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
         buildConfigField("String", "BUILD_STAMP", "\"$stamp\"")
