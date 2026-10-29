@@ -84,7 +84,11 @@ data class AppSettings(
     val statsEnabled: Boolean = true,
     val sponsorBlockEnabled: Boolean = false,
     val playerStyle: String = "expressive",
-    val romanizedLyrics: Boolean = false
+    val romanizedLyrics: Boolean = false,
+    /** Publish the playing track to Discord as a Rich Presence card. */
+    val discordPresenceEnabled: Boolean = false,
+    /** Discord application ID the card is attributed to (from the Developer Portal). */
+    val discordAppId: String = ""
 )
 
 @Serializable

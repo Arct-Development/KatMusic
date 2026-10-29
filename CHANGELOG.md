@@ -4,6 +4,29 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.3.0] – 2026-10-29
+
+### Added
+
+- Discord Rich Presence: the playing track, artist and progress appear on your Discord
+  profile. Presence uses Discord's own Android RPC service over standard IPC - no partner
+  SDK, no extra permissions, no token - and is configured with your own Discord
+  application ID in Settings
+- Android Auto and Android TV: the media session now also serves a browsable library
+  (liked songs, downloads, recently played, playlists), and picking a track queues the
+  whole list instead of a single song
+- Multi-account switching: several YouTube Music sessions can be saved and switched from
+  the account screen; the active one supplies library and recommendations
+- Share lyrics as an image: the current lines are rendered with the album art into a
+  1080×1350 card and handed to the system share sheet
+- Player styles now change the player: Expressive keeps the vinyl and breathing cover,
+  Classic and Apple use a still, tighter artwork
+
+### Fixed
+
+- Discord presence, Auto browsing and the player styles all reuse the existing player, so
+  playback state stays in sync between the phone, the car and the status card
+
 ## [1.2.0] – 2026-10-29
 
 ### Added

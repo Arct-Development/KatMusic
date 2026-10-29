@@ -45,6 +45,8 @@ object ServiceLocator {
         private set
     lateinit var localMusic: LocalMusicRepository
         private set
+    lateinit var discord: com.itzfallenme.katmusic.data.presence.DiscordPresenceManager
+        private set
 
     val eq = EqualizerManager()
 
@@ -61,6 +63,12 @@ object ServiceLocator {
         backup = BackupManager(library, settings)
         localMusic = LocalMusicRepository(context)
         player.localFileResolver = { trackId -> downloads.existingFile(trackId) }
+        discord = com.itzfallenme.katmusic.data.presence.DiscordPresenceManager(
+            context.applicationContext,
+            player,
+            settings
+        )
+        discord.start()
     }
 
     fun lastFm(): LastFm? {

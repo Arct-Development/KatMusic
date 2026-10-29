@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Lyrics
@@ -326,6 +327,33 @@ fun SettingsScreen(nav: Navigator) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            SettingsCard(title = "Discord", icon = Icons.Filled.GraphicEq) {
+                SettingToggle(
+                    title = "Discord Rich Presence",
+                    subtitle = "Show the playing track on your Discord profile",
+                    checked = settings.discordPresenceEnabled
+                ) { on ->
+                    update { s -> s.copy(discordPresenceEnabled = on) }
+                    ServiceLocator.discord.refresh()
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = settings.discordAppId,
+                    onValueChange = { update { s -> s.copy(discordAppId = it.filter(Char::isDigit)) } },
+                    label = { Text("Application ID") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Create an application at discord.com/developers/applications, then paste its " +
+                        "Application ID. Both apps use the same Discord RPC service: install Discord, " +
+                        "keep presence on, and the card appears while you listen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

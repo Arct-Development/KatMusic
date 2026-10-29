@@ -82,6 +82,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,6 +93,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -107,6 +109,7 @@ import com.itzfallenme.katmusic.data.CardKind
 import com.itzfallenme.katmusic.data.LyricLine
 import com.itzfallenme.katmusic.data.Lyrics
 import com.itzfallenme.katmusic.data.LyricSyllable
+import com.itzfallenme.katmusic.data.LyricsShareCard
 import com.itzfallenme.katmusic.data.LyricsTranslation
 import com.itzfallenme.katmusic.data.Track
 import com.itzfallenme.katmusic.data.WordLyricsApi
@@ -126,6 +129,7 @@ import com.itzfallenme.katmusic.ui.theme.bounceClickable
 import com.itzfallenme.katmusic.ui.theme.liquidGlass
 import com.itzfallenme.katmusic.ui.theme.rememberArtworkSeed
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
@@ -1006,11 +1010,18 @@ private fun LyricsPane(
             }
         }
         else -> Column(Modifier.fillMaxSize()) {
-            if (lyrics.hasWordTiming) {
-                Row(
-                    Modifier.padding(horizontal = 26.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
+            val backgroundArgb = MaterialTheme.colorScheme.background.toArgb()
+            var sharing by remember { mutableStateOf(false) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (lyrics.hasWordTiming) {
                     Box(
                         Modifier
                             .clip(CircleShape)
@@ -1023,7 +1034,47 @@ private fun LyricsPane(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
+                } else if (lyrics.source.isNotBlank()) {
+                    Text(
+                        lyrics.source,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+                Spacer(Modifier.weight(1f))
+                GlassIconButton(
+                    icon = Icons.Filled.Share,
+                    contentDescription = "Share lyrics",
+                    size = 36.dp,
+                    iconSize = 17.dp,
+                    onClick = {
+                        if (sharing) return@GlassIconButton
+                        sharing = true
+                        scope.launch {
+                            val card = runCatching {
+                                LyricsShareCard.render(
+                                    context = context,
+                                    track = track,
+                                    lines = synced,
+                                    activeIndex = activeIndex,
+                                    accent = accentArgb,
+                                    background = backgroundArgb
+                                )
+                            }.getOrNull()
+                            sharing = false
+                            if (card != null) {
+                                runCatching {
+                                    context.startActivity(
+                                        android.content.Intent.createChooser(
+                                            LyricsShareCard.shareIntent(context, card),
+                                            "Share lyrics"
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
             }
             LazyColumn(
                 state = listState,

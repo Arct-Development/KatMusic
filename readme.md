@@ -41,6 +41,10 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - Shuffle, repeat one/all and autoplay radio that keeps recommending while you listen
 - Sleep timer with quick presets
 - Playback speed from 0.75× to 2×
+- **Android Auto and Android TV** – browse liked songs, downloads, recent plays and
+  playlists from the car or TV; picking a track queues its whole list
+- **Discord Rich Presence** – the playing track, artist and progress bar on your Discord
+  profile, published through Discord's own RPC service with no SDK or extra permissions
 
 ### Discover
 
@@ -67,6 +71,9 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
   sweeps across each word exactly as it is sung, background vocals included
 - Millisecond-synced line lyrics from [LRCLIB](https://lrclib.net) as the fallback
 - Karaoke highlighting that follows playback at frame rate and scrolls itself
+- Romanised readings under every line, for Japanese, Korean, Hindi and other scripts
+- **Share lyrics as an image** – the lines around the current moment are rendered with
+  the album art into a share-ready card
 - Timing offset, text-size controls and a switch to turn word sync off
 - Plain-text fallback when no synchronised version exists
 
@@ -80,9 +87,11 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
   phone's shared music library
 - Music already on your device – scan, browse and play local files
 - Backup and restore the whole library and settings as a single JSON file
+- **Several accounts** – save more than one YouTube Music session and switch between
+  them; the active one supplies your library and recommendations
 - Recent searches
 
-### Discover
+### Explore
 
 - Home feed straight from YouTube Music
 - Charts, moods & genres, new releases and podcasts
@@ -238,14 +247,13 @@ Planned work, roughly in priority order. Feature requests are welcome – open a
 - [x] Now-playing home-screen widget (insight and playlist widgets still planned)
 - [x] Genre DNA and a discovery feed built from listening stats
 - [x] Word-by-word lyrics and romanisation
-- [ ] Android Auto and Android TV entry points
+- [x] Share lyrics as an image
+- [x] Discord Rich Presence
+- [x] Multi-account switching for YouTube Music
+- [x] Android Auto and Android TV entry points
 - [ ] Google Cast support
-- [ ] Discord rich presence
 - [ ] Listen Together (synced rooms)
-- [ ] Multi-account switching for YouTube Music
 - [ ] Video playback with captions and audio-track selection
-- [ ] Share lyrics as an image
-- [ ] Multi-source lyrics (SimpMusic lyrics, Spotify, YouTube transcript)
 - [x] MediaStore export of downloads with title, artist and album tags
 - [ ] Embedded cover art and ID3 tagging inside downloaded files
 - [x] Local file playback and a device-music browser
@@ -261,7 +269,8 @@ ideas of two excellent open-source projects:
 
 - [LastWave](https://github.com/Clash-Projects/LastWave-native) by Clash Projects – the
   expressive glass design language, tonal palette builder and motion rhythm are adapted
-  from LastWave (GPL-3.0).
+  from LastWave (GPL-3.0), as are the TTML lyrics pipeline, the Discord RPC transport
+  (including the three `com.discord.socialsdk.rpc` AIDL stubs) and the genre resolver.
 - [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev
 
 Lyrics by [LRCLIB](https://lrclib.net). Audio and metadata by YouTube Music. Stream

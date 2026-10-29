@@ -239,6 +239,23 @@ class PlayerController(
             .build()
     }
 
+    /**
+     * Mirrors a queue the media session built for an external controller (Android Auto),
+     * so the phone UI shows the same track and list instead of a stale queue.
+     */
+    fun setExternalQueue(tracks: List<Track>, index: Int) {
+        if (tracks.isEmpty()) return
+        val safeIndex = index.coerceIn(0, tracks.lastIndex)
+        _state.value = _state.value.copy(
+            queue = tracks,
+            index = safeIndex,
+            track = tracks[safeIndex],
+            durationMs = tracks[safeIndex].durationMs,
+            positionMs = 0,
+            error = null
+        )
+    }
+
     fun playTracks(tracks: List<Track>, startIndex: Int = 0, autoPlay: Boolean = true) {
         val playable = tracks.filter { it.isPlayable }
         if (playable.isEmpty()) return
