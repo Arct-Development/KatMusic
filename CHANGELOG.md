@@ -4,6 +4,17 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.5.1] – 2026-10-29
+
+### Fixed
+
+- Crash on Samsung/Android 16 (`ForegroundServiceDidNotStartInTimeException`): the media
+  service was requested from ExoPlayer's `onIsPlayingChanged`, i.e. after playback had
+  already begun, so Media3 never observed the play transition that posts the foreground
+  notification and the system killed the app after five seconds. The service is now
+  requested once, before playback starts, and a service that never begins playback stops
+  itself instead of idling past the deadline
+
 ## [1.5.0] – 2026-10-29
 
 ### Added

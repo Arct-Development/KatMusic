@@ -145,7 +145,13 @@ class PlayerController(
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _state.value = _state.value.copy(playing = isPlaying)
-                if (isPlaying) ensureService()
+                // Deliberately no ensureService() here. Starting a foreground
+                // service from this callback races the 5s startForeground
+                // deadline: the session is created only now, after playback has
+                // already begun, so Media3 never sees the play transition that
+                // makes it post its notification - and the system kills the app
+                // with ForegroundServiceDidNotStartInTimeException. The service
+                // is requested before playback starts instead.
                 refreshWidget()
             }
 
@@ -204,13 +210,30 @@ class PlayerController(
         else -> RepeatMode.OFF
     }
 
+    /** True once the media service has been asked to start in this process. */
+    @Volatile
+    private var serviceRequested = false
+
+    /**
+     * Makes sure the media service is alive. Must be called *before* playback
+     * begins: the service promotes itself to foreground when it observes the
+     * player start, which is what satisfies the startForegroundService contract.
+     */
     fun ensureService() {
+        if (serviceRequested) return
+        serviceRequested = true
         val intent = Intent(context, PlaybackService::class.java)
         runCatching {
             ContextCompat.startForegroundService(context, intent)
         }.onFailure {
+            serviceRequested = false
             com.itzfallenme.katmusic.util.AppLog.e("Playback", "could not start the media service", it)
         }
+    }
+
+    /** Called when the service is torn down so a later play can start it again. */
+    fun onServiceDestroyed() {
+        serviceRequested = false
     }
 
     private fun mediaItemFor(track: Track): MediaItem {
@@ -265,6 +288,9 @@ class PlayerController(
         val items = playable.map { mediaItemFor(it) }
         player.setMediaItems(items, index, 0L)
         player.prepare()
+        // Request the service first so it observes the play transition and
+        // posts its foreground notification well inside the 5s deadline.
+        ensureService()
         if (autoPlay) player.play()
         _state.value = _state.value.copy(
             queue = playable,
@@ -275,7 +301,6 @@ class PlayerController(
             error = null
         )
         playable.getOrNull(index)?.let { onTrackStarted(it) }
-        ensureService()
     }
 
     fun playQueueStarting(track: Track, context_: List<Track>) {

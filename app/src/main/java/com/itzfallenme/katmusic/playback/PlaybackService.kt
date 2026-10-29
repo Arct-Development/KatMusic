@@ -35,6 +35,20 @@ class PlaybackService : MediaLibraryService() {
         librarySession = MediaLibrarySession.Builder(this, player, AutoBrowserCallback())
             .setSessionActivity(nowPlayingIntent(this))
             .build()
+        // Safety net for the startForegroundService contract: if playback never
+        // actually begins (resolution failed, the user backed out while the
+        // stream was loading), stop instead of staying alive past the 5s window
+        // and being killed with ForegroundServiceDidNotStartInTimeException.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // playWhenReady, not isPlaying: buffering is not a reason to stop.
+            if (librarySession?.player?.playWhenReady != true) {
+                com.itzfallenme.katmusic.util.AppLog.w(
+                    "Playback",
+                    "service started but playback did not begin; stopping to satisfy the foreground contract"
+                )
+                stopSelf()
+            }
+        }, 3_000L)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
@@ -50,6 +64,7 @@ class PlaybackService : MediaLibraryService() {
         // restarts, so only the session is released here.
         librarySession?.release()
         librarySession = null
+        ServiceLocator.player.onServiceDestroyed()
         super.onDestroy()
     }
 
