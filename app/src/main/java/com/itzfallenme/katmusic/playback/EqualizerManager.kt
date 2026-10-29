@@ -39,27 +39,34 @@ class EqualizerManager {
             virtualizer = Virtualizer(0, audioSessionId)
         }
         val eq = equalizer ?: return
-        val bands = (0 until eq.numberOfBands).map { eq.getCenterFreq(it.toShort()) / 1000 }
-        val presets = (0 until eq.numberOfPresets).map { eq.getPresetName(it.toShort()) }
-        val current = eq.currentPreset
-        val levels = (0 until eq.numberOfBands).map {
-            val band = eq.getBandLevel(it.toShort())
+        // Every platform effect call can throw on devices whose audio HAL reports
+        // an unusual session: a crash here used to take the whole player down the
+        // first time playback started. Read defensively and keep the EQ "unavailable"
+        // instead of crashing.
+        runCatching {
+            val bands = (0 until eq.numberOfBands).map { eq.getCenterFreq(it.toShort()) / 1000 }
+            val presets = (0 until eq.numberOfPresets).map { eq.getPresetName(it.toShort()) }
+            val current = eq.currentPreset
             val range = eq.bandLevelRange
-            val normalized = (band - range[0]).toFloat() / (range[1] - range[0]).toFloat()
-            normalized * 24f - 12f
+            val span = (range[1] - range[0]).toFloat()
+            val levels = (0 until eq.numberOfBands).map { index ->
+                val band = eq.getBandLevel(index.toShort())
+                if (span <= 0f) 0f
+                else ((band - range[0]) / span).coerceIn(0f, 1f) * 24f - 12f
+            }
+            _state.value = EqState(
+                available = true,
+                enabled = eq.enabled,
+                bands = bands,
+                levels = levels,
+                presetNames = presets,
+                preset = if (current == 0.toShort()) "Flat" else presets.getOrElse(current.toInt()) { "Custom" }
+            )
         }
-        _state.value = EqState(
-            available = true,
-            enabled = eq.enabled,
-            bands = bands,
-            levels = levels,
-            presetNames = presets,
-            preset = if (current == 0.toShort()) "Flat" else presets.getOrElse(current.toInt()) { "Custom" }
-        )
     }
 
     fun setEnabled(enabled: Boolean) {
-        equalizer?.enabled = enabled
+        runCatching { equalizer?.enabled = enabled }
         _state.value = _state.value.copy(enabled = enabled)
     }
 
@@ -94,14 +101,18 @@ class EqualizerManager {
     }
 
     fun setBassBoost(strength: Int) {
-        bass?.setStrength(strength.toShort())
-        bass?.enabled = strength > 0
+        runCatching {
+            bass?.setStrength(strength.toShort())
+            bass?.enabled = strength > 0
+        }
         _state.value = _state.value.copy(bassBoost = strength)
     }
 
     fun setVirtualizer(strength: Int) {
-        virtualizer?.setStrength(strength.toShort())
-        virtualizer?.enabled = strength > 0
+        runCatching {
+            virtualizer?.setStrength(strength.toShort())
+            virtualizer?.enabled = strength > 0
+        }
         _state.value = _state.value.copy(virtualizer = strength)
     }
 

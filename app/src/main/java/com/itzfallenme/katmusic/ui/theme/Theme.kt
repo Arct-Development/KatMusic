@@ -176,51 +176,51 @@ val KatTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Black,
-        fontSize = 52.sp,
-        lineHeight = 56.sp,
-        letterSpacing = (-1.6).sp
+        fontSize = 57.sp,
+        lineHeight = 64.sp,
+        letterSpacing = (-0.5).sp
     ),
     displayMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Black,
-        fontSize = 44.sp,
-        lineHeight = 48.sp,
-        letterSpacing = (-1.2).sp
+        fontSize = 45.sp,
+        lineHeight = 52.sp,
+        letterSpacing = (-0.4).sp
     ),
     displaySmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
         fontSize = 36.sp,
-        lineHeight = 42.sp,
-        letterSpacing = (-0.8).sp
+        lineHeight = 44.sp,
+        letterSpacing = (-0.2).sp
     ),
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Black,
         fontSize = 32.sp,
-        lineHeight = 38.sp,
-        letterSpacing = (-0.8).sp
+        lineHeight = 40.sp,
+        letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 26.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.5).sp
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-0.3).sp
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
-        letterSpacing = (-0.2).sp
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,

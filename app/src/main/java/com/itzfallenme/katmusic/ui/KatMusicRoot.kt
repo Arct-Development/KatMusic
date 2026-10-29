@@ -23,11 +23,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,10 +39,12 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,10 +109,50 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
     val settings by ServiceLocator.settings.state.collectAsState()
     val playerState by ServiceLocator.player.state.collectAsState()
     val nav = remember { Navigator() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var crashReport by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         ServiceLocator.player.startPositionUpdates()
         if (openPlayer) nav.playerOpen = true
+        crashReport = com.itzfallenme.katmusic.data.CrashLog.read(context)
+    }
+
+    // The previous session died: show the trace instead of leaving the user to guess.
+    crashReport?.let { report ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { crashReport = null },
+            title = { Text("Last session crashed") },
+            text = {
+                Column(
+                    Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    Text(
+                        report.take(4000),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as? android.content.ClipboardManager
+                    clipboard?.setPrimaryClip(
+                        android.content.ClipData.newPlainText("KatMusic crash", report)
+                    )
+                }) { Text("Copy report") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    com.itzfallenme.katmusic.data.CrashLog.clear(context)
+                    crashReport = null
+                }) { Text("Dismiss") }
+            }
+        )
     }
 
     LaunchedEffect(playerState.track?.id) {

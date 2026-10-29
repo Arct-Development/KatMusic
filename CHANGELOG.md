@@ -4,6 +4,23 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.4.2] – 2026-10-29
+
+### Fixed
+
+- Crashes are now diagnosable: an uncaught exception is saved to the app's storage and
+  shown on the next launch with a one-tap "Copy report" button, instead of the app just
+  closing
+- The equalizer attaches defensively. Some devices throw from the platform audio-effect
+  calls on an unusual audio session, which used to take the app down the first time a
+  track started; effect reads are now guarded and the EQ simply reports unavailable
+
+### Changed
+
+- Type scale follows the reference app more closely (57/45/36 displays, 32/28/24
+  headlines, 22 titles, no negative tracking), so titles read as Material 3 Expressive
+  rather than a squeezed marketing font
+
 ## [1.4.1] – 2026-10-29
 
 ### Added
