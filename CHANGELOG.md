@@ -27,6 +27,10 @@ All notable changes to KatMusic are documented here. The format follows
   rest stays a flat capsule, flattening into a scrubber with a thumb while you drag
 - Theme mode (System / Light / Dark) and Wallpaper colours (Material You on Android 12+)
 - Lyric glow toggle in Settings, alongside the existing size and offset controls
+- Lyrics options while listening, behind the tune button in the lyrics header: glow, word
+  timing, romanised sub-lines, text size and timing offset, with a live preview line
+- The player tab indicator now slides between tabs on a spatial spring instead of
+  cross-fading, and the tabs sit on a flat tonal container rather than a translucent pill
 
 ## [1.3.0] – 2026-10-29
 

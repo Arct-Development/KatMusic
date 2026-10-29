@@ -7,7 +7,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -24,6 +26,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
@@ -60,6 +64,7 @@ import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -70,6 +75,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -654,37 +661,53 @@ fun PlayerScreen(nav: Navigator) {
 @Composable
 private fun PlayerTabs(selected: Int, onSelect: (Int) -> Unit) {
     val labels = listOf("Now playing", "Lyrics", "Up next")
-    Row(
+    val scheme = MaterialTheme.colorScheme
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .liquidGlass(shape = CircleShape, fillAlpha = 0.36f)
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .clip(CircleShape)
+            .background(scheme.surfaceContainerHigh)
+            .padding(4.dp)
     ) {
-        labels.forEachIndexed { index, label ->
-            val isSelected = selected == index
-            val background by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary
-                else Color.Transparent,
-                animationSpec = Motion.effectsDefault(),
-                label = "tabPill"
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .clip(CircleShape)
-                    .background(background)
-                    .bounceClickable(targetScale = 0.95f) { onSelect(index) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+        val tabWidth = maxWidth / labels.size
+        // The selected pill slides between tabs on a spatial spring instead of
+        // cross-fading, which is the whole point of an M3 Expressive indicator.
+        val indicatorX by animateDpAsState(
+            targetValue = tabWidth * selected,
+            animationSpec = spring(dampingRatio = 0.78f, stiffness = 560f),
+            label = "tabIndicator"
+        )
+        Box(
+            Modifier
+                .offset(x = indicatorX)
+                .width(tabWidth)
+                .height(38.dp)
+                .clip(CircleShape)
+                .background(scheme.primary)
+        )
+        Row(Modifier.fillMaxWidth()) {
+            labels.forEachIndexed { index, label ->
+                val isSelected = selected == index
+                val tint by animateColorAsState(
+                    targetValue = if (isSelected) scheme.onPrimary else scheme.onSurfaceVariant,
+                    animationSpec = Motion.effectsFast(),
+                    label = "tabTint"
                 )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(CircleShape)
+                        .bounceClickable(targetScale = 0.95f) { onSelect(index) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tint
+                    )
+                }
             }
         }
     }
@@ -1017,6 +1040,7 @@ private fun LyricsPane(
             val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
             val backgroundArgb = MaterialTheme.colorScheme.background.toArgb()
             var sharing by remember { mutableStateOf(false) }
+            var optionsOpen by remember { mutableStateOf(false) }
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -1044,6 +1068,14 @@ private fun LyricsPane(
                     )
                 }
                 Spacer(Modifier.weight(1f))
+                GlassIconButton(
+                    icon = Icons.Filled.Tune,
+                    contentDescription = "Lyrics options",
+                    size = 36.dp,
+                    iconSize = 17.dp,
+                    onClick = { optionsOpen = true }
+                )
+                Spacer(Modifier.width(4.dp))
                 GlassIconButton(
                     icon = Icons.Filled.Share,
                     contentDescription = "Share lyrics",
@@ -1090,6 +1122,9 @@ private fun LyricsPane(
                 activeColor = MaterialTheme.colorScheme.primary,
                 inactiveColor = MaterialTheme.colorScheme.onSurface
             )
+            if (optionsOpen) {
+                LyricsOptionsDialog(onDismiss = { optionsOpen = false })
+            }
         }
     }
 }
@@ -1183,5 +1218,101 @@ private fun SleepTimerDialog(
             if (activeUntil > 0) TextButton(onClick = onCancelTimer) { Text("Turn off") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+/**
+ * Lyrics options, in place: the same controls the settings screen exposes, but
+ * reachable while listening, with a live preview line so size and offset can be
+ * judged against the song playing right now.
+ */
+@Composable
+private fun LyricsOptionsDialog(onDismiss: () -> Unit) {
+    val settings by ServiceLocator.settings.state.collectAsState()
+    fun update(block: (com.itzfallenme.katmusic.data.AppSettings) -> com.itzfallenme.katmusic.data.AppSettings) {
+        ServiceLocator.settings.update(block)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Lyrics options") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Preview",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Every word lights up as it is sung",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * settings.lyricsTextScale
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Lyric glow", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Halo follows the sung word",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.lyricsGlow,
+                        onCheckedChange = { on -> update { it.copy(lyricsGlow = on) } }
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Word-by-word", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Prefer TTML word timing when available",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.wordByWordLyrics,
+                        onCheckedChange = { on -> update { it.copy(wordByWordLyrics = on) } }
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Romanised sub-lines", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Show a Latin reading under each line",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.romanizedLyrics,
+                        onCheckedChange = { on -> update { it.copy(romanizedLyrics = on) } }
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Text size: ${(settings.lyricsTextScale * 100).toInt()}%",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Slider(
+                    value = settings.lyricsTextScale,
+                    onValueChange = { value -> update { it.copy(lyricsTextScale = value) } },
+                    valueRange = 0.7f..1.6f
+                )
+                Text(
+                    "Timing offset: ${settings.lyricsOffsetMs} ms",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Slider(
+                    value = settings.lyricsOffsetMs.toFloat(),
+                    onValueChange = { value -> update { it.copy(lyricsOffsetMs = value.toLong()) } },
+                    valueRange = -3000f..3000f
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
     )
 }
