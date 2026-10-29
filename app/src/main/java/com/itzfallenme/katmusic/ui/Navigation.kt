@@ -22,6 +22,7 @@ sealed interface Screen {
     data object Generator : Screen
     data object LocalMusic : Screen
     data object Friends : Screen
+    data object ListenTogether : Screen
     data class Detail(
         val browseId: String,
         val title: String,

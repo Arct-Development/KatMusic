@@ -4,6 +4,18 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [1.7.0] – 2026-10-29
+
+### Added
+
+- **Listen Together** (Settings → Listen together): host a room on the local Wi-Fi and
+  friends follow your playback. The host's phone leads track changes, play/pause and
+  seeks; guests get the queue, artwork and position over a small JSON line protocol on
+  TCP, while rooms are advertised with a UDP broadcast and joined with a 4-character
+  code. When discovery is blocked by the router, the host screen shows its IP so guests
+  can type it directly. No account, server or API key is involved, and leaving the room
+  closes every socket
+
 ## [1.6.0] – 2026-10-29
 
 ### Added

@@ -864,6 +864,13 @@ private fun SettingsHome(nav: Navigator) {
             return@Column
         }
 
+        Spacer(Modifier.height(12.dp))
+        SettingRow(
+            title = "Listen together",
+            subtitle = "Host a room and sync playback with friends on the same Wi-Fi",
+            icon = Icons.Filled.Group
+        ) { nav.go(Screen.ListenTogether) }
+
         Text(
             "Browse",
             style = MaterialTheme.typography.labelLarge,

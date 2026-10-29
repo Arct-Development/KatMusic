@@ -50,6 +50,8 @@ object ServiceLocator {
         private set
     lateinit var discord: com.itzfallenme.katmusic.data.presence.DiscordPresenceManager
         private set
+    lateinit var listenTogether: com.itzfallenme.katmusic.playback.ListenTogetherManager
+        private set
 
     val eq = EqualizerManager()
 
@@ -66,6 +68,10 @@ object ServiceLocator {
         backup = BackupManager(library, settings)
         localMusic = LocalMusicRepository(context)
         player.localFileResolver = { trackId -> downloads.existingFile(trackId) }
+        listenTogether = com.itzfallenme.katmusic.playback.ListenTogetherManager(
+            context.applicationContext,
+            player
+        )
         discord = com.itzfallenme.katmusic.data.presence.DiscordPresenceManager(
             context.applicationContext,
             player,

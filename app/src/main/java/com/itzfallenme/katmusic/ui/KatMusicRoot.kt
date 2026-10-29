@@ -73,6 +73,7 @@ import com.itzfallenme.katmusic.ui.screens.GeneratorScreen
 import com.itzfallenme.katmusic.ui.screens.HomeScreen
 import com.itzfallenme.katmusic.ui.screens.ImportPlaylistScreen
 import com.itzfallenme.katmusic.ui.screens.LibraryScreen
+import com.itzfallenme.katmusic.ui.screens.ListenTogetherScreen
 import com.itzfallenme.katmusic.ui.screens.LocalMusicScreen
 import com.itzfallenme.katmusic.ui.screens.PlayerScreen
 import com.itzfallenme.katmusic.ui.screens.SearchScreen
@@ -273,6 +274,7 @@ fun KatMusicRoot(openPlayer: Boolean = false) {
                             Screen.Generator -> GeneratorScreen(nav)
                             Screen.LocalMusic -> LocalMusicScreen(nav)
                             Screen.Friends -> FriendsScreen(nav)
+                            Screen.ListenTogether -> ListenTogetherScreen(nav)
                             is Screen.Detail -> DetailScreen(nav, screen)
                         }
                     }

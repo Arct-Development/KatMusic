@@ -41,8 +41,10 @@ Created by [ItzFallenMe](https://github.com/ItzFallenMe)
 - Shuffle, repeat one/all and autoplay radio that keeps recommending while you listen
 - Sleep timer with quick presets
 - Playback speed from 0.75× to 2×
-- **Android Auto and Android TV** – browse liked songs, downloads, recent plays and
-  playlists from the car or TV; picking a track queues its whole list
+- **Listen Together** – host a room on the local Wi-Fi and let friends' phones follow
+  your track, play/pause and seeks. Rooms are advertised over UDP and joined with a
+  4-character code (or the host's IP when discovery is blocked); there is no account or
+  server involved
 - **Discord Rich Presence** – the playing track, artist and progress bar on your Discord
   profile, published through Discord's own RPC service with no SDK or extra permissions
 
