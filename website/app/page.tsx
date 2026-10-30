@@ -171,7 +171,7 @@ const HIGHLIGHTS = [
   { icon: Timer, label: "Sleep timer" },
   { icon: Repeat, label: "Queue & autoplay" },
   { icon: ListMusic, label: "Playlists & likes" },
-  { icon: Music4, label: "Last.fm & Discord" },
+  { icon: Music4, label: "Last.fm scrobbling" },
   { icon: Activity, label: "Stats" },
   { icon: Zap, label: "0.75× – 2× speed" },
 ];
@@ -211,7 +211,7 @@ export default function HomePage() {
       {/* backdrop */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="grid-backdrop absolute inset-0" />
-        <div className="absolute left-1/2 top-[-22rem] h-[44rem] w-[44rem] -translate-x-1/2 rounded-full bg-sky-500/20 blur-[130px]" />
+        <div className="absolute left-1/2 top-[-22rem] h-[44rem] w-[44rem] -translate-x-1/2 rounded-full bg-lime-500/20 blur-[130px]" />
         <div className="absolute bottom-[-18rem] right-[-12rem] h-[34rem] w-[34rem] rounded-full bg-blue-700/20 blur-[150px]" />
       </div>
 
@@ -255,7 +255,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-7xl px-6 pb-20 pt-36 text-center md:pt-44">
           <Reveal>
             <div className="mb-9 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-white/70">
-              <span className="dot-live h-1.5 w-1.5 rounded-full bg-sky-400 text-sky-400" />
+              <span className="dot-live h-1.5 w-1.5 rounded-full bg-lime-400 text-lime-400" />
               {latest ? `v${latest.tag.replace(/^v/, "")} is live` : "Open source on GitHub"}
             </div>
           </Reveal>
@@ -264,7 +264,7 @@ export default function HomePage() {
             <h1 className="mx-auto max-w-5xl font-[family-name:var(--font-outfit)] text-[13vw] font-black uppercase leading-[0.86] tracking-tighter text-white sm:text-7xl md:text-[6.5rem]">
               Your music
               <br />
-              <span className="text-shimmer bg-gradient-to-r from-sky-400 via-white to-sky-400 bg-clip-text italic text-transparent">
+              <span className="text-shimmer bg-gradient-to-r from-lime-400 via-white to-lime-400 bg-clip-text italic text-transparent">
                 without the noise
               </span>
             </h1>
@@ -344,7 +344,7 @@ export default function HomePage() {
           <Reveal>
             <div className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-400">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-lime-400">
                   What it does
                 </span>
                 <h2 className="mt-3 font-[family-name:var(--font-outfit)] text-4xl font-black uppercase leading-[0.95] tracking-tighter text-white md:text-5xl">
@@ -363,9 +363,9 @@ export default function HomePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 60}>
-                <div className="group h-full rounded-[1.75rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.05] via-white/[0.015] to-transparent p-6 transition hover:border-sky-400/30 hover:from-sky-400/[0.08]">
+                <div className="group h-full rounded-[1.75rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.05] via-white/[0.015] to-transparent p-6 transition hover:border-lime-400/30 hover:from-lime-400/[0.08]">
                   <div className="flex items-center justify-between">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.06] text-sky-300">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.06] text-lime-300">
                       <feature.icon className="h-5 w-5" />
                     </span>
                     <span className="text-[9px] font-black uppercase tracking-[0.26em] text-slate-600">
@@ -388,7 +388,7 @@ export default function HomePage() {
         <section id="download" className="mx-auto max-w-7xl px-6 py-20">
           <Reveal>
             <div className="mb-12 text-center">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-400">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-lime-400">
                 Install
               </span>
               <h2 className="mt-3 font-[family-name:var(--font-outfit)] text-4xl font-black uppercase leading-[0.95] tracking-tighter text-white md:text-5xl">
@@ -432,7 +432,7 @@ export default function HomePage() {
                 <div className="conic-border rounded-[2rem] bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent p-7 shadow-[0_40px_100px_rgba(0,0,0,0.6)] md:p-9">
                   <div className="relative z-10">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="rounded-full bg-sky-400/15 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">
+                      <span className="rounded-full bg-lime-400/15 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300">
                         Latest
                       </span>
                       <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
@@ -445,7 +445,7 @@ export default function HomePage() {
                         <a
                           key={asset.name}
                           href={asset.downloadUrl}
-                          className="group flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-black/30 px-5 py-4 transition hover:border-sky-400/40 hover:bg-sky-400/[0.07]"
+                          className="group flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-black/30 px-5 py-4 transition hover:border-lime-400/40 hover:bg-lime-400/[0.07]"
                         >
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-bold text-white">
@@ -503,10 +503,10 @@ export default function HomePage() {
                           {release.prerelease ? " · pre-release" : ""}
                         </span>
                       </span>
-                      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300 group-open:hidden">
+                      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300 group-open:hidden">
                         Show
                       </span>
-                      <span className="hidden shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-sky-300 group-open:inline">
+                      <span className="hidden shrink-0 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300 group-open:inline">
                         Hide
                       </span>
                     </summary>
@@ -515,7 +515,7 @@ export default function HomePage() {
                         <a
                           key={asset.name}
                           href={asset.downloadUrl}
-                          className="group/asset flex items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-black/25 px-4 py-3 transition hover:border-sky-400/40"
+                          className="group/asset flex items-center justify-between gap-4 rounded-xl border border-white/[0.07] bg-black/25 px-4 py-3 transition hover:border-lime-400/40"
                         >
                           <span className="min-w-0">
                             <span className="block truncate text-xs font-bold text-white">
@@ -525,7 +525,7 @@ export default function HomePage() {
                               {formatBytes(asset.size)}
                             </span>
                           </span>
-                          <Download className="h-4 w-4 shrink-0 text-slate-500 transition group-hover/asset:text-sky-300" />
+                          <Download className="h-4 w-4 shrink-0 text-slate-500 transition group-hover/asset:text-lime-300" />
                         </a>
                       ))}
                     </div>
@@ -543,7 +543,7 @@ export default function HomePage() {
                 { step: "03", title: "Open and play", body: "No account needed. Sign in only for your own library." },
               ].map((item) => (
                 <div key={item.step} className="glass rounded-[1.5rem] p-6">
-                  <span className="font-[family-name:var(--font-outfit)] text-xs font-black tracking-[0.3em] text-sky-400">
+                  <span className="font-[family-name:var(--font-outfit)] text-xs font-black tracking-[0.3em] text-lime-400">
                     {item.step}
                   </span>
                   <h3 className="mt-3 text-sm font-bold uppercase tracking-[0.08em] text-white">
@@ -570,7 +570,7 @@ export default function HomePage() {
                 <h2 className="font-[family-name:var(--font-outfit)] text-4xl font-black uppercase leading-[0.9] tracking-tighter text-white md:text-6xl">
                   Put it on
                   <br />
-                  <span className="text-shimmer bg-gradient-to-r from-white via-sky-300 to-white bg-clip-text italic text-transparent">
+                  <span className="text-shimmer bg-gradient-to-r from-white via-lime-300 to-white bg-clip-text italic text-transparent">
                     your phone
                   </span>
                 </h2>
@@ -614,8 +614,8 @@ export default function HomePage() {
                 A native Android client for YouTube Music, designed and built by ItzFallenMe.
               </p>
               <div className="mt-5 inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.26em] text-slate-500">
-                <CheckCircle2 className="h-3.5 w-3.5 text-sky-400" />
-                v2.0.0 · GPL-3.0
+                <CheckCircle2 className="h-3.5 w-3.5 text-lime-400" />
+                v2.0.1 · GPL-3.0
               </div>
             </div>
             <div>
@@ -682,7 +682,7 @@ export default function HomePage() {
               href={REPO_PAGE}
               className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.26em] text-white"
             >
-              <span className="dot-live h-1.5 w-1.5 rounded-full bg-sky-400 text-sky-400" />
+              <span className="dot-live h-1.5 w-1.5 rounded-full bg-lime-400 text-lime-400" />
               github.com/ItzFallenMe
               <ArrowUpRight className="h-3 w-3" />
             </a>
