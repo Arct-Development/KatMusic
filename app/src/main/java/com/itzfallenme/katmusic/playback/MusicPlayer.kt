@@ -1,7 +1,5 @@
 package com.itzfallenme.katmusic.playback
 
-import com.itzfallenme.katmusic.data.plugin.ModuleOfflineLicense
-import com.itzfallenme.katmusic.data.plugin.ModuleManager
 import com.itzfallenme.katmusic.data.plugin.SegmentedMpdBuilder
 import com.itzfallenme.katmusic.data.plugin.ModuleDrmFactory
 import com.itzfallenme.katmusic.data.plugin.SegmentedStreamDescriptor
@@ -268,8 +266,6 @@ class MusicPlayer @Inject constructor(
     private val autoEqController: com.itzfallenme.katmusic.data.autoeq.AutoEqController,
     private val lyricsRepository: dagger.Lazy<com.itzfallenme.katmusic.data.lyrics.LyricsRepository>,
     private val moduleDrmFactory: ModuleDrmFactory,
-    private val moduleManager: ModuleManager,
-    private val offlineLicense: ModuleOfflineLicense,
     private val losslessMusicApi: LosslessMusicApi,
 ) {
 
@@ -6942,16 +6938,6 @@ class MusicPlayer @Inject constructor(
 
         if (!isAccessible) return null
 
-        // Module offline download: same bytes as streaming, keys in the
-        // sidecar. Unusable here (no keys / unrenewable expiry) -> null so
-        // playback falls through to streaming instead of failing on ciphertext.
-        offlineModuleStream(
-            targetUrl = targetUrl,
-            uri = uri,
-            displayTitle = displayTitle,
-            displayArtist = displayArtist,
-        )?.let { return it }
-
         val pathLower = (uri.path ?: targetUrl).lowercase()
         val mime = fallbackMime?.takeIf(String::isNotBlank) ?: when {
             pathLower.endsWith(".flac") -> "audio/flac"
@@ -7063,73 +7049,6 @@ class MusicPlayer @Inject constructor(
             bitDepth = if (isLossless) bitDepth?.takeIf { it > 0 } else null,
             samplingRateKHz = samplingRateKHz?.takeIf { it > 0.0 },
             durationMs = effectiveDurationMs,
-        )
-    }
-
-    /**
-     * Offline playback for module downloads: local MPD over the downloaded
-     * bytes + persisted CDM keys. Returns null unless this exact file has
-     * usable keys (fresh or renewed), letting remote streaming take over.
-     */
-    private suspend fun offlineModuleStream(
-        targetUrl: String,
-        uri: Uri,
-        displayTitle: String,
-        displayArtist: String,
-    ): ResolvedStream? {
-        val sidecar = moduleManager.readOfflineSidecar(displayTitle, displayArtist) ?: return null
-        if (sidecar.keySetIdB64.isBlank()) return null
-        val filePath = when {
-            targetUrl.startsWith("content://") -> null
-            targetUrl.startsWith("file://") -> uri.path
-            else -> targetUrl
-        }
-        val matches = (filePath != null && sidecar.audioFilePath == filePath) ||
-            (sidecar.mediaStoreUri.isNotBlank() && sidecar.mediaStoreUri == targetUrl) ||
-            (sidecar.bytes > 0 && filePath != null &&
-                runCatching { File(filePath).length() == sidecar.bytes }.getOrDefault(false))
-        if (!matches) return null
-        val initialDesc = runCatching {
-            persistenceJson.decodeFromString<com.itzfallenme.katmusic.data.plugin.SegmentedStreamDescriptor>(
-                sidecar.descriptorJson,
-            )
-        }.getOrNull()
-        val drm = initialDesc?.drm ?: return null
-        val readyDesc = initialDesc.copy(drm = drm.copy(keySetIdB64 = sidecar.keySetIdB64, licenseUrl = sidecar.licenseUrl))
-        val finalDesc = if (System.currentTimeMillis() > sidecar.licenseExpiresAtMs) {
-            val renewed = withTimeoutOrNull(OFFLINE_LICENSE_RENEW_TIMEOUT_MS) {
-                offlineLicense.renew(readyDesc, sidecar.keySetIdB64)
-            } ?: return null
-            val updated = readyDesc.copy(
-                drm = readyDesc.drm?.copy(keySetIdB64 = renewed.keySetIdB64),
-            )
-            moduleManager.writeOfflineSidecar(
-                displayTitle, displayArtist,
-                sidecar.copy(
-                    keySetIdB64 = renewed.keySetIdB64,
-                    licenseExpiresAtMs = renewed.licenseExpiresAtMs,
-                    descriptorJson = moduleManager.encodeDescriptor(updated),
-                ),
-            )
-            updated
-        } else {
-            readyDesc
-        }
-        var descriptor = finalDesc
-        val s = descriptor.stream
-        return ResolvedStream(
-            url = segBridge.mpdUriForBase(descriptor, targetUrl).toString(),
-            mimeType = MimeTypes.APPLICATION_MPD,
-            bitrateKbps = s.bandwidth.takeIf { it > 0 }?.div(1000),
-            audioCodec = segBridge.audioBadge(descriptor),
-            cacheKey = "offline:${displayArtist.lowercase()}_${displayTitle.lowercase()}",
-            isLossless = !s.codec.equals("opus", ignoreCase = true),
-            bitDepth = s.bitDepth?.takeIf { it > 0 },
-            samplingRateKHz = s.sampleRate.takeIf { it > 0 }?.div(1000.0),
-            // Seed the slider denominator: the MPD timeline alone may take a
-            // while to parse, and without this the bar sat dead until then.
-            durationMs = descriptor.durationSec.takeIf { it > 0 }?.times(1_000L),
-            segmentedDrm = descriptor,
         )
     }
 

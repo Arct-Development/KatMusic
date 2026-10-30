@@ -1,6 +1,5 @@
 package com.itzfallenme.katmusic.ui.components
 
-import com.itzfallenme.katmusic.data.plugin.ModulePlaybackResolver
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateContentSize
@@ -219,7 +218,6 @@ class TrackDetailsViewModel @Inject constructor(
     private val genreResolver: GenreResolver,
     private val iTunesSearchClient: ITunesSearchClient,
     private val canvasRepository: CanvasRepository,
-    private val moduleResolver: ModulePlaybackResolver,
 ) : ViewModel() {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -434,70 +432,6 @@ class TrackDetailsViewModel @Inject constructor(
                 // above already reflect the actual stream, and this path
                 // would overwrite them with stale YouTube Opus values.
                 if (!isLiveTrack) {
-                // Audio stream resolution via provider module (.lwp engine)
-                val descriptor = runCatching {
-                    moduleResolver.resolve(title, artist, 27)
-                }.getOrNull()
-
-                if (descriptor != null && descriptor.stream.baseUrl.isNotBlank()) {
-                    val s = descriptor.stream
-                    val isAtmos = s.codec.equals("atmos", ignoreCase = true)
-                    val isLossless = isAtmos || (!s.codec.equals("opus", ignoreCase = true) &&
-                        !s.codec.equals("mp3", ignoreCase = true) &&
-                        !s.codec.equals("aac", ignoreCase = true) &&
-                        !s.codec.contains("mp4a", ignoreCase = true))
-                    val rateKHz = if (s.sampleRate > 1000) s.sampleRate / 1000.0 else s.sampleRate.toDouble()
-                    // Shared hi-res rule: a rate above 48kHz implies 24-bit in practice, so a
-                    // module-reported 16 is corrected to 24 there. An omitted
-                    // depth below 48kHz stays unknown.
-                    val depth: Int? = resolveDepthForDisplay(s.bitDepth, rateKHz)
-                    val badge = if (isAtmos) {
-                        "DOLBY ATMOS"
-                    } else if (isLossless) {
-                        formatDetailedQualityBadge(depth, rateKHz)
-                    } else if (s.codec.equals("mp3", ignoreCase = true)) {
-                        "320k MP3"
-                    } else if (s.codec.equals("aac", ignoreCase = true) || s.codec.contains("mp4a", ignoreCase = true)) {
-                        if (s.bandwidth in 1..128000) "HE-AAC" else "AAC 320"
-                    } else s.codec.uppercase()
-                    val codec = if (isAtmos) {
-                        "Dolby Atmos (E-AC-3 JOC Spatial)"
-                    } else if (s.codec.equals("mp3", ignoreCase = true)) {
-                        "MPEG Layer 3 (MP3)"
-                    } else if (s.codec.equals("aac", ignoreCase = true) || s.codec.contains("mp4a", ignoreCase = true)) {
-                        "Advanced Audio Coding (AAC)"
-                    } else {
-                        "Free Lossless Audio Codec (FLAC)"
-                    }
-                    val depthRate = if (isAtmos) {
-                        "24-bit / ${if (s.sampleRate > 0) s.sampleRate / 1000.0 else 48.0} kHz (6 Channels Spatial)"
-                    } else if (depth != null) {
-                        "$depth-bit / ${if (rateKHz > 0.0) rateKHz else 44.1} kHz (${if (s.bandwidth > 0) s.bandwidth / 1000 else 1411} kbps)"
-                    } else if (rateKHz > 0.0) {
-                        "${if (rateKHz % 1.0 == 0.0) rateKHz.toInt().toString() else rateKHz} kHz (${if (s.bandwidth > 0) s.bandwidth / 1000 else 1411} kbps)"
-                    } else {
-                        "Lossless (${if (s.bandwidth > 0) s.bandwidth / 1000 else 1411} kbps)"
-                    }
-                    val durText = downloaded?.durationMs?.takeIf { it > 0L }?.let { ms ->
-                        val dur = (ms / 1000).toInt()
-                        "%d:%02d".format(dur / 60, dur % 60)
-                    } ?: "\u2014"
-
-                    val moduleBitrate = when {
-                        s.bandwidth > 0 -> "${s.bandwidth / 1000} kbps"
-                        (downloaded?.bitrateKbps ?: 0) > 0 -> "${downloaded?.bitrateKbps} kbps"
-                        else -> null
-                    }
-
-                    _specs.value = _specs.value?.copy(
-                        qualityBadge = badge,
-                        audioCodec = codec,
-                        bitDepthSampleRate = depthRate,
-                        bitrate = moduleBitrate,
-                        provider = "Lossless Provider Module",
-                        isLossless = isLossless,
-                        durationText = durText,
-                    )
                 } else {
                     // Fallback YouTube stream specs
                     val bestMatch = runCatching { innerTube.findBestMatch(title, artist) }.getOrNull()
@@ -520,7 +454,6 @@ class TrackDetailsViewModel @Inject constructor(
                         provider = "YouTube Music CDN",
                         isLossless = false,
                     )
-                }
                 }
 
                 // 4. Merge genre + iTunes metadata

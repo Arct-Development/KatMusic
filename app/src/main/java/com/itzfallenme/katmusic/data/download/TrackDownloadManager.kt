@@ -1,10 +1,5 @@
 package com.itzfallenme.katmusic.data.download
 
-import com.itzfallenme.katmusic.data.plugin.ModulePlaybackResolver
-import com.itzfallenme.katmusic.data.plugin.ModuleOfflineLicense
-import com.itzfallenme.katmusic.data.plugin.ModuleManager
-import com.itzfallenme.katmusic.data.plugin.OfflineSidecar
-import com.itzfallenme.katmusic.data.plugin.OfflineKeys
 import com.itzfallenme.katmusic.data.plugin.SegmentedStreamDescriptor
 import com.itzfallenme.katmusic.data.lossless.LosslessAudioStream
 import com.itzfallenme.katmusic.data.lossless.LosslessMusicApi
@@ -145,10 +140,6 @@ class TrackDownloadManager @Inject constructor(
     private val settingsPreferences: SettingsPreferences,
     private val applicationScope: CoroutineScope,
     private val segBridge: DashSegmenter,
-    private val moduleResolver: ModulePlaybackResolver,
-    private val offlineLicense: ModuleOfflineLicense,
-    private val moduleManager: ModuleManager,
-    private val flacTranscoder: ModuleFlacTranscoder,
     private val losslessMusicApi: LosslessMusicApi,
 ) {
     companion object {
@@ -765,7 +756,6 @@ class TrackDownloadManager @Inject constructor(
 
                 // 1. Provider module (.lwp engine): progressive clear FLAC/MP3 or segmented DASH (Dolby Atmos / Tidal Hi-Res)
                 var moduleDescriptor: SegmentedStreamDescriptor? = null
-                var moduleLicenseDeferred: Deferred<OfflineKeys?>? = null
                 var isDashModuleDownload = false
                 var dashInitUrl: String? = null
                 var dashMediaTemplate: String? = null
@@ -935,108 +925,6 @@ class TrackDownloadManager @Inject constructor(
                             }
                         }
 
-                        val desc = if (resolvedUrl != null) null else runCatching {
-                            moduleResolver.resolve(finalTitle, finalArtist, downloadQuality)
-                        }.getOrNull()
-                        if (desc != null && desc.stream.baseUrl.isNotBlank()) {
-                            val s = desc.stream
-                            val isAtmos = s.codec.equals("atmos", ignoreCase = true)
-                            if ((s.type == "progressive" || s.segments.isEmpty()) && !isDashUrl(s.baseUrl, s.mimeType) && s.type != "dash_xml") {
-                                resolvedUrl = s.baseUrl
-                                downloadHeaders = desc.headers
-                                mimeType = s.mimeType.ifBlank { "audio/flac" }
-                                extension = when {
-                                    s.codec.equals("mp3", ignoreCase = true) -> "mp3"
-                                    s.codec.equals("aac", ignoreCase = true) -> "m4a"
-                                    else -> "flac"
-                                }
-                                isLossless = !s.codec.equals("opus", ignoreCase = true) &&
-                                    !s.codec.equals("mp3", ignoreCase = true) &&
-                                    !s.codec.equals("aac", ignoreCase = true) &&
-                                    !s.codec.contains("mp4a", ignoreCase = true)
-                                val rateKHz = if (s.sampleRate > 1000) s.sampleRate / 1000.0 else s.sampleRate.toDouble()
-                                val depth = s.bitDepth?.takeIf { it > 0 }
-                                formatBadge = if (isLossless) {
-                                    formatDetailedQualityBadge(depth, rateKHz)
-                                } else s.codec.uppercase()
-                                durationMs = desc.durationSec * 1000L
-                            } else if (s.type == "dash_xml" || isDashUrl(s.baseUrl, s.mimeType)) {
-                                val parsedDash = parseTidalDashManifest(s.baseUrl)
-                                if (parsedDash != null) {
-                                    // Trust the manifest's own codec, not the descriptor's
-                                    // assumption. Tidal answers HI_RES/LOSSLESS with
-                                    // FLAC-in-MP4 but LOW/HIGH with plain AAC (mp4a),
-                                    // and the old code labelled every DASH download as
-                                    // FLAC and named it .m4a either way — so a lossless
-                                    // request could be stored as AAC while claiming FLAC.
-                                    val manifestCodec = parsedDash.codec.ifBlank { s.codec.lowercase() }
-                                    if (!atmosCapable &&
-                                        requestedDownloadQuality != LosslessMusicApi.QUALITY_DOLBY_ATMOS &&
-                                        (manifestCodec.startsWith("ec-3") ||
-                                            manifestCodec.startsWith("eac3") ||
-                                            manifestCodec.startsWith("ac-3"))
-                                    ) {
-                                        android.util.Log.w(
-                                            "TrackDownloadManager",
-                                            "Spatial module manifest veto for $finalTitle by $finalArtist on incapable device; cascading to stereo tiers",
-                                        )
-                                        continue
-                                    }
-                                    val isAtmosStream = isAtmos ||
-                                        manifestCodec.startsWith("ec-3") ||
-                                        manifestCodec.startsWith("eac3") ||
-                                        manifestCodec.startsWith("ac-3")
-                                    val isFlacStream = manifestCodec.contains("flac")
-                                    isDashModuleDownload = true
-                                    dashInitUrl = parsedDash.initUrl
-                                    dashMediaTemplate = parsedDash.mediaTemplate
-                                    dashSegmentCount = parsedDash.segmentCount
-                                    dashStartNumber = parsedDash.startNumber
-                                    dashManifestCodec = manifestCodec
-                                    // Unwrap whenever the container really holds FLAC,
-                                    // including Atmos-flagged releases: this backend serves
-                                    // their stereo 24/96 FLAC rendition (never E-AC-3 JOC),
-                                    // and an .m4a holding FLAC reads as AAC to players.
-                                    dashIsFlacInMp4 = isFlacStream
-                                    resolvedUrl = parsedDash.initUrl
-                                    downloadHeaders = desc.headers
-                                    extension = "m4a"
-                                    mimeType = "audio/mp4"
-                                    val rateKHz = if (s.sampleRate > 1000) s.sampleRate / 1000.0 else s.sampleRate.toDouble()
-                                    val depth = s.bitDepth?.takeIf { it > 0 }
-                                    formatBadge = when {
-                                        isAtmosStream -> "DOLBY ATMOS"
-                                        isFlacStream -> formatDetailedQualityBadge(depth, rateKHz)
-                                        manifestCodec.startsWith("mp4a.40.5") -> "96 kbps"
-                                        manifestCodec.startsWith("mp4a") -> "320 kbps"
-                                        else -> "AAC"
-                                    }
-                                    isLossless = isAtmosStream || isFlacStream
-                                    durationMs = desc.durationSec * 1000L
-                                }
-                            } else if (desc.drm != null && s.segments.isNotEmpty()) {
-                                moduleDescriptor = desc
-                                resolvedUrl = s.baseUrl
-                                downloadHeaders = desc.headers
-                                expectedContentLength = s.segments
-                                    .mapNotNull { it.range.substringAfterLast("-").toLongOrNull() }
-                                    .maxOrNull()?.plus(1)
-                                useParallelDownload = true
-                                extension = "m4a"
-                                mimeType = "audio/mp4"
-                                formatBadge = segBridge.audioBadge(desc)
-                                isLossless = !s.codec.equals("opus", ignoreCase = true) &&
-                                    !s.codec.equals("mp3", ignoreCase = true) &&
-                                    !s.codec.equals("aac", ignoreCase = true) &&
-                                    !s.codec.contains("mp4a", ignoreCase = true)
-                                durationMs = desc.durationSec * 1000L
-                                // Offline license in parallel with the bytes.
-                                moduleLicenseDeferred = applicationScope.async(Dispatchers.IO) {
-                                    runCatching { offlineLicense.acquire(desc) }.getOrNull()
-                                }
-                            }
-                        }
-
                         if (resolvedUrl != null) {
                             val rawFile = File.createTempFile("dl_raw_", ".$extension", context.cacheDir)
                                 tempDownloadFile = rawFile
@@ -1198,9 +1086,6 @@ class TrackDownloadManager @Inject constructor(
                         throw cancellation
                     } catch (moduleError: Throwable) {
                         android.util.Log.w("TrackDownloadManager", "Download (quality=$downloadQuality) failed for $title by $artist; trying next tier or YouTube", moduleError)
-                        moduleLicenseDeferred?.cancel()
-                        moduleLicenseDeferred = null
-                        moduleDescriptor = null
                         isDashModuleDownload = false
                         resolvedUrl = null
                         tempDownloadFile?.let { runCatching { if (it.exists()) it.delete() } }
@@ -1571,62 +1456,6 @@ class TrackDownloadManager @Inject constructor(
                         }
                     }
 
-                    // 3a. Served clear? The box-walk proves no sample-encryption
-                    // boxes anywhere: bytes are already pure playable audio.
-                    // Skip transcode, license and sidecar entirely.
-                    val moduleClear = moduleDescriptor?.takeIf { it.drm != null }?.let { desc ->
-                        desc.stream.type != "progressive" &&
-                            !Mp4EncryptionScanner.isEncrypted(currentAudioFile)
-                    } == true
-
-                    // 3b. Module DRM: transcode decrypted PCM into true FLAC so the
-                    // stored file plays in any local player. Any failure falls
-                    // through to the license-persisted encrypted path below.
-                    var transcodedFlac: File? = null
-                    val transcodeDesc = moduleDescriptor?.takeIf { it.drm != null && !moduleClear }?.takeIf { desc ->
-                        // Extension decides; missing/unreachable policy keeps current behavior.
-                        try {
-                            moduleResolver.shouldTranscode(desc)
-                        } catch (cancellation: CancellationException) {
-                            throw cancellation
-                        } catch (_: Exception) {
-                            true
-                        }
-                    }
-                    if (transcodeDesc != null) {
-                        val transResult = try {
-                            flacTranscoder.transcodeToFlac(
-                                sourceFile = currentAudioFile,
-                                descriptor = transcodeDesc,
-                                title = finalTitle,
-                                artist = finalArtist,
-                                album = resolvedAlbum,
-                                artworkUri = resolvedArtworkUrl,
-                            )
-                        } catch (cancellation: CancellationException) {
-                            throw cancellation
-                        } catch (_: Exception) {
-                            null
-                        }
-                        transcodedFlac = transResult?.file
-                        if (transcodedFlac != null) {
-                            runCatching { currentAudioFile.delete() }
-                            currentAudioFile = transcodedFlac
-                            tempDownloadFile = transcodedFlac
-                            moduleLicenseDeferred?.cancel()
-                            extension = "flac"
-                            mimeType = "audio/flac"
-                            formatBadge = try {
-                                moduleResolver.badgeFor(transcodeDesc, segBridge.audioBadge(transcodeDesc))
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (_: Exception) {
-                                segBridge.audioBadge(transcodeDesc)
-                            }
-                            isLossless = true
-                        }
-                    }
-
                     val safeFilename = sanitizeFilename("$finalArtist - $finalTitle") + ".$extension"
 
                     // 4. Resolve exact audio duration from downloaded file
@@ -1814,32 +1643,6 @@ class TrackDownloadManager @Inject constructor(
                     downloadedAtMillis = System.currentTimeMillis(),
                 )
                 downloadedTrackDao.insert(entity)
-
-                // 6b. Module DRM: persist offline keys + sidecar so the encrypted
-                // file plays without network. Skipped when transcoding already
-                // produced a plain FLAC, or the bytes arrived clear (3a).
-                if (moduleDescriptor?.drm != null && transcodedFlac == null && !moduleClear) {
-                    val drm = moduleDescriptor!!.drm!!
-                    val keys = try {
-                        moduleLicenseDeferred?.await()
-                    } catch (_: Exception) {
-                        null
-                    } ?: throw IOException("Offline license refused by provider; retry while online")
-                    val withKeys = moduleDescriptor!!.copy(drm = drm.copy(keySetIdB64 = keys.keySetIdB64))
-                    moduleManager.writeOfflineSidecar(
-                        finalTitle, finalArtist,
-                        OfflineSidecar(
-                            descriptorJson = moduleManager.encodeDescriptor(withKeys),
-                            keySetIdB64 = keys.keySetIdB64,
-                            licenseUrl = drm.licenseUrl,
-                            licenseExpiresAtMs = keys.licenseExpiresAtMs,
-                            audioFilePath = finalPath,
-                            mediaStoreUri = uri?.toString().orEmpty(),
-                            bytes = currentAudioFile.length(),
-                            downloadedAtMs = System.currentTimeMillis(),
-                        ),
-                    )
-                }
 
                 updateProgress(
                     DownloadProgress(

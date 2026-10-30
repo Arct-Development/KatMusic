@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="katmusic_logo.png" width="132" alt="KatMusic logo">
+
 # KatMusic
 
 **A native Android client for YouTube Music.** Ad-free streaming, offline downloads,
@@ -11,7 +13,7 @@ track into the next.
 [![Android](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
-Created by [ItzFallenMe](https://github.com/ItzFallenMe) · **v2.0.0**
+Designed and built by [ItzFallenMe](https://github.com/ItzFallenMe) · **v2.0.0**
 
 </div>
 

@@ -2,7 +2,6 @@ package com.itzfallenme.katmusic.data.lossless
 
 import android.util.Log
 import com.itzfallenme.katmusic.data.artwork.awaitSuccessfulBodyOrNull
-import com.itzfallenme.katmusic.data.plugin.ModuleManager
 import com.itzfallenme.katmusic.data.addon.AddonClient
 import com.itzfallenme.katmusic.data.addon.AddonTrack
 import com.itzfallenme.katmusic.data.addon.AddonStream
@@ -88,7 +87,6 @@ private data class TidalCandidateItem(
 @Singleton
 class LosslessMusicApi @Inject constructor(
     okHttpClient: OkHttpClient,
-    private val moduleManager: ModuleManager,
     private val nativeSecrets: NativeSecrets,
     private val settingsPreferences: SettingsPreferences,
 ) {
