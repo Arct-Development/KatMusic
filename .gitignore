@@ -76,7 +76,8 @@ credentials_backup*
 
 # Isolated git worktrees (never commit their contents)
 .worktrees/
-
+website/.next
+website/node_modules
 
 
 # Superpowers artifacts and documentation
@@ -100,3 +101,8 @@ Android-16.0*.png
 
 # Release signing config (never commit)
 keystore.properties
+
+# Website dependencies
+website/node_modules/
+website/.next/
+website/.env.local
