@@ -455,7 +455,7 @@ private fun HeaderRow(
         Surface(
             onClick = onClick,
             shape = BadgePillShape,
-            color = if (isViewingFriend) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = if (isViewingFriend) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -492,7 +492,7 @@ private fun LiveListenTimer(viewModel: HomeViewModel) {
 
     Surface(
         shape = BadgePillShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -636,7 +636,7 @@ private fun PodiumSection(
                 items(tags, key = { "tag_$it" }) { tag ->
                     Surface(
                         shape = BadgePillShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                     ) {
                         Text(
                             tag.replaceFirstChar { c -> c.uppercase() },
@@ -675,7 +675,7 @@ private fun ArtistPodiumCard(artist: HomeArtistItem) {
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
         ) {
             ArtworkImage(
                 name = artist.name,
@@ -714,7 +714,7 @@ private fun AlbumPodiumCard(album: HomeAlbum) {
             modifier = Modifier
                 .size(72.dp)
                 .clip(ArtworkShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
         ) {
             ArtworkImage(
                 name = album.name,
@@ -762,7 +762,7 @@ private fun StatsCard(
     ) {
         Surface(
             shape = ExpressiveHeroShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
             tonalElevation = 2.dp,
             shadowElevation = 4.dp,
             modifier = Modifier.fillMaxWidth(),
@@ -900,7 +900,7 @@ private fun MixHeader(sortMode: HomeSortMode, onSortModeChange: (HomeSortMode) -
             Surface(
                 onClick = { menuOpen = true },
                 shape = BadgePillShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 tonalElevation = 1.dp,
                 interactionSource = pillInteractionSource,
                 modifier = Modifier
@@ -940,7 +940,7 @@ private fun MixHeader(sortMode: HomeSortMode, onSortModeChange: (HomeSortMode) -
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
                 shape = RoundedCornerShape(24.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 // Lowered from 10dp: a heavy shadowElevation on a popup
                 // paints a mostly-rectangular drop shadow around the
                 // rounded card (the shadow's own corner falloff is much
@@ -1071,7 +1071,7 @@ private fun TrackRow(
                 Brush.horizontalGradient(
                     listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.70f),
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
                     ),
                 ),
             )
@@ -1099,7 +1099,7 @@ private fun TrackRow(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(ArtworkShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
             ) {
                 ArtworkImage(
                     name = track.name,
@@ -1187,7 +1187,7 @@ private fun TrackRow(
                 }
             }
             if (badge != null) {
-                Surface(shape = BadgePillShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Surface(shape = BadgePillShape, color = MaterialTheme.colorScheme.surfaceContainerLow) {
                     Text(
                         badge,
                         style = MaterialTheme.typography.labelMedium,
@@ -1226,7 +1226,7 @@ private fun HomeNowPlayingBanner(
                 Brush.horizontalGradient(
                     listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f),
+                        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.90f),
                     ),
                 ),
             ),
@@ -1278,7 +1278,7 @@ private fun HomeNowPlayingBanner(
                     modifier = Modifier
                         .size(54.dp)
                         .clip(ArtworkShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest),
                 ) {
                     ArtworkImage(
                         name = track.name,
@@ -1357,7 +1357,7 @@ private fun AlbumRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(52.dp).clip(ArtworkShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                modifier = Modifier.size(52.dp).clip(ArtworkShape).background(MaterialTheme.colorScheme.surfaceContainerLowest),
             ) {
                 ArtworkImage(
                     name = album.name,
@@ -1409,7 +1409,7 @@ private fun ArtistRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                modifier = Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerLowest),
             ) {
                 ArtworkImage(
                     name = "artist:${artist.name}",
