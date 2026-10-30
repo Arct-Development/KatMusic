@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Git Tag (e.g., 4.2.3)'
+        description: 'Release version (must match app/build.gradle.kts)'
         required: true
         default: '2.0.1'
       release_name:
-        description: 'Release Title (e.g., KatMusic 4.2.3)'
+        description: 'Public release title'
         required: true
         default: 'KatMusic 2.0.1'
       release_notes:
@@ -31,9 +31,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.tag_name }}
+          ref: main
           fetch-depth: 0
 
+      - name: Validate release version
+        env:
+          REQUESTED_TAG: ${{ inputs.tag_name }}
+        run: |
+          APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\\1/')
+          if [ "$APP_VERSION" != "$REQUESTED_TAG" ]; then
+            echo "::error::Requested tag $REQUESTED_TAG does not match app version $APP_VERSION"
+            exit 1
+          fi
+          echo "Preparing KatMusic $APP_VERSION"
+          
       - name: Set up JDK 17
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
