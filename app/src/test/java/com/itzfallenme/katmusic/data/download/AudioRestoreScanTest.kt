@@ -103,11 +103,7 @@ class AudioRestoreScanTest {
             downloadedTrackDao = dao,
             settingsPreferences = settings,
             applicationScope = scope,
-            moduleResolver = mockk(relaxed = true),
             segBridge = mockk(relaxed = true),
-            offlineLicense = mockk(relaxed = true),
-            moduleManager = mockk(relaxed = true),
-            flacTranscoder = mockk(relaxed = true),
             losslessMusicApi = mockk(relaxed = true),
         )
     }
