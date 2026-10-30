@@ -157,7 +157,7 @@ const FEATURES = [
     icon: Sparkles,
     tag: "Design",
     title: "Themed by the artwork",
-    body: "Material 3 expression rebuilt from the current sleeve, liquid-glass surfaces, expressive motion and a home-screen widget.",
+    body: "Material 3 expression rebuilt from the current sleeve, liquid-glass surfaces, expressive motion and adaptive home-screen widgets.",
   },
   {
     icon: ShieldCheck,
@@ -172,6 +172,7 @@ const HIGHLIGHTS = [
   { icon: Repeat, label: "Queue & autoplay" },
   { icon: ListMusic, label: "Playlists & likes" },
   { icon: Music4, label: "Last.fm scrobbling" },
+  { icon: Headphones, label: "Adaptive home widgets" },
   { icon: Activity, label: "Stats" },
   { icon: Zap, label: "0.75× – 2× speed" },
 ];
@@ -615,7 +616,7 @@ export default function HomePage() {
               </p>
               <div className="mt-5 inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.26em] text-slate-500">
                 <CheckCircle2 className="h-3.5 w-3.5 text-lime-400" />
-                v2.0.1 · GPL-3.0
+                {latest ? `v${latest.tag.replace(/^v/, "")}` : "Latest build"} · GPL-3.0
               </div>
             </div>
             <div>
