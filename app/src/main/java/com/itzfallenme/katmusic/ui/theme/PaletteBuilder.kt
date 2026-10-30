@@ -103,34 +103,35 @@ object PaletteBuilder {
     )
 
     /**
-     * KatMusic Signature Dark Scheme built specifically around the official app logo colors:
-     * Electric Lime (#C9FB00) and Deep Obsidian Teal (#012226).
+     * KatMusic Signature Dark Scheme derived from the official blue, cyan, white,
+     * and near-black logo artwork.
      */
     fun buildKatMusicDarkScheme(amoled: Boolean, @Suppress("UNUSED_PARAMETER") liquidGlass: Boolean = false): ColorScheme {
-        val brandLime = Color(0xFFC9FB00)
-        val darkTeal = Color(0xFF012226)
-        val deepTeal = Color(0xFF01181B)
+        val brandBlue = Color(0xFF168BFF)
+        val brandCyan = Color(0xFF00BDF2)
+        val midnight = Color(0xFF050B18)
+        val deepNavy = Color(0xFF081426)
 
-        val backgroundCol = if (amoled) Color.Black else deepTeal
-        val surfaceCol = if (amoled) Color.Black else darkTeal
-        val surfaceLowCol = if (amoled) Color.Black else Color(0xFF011E22)
-        val surfaceLowestCol = if (amoled) Color.Black else Color(0xFF001214)
+        val backgroundCol = if (amoled) Color.Black else midnight
+        val surfaceCol = if (amoled) Color.Black else deepNavy
+        val surfaceLowCol = if (amoled) Color.Black else Color(0xFF07101F)
+        val surfaceLowestCol = if (amoled) Color.Black else Color(0xFF030813)
 
         return darkColorScheme(
-            primary = brandLime,
-            onPrimary = darkTeal,
-            primaryContainer = Color(0xFF063E45),
-            onPrimaryContainer = Color(0xFFD6FF38),
+            primary = brandBlue,
+            onPrimary = Color(0xFF001A35),
+            primaryContainer = Color(0xFF063D80),
+            onPrimaryContainer = Color(0xFFD4E8FF),
 
-            secondary = Color(0xFF38E5B7),
-            onSecondary = darkTeal,
-            secondaryContainer = Color(0xFF06474F),
-            onSecondaryContainer = Color(0xFF67F8D8),
+            secondary = brandCyan,
+            onSecondary = Color(0xFF002033),
+            secondaryContainer = Color(0xFF004B70),
+            onSecondaryContainer = Color(0xFFB9EFFF),
 
-            tertiary = Color(0xFFA6FF38),
-            onTertiary = Color(0xFF1B3800),
-            tertiaryContainer = Color(0xFF0C464C),
-            onTertiaryContainer = brandLime,
+            tertiary = Color(0xFF8ABEFF),
+            onTertiary = Color(0xFF09264A),
+            tertiaryContainer = Color(0xFF173F70),
+            onTertiaryContainer = Color(0xFFD9E9FF),
 
             error = Color(0xFFFFB4AB),
             errorContainer = Color(0xFF93000A),
@@ -138,73 +139,75 @@ object PaletteBuilder {
             onError = Color(0xFF690005),
 
             background = backgroundCol,
-            onBackground = Color(0xFFE4F8F8),
+            onBackground = Color(0xFFEAF3FF),
             surface = surfaceCol,
-            onSurface = Color(0xFFE4F8F8),
-            surfaceContainer = Color(0xFF02272C),
-            surfaceContainerHigh = Color(0xFF04333A),
-            surfaceContainerHighest = Color(0xFF073F47),
+            onSurface = Color(0xFFEAF3FF),
+            surfaceContainer = Color(0xFF0D1D33),
+            surfaceContainerHigh = Color(0xFF142844),
+            surfaceContainerHighest = Color(0xFF1B3454),
             surfaceContainerLow = surfaceLowCol,
             surfaceContainerLowest = surfaceLowestCol,
-            surfaceVariant = Color(0xFF063B42),
-            onSurfaceVariant = Color(0xFFA1CACE),
+            surfaceVariant = Color(0xFF1A304B),
+            onSurfaceVariant = Color(0xFFB4C8E0),
 
-            outline = Color(0xFF23656E),
-            outlineVariant = Color(0xFF0A444C),
+            outline = Color(0xFF52749A),
+            outlineVariant = Color(0xFF293F5A),
 
-            inverseSurface = Color(0xFFE4F8F8),
-            inverseOnSurface = darkTeal,
-            inversePrimary = Color(0xFF486300),
+            inverseSurface = Color(0xFFEAF3FF),
+            inverseOnSurface = midnight,
+            inversePrimary = Color(0xFF0059B8),
             scrim = Color.Black,
         )
     }
 
     /**
-     * KatMusic Signature Light Scheme built around the official app logo colors.
+     * KatMusic Signature Light Scheme using crisp blue accents and cool,
+     * near-white surfaces sampled from the official logo palette.
      */
     fun buildKatMusicLightScheme(@Suppress("UNUSED_PARAMETER") liquidGlass: Boolean = false): ColorScheme {
-        val brandLime = Color(0xFFC9FB00)
-        val darkTeal = Color(0xFF012226)
+        val brandBlue = Color(0xFF005FCB)
+        val brandCyan = Color(0xFF006D91)
+        val midnight = Color(0xFF071426)
 
         return androidx.compose.material3.lightColorScheme(
-            primary = Color(0xFF486300),
+            primary = brandBlue,
             onPrimary = Color.White,
-            primaryContainer = Color(0xFFE0FE5B),
-            onPrimaryContainer = darkTeal,
+            primaryContainer = Color(0xFFD7E9FF),
+            onPrimaryContainer = Color(0xFF001D3D),
 
-            secondary = Color(0xFF014D56),
+            secondary = brandCyan,
             onSecondary = Color.White,
-            secondaryContainer = Color(0xFF9FF2E2),
-            onSecondaryContainer = darkTeal,
+            secondaryContainer = Color(0xFFBDEEFF),
+            onSecondaryContainer = Color(0xFF003548),
 
-            tertiary = Color(0xFF2C6855),
+            tertiary = Color(0xFF315F9A),
             onTertiary = Color.White,
-            tertiaryContainer = Color(0xFFB8F9A5),
-            onTertiaryContainer = Color(0xFF0E3800),
+            tertiaryContainer = Color(0xFFD8E6FF),
+            onTertiaryContainer = Color(0xFF102F57),
 
             error = Color(0xFFBA1A1A),
             errorContainer = Color(0xFFFFDAD6),
             onErrorContainer = Color(0xFF410002),
             onError = Color.White,
 
-            background = Color(0xFFF2FBF7),
-            onBackground = darkTeal,
-            surface = Color(0xFFF2FBF7),
-            onSurface = darkTeal,
-            surfaceContainer = Color(0xFFE0F1EC),
-            surfaceContainerHigh = Color(0xFFD6EAE5),
-            surfaceContainerHighest = Color(0xFFCCE4DE),
-            surfaceContainerLow = Color(0xFFEAF6F2),
+            background = Color(0xFFF5F9FF),
+            onBackground = midnight,
+            surface = Color(0xFFF5F9FF),
+            onSurface = midnight,
+            surfaceContainer = Color(0xFFEAF2FC),
+            surfaceContainerHigh = Color(0xFFDFEAF8),
+            surfaceContainerHighest = Color(0xFFD5E3F4),
+            surfaceContainerLow = Color(0xFFF0F5FC),
             surfaceContainerLowest = Color.White,
-            surfaceVariant = Color(0xFFD6ECE8),
-            onSurfaceVariant = Color(0xFF1E464B),
+            surfaceVariant = Color(0xFFDCE8F6),
+            onSurfaceVariant = Color(0xFF354B66),
 
-            outline = Color(0xFF5A8E89),
-            outlineVariant = Color(0xFFB0D5D0),
+            outline = Color(0xFF607B9B),
+            outlineVariant = Color(0xFFBDCCDE),
 
-            inverseSurface = darkTeal,
-            inverseOnSurface = Color(0xFFE4F8F8),
-            inversePrimary = brandLime,
+            inverseSurface = midnight,
+            inverseOnSurface = Color(0xFFEAF3FF),
+            inversePrimary = Color(0xFF8DBEFF),
             scrim = Color.Black,
         )
     }
