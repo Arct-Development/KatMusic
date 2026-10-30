@@ -265,21 +265,9 @@ fun MainShell(
     val ytConnection by mainShellViewModel.ytConnection.collectAsStateWithLifecycle()
     val settings by mainShellViewModel.settings.collectAsStateWithLifecycle(initialValue = com.itzfallenme.katmusic.data.local.MiscSettings())
     var promptDismissedThisSession by rememberSaveable { mutableStateOf(false) }
-    var joinSupportDismissedThisSession by rememberSaveable { mutableStateOf(false) }
 
-    val shouldShowJoinSupport = !settings.hasDismissedJoinSupportPrompt && !joinSupportDismissedThisSession
-
-    if (shouldShowJoinSupport) {
-        JoinSupportDialog(
-            onDismiss = {
-                mainShellViewModel.setDismissedJoinSupportPrompt(true)
-                joinSupportDismissedThisSession = true
-            },
-        )
-    }
-
-    val shouldShowLoginPrompt = !shouldShowJoinSupport &&
-        !ytConnection.isConnected &&
+    // The legacy Telegram/community welcome dialog has been removed.
+    val shouldShowLoginPrompt = !ytConnection.isConnected &&
         !settings.suppressYouTubeLoginPrompt &&
         !promptDismissedThisSession
 
