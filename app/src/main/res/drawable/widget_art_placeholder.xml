@@ -13,5 +13,6 @@
         android:width="26dp"
         android:height="26dp"
         android:gravity="center"
-        android:drawable="@drawable/ic_widget_logo_mark" />
+        android:drawable="@drawable/ic_widget_logo_mark"
+        android:tint="@color/widget_on_surface_variant" />
 </layer-list>
