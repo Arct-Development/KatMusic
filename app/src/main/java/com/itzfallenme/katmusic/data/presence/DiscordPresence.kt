@@ -55,7 +55,7 @@ object DiscordPresence {
      */
     const val APPLICATION_ID = "1552563991426105414"
 
-    const val PROJECT_URL = "https://github.com/Clash-Projects/KatMusic-Native"
+    const val PROJECT_URL = "https://github.com/ItzFallenMe/KatMusic"
     const val RELEASES_URL = "$PROJECT_URL/releases"
     const val DEFAULT_BUTTON_1 = "Listen On KatMusic"
     const val DEFAULT_BUTTON_2 = "Get KatMusic"

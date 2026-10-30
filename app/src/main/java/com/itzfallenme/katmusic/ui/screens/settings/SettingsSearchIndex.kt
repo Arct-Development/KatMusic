@@ -1400,7 +1400,7 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "about.source_code",
                     title = "Open Source Code",
-                    subtitle = "View repository at github.com/Clash-Projects/KatMusic-native",
+                    subtitle = "View repository at github.com/ItzFallenMe/KatMusic",
                     keywords = listOf(
                         "source code", "github", "open source", "repository", "gpl", "license",
                         "contribute", "git"
