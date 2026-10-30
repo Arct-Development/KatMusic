@@ -4565,124 +4565,6 @@ private fun ColorTile(
 }
 
 @Composable
-private fun MoreFromUsCard(
-    onOpenUrl: (String) -> Unit,
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp, horizontal = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // App 1: Sernheise
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onOpenUrl("https://play.google.com/store/apps/details?id=com.sernheise.app") }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF1E1E1E),
-                    modifier = Modifier.size(54.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = androidx.compose.ui.res.painterResource(R.drawable.ic_logo_sernheise),
-                            contentDescription = "Sernheise",
-                            tint = Color.White,
-                            modifier = Modifier.size(34.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Sernheise",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-            }
-
-            // App 2: Lyricify
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onOpenUrl("https://play.google.com/store/apps/details?id=aman.lyricify") }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF181824),
-                    modifier = Modifier.size(54.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(R.drawable.ic_logo_lyricify),
-                            contentDescription = "Lyricify",
-                            modifier = Modifier.size(36.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Lyricify",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-            }
-
-            // App 3: SleepTracker
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onOpenUrl("https://github.com/duxtami/SleepTracker") }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF232935),
-                    modifier = Modifier.size(54.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(R.drawable.logo_sleeptracker),
-                            contentDescription = "SleepTracker",
-                            modifier = Modifier.size(54.dp).clip(CircleShape),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "SleepTracker",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun AboutCard(versionName: String) {
     Card(
         shape = CardOuterShape,
@@ -4733,29 +4615,13 @@ private fun AboutCard(versionName: String) {
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Build With Love ♥️ By - ℘ꪊᦓᛕꪖ᥅",
+                "Built by ItzFallenMe",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
     }
-}
-
-private fun openTelegramChannel(context: android.content.Context, handleOrUrl: String): Boolean {
-    val username = handleOrUrl
-        .removePrefix("https://t.me/")
-        .removePrefix("http://t.me/")
-        .removePrefix("@")
-        .trim()
-    val tgIntent = Intent(Intent.ACTION_VIEW, Uri.parse("tg://resolve?domain=$username")).apply {
-        setPackage("org.telegram.messenger")
-    }
-    val genericTgIntent = Intent(Intent.ACTION_VIEW, Uri.parse("tg://resolve?domain=$username"))
-    val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/$username"))
-    return startActivitySafely(context, tgIntent) ||
-        startActivitySafely(context, genericTgIntent) ||
-        startActivitySafely(context, webIntent)
 }
 
 /** OEM Settings/browser components are optional and occasionally broken on
