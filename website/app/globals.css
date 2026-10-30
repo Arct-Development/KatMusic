@@ -6,6 +6,8 @@
   --background: #05070d;
   --foreground: #e8edf6;
   --accent: #38bdf8;
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.07);
 }
 
 html {
@@ -14,9 +16,7 @@ html {
 
 body {
   color: var(--foreground);
-  background:
-    radial-gradient(1200px 600px at 50% -20%, rgba(14, 165, 233, 0.10), transparent 70%),
-    var(--background);
+  background: var(--background);
   overflow-x: hidden;
 }
 
@@ -27,21 +27,17 @@ body {
 ::-webkit-scrollbar {
   width: 10px;
 }
-
 ::-webkit-scrollbar-track {
   background: #05070d;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
   border-radius: 10px;
   border: 2px solid #05070d;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #38bdf8;
 }
-
 * {
   scrollbar-width: thin;
   scrollbar-color: #1e293b #05070d;
@@ -49,4 +45,142 @@ body {
 
 summary::-webkit-details-marker {
   display: none;
+}
+
+/* ── Backdrop: faint grid + top glow, like the dashboard canvas ───────── */
+.grid-backdrop {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+.glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+}
+
+/* ── Scroll reveal ─────────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Rotating conic border around feature and CTA panels ───────────────── */
+.conic-border {
+  position: relative;
+  isolation: isolate;
+}
+.conic-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    transparent 0deg,
+    rgba(56, 189, 248, 0.55) 60deg,
+    rgba(255, 255, 255, 0.85) 90deg,
+    rgba(56, 189, 248, 0.55) 120deg,
+    transparent 180deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: spin-border 7s linear infinite;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-border {
+  to {
+    --angle: 360deg;
+  }
+}
+
+/* ── Shimmering headline word ──────────────────────────────────────────── */
+.text-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 6s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* ── Button sheen ──────────────────────────────────────────────────────── */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(56, 189, 248, 0.35), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.7s ease;
+}
+.btn-shine:hover::after {
+  left: 140%;
+}
+
+/* ── Live dot ──────────────────────────────────────────────────────────── */
+.dot-live {
+  position: relative;
+}
+.dot-live::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  animation: ping-soft 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping-soft {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  80%,
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .conic-border::before,
+  .text-shimmer,
+  .dot-live::after {
+    animation: none;
+  }
 }
