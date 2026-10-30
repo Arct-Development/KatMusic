@@ -6,7 +6,6 @@ on:
     paths-ignore:
       - '**.md'
       - 'Screenshot/**'
-      - '**.yml'
   pull_request:
     branches: [ main, master ]
     paths-ignore:
@@ -14,6 +13,13 @@ on:
       - 'Screenshot/**'
       - '**.yml'
   workflow_dispatch:
+
+concurrency:
+  group: katmusic-release-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -36,6 +42,9 @@ jobs:
 
       - name: Grant Gradle execute permission
         run: chmod +x gradlew
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
 
       - name: Build Release APK
         env:
