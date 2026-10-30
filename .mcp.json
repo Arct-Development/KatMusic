@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcp-lambdatest": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote@latest", "https://mcp.lambdatest.com/mcp"]
+    }
+  }
+}

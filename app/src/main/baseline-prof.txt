@@ -1,0 +1,12 @@
+HSPLcom/katmusic/app/MainActivity;->**(**)**
+HSPLcom/katmusic/app/KatMusicApplication;->**(**)**
+HSPLcom/katmusic/app/ui/shell/**->**(**)**
+HSPLcom/katmusic/app/ui/home/**->**(**)**
+HSPLcom/katmusic/app/ui/settings/**->**(**)**
+HSPLcom/katmusic/app/ui/player/**->**(**)**
+HSPLcom/katmusic/app/ui/common/ArtworkImageKt;->**(**)**
+HSPLcom/katmusic/app/ui/common/ExpressiveMotion;->**(**)**
+HSPLcom/katmusic/app/playback/MusicPlayer;->**(**)**
+HSPLcom/katmusic/app/playback/MusicPlaybackService;->**(**)**
+HSPLcom/katmusic/app/data/artwork/ArtworkRepository;->**(**)**
+HSPLcom/katmusic/app/ui/common/ExpressiveHeaderKt;->**(**)**

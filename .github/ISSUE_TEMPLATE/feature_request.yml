@@ -1,34 +1,33 @@
-name: Feature request
-description: Suggest an idea for KatMusic
+name: Feature Request
+description: Suggest a new feature or improvement for KatMusic
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting improvements to KatMusic.
   - type: textarea
     id: problem
     attributes:
-      label: What problem does this solve?
-      description: Describe the situation that is awkward or missing today.
+      label: Problem Statement / Use Case
+      description: What problem does this feature solve, or what is missing?
     validations:
       required: true
   - type: textarea
-    id: proposal
+    id: solution
     attributes:
-      label: Proposed solution
-      description: How would you like it to work?
+      label: Proposed Solution
+      description: How should this feature work in the app?
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-    validations:
-      required: false
-  - type: checkboxes
-    id: checks
+      label: Considered Alternatives
+      description: Have you considered any alternative workflows or workarounds?
+  - type: textarea
+    id: additional_context
     attributes:
-      label: Checklist
-      options:
-        - label: I searched existing issues and discussions
-          required: true
-        - label: This doesn't require shipping API keys or credentials
-          required: true
+      label: Additional Context
+      description: Mockups, screenshots, or references to similar implementations.

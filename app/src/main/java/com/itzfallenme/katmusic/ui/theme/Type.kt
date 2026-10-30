@@ -12,98 +12,90 @@ import androidx.compose.ui.unit.sp
 import com.itzfallenme.katmusic.R
 
 /**
- * Google Sans Flex, bundled as a real variable font (res/font/google_sans_flex.ttf)
- * rather than looked up by device font name, so every device gets the same look
- * instead of only the ones that happen to ship it as a system font.
+ * Figtree, bundled as a real variable font (res/font/figtree.ttf) rather than
+ * resolved by device font name, so every device renders the same face.
  *
- * The file exposes six axes: wght 1-1000 (default 400), wdth 25-151 (default
- * 100), opsz 6-144, ROND 0-100, GRAD 0-100 and slnt -10-0. Every style below
- * dials in its own wght/wdth/ROND/opsz combination instead of reusing a single
- * instance: headlines lean heavier and rounder, body text stays near the font's
- * own defaults so it stays readable, and labels pick up extra roundness so the
- * text inside a pill reads as part of the same shape language.
+ * The two type scales below are two readings of one typeface: [KatMusicDisplay]
+ * leans on the heavier end of the weight axis for a confident, poster-like
+ * feel, while [KatMusicText] walks down to the light end for a quieter,
+ * editorial reading surface. Both keep Figtree's tall x-height, which is what
+ * makes dense track lists stay legible at 13-15sp.
+ *
+ * Only the `wght` axis is used. Figtree exposes wght 200-800 and nothing else,
+ * so asking for width or optical-size axes (which the previous face had) would
+ * be silently ignored at best - the scale is built from weight alone and
+ * derives presence from size, tracking and colour instead.
  */
-private fun gsFlex(
-    weight: Float,
-    width: Float = 100f,
-    round: Float = 0f,
-    opticalSize: Float,
-    grade: Float = 0f
-): FontFamily = FontFamily(
+private fun figtree(weight: Int, tracking: Float = 0f): FontFamily = FontFamily(
     Font(
-        R.font.google_sans_flex,
+        R.font.figtree,
         weight = when {
-            weight >= 700f -> FontWeight.Bold
-            weight >= 600f -> FontWeight.SemiBold
-            weight >= 500f -> FontWeight.Medium
+            weight >= 700 -> FontWeight.Bold
+            weight >= 600 -> FontWeight.SemiBold
+            weight >= 500 -> FontWeight.Medium
             else -> FontWeight.Normal
         },
-        variationSettings = FontVariation.Settings(
-            FontVariation.weight(weight.toInt()),
-            FontVariation.width(width),
-            FontVariation.Setting("ROND", round),
-            FontVariation.Setting("opsz", opticalSize),
-            FontVariation.Setting("GRAD", grade)
-        )
-    )
+        variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+    ),
 )
 
-/** Confident, rounded scale: bold headlines, calm body, rounded labels. */
-val KatBoldTypography = Typography(
-    displayLarge = TextStyle(fontFamily = gsFlex(weight = 760f, width = 122f, round = 42f, opticalSize = 57f), fontWeight = FontWeight.Bold, fontSize = 57.sp, lineHeight = 64.sp),
-    displayMedium = TextStyle(fontFamily = gsFlex(weight = 740f, width = 120f, round = 40f, opticalSize = 45f), fontWeight = FontWeight.Bold, fontSize = 45.sp, lineHeight = 52.sp),
-    displaySmall = TextStyle(fontFamily = gsFlex(weight = 720f, width = 118f, round = 38f, opticalSize = 36f), fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 44.sp),
-    headlineLarge = TextStyle(fontFamily = gsFlex(weight = 800f, width = 122f, round = 40f, opticalSize = 32f), fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 40.sp),
-    headlineMedium = TextStyle(fontFamily = gsFlex(weight = 780f, width = 120f, round = 38f, opticalSize = 28f), fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 36.sp),
-    headlineSmall = TextStyle(fontFamily = gsFlex(weight = 760f, width = 116f, round = 36f, opticalSize = 24f), fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp),
-    titleLarge = TextStyle(fontFamily = gsFlex(weight = 640f, width = 110f, round = 30f, opticalSize = 22f), fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
-    titleMedium = TextStyle(fontFamily = gsFlex(weight = 600f, width = 106f, round = 28f, opticalSize = 16f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp),
-    titleSmall = TextStyle(fontFamily = gsFlex(weight = 580f, width = 105f, round = 26f, opticalSize = 14f), fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = gsFlex(weight = 440f, width = 102f, round = 18f, opticalSize = 16f), fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontFamily = gsFlex(weight = 430f, width = 102f, round = 18f, opticalSize = 15f), fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
-    bodySmall = TextStyle(fontFamily = gsFlex(weight = 420f, width = 100f, round = 16f, opticalSize = 13f), fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
-    labelLarge = TextStyle(fontFamily = gsFlex(weight = 680f, width = 108f, round = 46f, opticalSize = 14f), fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = gsFlex(weight = 660f, width = 108f, round = 44f, opticalSize = 12f), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontFamily = gsFlex(weight = 660f, width = 108f, round = 44f, opticalSize = 11f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 16.sp)
+/** Heavier reading: headings and anything that has to hold a screen together. */
+val KatMusicTypography = Typography(
+    displayLarge = TextStyle(fontFamily = figtree(720), fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 62.sp, letterSpacing = (-1.4).sp),
+    displayMedium = TextStyle(fontFamily = figtree(700), fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 50.sp, letterSpacing = (-1.0).sp),
+    displaySmall = TextStyle(fontFamily = figtree(680), fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.8).sp),
+    headlineLarge = TextStyle(fontFamily = figtree(700), fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp, letterSpacing = (-0.6).sp),
+    headlineMedium = TextStyle(fontFamily = figtree(660), fontWeight = FontWeight.SemiBold, fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = (-0.4).sp),
+    headlineSmall = TextStyle(fontFamily = figtree(640), fontWeight = FontWeight.SemiBold, fontSize = 23.sp, lineHeight = 30.sp, letterSpacing = (-0.3).sp),
+    titleLarge = TextStyle(fontFamily = figtree(640), fontWeight = FontWeight.SemiBold, fontSize = 21.sp, lineHeight = 28.sp, letterSpacing = (-0.2).sp),
+    titleMedium = TextStyle(fontFamily = figtree(600), fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.sp),
+    titleSmall = TextStyle(fontFamily = figtree(560), fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.sp),
+    bodyLarge = TextStyle(fontFamily = figtree(440), fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp, letterSpacing = 0.1.sp),
+    bodyMedium = TextStyle(fontFamily = figtree(420), fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = 0.1.sp),
+    bodySmall = TextStyle(fontFamily = figtree(400), fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.15.sp),
+    labelLarge = TextStyle(fontFamily = figtree(620), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
+    labelMedium = TextStyle(fontFamily = figtree(600), fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.2.sp),
+    labelSmall = TextStyle(fontFamily = figtree(580), fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp, letterSpacing = 0.3.sp),
 )
 
-/** Lighter cut of the same font: quiet headlines, same metrics. */
-val KatThinTypography = Typography(
-    displayLarge = TextStyle(fontFamily = gsFlex(weight = 560f, width = 104f, round = 20f, opticalSize = 57f), fontWeight = FontWeight.Medium, fontSize = 57.sp, lineHeight = 64.sp),
-    displayMedium = TextStyle(fontFamily = gsFlex(weight = 540f, width = 104f, round = 20f, opticalSize = 45f), fontWeight = FontWeight.Medium, fontSize = 45.sp, lineHeight = 52.sp),
-    displaySmall = TextStyle(fontFamily = gsFlex(weight = 520f, width = 104f, round = 20f, opticalSize = 36f), fontWeight = FontWeight.Medium, fontSize = 36.sp, lineHeight = 44.sp),
-    headlineLarge = TextStyle(fontFamily = gsFlex(weight = 600f, width = 106f, round = 22f, opticalSize = 32f), fontWeight = FontWeight.SemiBold, fontSize = 32.sp, lineHeight = 40.sp),
-    headlineMedium = TextStyle(fontFamily = gsFlex(weight = 580f, width = 105f, round = 20f, opticalSize = 28f), fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 36.sp),
-    headlineSmall = TextStyle(fontFamily = gsFlex(weight = 560f, width = 104f, round = 18f, opticalSize = 24f), fontWeight = FontWeight.Medium, fontSize = 24.sp, lineHeight = 32.sp),
-    titleLarge = TextStyle(fontFamily = gsFlex(weight = 480f, width = 102f, round = 16f, opticalSize = 22f), fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp),
-    titleMedium = TextStyle(fontFamily = gsFlex(weight = 460f, width = 100f, round = 14f, opticalSize = 16f), fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
-    titleSmall = TextStyle(fontFamily = gsFlex(weight = 440f, width = 100f, round = 12f, opticalSize = 14f), fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = gsFlex(weight = 380f, width = 100f, round = 10f, opticalSize = 16f), fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontFamily = gsFlex(weight = 360f, width = 100f, round = 10f, opticalSize = 15f), fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
-    bodySmall = TextStyle(fontFamily = gsFlex(weight = 340f, width = 100f, round = 8f, opticalSize = 13f), fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
-    labelLarge = TextStyle(fontFamily = gsFlex(weight = 500f, width = 102f, round = 20f, opticalSize = 14f), fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = gsFlex(weight = 480f, width = 100f, round = 18f, opticalSize = 12f), fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontFamily = gsFlex(weight = 460f, width = 100f, round = 16f, opticalSize = 11f), fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 16.sp)
+/** Lighter reading: the quieter, editorial variant of the same face. */
+val KatMusicThinTypography = Typography(
+    displayLarge = TextStyle(fontFamily = figtree(300), fontWeight = FontWeight.Light, fontSize = 56.sp, lineHeight = 62.sp, letterSpacing = (-1.6).sp),
+    displayMedium = TextStyle(fontFamily = figtree(300), fontWeight = FontWeight.Light, fontSize = 44.sp, lineHeight = 50.sp, letterSpacing = (-1.2).sp),
+    displaySmall = TextStyle(fontFamily = figtree(320), fontWeight = FontWeight.Normal, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-1.0).sp),
+    headlineLarge = TextStyle(fontFamily = figtree(340), fontWeight = FontWeight.Normal, fontSize = 30.sp, lineHeight = 38.sp, letterSpacing = (-0.7).sp),
+    headlineMedium = TextStyle(fontFamily = figtree(330), fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp),
+    headlineSmall = TextStyle(fontFamily = figtree(330), fontWeight = FontWeight.Normal, fontSize = 23.sp, lineHeight = 30.sp, letterSpacing = (-0.4).sp),
+    titleLarge = TextStyle(fontFamily = figtree(360), fontWeight = FontWeight.Normal, fontSize = 21.sp, lineHeight = 28.sp, letterSpacing = (-0.3).sp),
+    titleMedium = TextStyle(fontFamily = figtree(420), fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.sp),
+    titleSmall = TextStyle(fontFamily = figtree(440), fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
+    bodyLarge = TextStyle(fontFamily = figtree(360), fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp, letterSpacing = 0.15.sp),
+    bodyMedium = TextStyle(fontFamily = figtree(350), fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = 0.15.sp),
+    bodySmall = TextStyle(fontFamily = figtree(340), fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.2.sp),
+    labelLarge = TextStyle(fontFamily = figtree(500), fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.15.sp),
+    labelMedium = TextStyle(fontFamily = figtree(480), fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.25.sp),
+    labelSmall = TextStyle(fontFamily = figtree(460), fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp, letterSpacing = 0.3.sp),
 )
 
 /**
- * "Use the app font" turned off: the platform default, same sizes and weights
- * as [KatBoldTypography], so the toggle only changes the typeface.
+ * The "Use Application Font" toggle's off-state: plain platform default,
+ * with the same sizes/weights as [KatMusicTypography] so switching the toggle
+ * changes only the typeface, not the layout metrics.
  */
 val SystemTypography = Typography(
-    displayLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 57.sp, lineHeight = 64.sp),
-    displayMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 45.sp, lineHeight = 52.sp),
-    displaySmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 36.sp, lineHeight = 44.sp),
-    headlineLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 40.sp),
-    headlineMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 36.sp),
-    headlineSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 32.sp),
-    titleLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp),
+    displayLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Light, fontSize = 56.sp, lineHeight = 62.sp),
+    displayMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Light, fontSize = 44.sp, lineHeight = 50.sp),
+    displaySmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 36.sp, lineHeight = 42.sp),
+    headlineLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
+    headlineMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 34.sp),
+    headlineSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 23.sp, lineHeight = 30.sp),
+    titleLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 21.sp, lineHeight = 28.sp),
     titleMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
     titleSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
+    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp),
     bodyMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
     bodySmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
     labelMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp)
+    labelSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp),
 )

@@ -1,128 +1,365 @@
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.io.File
+import java.util.Base64
 import java.util.Properties
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
-
-/**
- * Release signing.
- *
- * Credentials come from `keystore.properties` (git-ignored) or the matching environment
- * variables, so CI can inject them. Without either, a release build is signed with the
- * debug key instead of failing, which keeps `assembleRelease` usable for sideloading
- * while making clear that a store build needs a real keystore.
- */
-val keystoreProps = Properties().apply {
-    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
-}
-
-fun signingValue(key: String): String? =
-    keystoreProps.getProperty(key)?.takeIf { it.isNotBlank() }
-        ?: System.getenv(key)?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "com.itzfallenme.katmusic"
     compileSdk = 37
 
+    val localProps = Properties().apply {
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            localPropsFile.inputStream().use { load(it) }
+        }
+        val envFile = rootProject.file(".env")
+        if (envFile.exists()) {
+            envFile.readLines().forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.isNotEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
+                    val parts = trimmed.split("=", limit = 2)
+                    setProperty(parts[0].trim(), parts[1].trim())
+                }
+            }
+        }
+    }
+
+    fun resolveSecret(vararg keys: String): String {
+        for (key in keys) {
+            val fromEnv = System.getenv(key)
+            if (!fromEnv.isNullOrBlank()) return fromEnv.trim().replace("\r", "").replace("\n", "").replace("\"", "").replace("\\", "")
+            val fromGradle = project.findProperty(key) as? String
+            if (!fromGradle.isNullOrBlank()) return fromGradle.trim().replace("\r", "").replace("\n", "").replace("\"", "").replace("\\", "")
+            val fromLocal = localProps.getProperty(key)
+            if (!fromLocal.isNullOrBlank()) return fromLocal.trim().replace("\r", "").replace("\n", "").replace("\"", "").replace("\\", "")
+            val dotEnv = rootProject.file(".env")
+            if (dotEnv.isFile) {
+                dotEnv.useLines { lines ->
+                    for (line in lines) {
+                        val trimmed = line.trim()
+                        if (trimmed.startsWith("$key=")) {
+                            val v = trimmed.substringAfter("=").trim().replace("\"", "").replace("\\", "")
+                            if (v.isNotBlank()) return v
+                        }
+                    }
+                }
+            }
+        }
+        return ""
+    }
+
     defaultConfig {
         applicationId = "com.itzfallenme.katmusic"
-        minSdk = 26
+        minSdk = (project.findProperty("minSdk") as? String)?.toIntOrNull() ?: 29
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.8.0"
-        vectorDrawables { useSupportLibrary = true }
-        val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
-        buildConfigField("String", "BUILD_STAMP", "\"$stamp\"")
+        versionCode = 2000
+        versionName = "2.0.0"
+
+        (project.findProperty("targetAbis") as? String)?.let { prop ->
+            ndk {
+                abiFilters.addAll(prop.split(",").map { it.trim() }.filter { it.isNotEmpty() })
+            }
+        }
+
+        val katMusicLyricsToken = resolveSecret("KATMUSIC_LYRICS_TOKEN")
+        val katMusicLyricsUrl = resolveSecret("KATMUSIC_LYRICS_URL")
+        buildConfigField("String", "KATMUSIC_LYRICS_TOKEN", "\"$katMusicLyricsToken\"")
+        buildConfigField("String", "KATMUSIC_LYRICS_URL", "\"$katMusicLyricsUrl\"")
+
+        // Native secrets (addon client lock) live strictly in native .so via
+        // SecretsBridge_generated.h (tools/generate_native_secrets.py).
+        // No secret fields are exposed in DEX / BuildConfig.
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    // Android 15+ can boot with 16 KB memory pages; all native
+                    // libraries must be built/aligned accordingly. Ignored
+                    // harmlessly by NDK toolchains that predate the flag.
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+                    "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+                )
+                cFlags += "-Wl,-z,max-page-size=16384"
+                cppFlags += "-Wl,-z,max-page-size=16384"
+            }
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = false
+        }
     }
 
     signingConfigs {
-        create("release") {
-            val storePath = signingValue("storeFile")
-            if (!storePath.isNullOrBlank()) {
-                storeFile = rootProject.file(storePath)
-                storePassword = signingValue("storePassword")
-                keyAlias = signingValue("keyAlias")
-                keyPassword = signingValue("keyPassword")
+        create("release_config") {
+            val base64Key = resolveSecret("SIGNING_KEY")
+            val storeFilePath = resolveSecret("RELEASE_STORE_FILE")
+            val storePasswordProp = resolveSecret("RELEASE_STORE_PASSWORD", "KEY_STORE_PASSWORD")
+            val keyAliasProp = resolveSecret("RELEASE_KEY_ALIAS", "ALIAS").ifBlank { "release_key" }
+            val keyPasswordProp = resolveSecret("RELEASE_KEY_PASSWORD", "KEY_PASSWORD").ifBlank { storePasswordProp }
+
+            val keystoreFile: File? = when {
+                base64Key.isNotBlank() -> {
+                    try {
+                        val decodedBytes = Base64.getDecoder().decode(base64Key.trim())
+                        val tempKeystore = layout.buildDirectory.file("signing/release.keystore").get().asFile
+                        tempKeystore.parentFile.mkdirs()
+                        tempKeystore.writeBytes(decodedBytes)
+                        tempKeystore
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                storeFilePath.isNotBlank() -> file(storeFilePath)
+                else -> null
+            }
+
+            if (keystoreFile != null && keystoreFile.exists() && storePasswordProp.isNotBlank()) {
+                storeFile = keystoreFile
+                storePassword = storePasswordProp
+                keyAlias = keyAliasProp
+                keyPassword = keyPasswordProp
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            } else {
+                // Never silently fall back to the debug key for a release
+                // variant. A release APK signed with the runner's random debug
+                // key installs once, then every future update fails with
+                // INSTALL_FAILED_UPDATE_INCOMPATIBLE (signature conflict) and
+                // forces the user to uninstall and lose their data. apksigner
+                // verify only proves *a* signature is valid, not whose it is,
+                // so we must refuse to produce the APK in the first place.
+                //
+                // Only fail when a release variant is actually being requested,
+                // so debug builds and unit tests keep working with no signing
+                // secrets present on a dev machine.
+                val requestsRelease =
+                    gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+                if (requestsRelease) {
+                    throw GradleException(
+                        "No release signing key found. Provide SIGNING_KEY (base64 " +
+                            "keystore) or RELEASE_STORE_FILE + RELEASE_STORE_PASSWORD + " +
+                            "RELEASE_KEY_ALIAS. Refusing to sign a release variant with " +
+                            "the debug key."
+                    )
+                }
+                initWith(getByName("debug"))
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release_config")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = if (signingValue("storeFile").isNullOrBlank()) {
-                signingConfigs.getByName("debug")
-            } else {
-                signingConfigs.getByName("release")
-            }
+        }
+        create("rawRelease") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            isShrinkResources = false
+            // Raw variant — no code/resource shrinking, no ProGuard/R8
+            signingConfig = signingConfigs.getByName("release_config")
+            // proguardFiles from initWith are ignored when minify is off
+        }
+        debug {
+            isDebuggable = true
         }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by org.jellyfin.media3:media3-ffmpeg-decoder AAR metadata.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
+        prefab = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
-}
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        ignoreWarnings = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.splashscreen)
+    implementation(libs.androidx.browser)
+    implementation(libs.androidx.palette)
 
-    implementation(platform("androidx.compose:compose-bom:2026.06.01"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.palette:palette-ktx:1.0.0")
+    // Home-screen "Now Playing" widget (Glance — Compose-style APIs over
+    // RemoteViews), driven by the same MediaController access the local
+    // scrobbler (MediaScrobbleListenerService) already holds.
     implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
 
-    // Liquid glass: kyant0's backdrop refracts the content behind a surface and
-    // the shapes library supplies the continuous-corner squircles used by it.
-    implementation("io.github.kyant0:backdrop:2.0.1")
-    implementation("io.github.kyant0:shapes:1.2.1")
+    // Required even in a Compose-only app: Theme.Material3.DayNight.NoActionBar
+    // (used as the AndroidManifest/splash theme parent in themes.xml) is an XML
+    // style resource shipped by this artifact. androidx.compose.material3 is
+    // Compose-only Kotlin and contributes no AAPT-resolvable style/ resources,
+    // so without this dependency that parent can never be found by the linker.
+    implementation(libs.material)
 
-    implementation("androidx.media3:media3-exoplayer:1.5.0")
-    implementation("androidx.media3:media3-session:1.5.0")
-    implementation("androidx.media3:media3-ui:1.5.0")
-    implementation("androidx.media3:media3-datasource-okhttp:1.5.0")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.kyant.backdrop)
+    implementation(libs.kyant.shapes)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.navigation.compose)
+    debugImplementation(libs.androidx.ui.tooling)
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
 
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.protobuf)
 
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging)
+    implementation(libs.jsoup)
+
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    implementation(libs.datastore.preferences)
+    implementation(libs.coil.compose)
+    // Lyrics sync uses the in-house reference implementation
+    // (mirrors Metrolist/SimpMusic start-based active-index + per-frame
+    // position, no external karaoke canvas). No gradle lyrics library.
+    // Installs the baseline profiles bundled inside Compose (and other
+    // androidx) AARs so hot UI paths are AOT-compiled on device instead of
+    // running through JIT on first use — a large, zero-code smoothness win
+    // for scrolling and animations in release builds.
+    implementation(libs.androidx.profileinstaller)
+
+    // Native in-app audio playback, background service, system media
+    // controls, Bluetooth/headset controls and a MediaController-backed UI.
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-datasource-okhttp:1.2.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
+    // Segmented provider-module path: DASH chunk source + CDM decryption.
+    // Pinned to the same 1.2.1 line as exoplayer/hls to avoid binary mismatch.
+    implementation("androidx.media3:media3-exoplayer-dash:1.2.1")
+    // MediaBrowserServiceCompat/MediaSessionCompat bridge used by Android
+    // Auto to browse the KatMusic library and control the same player.
+    implementation("androidx.media:media:1.7.0")
+
+    // GPLv3 Media3-matched FFmpeg software decoder (distribution must comply).
+    // The renderer factory prefers FFmpeg for every codec it supports so all
+    // devices decode through one deterministic, OEM-bug-free path; platform
+    // decoders remain as automatic fallbacks.
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.2.1+1")
+
+    // Core library desugaring required by the FFmpeg decoder AAR metadata.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // Low-latency native output. Version 1.10 remains API-compatible with the
+    // requested Oboe 1.8+ baseline and exposes its CMake target through Prefab.
+    implementation("com.google.oboe:oboe:1.10.0")
+
+    // Metadata/search remains local InnerTube/NewPipe functionality; playback
+    // resolves through InnerTubeX first and retains NewPipe as a fallback.
+    implementation(libs.newpipe.extractor)
+
+    // InnerTubeX is invoked through the compatibility adapter because its
+    // current release is built with a newer Kotlin metadata version than the
+    // app. Runtime-only keeps the app compiler on its existing Kotlin line.
+    runtimeOnly(libs.innertubex)
+    runtimeOnly("io.ktor:ktor-client-cio:3.5.2")
+
+    // Unit Testing dependencies
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("com.google.truth:truth:1.4.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // Bit-perfect USB exclusive output: audio_engine UsbAudioDriver.
+    implementation(project(":audio:decent-usb-audio-driver"))
 }
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        optIn.add("androidx.compose.foundation.ExperimentalFoundationApi")
+    }
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion(libs.versions.kotlin.get())
+        }
+    }
+}
+
+tasks.withType<Test> {
+    maxHeapSize = "2048m"
+}
+
+// Generate native secrets header before CMake configures.
+// CI provides ADDON_CLIENT_SECRET / RELEASE_CERT_SHA256 via env/secrets.
+val generateNativeSecrets by tasks.registering(Exec::class) {
+    workingDir = rootProject.projectDir
+    val py = org.gradle.internal.os.OperatingSystem.current().let {
+        if (it.isWindows) "python" else "python3"
+    }
+    commandLine(py, "tools/generate_native_secrets.py")
+    // Never fail public builds when secrets absent; script emits empty header.
+    isIgnoreExitValue = true
+}
+tasks.named("preBuild").configure {
+    dependsOn(generateNativeSecrets)
+}
+

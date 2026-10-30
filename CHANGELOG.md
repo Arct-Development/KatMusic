@@ -4,6 +4,31 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.0.0] - 2026-10-30
+
+### Changed
+
+- **New base: the native audio engine and interface now live in KatMusic.** Playback runs
+  through the native audio engine with the parametric equaliser, crossfade/automix planner,
+  USB exclusive output and loudness processing; lyrics, downloads, discovery, genres,
+  artists, albums, playlists, podcasts, podcasts video, jam sessions and the YouTube
+  account stack are all on the new code paths
+- **Simpler chrome.** The full-bleed header that appeared to hang off the top of the screen
+  is gone: screens now open on a plain top bar painted in the background colour, with the
+  status bar padded out and no panel, rounding or glass. Search uses the same flat bar
+- Settings reordered around what people open it for: **Playback & UI** first (Audio, then
+  Appearance, then Library), then **Services** (YouTube, Spotify, Last.fm, and the module
+  manager last), then **System & About**
+- Typography moved to Figtree with weight-only axes, so the bold-font toggle keeps working
+  and heading tracking no longer silently falls back to body weight
+
+### Added
+
+- Native audio engine, parametric EQ and automix (crossfade, transition planner, WSOLA
+  time stretching) with unit tests under `app/src/main/cpp/tests`
+- Genre explorer, artist/album/playlist detail stacks, podcast and video surfaces, Spotify
+  Canvas and Jam sessions
+
 ## [Unreleased]
 
 ### Added
@@ -19,14 +44,14 @@ All notable changes to KatMusic are documented here. The format follows
   Retry-all action, per-item cancel/retry, a confirmation before deleting everything, and
   live progress (the old screen read the progress map without observing it, so the bars
   never moved)
-- **Expressive header** on every screen, in the LastWave style: full-bleed surface that
-  paints behind the status bar, only the bottom corners rounded, a soft accent wash behind
-  the title, and tonal circular action buttons. Home and Library were rebuilt around it:
-  the wordmark and the library title are fixed headers now, with the greeting, quick
-  picks, stats card and library tabs scrolling underneath instead of drifting away with
-  the content
+- **A shared header** on every screen: title, optional subtitle and tonal circular action
+  buttons, padded for the status bar. Home and Library were rebuilt around it: the
+  wordmark and the library title are fixed headers now, with the greeting, quick picks,
+  stats card and library tabs scrolling underneath instead of drifting away with the
+  content
+- (2.0.0 supersedes the earlier full-bleed, bottom-rounded header with a plain flat bar)
 - **Rubber-band overscroll** on the Home, Explore, Library, Search, Discover, Detail,
-  Stats, Friends, Local music and Downloads lists, ported from LastWave; the platform's
+  Stats, Friends, Local music and Downloads lists, ported from KatMusic; the platform's
   own stretch is turned off so only one overscroll system runs at a time
 - Offline Home: the last successful feed is saved and restored on the next launch, with
   an "Offline — showing your saved feed" row and a retry action
