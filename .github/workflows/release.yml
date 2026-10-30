@@ -24,7 +24,6 @@ jobs:
       contents: write
     env:
       SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-      ADDON_CLIENT_SECRET: ${{ secrets.ADDON_CLIENT_SECRET }}
       RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
       KATMUSIC_LYRICS_TOKEN: ${{ secrets.KATMUSIC_LYRICS_TOKEN }}
       KATMUSIC_LYRICS_URL: ${{ secrets.KATMUSIC_LYRICS_URL }}
@@ -49,7 +48,6 @@ jobs:
 
       - name: Build Android 10 Release APKs (compressed + raw)
         env:
-          ADDON_CLIENT_SECRET: ${{ secrets.ADDON_CLIENT_SECRET }}
           KATMUSIC_LYRICS_TOKEN: ${{ secrets.KATMUSIC_LYRICS_TOKEN }}
           KATMUSIC_LYRICS_URL: ${{ secrets.KATMUSIC_LYRICS_URL }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
@@ -83,7 +81,6 @@ jobs:
 
       - name: Build Android 7.0 Legacy APK (compressed)
         env:
-          ADDON_CLIENT_SECRET: ${{ secrets.ADDON_CLIENT_SECRET }}
           KATMUSIC_LYRICS_TOKEN: ${{ secrets.KATMUSIC_LYRICS_TOKEN }}
           KATMUSIC_LYRICS_URL: ${{ secrets.KATMUSIC_LYRICS_URL }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
