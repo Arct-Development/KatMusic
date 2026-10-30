@@ -763,9 +763,36 @@ fun SettingsScreen(
 
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                SectionLabel("Services")
+                                SectionLabel("Your music services")
                                 SettingsGroup(rowCount = 3) { index, position ->
                                     when (index) {
+                                        0 -> SettingsActionCard(
+                                            icon = Icons.Filled.CloudSync,
+                                            iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            title = stringResource(R.string.set_cat_yt),
+                                            subtitle = stringResource(R.string.set_cat_yt_sub),
+                                            onClick = { activeTab = SettingsTab.YOUTUBE },
+                                            position = position,
+                                        )
+                                        1 -> SettingsActionCard(
+                                            icon = Icons.Filled.PlayCircle,
+                                            iconContainer = MaterialTheme.colorScheme.secondaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            title = stringResource(R.string.set_cat_spotify),
+                                            subtitle = stringResource(R.string.set_cat_spotify_sub),
+                                            onClick = { activeTab = SettingsTab.SPOTIFY },
+                                            position = position,
+                                        )
+                                        2 -> SettingsActionCard(
+                                            icon = Icons.Filled.Album,
+                                            iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            title = stringResource(R.string.set_cat_lfm),
+                                            subtitle = stringResource(R.string.set_cat_lfm_sub),
+                                            onClick = { activeTab = SettingsTab.LAST_FM },
+                                            position = position,
+                                        )
                                     }
                                 }
                             }
