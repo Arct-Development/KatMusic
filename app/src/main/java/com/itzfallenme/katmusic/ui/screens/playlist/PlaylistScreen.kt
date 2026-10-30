@@ -200,7 +200,7 @@ fun PlaylistScreen(
                             Surface(
                                 onClick = { sortMenuExpanded = true },
                                 shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                                 tonalElevation = 1.dp,
                                 modifier = Modifier.heightIn(min = 34.dp),
                             ) {
@@ -227,7 +227,7 @@ fun PlaylistScreen(
                                 expanded = sortMenuExpanded,
                                 onDismissRequest = { sortMenuExpanded = false },
                                 shape = RoundedCornerShape(22.dp),
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                 tonalElevation = 4.dp,
                                 shadowElevation = 10.dp,
                                 modifier = Modifier.padding(vertical = 4.dp),
@@ -273,8 +273,8 @@ fun PlaylistScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
                     ),
@@ -584,7 +584,7 @@ fun PlaylistScreen(
 private fun CountPill(text: String) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.heightIn(min = 34.dp),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
@@ -677,7 +677,7 @@ private fun PlaylistCard(
         targetValue = when {
             isSelected -> MaterialTheme.colorScheme.primaryContainer
             isThisPlaylistPlaying -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+            else -> MaterialTheme.colorScheme.surfaceContainerLow
         },
         animationSpec = tween(350),
         label = "cardBg",
@@ -809,7 +809,7 @@ private fun PlaylistCard(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                     shape = RoundedCornerShape(22.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     tonalElevation = 4.dp,
                     shadowElevation = 10.dp,
                 ) {
