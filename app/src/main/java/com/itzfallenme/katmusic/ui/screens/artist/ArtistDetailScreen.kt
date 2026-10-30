@@ -229,7 +229,7 @@ fun ArtistDetailScreen(
                                 )
                             } else {
                                 Surface(
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
@@ -488,7 +488,7 @@ fun ArtistDetailScreen(
                                                 label = { Text(tag) },
                                                 shape = RoundedCornerShape(12.dp),
                                                 colors = AssistChipDefaults.assistChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                                 ),
                                             )
                                         }
@@ -674,7 +674,7 @@ fun ArtistDetailScreen(
                                             showAllSongs = !showAllSongs
                                         },
                                         shape = RoundedCornerShape(24.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
@@ -815,7 +815,7 @@ fun ArtistDetailScreen(
         }
 
         Surface(
-            color = if (showScrolledHeader) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f) else Color.Transparent,
+            color = if (showScrolledHeader) MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.98f) else Color.Transparent,
             tonalElevation = if (showScrolledHeader) 4.dp else 0.dp,
             shadowElevation = if (showScrolledHeader) 6.dp else 0.dp,
             modifier = Modifier
@@ -1192,7 +1192,7 @@ private fun SimilarArtistCard(
                 } else {
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
