@@ -393,7 +393,7 @@ private fun NewReleasesSkeletonRow(
 ) {
     Card(
         shape = groupShape(position),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -434,9 +434,9 @@ private fun NewReleasesSkeletonRow(
 @Composable
 private fun shimmerBrush(): Brush {
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.9f),
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f),
+        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f),
+        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f),
     )
     val transition = rememberInfiniteTransition(label = "shimmerTransition")
     val translateAnim by transition.animateFloat(
