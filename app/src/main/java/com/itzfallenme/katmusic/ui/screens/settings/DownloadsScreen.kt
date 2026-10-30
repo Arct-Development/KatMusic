@@ -1056,7 +1056,7 @@ private fun DownloadTabBar(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp),
@@ -1163,8 +1163,8 @@ private fun DownloadFilterControls(
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
                 ),
@@ -1501,7 +1501,7 @@ private fun DownloadedArtistsList(
             ) { index, artist ->
                 Card(
                     shape = groupShape(groupPositionFor(index, artists.size)),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onSelectArtist(artist) },
@@ -1652,7 +1652,7 @@ private fun DownloadedAlbumsList(
             ) { index, album ->
                 Card(
                     shape = groupShape(groupPositionFor(index, albums.size)),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onSelectAlbum(album) },
@@ -1780,7 +1780,7 @@ private fun ArtistDetailView(
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
@@ -1873,7 +1873,7 @@ private fun ArtistDetailView(
                     items(albums, key = { it.title }) { album ->
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             modifier = Modifier
                                 .width(130.dp)
                                 .clickable { onSelectAlbum(album.title) },
@@ -1985,7 +1985,7 @@ private fun AlbumDetailView(
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
@@ -2194,7 +2194,7 @@ private fun DownloadedTrackCard(
 
     Card(
         shape = groupShape(position),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -2428,7 +2428,7 @@ private fun EmptyDownloadsState() {
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 modifier = Modifier.size(88.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
