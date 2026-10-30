@@ -264,13 +264,6 @@
     <string name="nav_generator">Генератор</string>
     <string name="settings_downloads_sub_custom">%1$d песен • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d песен • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">Модули провайдера</string>
-    <string name="settings_modules_sub">Дополнительные источники, запрашиваемые вместе с дополнением</string>
-    <string name="settings_modules_query_title">Модули запроса во время воспроизведения</string>
-    <string name="settings_modules_query_sub">Вкл. • Модуль запускает воспроизведение мгновенно, если аддон промахивается.</string>
-    <string name="settings_modules_add">Добавить модуль</string>
-    <string name="settings_modules_add_sub">Установите зашифрованный пакет .lwp.</string>
-    <string name="settings_modules_empty">Модули не установлены</string>
     <string name="settings_theme_mode">Тема</string>
     <string name="settings_theme_mode_sub">Выберите систему по умолчанию, светлую или темную</string>
     <string name="theme_mode_system">Система</string>

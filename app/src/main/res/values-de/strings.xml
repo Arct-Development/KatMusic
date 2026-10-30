@@ -264,13 +264,6 @@
     <string name="nav_generator">Generator</string>
     <string name="settings_downloads_sub_custom">%1$d Lied(e) • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d Lied(e) • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">Anbietermodule</string>
-    <string name="settings_modules_sub">Zusätzliche Quellen wurden neben dem Add-on abgefragt</string>
-    <string name="settings_modules_query_title">Module während der Wiedergabe abfragen</string>
-    <string name="settings_modules_query_sub">Ein • Modultreffer werden sofort abgespielt, wenn das Add-on fehlschlägt</string>
-    <string name="settings_modules_add">Modul hinzufügen</string>
-    <string name="settings_modules_add_sub">Installieren Sie ein verschlüsseltes .lwp-Paket</string>
-    <string name="settings_modules_empty">Keine Module installiert</string>
     <string name="settings_theme_mode">Thema</string>
     <string name="settings_theme_mode_sub">Wählen Sie Systemstandard, hell oder dunkel</string>
     <string name="theme_mode_system">System</string>

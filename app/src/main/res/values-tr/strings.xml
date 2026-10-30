@@ -40,13 +40,6 @@
     <string name="settings_downloads_sub_custom">%1$d şarkı • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d şarkı • %2$s • %3$s • %4$s</string>
 
-    <string name="settings_modules_title">Sağlayıcı Modülleri</string>
-    <string name="settings_modules_sub">Eklentinin yanında sorgulanan ek kaynaklar</string>
-    <string name="settings_modules_query_title">Oynatma sırasında modülleri sorgula</string>
-    <string name="settings_modules_query_sub">Açık • eklenti bulamadığında modül sonuçları anında çalar</string>
-    <string name="settings_modules_add">Modül ekle</string>
-    <string name="settings_modules_add_sub">Şifreli bir .lwp paketi kurun</string>
-    <string name="settings_modules_empty">Kurulu modül yok</string>
 
     <string name="settings_section_appearance">Görünüm</string>
     <string name="settings_theme_mode">Tema</string>

@@ -264,13 +264,6 @@
     <string name="nav_generator">발전기</string>
     <string name="settings_downloads_sub_custom">%1$d 노래 • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d 노래 • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">공급자 모듈</string>
-    <string name="settings_modules_sub">애드온과 함께 쿼리된 추가 소스</string>
-    <string name="settings_modules_query_title">재생 중 쿼리 모듈</string>
-    <string name="settings_modules_query_sub">켜짐 • 애드온이 누락되면 모듈 적중이 즉시 재생됩니다.</string>
-    <string name="settings_modules_add">모듈 추가</string>
-    <string name="settings_modules_add_sub">암호화된 .lwp 패키지 설치</string>
-    <string name="settings_modules_empty">설치된 모듈 없음</string>
     <string name="settings_theme_mode">테마</string>
     <string name="settings_theme_mode_sub">시스템 기본값, 밝게 또는 어둡게 선택</string>
     <string name="theme_mode_system">시스템</string>

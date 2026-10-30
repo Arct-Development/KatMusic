@@ -267,13 +267,6 @@
     <string name="nav_generator">发电机</string>
     <string name="settings_downloads_sub_custom">%1$d 歌曲 • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d 歌曲 • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">提供者模块</string>
-    <string name="settings_modules_sub">与插件一起查询的额外来源</string>
-    <string name="settings_modules_query_title">播放时查询模块</string>
-    <string name="settings_modules_query_sub">开启 • 当插件未命中时，模块会立即播放</string>
-    <string name="settings_modules_add">添加模块</string>
-    <string name="settings_modules_add_sub">安装加密的 .lwp 包</string>
-    <string name="settings_modules_empty">没有安装模块</string>
     <string name="settings_theme_mode">主题</string>
     <string name="settings_theme_mode_sub">选择系统默认值、浅色或深色</string>
     <string name="theme_mode_system">系统</string>

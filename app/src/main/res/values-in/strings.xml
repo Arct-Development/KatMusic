@@ -264,13 +264,6 @@
     <string name="nav_generator">Pembangkit</string>
     <string name="settings_downloads_sub_custom">%1$d lagu • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d lagu • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">Modul Penyedia</string>
-    <string name="settings_modules_sub">Sumber tambahan ditanyakan di samping addon</string>
-    <string name="settings_modules_query_title">Modul kueri selama pemutaran</string>
-    <string name="settings_modules_query_sub">Pada • modul diputar secara instan ketika addon meleset</string>
-    <string name="settings_modules_add">Tambahkan modul</string>
-    <string name="settings_modules_add_sub">Instal paket .lwp terenkripsi</string>
-    <string name="settings_modules_empty">Tidak ada modul yang terpasang</string>
     <string name="settings_theme_mode">Tema</string>
     <string name="settings_theme_mode_sub">Pilih default sistem, terang, atau gelap</string>
     <string name="theme_mode_system">Sistem</string>

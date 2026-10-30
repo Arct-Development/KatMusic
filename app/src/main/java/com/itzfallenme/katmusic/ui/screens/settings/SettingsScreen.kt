@@ -90,6 +90,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import com.itzfallenme.katmusic.util.BatteryOptimizationHelper
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudSync
@@ -2279,13 +2280,31 @@ fun SettingsScreen(
                     )
 
                     SettingsActionCard(
+                        icon = Icons.Filled.Person,
+                        iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        title = "Made by ItzFallenMe",
+                        subtitle = "github.com/ItzFallenMe",
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/ItzFallenMe"),
+                            )
+                            if (!startActivitySafely(context, intent)) {
+                                viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
+                            }
+                        },
+                        isHighlighted = (highlightedSettingId == "about.creator"),
+                    )
+
+                    SettingsActionCard(
                         icon = Icons.Filled.Code,
                         iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         title = stringResource(R.string.settings_source_code),
-                        subtitle = "github.com/Clash-Projects/KatMusic-native",
+                        subtitle = "github.com/ItzFallenMe/KatMusic",
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Clash-Projects/KatMusic-native"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ItzFallenMe/KatMusic"))
                             if (!startActivitySafely(context, intent)) {
                                 viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
                             }

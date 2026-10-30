@@ -266,13 +266,6 @@
     <string name="nav_generator">जेनरेटर</string>
     <string name="settings_downloads_sub_custom">%1$d गीत • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d गीत • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">प्रदाता मॉड्यूल</string>
-    <string name="settings_modules_sub">ऐडऑन के साथ अतिरिक्त स्रोतों के बारे में पूछताछ की गई</string>
-    <string name="settings_modules_query_title">प्लेबैक के दौरान क्वेरी मॉड्यूल</string>
-    <string name="settings_modules_query_sub">ऐडऑन छूटने पर ऑन • मॉड्यूल तुरंत प्ले हिट करता है</string>
-    <string name="settings_modules_add">मॉड्यूल जोड़ें</string>
-    <string name="settings_modules_add_sub">एक एन्क्रिप्टेड .lwp पैकेज स्थापित करें</string>
-    <string name="settings_modules_empty">कोई मॉड्यूल स्थापित नहीं</string>
     <string name="settings_theme_mode">थीम</string>
     <string name="settings_theme_mode_sub">सिस्टम डिफॉल्ट, लाइट या डार्क चुनें</string>
     <string name="theme_mode_system">सिस्टम</string>

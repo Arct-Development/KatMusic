@@ -264,13 +264,6 @@
     <string name="nav_generator">発電機</string>
     <string name="settings_downloads_sub_custom">%1$d 曲 • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d 曲 • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">プロバイダーモジュール</string>
-    <string name="settings_modules_sub">アドオンと一緒にクエリされる追加のソース</string>
-    <string name="settings_modules_query_title">再生中にモジュールをクエリする</string>
-    <string name="settings_modules_query_sub">オン • モジュールがアドオンをミスしたときに即座に再生をヒットします</string>
-    <string name="settings_modules_add">モジュールの追加</string>
-    <string name="settings_modules_add_sub">暗号化された .lwp パッケージをインストールする</string>
-    <string name="settings_modules_empty">モジュールがインストールされていません</string>
     <string name="settings_theme_mode">テーマ</string>
     <string name="settings_theme_mode_sub">システムのデフォルト、明るい、または暗いを選択します</string>
     <string name="theme_mode_system">システム</string>

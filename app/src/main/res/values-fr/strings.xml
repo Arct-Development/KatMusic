@@ -337,13 +337,6 @@
     <string name="nav_generator">Générateur</string>
     <string name="settings_downloads_sub_custom">%1$d chanson(s) • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d chanson(s) • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">Modules du fournisseur</string>
-    <string name="settings_modules_sub">Sources supplémentaires interrogées avec l\'addon</string>
-    <string name="settings_modules_query_title">Interroger les modules pendant la lecture</string>
-    <string name="settings_modules_query_sub">Activé • Le module démarre instantanément lorsque l\'addon manque</string>
-    <string name="settings_modules_add">Ajouter un module</string>
-    <string name="settings_modules_add_sub">Installez un package .lwp chiffré</string>
-    <string name="settings_modules_empty">Aucun module installé</string>
     <string name="settings_theme_mode">Thème</string>
     <string name="settings_theme_mode_sub">Choisissez le système par défaut, clair ou sombre</string>
     <string name="theme_mode_system">Système</string>

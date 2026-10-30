@@ -264,13 +264,6 @@
     <string name="nav_generator">Generador</string>
     <string name="settings_downloads_sub_custom">%1$d canción(es) • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d canción(es) • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">Módulos de proveedor</string>
-    <string name="settings_modules_sub">Fuentes adicionales consultadas junto con el complemento</string>
-    <string name="settings_modules_query_title">Consultar módulos durante la reproducción.</string>
-    <string name="settings_modules_query_sub">Activado • el módulo activa la reproducción instantáneamente cuando falla el complemento</string>
-    <string name="settings_modules_add">Agregar módulo</string>
-    <string name="settings_modules_add_sub">Instalar un paquete .lwp cifrado</string>
-    <string name="settings_modules_empty">No hay módulos instalados</string>
     <string name="settings_theme_mode">Tema</string>
     <string name="settings_theme_mode_sub">Elija el sistema predeterminado, claro u oscuro</string>
     <string name="theme_mode_system">Sistema</string>

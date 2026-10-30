@@ -51,13 +51,6 @@
     <string name="settings_downloads_sub_structured_custom">%1$d brani • %2$s • %3$s • %4$s</string>
     <string name="settings_downloads_empty">Nessun brano offline scaricato</string>
 
-    <string name="settings_modules_title">Moduli provider</string>
-    <string name="settings_modules_sub">Fonti extra interrogate insieme all\'addon</string>
-    <string name="settings_modules_query_title">Interroga i moduli durante la riproduzione</string>
-    <string name="settings_modules_query_sub">Attivo • se l\'addon non trova nulla, i risultati dei moduli partono subito</string>
-    <string name="settings_modules_add">Aggiungi modulo</string>
-    <string name="settings_modules_add_sub">Installa un pacchetto .lwp cifrato</string>
-    <string name="settings_modules_empty">Nessun modulo installato</string>
 
     <string name="settings_section_appearance">Aspetto</string>
     <string name="settings_theme_mode">Tema</string>

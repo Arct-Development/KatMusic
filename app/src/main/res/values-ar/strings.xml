@@ -264,13 +264,6 @@
     <string name="nav_generator">مولد</string>
     <string name="settings_downloads_sub_custom">%1$d الأغنية (الأغاني) • %2$s • %3$s</string>
     <string name="settings_downloads_sub_structured_custom">%1$d الأغنية (الأغاني) • %2$s • %3$s • %4$s</string>
-    <string name="settings_modules_title">وحدات الموفر</string>
-    <string name="settings_modules_sub">تم الاستعلام عن مصادر إضافية بجانب الملحق</string>
-    <string name="settings_modules_query_title">وحدات الاستعلام أثناء التشغيل</string>
-    <string name="settings_modules_query_sub">تشغيل • يتم تشغيل الوحدة على الفور عندما يخطئ الملحق</string>
-    <string name="settings_modules_add">إضافة وحدة</string>
-    <string name="settings_modules_add_sub">قم بتثبيت حزمة .lwp مشفرة</string>
-    <string name="settings_modules_empty">لم يتم تثبيت أي وحدات</string>
     <string name="settings_theme_mode">الموضوع</string>
     <string name="settings_theme_mode_sub">اختر النظام الافتراضي أو الفاتح أو الداكن</string>
     <string name="theme_mode_system">النظام</string>
