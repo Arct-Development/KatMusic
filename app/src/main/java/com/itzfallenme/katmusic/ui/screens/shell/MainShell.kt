@@ -211,11 +211,7 @@ object FloatingNavDefaults {
     @Composable
     fun contentBottomPadding(): Dp {
         val hideNav = com.itzfallenme.katmusic.ui.theme.LocalHideNavTabs.current
-        val basePadding = when {
-            hideNav -> 16.dp
-            LocalMd3NavBar.current -> ContentBottomPadding
-            else -> 80.dp
-        }
+        val basePadding = if (hideNav) 16.dp else ContentBottomPadding
         return basePadding +
             LocalMiniPlayerScrollClearance.current +
             WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
