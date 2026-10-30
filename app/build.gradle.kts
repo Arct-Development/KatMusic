@@ -13,7 +13,7 @@ plugins {
 
 android {
     namespace = "com.itzfallenme.katmusic"
-    compileSdk = 36
+    compileSdk = 37
 
     val localProps = Properties().apply {
         val localPropsFile = rootProject.file("local.properties")
