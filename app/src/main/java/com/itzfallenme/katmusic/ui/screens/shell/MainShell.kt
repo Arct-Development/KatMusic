@@ -433,6 +433,7 @@ fun MainShell(
         val bottomNavSlot = com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavSlot.current
         val hideNavTabs = com.itzfallenme.katmusic.ui.theme.LocalHideNavTabs.current
         val md3NavBar = LocalMd3NavBar.current
+    // KatMusic's primary navigation intentionally stays in the floating liquid-glass dock style.
         val clearance = com.itzfallenme.katmusic.ui.screens.player.LocalMiniPlayerScrollClearance.current
         val isMiniPlayerActive = clearance > 0.dp
         val systemBottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
