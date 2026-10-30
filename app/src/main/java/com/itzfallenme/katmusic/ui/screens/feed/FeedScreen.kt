@@ -502,7 +502,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -685,7 +685,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             val title = if (state.feedData.hasYtRecommendations) stringResource(R.string.feed_picked_you) else stringResource(R.string.feed_quick_picks)
@@ -741,7 +741,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                                     FeedSectionHeader(
@@ -784,7 +784,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -833,7 +833,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                                     FeedSectionHeader(
@@ -881,7 +881,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -922,7 +922,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -975,7 +975,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -1012,7 +1012,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -1057,7 +1057,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -1095,7 +1095,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -1142,7 +1142,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             FeedSectionHeader(
@@ -1184,7 +1184,7 @@ fun FeedScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                                 shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                                     FeedSectionHeader(
@@ -1295,7 +1295,7 @@ fun FeedScreen(
         AlertDialog(
             onDismissRequest = { sectionMenuTarget = null },
             shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             title = {
                 Text(
                     text = name,
@@ -1311,7 +1311,7 @@ fun FeedScreen(
                             sectionMenuTarget = null
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
@@ -1337,7 +1337,7 @@ fun FeedScreen(
                             sectionMenuTarget = null
                         },
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
@@ -1530,7 +1530,7 @@ private fun TasteStrip(
                 Surface(
                     onClick = { onTagClick(tag) },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
                     modifier = Modifier,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
@@ -1600,7 +1600,7 @@ fun HomeChipsRow(
                 color = if (isSelected) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f)
+                    MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f)
                 },
                 border = BorderStroke(
                     width = 1.dp,
@@ -1718,7 +1718,7 @@ private fun HomeShelfCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp)) {
             val tracksInShelf = remember(shelf.items) {
@@ -1896,7 +1896,7 @@ private fun PodcastGuestEmptyState(
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 32.dp),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f),
         tonalElevation = 2.dp,
     ) {
         Column(
@@ -2190,7 +2190,7 @@ private fun FeedLoadingSkeleton() {
                     .padding(horizontal = 16.dp)
                     .height(208.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f * pulse + 0.3f)),
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f * pulse + 0.3f)),
             )
         }
         item {
@@ -2221,7 +2221,7 @@ private fun FeedLoadingSkeleton() {
                         .width((140 + row * 30).dp)
                         .height(20.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f * pulse + 0.3f)),
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f * pulse + 0.3f)),
                 )
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -2234,14 +2234,14 @@ private fun FeedLoadingSkeleton() {
                                 modifier = Modifier
                                     .size(148.dp)
                                     .clip(RoundedCornerShape(18.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f * pulse + 0.3f)),
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f * pulse + 0.3f)),
                             )
                             Box(
                                 modifier = Modifier
                                     .width(110.dp)
                                     .height(12.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f * pulse + 0.3f)),
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f * pulse + 0.3f)),
                             )
                         }
                     }
@@ -2341,7 +2341,7 @@ private fun QuickTileCard(
         else -> Brush.linearGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.primaryContainer,
-                MaterialTheme.colorScheme.surfaceContainerHighest,
+                MaterialTheme.colorScheme.surfaceContainerLowest,
             ),
         )
     }
@@ -2356,7 +2356,7 @@ private fun QuickTileCard(
             isMyMixTile -> MaterialTheme.colorScheme.surfaceVariant
             isDiscoverTile -> MaterialTheme.colorScheme.tertiaryContainer
             isNewReleasesTile -> MaterialTheme.colorScheme.errorContainer
-            else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f)
+            else -> MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.75f)
         },
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
@@ -2628,7 +2628,7 @@ private fun FeedMediaCard(
             // Surface would swallow the press and starve the long-press tray.
             Surface(
                 shape = RoundedCornerShape(CardTokens.coverCornerRadius),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 tonalElevation = 1.dp,
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -2721,7 +2721,7 @@ private fun RecentTrackCard(
     ) {
         Surface(
             shape = RoundedCornerShape(CardTokens.coverCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
             tonalElevation = 1.dp,
             modifier = Modifier.width(cardWidth).height(coverHeight),
         ) {
@@ -2770,7 +2770,7 @@ private fun ChartTrackCard(
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = if (isTop3) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-        else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+        else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             if (isTop3) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
@@ -2808,7 +2808,7 @@ private fun ChartTrackCard(
             )
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 modifier = Modifier.size(56.dp),
             ) {
                 Box(Modifier.fillMaxSize()) {
@@ -2869,7 +2869,7 @@ private fun SpotlightHeroCard(
     val gradientBrush = Brush.linearGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
             MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
         ),
         start = Offset(0f, 0f),
@@ -2934,7 +2934,7 @@ private fun SpotlightHeroCard(
                     Surface(
                         onClick = onOpenArtist,
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         modifier = Modifier.size(76.dp),
                     ) {
                         if (!spotlight.artworkUrl.isNullOrBlank()) {
@@ -3012,7 +3012,7 @@ private fun SpotlightHeroCard(
                     Surface(
                         onClick = onOpenArtist,
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.8f),
                         modifier = Modifier.weight(1f).height(42.dp),
                     ) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -3055,7 +3055,7 @@ private fun ArtistAvatarCard(
         Box(modifier = Modifier.size(92.dp), contentAlignment = Alignment.Center) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 border = if (isTop) androidx.compose.foundation.BorderStroke(
                     2.dp,
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
@@ -3136,7 +3136,7 @@ private fun FriendAvatarCard(
         Surface(
             onClick = onClick,
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
             modifier = Modifier.size(60.dp),
         ) {
             if (!friend.avatarUrl.isNullOrBlank()) {
@@ -3235,7 +3235,7 @@ private fun FeedSectionHeader(
                     onShuffleClick()
                 },
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.7f),
             ) {
                 Box(
                     modifier = Modifier.padding(8.dp),
@@ -3347,7 +3347,7 @@ private fun FeedEmptyState(
             Surface(
                 onClick = onRetry,
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.7f),
                 modifier = Modifier,
             ) {
                 Row(
