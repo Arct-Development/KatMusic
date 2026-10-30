@@ -182,7 +182,7 @@ fun SearchScreen(
                     HeaderActionIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", onBack)
                     Spacer(Modifier.width(10.dp))
 
-                    val pillBg = MaterialTheme.colorScheme.surfaceContainerHighest
+                    val pillBg = MaterialTheme.colorScheme.surfaceContainerLowest
 
 
                     BasicTextField(
@@ -438,7 +438,7 @@ fun SearchScreen(
                                             },
                                             label = { Text(genre, style = MaterialTheme.typography.labelLarge) },
                                             colors = AssistChipDefaults.assistChipColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                                                 labelColor = MaterialTheme.colorScheme.onSurface,
                                             ),
                                             shape = RoundedCornerShape(12.dp),
@@ -604,7 +604,7 @@ private fun TopResultCard(
     val containerColor = if (isPlaying) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
     } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.65f)
     }
     val cardContentColor = MaterialTheme.colorScheme.onSurface
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -970,7 +970,7 @@ private fun SearchFilterPills(
 
             val pillBg = when {
                 selected -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.60f)
+                else -> MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.60f)
             }
 
             val contentColor = when {
