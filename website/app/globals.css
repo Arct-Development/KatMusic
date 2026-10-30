@@ -3,11 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --background: #01181B;
-  --foreground: #e8edf6;
-  --accent: #C9FB00;
-  --glass: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.07);
+  color-scheme: dark;
+  --background: #050B18;
+  --foreground: #EAF3FF;
+  --accent: #168BFF;
+  --accent-secondary: #00BDF2;
+  --glass: rgba(14, 31, 54, 0.58);
+  --glass-border: rgba(130, 183, 239, 0.14);
+  --glow-blue: rgba(22, 139, 255, 0.24);
+  --glow-cyan: rgba(0, 189, 242, 0.16);
 }
 
 html {
@@ -21,26 +25,26 @@ body {
 }
 
 ::selection {
-  background: rgba(201, 251, 0, 0.3);
+  background: rgba(22, 139, 255, 0.32);
 }
 
 ::-webkit-scrollbar {
   width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #01181B;
+  background: #050B18;
 }
 ::-webkit-scrollbar-thumb {
-  background: #063E45;
+  background: #142844;
   border-radius: 10px;
-  border: 2px solid #01181B;
+  border: 2px solid #050B18;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C9FB00;
+  background: #168BFF;
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: #063E45 #01181B;
+  scrollbar-color: #142844 #050B18;
 }
 
 summary::-webkit-details-marker {
@@ -90,9 +94,9 @@ summary::-webkit-details-marker {
   background: conic-gradient(
     from var(--angle, 0deg),
     transparent 0deg,
-    rgba(201, 251, 0, 0.55) 60deg,
+    rgba(22, 139, 255, 0.58) 60deg,
     rgba(255, 255, 255, 0.85) 90deg,
-    rgba(201, 251, 0, 0.55) 120deg,
+    rgba(22, 139, 255, 0.58) 120deg,
     transparent 180deg
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -140,7 +144,7 @@ summary::-webkit-details-marker {
   left: -120%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(201, 251, 0, 0.35), transparent);
+  background: linear-gradient(100deg, transparent, rgba(0, 189, 242, 0.36), transparent);
   transform: skewX(-18deg);
   transition: left 0.7s ease;
 }
