@@ -452,7 +452,8 @@ enum class SettingsTab(
         titleRes = R.string.set_cat_about,
         subtitleRes = R.string.set_cat_about_sub,
         title = "About & Community",
-        subtitle = "Version info, Telegram community, GitHub repository",
+        title = "About KatMusic",
+        subtitle = "Version, diagnostics and source code",
         icon = Icons.Filled.Info,
     ),
 }
@@ -2128,14 +2129,14 @@ fun SettingsScreen(
                         item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionLabel(stringResource(R.string.settings_section_about))
-                    SettingsGroup(rowCount = 5) { index, position ->
+                    SettingsGroup(rowCount = 2) { index, position ->
                         when (index) {
                             0 -> SettingsActionCard(
                                 icon = Icons.Filled.Public,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 title = "Global Live Map",
-                                subtitle = "telemetry.clashprojects.qd.je • Real-time listener telemetry",
+                                subtitle = "Real-time listener telemetry",
                                 onClick = {
                                     runCatching {
                                         androidx.browser.customtabs.CustomTabsIntent.Builder().build()
@@ -2153,49 +2154,6 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "about.live_map"),
                             )
                             1 -> SettingsActionCard(
-                                icon = Icons.AutoMirrored.Filled.Send,
-                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
-                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                title = stringResource(R.string.settings_updates_support),
-                                subtitle = stringResource(R.string.set_tg_sub),
-                                onClick = {
-                                    if (!openTelegramChannel(context, "clashprojects")) {
-                                        viewModel.showToast(context.getString(R.string.toast_no_browser_tg))
-                                    }
-                                },
-                                position = position,
-                                isHighlighted = (highlightedSettingId == "about.telegram_support"),
-                            )
-                            2 -> SettingsActionCard(
-                                icon = Icons.Filled.Group,
-                                iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
-                                iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                title = stringResource(R.string.set_discord_support),
-                                subtitle = stringResource(R.string.set_discord_support_sub),
-                                onClick = {
-                                    val discordIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://discord.gg/TMCEPSUNk2"))
-                                    if (!startActivitySafely(context, discordIntent)) {
-                                        viewModel.showToast(context.getString(R.string.toast_no_browser))
-                                    }
-                                },
-                                position = position,
-                                isHighlighted = (highlightedSettingId == "about.discord_support"),
-                            )
-                            3 -> SettingsActionCard(
-                                icon = Icons.Filled.AutoAwesome,
-                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
-                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                title = stringResource(R.string.settings_more_from_us),
-                                subtitle = stringResource(R.string.set_more_apps_sub),
-                                onClick = {
-                                    if (!openTelegramChannel(context, "MaterialYouApp")) {
-                                        viewModel.showToast(context.getString(R.string.toast_no_browser_tg))
-                                    }
-                                },
-                                position = position,
-                                isHighlighted = (highlightedSettingId == "about.more_apps"),
-                            )
-                            4 -> SettingsActionCard(
                                 icon = Icons.Filled.Code,
                                 iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -2300,7 +2258,7 @@ fun SettingsScreen(
                         icon = Icons.Filled.Person,
                         iconContainer = MaterialTheme.colorScheme.primaryContainer,
                         iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        title = "Made by ItzFallenMe",
+                        title = "Built by ItzFallenMe",
                         subtitle = "github.com/ItzFallenMe",
                         onClick = {
                             val intent = Intent(
@@ -2329,17 +2287,6 @@ fun SettingsScreen(
                         isHighlighted = (highlightedSettingId == "about.source_code"),
                     )
 
-                    Spacer(Modifier.height(14.dp))
-                    SectionLabel("More from us")
-                    Spacer(Modifier.height(8.dp))
-                    MoreFromUsCard(
-                        onOpenUrl = { url ->
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            if (!startActivitySafely(context, intent)) {
-                                viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
-                            }
-                        }
-                    )
                 }
             }
                     }
