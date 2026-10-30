@@ -451,7 +451,6 @@ enum class SettingsTab(
     ABOUT(
         titleRes = R.string.set_cat_about,
         subtitleRes = R.string.set_cat_about_sub,
-        title = "About & Community",
         title = "About KatMusic",
         subtitle = "Version, diagnostics and source code",
         icon = Icons.Filled.Info,
