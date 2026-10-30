@@ -69,14 +69,14 @@ class ThemePreferences @Inject constructor(
         .map { p ->
             ThemePrefs(
                 themeMode = ThemeMode.fromStorage(p.readSafely(Keys.THEME_MODE)),
-                accentColor = p.readSafely(Keys.ACCENT_COLOR) ?: "#E03030",
-                accentLight = p.readSafely(Keys.ACCENT_LIGHT) ?: "#FF6060",
+                accentColor = p.readSafely(Keys.ACCENT_COLOR) ?: "#C9FB00",
+                accentLight = p.readSafely(Keys.ACCENT_LIGHT) ?: "#E0FE5B",
                 accentMode = AccentMode.fromStorage(p.readSafely(Keys.ACCENT_MODE)),
                 amoled = p.readSafely(Keys.AMOLED) ?: false,
                 liquidGlass = p.readSafely(Keys.LIQUID_GLASS) ?: true,
                 md3NavBar = p.readSafely(Keys.MD3_NAV_BAR) ?: false,
                 hideNavTabs = p.readSafely(Keys.HIDE_NAV_TABS) ?: false,
-                katMusicTheme = p.readSafely(Keys.KATMUSIC_THEME) ?: false,
+                katMusicTheme = p.readSafely(Keys.KATMUSIC_THEME) ?: true,
             )
         }
 
