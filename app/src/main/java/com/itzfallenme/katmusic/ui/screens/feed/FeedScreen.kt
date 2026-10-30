@@ -514,17 +514,6 @@ fun FeedScreen(
                                 tiles = quickTiles,
                                 onTileClick = { tile ->
                                     when {
-                                        tile.collection == "live_map" -> {
-                                            runCatching {
-                                                androidx.browser.customtabs.CustomTabsIntent.Builder().build()
-                                                    .launchUrl(context, android.net.Uri.parse("https://telemetry.clashprojects.qd.je"))
-                                            }.onFailure {
-                                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://telemetry.clashprojects.qd.je")).apply {
-                                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                }
-                                                runCatching { context.startActivity(intent) }
-                                            }
-                                        }
                                         tile.collection == "radio" -> onOpenDiscover()
                                         tile.collection == "discover_mix" || tile.title.contains("Discover Mix", ignoreCase = true) -> {
                                             if (!tile.playlistId.isNullOrBlank()) {
@@ -2310,7 +2299,6 @@ private fun QuickTileCard(
     val tileShape = RoundedCornerShape(18.dp)
 
     // Per-type vibrant gradient pairs for the artwork/icon box matching modern expressive designs
-    val isLiveMapTile = tile.collection == "live_map"
     val isYtLikedTile = tile.collection == "yt_liked" || tile.playlistId == "yt_liked"
     val isLocalLikedTile = tile.isLiked && !isYtLikedTile
     val isLikedTile = isYtLikedTile || isLocalLikedTile
@@ -2320,9 +2308,6 @@ private fun QuickTileCard(
     val isNewReleasesTile = tile.collection == "new_releases"
 
     val iconGradient = when {
-        isLiveMapTile -> Brush.linearGradient(
-            colors = listOf(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.tertiary),
-        )
         isLikedTile -> Brush.linearGradient(
             colors = listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary),
         )
@@ -2350,7 +2335,6 @@ private fun QuickTileCard(
         onClick = onClick,
         shape = tileShape,
         color = when {
-            isLiveMapTile -> MaterialTheme.colorScheme.tertiaryContainer
             isLikedTile -> MaterialTheme.colorScheme.primaryContainer
             isMixTile -> MaterialTheme.colorScheme.secondaryContainer
             isMyMixTile -> MaterialTheme.colorScheme.surfaceVariant
@@ -2379,14 +2363,7 @@ private fun QuickTileCard(
                     .background(iconGradient),
                 contentAlignment = Alignment.Center,
             ) {
-                if (isLiveMapTile) {
-                    Icon(
-                        Icons.Filled.Public,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.size(36.dp),
-                    )
-                } else if (isYtLikedTile) {
+                if (isYtLikedTile) {
                     Icon(
                         Icons.Filled.ThumbUp,
                         contentDescription = null,
