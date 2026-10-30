@@ -1313,9 +1313,6 @@ object SettingsSearchIndex {
                     type = EntryType.ACTION,
                 )
             )
-            )
-            )
-            )
             add(
                 SettingsEntry(
                     id = "about.diagnostics",
