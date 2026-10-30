@@ -82,7 +82,7 @@ import com.itzfallenme.katmusic.ui.theme.ExpressivePillShape
 
 @Composable
 private fun shimmerBrush(): Brush {
-    val base = MaterialTheme.colorScheme.surfaceContainerHighest
+    val base = MaterialTheme.colorScheme.surfaceContainerLowest
     val highlight = androidx.compose.ui.graphics.lerp(base, MaterialTheme.colorScheme.primary, 0.22f)
     val shimmerColors = listOf(
         base.copy(alpha = 0.35f),
@@ -307,7 +307,7 @@ private fun SkeletonCard(
 ) {
     Card(
         shape = groupShape(position),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
