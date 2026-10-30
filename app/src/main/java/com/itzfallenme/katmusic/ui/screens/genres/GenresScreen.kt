@@ -155,7 +155,7 @@ private fun PeriodDropdown(period: String, onChange: (String) -> Unit) {
     Box {
         Surface(
             shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
             modifier = Modifier.clickable { expanded = true },
         ) {
             Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -184,7 +184,7 @@ private fun GenreBarRow(
             Text("${(percent * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(6.dp))
-        Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+        Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
             Box(
                 Modifier
                     .fillMaxWidth(animated)
