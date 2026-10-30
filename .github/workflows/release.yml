@@ -6,11 +6,11 @@ on:
       tag_name:
         description: 'Git Tag (e.g., 4.2.3)'
         required: true
-        default: '4.2.3'
+        default: '2.0.1'
       release_name:
         description: 'Release Title (e.g., KatMusic 4.2.3)'
         required: true
-        default: 'Update v4.2.3'
+        default: 'KatMusic 2.0.1'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
