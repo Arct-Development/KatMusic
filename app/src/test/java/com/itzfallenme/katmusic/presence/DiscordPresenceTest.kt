@@ -371,7 +371,7 @@ class DiscordPresenceTest {
 
     @Test
     fun shipsTheSameApplicationIdAsTheDesktopClient() {
-        assertEquals("1552563991426105414", DiscordPresence.APPLICATION_ID)
+        assertEquals("1563081601254953002", DiscordPresence.APPLICATION_ID)
         assertTrue(DiscordPresence.isConfigured())
     }
 
