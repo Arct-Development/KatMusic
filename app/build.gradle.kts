@@ -13,6 +13,7 @@ plugins {
 
 android {
     namespace = "com.itzfallenme.katmusic"
+    // Compose 1.12.0 and current playback dependencies require Android API 37.
     compileSdk = 37
 
     val localProps = Properties().apply {
