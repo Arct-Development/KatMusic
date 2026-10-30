@@ -448,7 +448,7 @@ fun TrackContextMenuSheet(
         androidx.compose.ui.window.Dialog(onDismissRequest = { showTimerDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.padding(20.dp)) {
@@ -647,7 +647,7 @@ fun TrackContextMenuSheet(
                     add { pos ->
                         Card(
                             shape = groupShape(pos),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -826,7 +826,7 @@ private fun WatchVideoCard(
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
         shape = RoundedCornerShape(22.dp),
@@ -915,7 +915,7 @@ private fun QuickActionCard(
     val scale = rememberGroupPressScale(interactionSource)
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(22.dp),
         interactionSource = interactionSource,
@@ -956,7 +956,7 @@ private fun MenuActionRow(
 
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = groupShape(position),
         interactionSource = interactionSource,
@@ -1000,7 +1000,7 @@ private fun MenuInfoRow(
 ) {
     Card(
         onClick = onClick ?: {},
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = groupShape(position),
         // Not actually interactive when there's no genre to open yet
