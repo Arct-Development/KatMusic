@@ -392,7 +392,7 @@ private fun FriendHeroCard(
 ) {
     Surface(
         shape = ExpressiveHeroShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
@@ -451,7 +451,7 @@ private fun FriendHeroCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Surface(
                         shape = BadgePillShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -521,7 +521,7 @@ private fun FriendNowPlayingBanner(
                 Brush.horizontalGradient(
                     listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f),
+                        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.90f),
                     ),
                 ),
             ),
@@ -573,7 +573,7 @@ private fun FriendNowPlayingBanner(
                     modifier = Modifier
                         .size(54.dp)
                         .clip(ArtworkShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest),
                 ) {
                     ArtworkImage(
                         name = track.name,
@@ -645,7 +645,7 @@ private fun FriendStatsCard(
 ) {
     Surface(
         shape = ExpressiveHeroShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
@@ -730,7 +730,7 @@ private fun FriendTabSelector(
             Surface(
                 onClick = { onTabSelect(tab) },
                 shape = BadgePillShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
                 modifier = Modifier
                     .weight(1f)
                     .height(38.dp),
@@ -765,7 +765,7 @@ private fun PeriodFilterChips(
             Surface(
                 onClick = { onPeriodSelect(key) },
                 shape = BadgePillShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
                 modifier = Modifier.height(30.dp),
             ) {
                 Box(
@@ -824,7 +824,7 @@ private fun FriendTrackRow(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(ArtworkShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
             ) {
                 ArtworkImage(
                     name = track.name,
@@ -859,7 +859,7 @@ private fun FriendTrackRow(
                 Spacer(Modifier.width(8.dp))
                 Surface(
                     shape = BadgePillShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 ) {
                     Text(
                         text = badge,
@@ -913,7 +913,7 @@ private fun FriendArtistRow(
 
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 modifier = Modifier.size(48.dp),
             ) {
                 if (!artist.artworkUrl.isNullOrBlank()) {
