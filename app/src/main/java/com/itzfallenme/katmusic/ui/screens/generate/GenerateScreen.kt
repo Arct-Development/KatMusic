@@ -161,7 +161,7 @@ fun GenerateScreen(
                     item(key = "options") {
                         Card(
                             shape = GeneratorOuterCardShape,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(Modifier.padding(20.dp)) {
