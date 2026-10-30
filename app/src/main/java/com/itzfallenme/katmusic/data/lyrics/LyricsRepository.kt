@@ -79,7 +79,6 @@ fun providerForSource(source: String?): com.itzfallenme.katmusic.data.local.Lyri
     if (source.isNullOrBlank()) return null
     val s = source.lowercase()
     return when {
-        s.startsWith("katmusic") -> com.itzfallenme.katmusic.data.local.LyricsProvider.KATMUSIC
         s.startsWith("lrc.red") -> com.itzfallenme.katmusic.data.local.LyricsProvider.LRC_RED
         s.startsWith("apple music") -> com.itzfallenme.katmusic.data.local.LyricsProvider.APPLE_MUSIC
         s.startsWith("betterlyrics") -> com.itzfallenme.katmusic.data.local.LyricsProvider.BETTER_LYRICS
@@ -106,7 +105,6 @@ class LyricsRepository @Inject constructor(
     private val kugouApi: KugouLyricsApi,
     private val lrclibApi: LrclibLyricsApi,
     private val appleMusicApi: AppleMusicLyricsApi,
-    private val katMusicLyricsApi: KatMusicLyricsApi,
     private val biniApi: BiniLyricsApi,
     private val lrcRedLyricsApi: LrcRedLyricsApi,
     private val simpMusicApi: SimpMusicLyricsApi,
@@ -357,9 +355,6 @@ class LyricsRepository @Inject constructor(
             val wordResult = withTimeoutOrNull(RACE_TOTAL_MS) {
                 coroutineScope {
                     val requests = mutableListOf<Deferred<LyricsResult.Success?>>()
-                    if (!excludedProviders.contains(com.itzfallenme.katmusic.data.local.LyricsProvider.KATMUSIC)) {
-                        requests.add(async<LyricsResult.Success?> { fetchWordFromKatMusic(title, artist, album, durationSeconds, recordingIsrc, effectiveVideoId) })
-                    }
                     if (!excludedProviders.contains(com.itzfallenme.katmusic.data.local.LyricsProvider.LRC_RED)) {
                         requests.add(async<LyricsResult.Success?> { fetchWordFromLrcRed(title, artist, album, durationSeconds, recordingIsrc, biniHit, effectiveVideoId) })
                     }
@@ -588,8 +583,6 @@ class LyricsRepository @Inject constructor(
         isrc: String?,
         biniHit: BiniHit?,
     ): LyricsResult.Success? = when (preferred) {
-        com.itzfallenme.katmusic.data.local.LyricsProvider.KATMUSIC ->
-            fetchWordFromKatMusic(title, artist, album, durationSeconds, isrc, videoId)
         com.itzfallenme.katmusic.data.local.LyricsProvider.LRC_RED ->
             fetchWordFromLrcRed(title, artist, album, durationSeconds, isrc, biniHit, videoId)
         com.itzfallenme.katmusic.data.local.LyricsProvider.APPLE_MUSIC ->
@@ -630,38 +623,6 @@ class LyricsRepository @Inject constructor(
     ): LyricsResult.Success? = runCatching {
         spotifyLyricsApi.fetchLyrics(title, artist, durationSeconds)
     }.getOrNull()
-
-    private suspend fun fetchWordFromKatMusic(
-        title: String,
-        artist: String,
-        album: String?,
-        durationSeconds: Int?,
-        isrc: String?,
-        videoId: String? = null,
-    ): LyricsResult.Success? {
-        return try {
-            val (foundIsrc, res) = katMusicLyricsApi.fetchLyricsWithIsrc(
-                forSearchTitle(title),
-                forSearchArtist(artist),
-                album,
-                durationSeconds,
-                isrc,
-            ) ?: katMusicLyricsApi.fetchLyricsWithIsrc(
-                title,
-                artist,
-                album,
-                durationSeconds,
-                isrc,
-            ) ?: return null
-
-            foundIsrc?.takeIf { it.isNotBlank() }?.let { rememberIsrc(videoId, it) }
-            res.takeIf { it.isInstrumental || plausibleDuration(it.lines, durationSeconds) }
-        } catch (cancellation: kotlinx.coroutines.CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     private suspend fun fetchWordFromLrcRed(
         title: String,

@@ -53,7 +53,7 @@ object DiscordPresence {
      * Client Secret / bot token must stay private). Shared with the desktop
      * client so both apps publish under one Discord application.
      */
-    const val APPLICATION_ID = "1552563991426105414"
+    const val APPLICATION_ID = "1563081601254953002"
 
     const val PROJECT_URL = "https://github.com/ItzFallenMe/KatMusic"
     const val RELEASES_URL = "$PROJECT_URL/releases"

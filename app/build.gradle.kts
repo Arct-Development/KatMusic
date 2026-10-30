@@ -69,11 +69,6 @@ android {
             }
         }
 
-        val katMusicLyricsToken = resolveSecret("KATMUSIC_LYRICS_TOKEN")
-        val katMusicLyricsUrl = resolveSecret("KATMUSIC_LYRICS_URL")
-        buildConfigField("String", "KATMUSIC_LYRICS_TOKEN", "\"$katMusicLyricsToken\"")
-        buildConfigField("String", "KATMUSIC_LYRICS_URL", "\"$katMusicLyricsUrl\"")
-
         // Native secrets (addon client lock) live strictly in native .so via
         // SecretsBridge_generated.h (tools/generate_native_secrets.py).
         // No secret fields are exposed in DEX / BuildConfig.

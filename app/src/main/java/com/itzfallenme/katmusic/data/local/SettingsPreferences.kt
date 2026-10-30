@@ -43,7 +43,6 @@ data class HttpAddonConfig(
  *  proper nouns — no localization needed. */
 enum class LyricsProvider(val id: String, val title: String, val subtitle: String) {
     AUTO("auto", "Auto", "Fastest word-sync wins, LRCLIB fallback"),
-    KATMUSIC("katmusic", "KatMusic", "Syllable & line-synced Apple lyrics first"),
     LRC_RED("lrc_red", "lrc.red", "ISRC-indexed syllable TTML & LRC first"),
     APPLE_MUSIC("apple_music", "Apple Music", "Syllable-synced Apple Music lyrics first"),
     BETTER_LYRICS("better_lyrics", "BetterLyrics", "Word-synced lyrics first"),
@@ -62,7 +61,7 @@ enum class LyricsProvider(val id: String, val title: String, val subtitle: Strin
     GENIUS("genius", "Genius", "Plain-text web catalogue, tried last");
 
     val isWordProvider: Boolean get() =
-        this == KATMUSIC || this == LRC_RED || this == APPLE_MUSIC || this == BETTER_LYRICS || this == KUGOU ||
+        this == LRC_RED || this == APPLE_MUSIC || this == BETTER_LYRICS || this == KUGOU ||
             this == BINI_LYRICS || this == SIMP_MUSIC || this == MUSIXMATCH || this == SPOTIFY ||
             this == BETTER_LYRICS_PORTATO || this == LYRICS_PLUS || this == UNISON ||
             this == YOUTUBE_CAPTIONS || this == YOUTUBE_MUSIC || this == MEGALOBIZ || this == GENIUS
