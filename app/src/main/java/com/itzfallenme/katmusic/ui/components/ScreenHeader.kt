@@ -46,7 +46,7 @@ fun ScreenHeader(
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
     containerColor: Color = Color.Unspecified,
-    @Suppress("UNUSED_PARAMETER") backdrop: Backdrop? = null,
+    backdrop: Backdrop? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val glassEnabled = LocalLiquidGlass.current
@@ -72,8 +72,8 @@ fun ScreenHeader(
                     if (glassEnabled) Modifier.liquidGlassChrome(
                         HeaderPillShape,
                         true,
-                        LiquidGlassPreset.BottomNavigation,
-                        null,
+                        LiquidGlassPreset.Header,
+                        backdrop,
                     ) else Modifier
                 ),
             shape = HeaderPillShape,
