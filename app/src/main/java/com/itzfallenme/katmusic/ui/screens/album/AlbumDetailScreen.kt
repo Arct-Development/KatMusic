@@ -230,7 +230,7 @@ fun AlbumDetailScreen(
                                 if (isAlbumPlaying) {
                                     Surface(
                                         shape = RoundedCornerShape(topStart = 14.dp, bottomEnd = 26.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
+                                        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.92f),
                                         tonalElevation = 4.dp,
                                         modifier = Modifier.align(Alignment.BottomEnd),
                                     ) {
@@ -296,7 +296,7 @@ fun AlbumDetailScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(50),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f),
+                                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.75f),
                                 ) {
                                     Text(
                                         text = metaText,
@@ -592,7 +592,7 @@ fun AlbumDetailScreen(
         }
 
         Surface(
-            color = if (showScrolledHeader) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f) else Color.Transparent,
+            color = if (showScrolledHeader) MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.98f) else Color.Transparent,
             tonalElevation = if (showScrolledHeader) 4.dp else 0.dp,
             shadowElevation = if (showScrolledHeader) 6.dp else 0.dp,
             modifier = Modifier
