@@ -174,7 +174,7 @@ fun FriendsScreen(
                                         )
                                     } else {
                                         Box(
-                                            Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                            Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerLowest),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Icon(Icons.Filled.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
