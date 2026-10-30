@@ -280,18 +280,8 @@ private val GROUP_OUTER_RADIUS = 28.dp
 private val GROUP_INNER_RADIUS = 6.dp
 private val GROUP_GAP = 3.dp
 
-private fun groupShape(position: GroupPosition): RoundedCornerShape = when (position) {
-    GroupPosition.SINGLE -> RoundedCornerShape(GROUP_OUTER_RADIUS)
-    GroupPosition.TOP -> RoundedCornerShape(
-        topStart = GROUP_OUTER_RADIUS, topEnd = GROUP_OUTER_RADIUS,
-        bottomStart = GROUP_INNER_RADIUS, bottomEnd = GROUP_INNER_RADIUS,
-    )
-    GroupPosition.MIDDLE -> RoundedCornerShape(GROUP_INNER_RADIUS)
-    GroupPosition.BOTTOM -> RoundedCornerShape(
-        topStart = GROUP_INNER_RADIUS, topEnd = GROUP_INNER_RADIUS,
-        bottomStart = GROUP_OUTER_RADIUS, bottomEnd = GROUP_OUTER_RADIUS,
-    )
-}
+private fun groupShape(position: GroupPosition): RoundedCornerShape =
+    RoundedCornerShape(22.dp)
 
 /** Wraps a fixed list of settings rows and assigns each one its
  *  GroupPosition automatically — SINGLE for a lone row, TOP/BOTTOM for the
@@ -1305,7 +1295,7 @@ fun SettingsScreen(
                     Card(
                         shape = CardOuterShape,
                         colors = CardDefaults.cardColors(
-                            containerColor = if (highlightedSettingId == "appearance.accent_preset") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+                            containerColor = if (highlightedSettingId == "appearance.accent_preset") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         modifier = Modifier
@@ -2873,7 +2863,7 @@ fun SettingsScreen(
                                 showQualityDialog = false
                             },
                             shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                             border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
                             shadowElevation = if (isSelected) 3.dp else 0.dp,
                             modifier = Modifier.fillMaxWidth(),
@@ -2893,7 +2883,7 @@ fun SettingsScreen(
                                         Spacer(Modifier.width(8.dp))
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest,
                                         ) {
                                             Text(
                                                 badge,
@@ -3024,7 +3014,7 @@ fun SettingsScreen(
                                 showDownloadQualityDialog = false
                             },
                             shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                             border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
                             shadowElevation = if (isSelected) 3.dp else 0.dp,
                             modifier = Modifier.fillMaxWidth(),
@@ -3044,7 +3034,7 @@ fun SettingsScreen(
                                         Spacer(Modifier.width(8.dp))
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest,
                                         ) {
                                             Text(
                                                 badge,
@@ -3167,7 +3157,7 @@ fun SettingsScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (detail.checked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                color = if (detail.checked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest,
                                 modifier = Modifier.size(44.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -3259,8 +3249,8 @@ private fun SectionLabel(text: String) {
 private fun IconBadge(icon: ImageVector, container: Color, tint: Color, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(44.dp)
-            .clip(IconBadgeShape)
+            .size(46.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(container),
         contentAlignment = Alignment.Center,
     ) {
@@ -3272,8 +3262,8 @@ private fun IconBadge(icon: ImageVector, container: Color, tint: Color, modifier
 private fun IconBadge(painter: Painter, container: Color, tint: Color, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(44.dp)
-            .clip(IconBadgeShape)
+            .size(46.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(container),
         contentAlignment = Alignment.Center,
     ) {
@@ -3293,7 +3283,7 @@ private fun ThemeModeSelectorCard(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -3372,7 +3362,7 @@ private fun SettingsToggleCard(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -3464,7 +3454,7 @@ private fun SettingsToggleCard(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -3549,7 +3539,7 @@ private fun AutomixBarsRow(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -3626,7 +3616,7 @@ private fun CrossfadeDurationRow(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -3715,7 +3705,7 @@ private fun SettingsActionCard(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         interactionSource = interactionSource,
@@ -4032,7 +4022,7 @@ private fun YouTubeAccountRow(
     Card(
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -4097,7 +4087,7 @@ private fun SpotifyAccountRow(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -4192,7 +4182,7 @@ private fun LastFmIntegrationCard(
     Card(
         shape = CardOuterShape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
@@ -5506,7 +5496,7 @@ private fun EqNativeSlider(
                     .shadow(if (isDragging) 8.dp else 3.dp, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
                     .background(
-                        if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -5677,7 +5667,7 @@ private fun YouTubeChannelSheet(
                                     if (!isSelected) onSelect(channel)
                                 },
                                 shape = RoundedCornerShape(16.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerLow,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Row(
@@ -5810,7 +5800,7 @@ private fun YouTubeLibraryVisibilitySheet(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isShown) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest),
+                                        .background(if (isShown) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
@@ -5951,7 +5941,7 @@ private fun SyncPlaylistsSheet(
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(
-                                            if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+                                            if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLowest
                                         ),
                                     contentAlignment = Alignment.Center,
                                 ) {
