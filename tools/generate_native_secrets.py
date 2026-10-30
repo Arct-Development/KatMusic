@@ -72,7 +72,7 @@ if not ADDON_CLIENT_SECRET:
 
 def derive_keystream(cert_sha256_hex: str, salt: bytes, length: int) -> bytes:
     if not cert_sha256_hex or "PLACEHOLDER" in cert_sha256_hex:
-        key_bytes = hashlib.sha256(b"LASTWAVE_DEV_FALLBACK_KEY").digest()
+        key_bytes = hashlib.sha256(b"KAT_DEV_FALLBACK_KEY").digest()
     else:
         try:
             key_bytes = bytes.fromhex(cert_sha256_hex)

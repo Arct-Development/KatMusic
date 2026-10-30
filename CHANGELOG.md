@@ -17,8 +17,8 @@ All notable changes to KatMusic are documented here. The format follows
   is gone: screens now open on a plain top bar painted in the background colour, with the
   status bar padded out and no panel, rounding or glass. Search uses the same flat bar
 - Settings reordered around what people open it for: **Playback & UI** first (Audio, then
-  Appearance, then Library), then **Services** (YouTube, Spotify, Last.fm, and the module
-  manager last), then **System & About**
+  Appearance, then Library), then **Services** (YouTube, Spotify, then Last.fm), then
+  **System & About**
 - Typography moved to Figtree with weight-only axes, so the bold-font toggle keeps working
   and heading tracking no longer silently falls back to body weight
 
