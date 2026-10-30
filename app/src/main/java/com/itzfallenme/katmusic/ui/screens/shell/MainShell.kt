@@ -190,8 +190,8 @@ class MainShellViewModel @Inject constructor(
 
 private enum class MainTab(val labelRes: Int) {
     FEED(com.itzfallenme.katmusic.R.string.nav_feed),
+    LIBRARY(com.itzfallenme.katmusic.R.string.nav_library),
     STATS(com.itzfallenme.katmusic.R.string.nav_stats),
-    PLAYLISTS(com.itzfallenme.katmusic.R.string.nav_playlists),
 }
 
 /** Shared with any screen hosted inside [MainShell] so their scrolling
@@ -403,7 +403,7 @@ fun MainShell(
                         onOpenFriends = onOpenFriends,
                         onOpenDownloads = onOpenDownloads,
                     )
-                    MainTab.PLAYLISTS -> PlaylistScreen(
+                    MainTab.LIBRARY -> PlaylistScreen(
                         onOpenPlaylist = onOpenPlaylist,
                         onOpenGenerator = onOpenGenerator,
                     )
@@ -558,14 +558,14 @@ private fun FloatingNavBar(
     onOpenGenerator: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val liquidGlass = LocalLiquidGlass.current
+    val liquidGlass = true // Keep the main dock in liquid-glass style.
     val md3NavBar = LocalMd3NavBar.current
     val glassHoverIndex = remember(liquidGlass) { mutableStateOf<Int?>(null) }
     val glassNavBounds = remember { mutableStateMapOf<Int, Rect>() }
     val dockInteraction = remember { MutableInteractionSource() }
     val fabInteraction = remember { MutableInteractionSource() }
     
-    if (!md3NavBar) {
+    if (false) { // Always use the floating liquid-glass pill dock.
         val navContainerColor = liquidGlassContainerColor(
             MaterialTheme.colorScheme.surfaceContainer,
             enabled = liquidGlass,
@@ -839,8 +839,8 @@ private fun FloatingNavItem(
 
 private fun MainTab.icon(): ImageVector = when (this) {
     MainTab.FEED -> Icons.Filled.Home
+    MainTab.LIBRARY -> Icons.AutoMirrored.Filled.QueueMusic
     MainTab.STATS -> Icons.Filled.Leaderboard
-    MainTab.PLAYLISTS -> Icons.AutoMirrored.Filled.QueueMusic
 }
 
 @Composable
