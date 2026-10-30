@@ -34,8 +34,8 @@ enum class ThemeMode(val storageValue: String) {
 
 data class ThemePrefs(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val accentColor: String = "#E03030",
-    val accentLight: String = "#FF6060",
+    val accentColor: String = "#C9FB00",
+    val accentLight: String = "#E0FE5B",
     val accentMode: AccentMode = AccentMode.MANUAL,
     val amoled: Boolean = false,
     /** iOS-style liquid-glass materials. Enabled by default. */
@@ -45,7 +45,7 @@ data class ThemePrefs(
     /** Whether bottom navigation tabs are completely hidden. */
     val hideNavTabs: Boolean = false,
     /** Dedicated KatMusic Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
-    val katMusicTheme: Boolean = false,
+    val katMusicTheme: Boolean = true,
 )
 
 @Singleton
