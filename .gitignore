@@ -97,4 +97,6 @@ build_log.txt
 .glance_core/
 .glance_temp/
 Android-16.0*.png
-freebuff-chat-*.md
+
+# Release signing config (never commit)
+keystore.properties
