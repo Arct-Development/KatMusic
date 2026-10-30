@@ -290,6 +290,30 @@ fun KatMusicNavHost(
             )
         }
 
+        // Settings is a pushed destination on the root NavController.
+        // It must be registered here before MainShell's Settings action can navigate to it.
+        composable(Screen.Settings.route) {
+            BackAwareScreen(onBack = { navController.popBackStack() }) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onLoggedOut = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.MainShell.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenDownloads = { navController.navigate(Screen.Downloads.route) },
+                    onOpenHomeSections = { navController.navigate(Screen.HomeSections.route) },
+                    onOpenExcludedSongs = { navController.navigate(Screen.ExcludedSongs.route) },
+                    onOpenYouTubeImport = { navController.navigate(Screen.YouTubeImport.route) },
+                    onOpenYouTubeLogin = { navController.navigate(Screen.YouTubeLogin.route) },
+                    onOpenExternalImport = { navController.navigate(Screen.ExternalPlaylistImport.route) },
+                    onOpenSpotifyLogin = { navController.navigate(Screen.SpotifyLogin.route) },
+                    onOpenSpotifyTokenImport = { navController.navigate(Screen.SpotifyTokenImport.route) },
+                )
+            }
+        }
+
         composable(Screen.Create.route) {
             BackAwareScreen(onBack = { navController.popBackStack() }) {
                 com.itzfallenme.katmusic.ui.screens.generate.GenerateScreen(
