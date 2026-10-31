@@ -2,6 +2,8 @@ package com.itzfallenme.katmusic.ui.screens.player.lyricsshare
 
 import android.graphics.Bitmap
 
+enum class LyricCardStyle { Minimal, Neon, Paper, Cover }
+
 enum class CardMode {
     Song,
     Lyrics,
@@ -12,6 +14,7 @@ enum class CardMode {
  */
 data class ShareCardSpec(
     val mode: CardMode = CardMode.Song,
+    val lyricStyle: LyricCardStyle = LyricCardStyle.Minimal,
     val lines: List<ShareLine>,
     val title: String,
     val artist: String,
