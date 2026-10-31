@@ -82,6 +82,8 @@ fun SharePreviewScreen(
     artworkResolution: ArtworkResolution,
     swatches: List<ColorSwatch>,
     selectedMode: CardMode,
+    selectedLyricStyle: LyricCardStyle,
+    onLyricStyleChange: (LyricCardStyle) -> Unit,
     onModeChange: (CardMode) -> Unit,
     selectedSwatchColor: Int,
     onSwatchChange: (Int) -> Unit,
@@ -103,6 +105,7 @@ fun SharePreviewScreen(
     // Build specification for renderer
     val spec = remember(
         selectedMode,
+        selectedLyricStyle,
         selectedLines,
         snapshot.trackInfo,
         artworkResolution,
@@ -113,6 +116,7 @@ fun SharePreviewScreen(
         val hasRtl = selectedLines.any { it.isRtl }
         ShareCardSpec(
             mode = selectedMode,
+            lyricStyle = selectedLyricStyle,
             lines = selectedLines,
             title = snapshot.trackInfo.title,
             artist = snapshot.trackInfo.artist,
@@ -311,6 +315,37 @@ fun SharePreviewScreen(
                     selected = selectedMode == CardMode.Lyrics,
                     onClick = { onModeChange(CardMode.Lyrics) },
                 )
+            }
+
+            if (selectedMode == CardMode.Lyrics) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items(LyricCardStyle.entries, key = { it.name }) { style ->
+                        val selected = selectedLyricStyle == style
+                        Surface(
+                            shape = CircleShape,
+                            color = if (selected) Color.White else Color.White.copy(alpha = 0.10f),
+                            modifier = Modifier.clickable { onLyricStyleChange(style) },
+                        ) {
+                            Text(
+                                text = when (style) {
+                                    LyricCardStyle.Minimal -> "Minimal"
+                                    LyricCardStyle.Neon -> "Neon"
+                                    LyricCardStyle.Paper -> "Paper"
+                                    LyricCardStyle.Cover -> "Cover"
+                                },
+                                color = if (selected) Color(0xFF17131E) else Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                            )
+                        }
+                    }
+                }
             }
 
             val displaySwatches = remember(swatches, selectedMode, artworkResolution.coverBitmap) {
