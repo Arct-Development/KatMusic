@@ -69,7 +69,7 @@ class FeedViewModelDiscoveryTest {
     }
 
     @Test
-    fun loadDiscovery_populatesDiscoveryTracks() = runBlocking {
+    fun loadDiscovery_populatesDiscoveryTracks(): Unit = runBlocking {
         val mockTrack = GeneratedTrack("Discovery Song", "Discovery Artist", "https://artwork.url")
         coEvery { discoverRepository.allowedCachedFeed() } returns listOf(mockTrack)
 
