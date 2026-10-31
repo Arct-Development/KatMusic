@@ -20,8 +20,11 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -66,7 +69,7 @@ class FeedViewModelDiscoveryTest {
     }
 
     @Test
-    fun loadDiscovery_populatesDiscoveryTracks() {
+    fun loadDiscovery_populatesDiscoveryTracks() = runBlocking {
         val mockTrack = GeneratedTrack("Discovery Song", "Discovery Artist", "https://artwork.url")
         coEvery { discoverRepository.allowedCachedFeed() } returns listOf(mockTrack)
 
@@ -84,7 +87,10 @@ class FeedViewModelDiscoveryTest {
             genresRepository,
         )
 
-        assertThat(viewModel.discoveryTracks.value).containsExactly(mockTrack)
+        val tracks = withTimeout(5_000) {
+            viewModel.discoveryTracks.first { it.isNotEmpty() }
+        }
+        assertThat(tracks).containsExactly(mockTrack)
     }
 
     @Test
