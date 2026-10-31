@@ -331,39 +331,52 @@ object ShareCardRenderer {
         scale: Float,
         plan: LayoutPlan,
     ) {
-        // 1. Background
-        if (spec.isCoverBackground && spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
-            // Full-bleed center-cropped cover art with ~50% dark scrim + gradient protection
+        // 1. Style-specific background with contrast-safe foreground palette.
+        val styleColors = when (spec.lyricStyle) {
+            LyricCardStyle.Paper -> ColorContrastHelper.deriveTextColors(0xFFF3E8D8.toInt())
+            LyricCardStyle.Neon -> ColorContrastHelper.deriveTextColors(0xFF090D25.toInt())
+            LyricCardStyle.Cover -> ColorContrastHelper.deriveTextColors(spec.swatchColor, isCoverScrim = true)
+            LyricCardStyle.Minimal -> spec.derivedColors
+        }
+        if (spec.lyricStyle == LyricCardStyle.Cover && spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
             drawCenterCropCover(canvas, spec.coverBitmap, width, height)
-            canvas.drawColor(0x80000000.toInt()) // ~50% black scrim
-
-            val scrimGrad = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(
-                    0f, 0f, 0f, height.toFloat(),
-                    intArrayOf(0x66000000, 0x10000000, 0x88000000.toInt()),
-                    floatArrayOf(0.0f, 0.40f, 1.0f),
-                    Shader.TileMode.CLAMP,
-                )
+            canvas.drawColor(0x99000000.toInt())
+            val overlay = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(0f, 0f, 0f, height.toFloat(),
+                    intArrayOf(0x44000000, 0x22000000, 0xCC000000.toInt()),
+                    floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
             }
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrimGrad)
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlay)
         } else {
-            // Rich flat / subtle same-hue gradient (YT style - no muddy blur)
-            val topColor = spec.derivedColors.backgroundColor or 0xFF000000.toInt()
-            val hsv = FloatArray(3)
-            AndroidColor.colorToHSV(topColor, hsv)
-            hsv[2] = (hsv[2] * 0.82f).coerceAtLeast(0.08f) // slightly deeper shade at bottom
-            val bottomColor = AndroidColor.HSVToColor(0xFF, hsv) or 0xFF000000.toInt()
-
-            canvas.drawColor(topColor) // Explicit opaque fill
+            val base = when (spec.lyricStyle) {
+                LyricCardStyle.Paper -> 0xFFF3E8D8.toInt()
+                LyricCardStyle.Neon -> 0xFF090D25.toInt()
+                else -> styleColors.backgroundColor or 0xFF000000.toInt()
+            }
+            val end = when (spec.lyricStyle) {
+                LyricCardStyle.Paper -> 0xFFE6D5C0.toInt()
+                LyricCardStyle.Neon -> 0xFF25104D.toInt()
+                else -> {
+                    val hsv = FloatArray(3)
+                    AndroidColor.colorToHSV(base, hsv)
+                    hsv[2] = (hsv[2] * 0.82f).coerceAtLeast(0.08f)
+                    AndroidColor.HSVToColor(0xFF, hsv)
+                }
+            }
+            canvas.drawColor(base)
             val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(
-                    0f, 0f, 0f, height.toFloat(),
-                    intArrayOf(topColor, bottomColor),
-                    null,
-                    Shader.TileMode.CLAMP,
-                )
+                shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(),
+                    intArrayOf(base, end), null, Shader.TileMode.CLAMP)
             }
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+            if (spec.lyricStyle == LyricCardStyle.Neon) {
+                val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = spec.swatchColor
+                    alpha = 34
+                    maskFilter = android.graphics.BlurMaskFilter(90f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                }
+                canvas.drawCircle(width * 0.82f, height * 0.20f, width * 0.28f, glow)
+            }
         }
 
         var currentY = (60 * scale)
@@ -384,7 +397,7 @@ object ShareCardRenderer {
                 color = AndroidColor.argb(40, 255, 255, 255)
             }
             canvas.drawRoundRect(thumbRect, thumbRadius, thumbRadius, thumbBgPaint)
-            drawLogoMark(canvas, context, thumbRect.centerX(), thumbRect.centerY(), (48 * scale).roundToInt(), spec.derivedColors.lyricsTextColor)
+            drawLogoMark(canvas, context, thumbRect.centerX(), thumbRect.centerY(), (48 * scale).roundToInt(), styleColors.lyricsTextColor)
         }
 
         // Title and Artist alongside thumbnail
@@ -410,7 +423,7 @@ object ShareCardRenderer {
 
         // 3. Thin divider line
         val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = spec.derivedColors.dividerColor
+            color = styleColors.dividerColor
             strokeWidth = 2f * scale
         }
         canvas.drawLine(hPadding.toFloat(), currentY, (width - hPadding).toFloat(), currentY, dividerPaint)
@@ -435,7 +448,7 @@ object ShareCardRenderer {
         }
 
         // 5. Brand footer: bottom-left aligned to hPadding!
-        drawBrandFooterLeft(canvas, context, hPadding, height, scale, spec.derivedColors.brandTextColor)
+        drawBrandFooterLeft(canvas, context, hPadding, height, scale, styleColors.brandTextColor)
     }
 
     // ==========================================
