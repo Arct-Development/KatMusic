@@ -1,3 +1,12 @@
+/*
+ * Adapted portions of the Poster, Timeline and expressive title player styles from Mochy Music.
+ * Original project: https://github.com/InlitX/Mochy-Music
+ * Original style sources and GPL-3.0 license: third_party/Mochy-Music/
+ *
+ * Modified for KatMusic on 2026-10-31: player controls, track metadata, lyrics state and seeking
+ * are connected to KatMusic's MusicPlayer and LyricsUiState APIs. This adapted file is licensed
+ * under GNU GPL v3.0; see the repository LICENSE file.
+ */
 package com.itzfallenme.katmusic.ui.screens.player
 
 import androidx.compose.animation.AnimatedContent
