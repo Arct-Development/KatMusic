@@ -55,6 +55,8 @@ class SongPlayStatsRepository @Inject constructor(
         )
     }
 
+    suspend fun allStats(): List<SongPlayStatsEntity> = dao.getAll()
+
     suspend fun mostPlayedSince(days: Int = 30, limit: Int = 100): List<SongPlayStatsEntity> =
         dao.mostPlayedSince(System.currentTimeMillis() - days * 86_400_000L, limit)
 
