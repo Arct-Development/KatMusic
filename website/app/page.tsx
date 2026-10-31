@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  ArrowDownRight, ArrowRight, ArrowUpRight, AudioLines, Check, ChevronDown,
-  ChevronLeft, ChevronRight, Download, Github, Heart, ListMusic,
-  Mic2, Music2, Pause, Radio, Repeat2, ShieldCheck, SlidersHorizontal,
-  Sparkles, Waves, X,
+  ArrowDown, ArrowRight, ArrowUpRight, AudioLines, Check, ChevronDown,
+  Download, Github, Headphones, Heart, Menu, Mic2, Music2, Radio,
+  ShieldCheck, SlidersHorizontal, Sparkles, Waves, X,
 } from "lucide-react";
 import {
   RELEASES_PAGE, REPO_PAGE, fetchReleases, formatBytes, formatDate, isApk,
@@ -14,74 +13,78 @@ import {
 } from "@/lib/releases";
 
 type Screen = "library" | "player" | "lyrics" | "audio";
+const SCREENS: { id: Screen; name: string; note: string }[] = [
+  { id: "library", name: "Library", note: "Your music, collected in one place." },
+  { id: "player", name: "Player", note: "Playback controls without the clutter." },
+  { id: "lyrics", name: "Lyrics", note: "Timed lyrics with translation and adjustment." },
+  { id: "audio", name: "Audio", note: "Equalisation and output controls." },
+];
 
-function MiniArtwork({ kind = "sunset" }: { kind?: string }) {
-  return <div className={"mini-artwork art-" + kind}><span className="art-sun"/><span className="art-ring"/><span className="art-label">KAT / FM</span></div>;
+function Artwork({ variant = "blue" }: { variant?: string }) {
+  return <div className={"preview-artwork " + variant}><span className="artwork-shape"/><span className="artwork-caption">KAT / MUSIC</span></div>;
 }
 
 function PhoneScreen({ screen }: { screen: Screen }) {
-  return <div className="device-screen">
-    <div className="device-island"/><div className="device-status"><span>9:41</span><span>◔ ◔ ▰</span></div>
+  return <div className="phone-screen">
+    <div className="phone-status"><span>9:41</span><span>◔ ◔ ▰</span></div>
     {screen === "library" && <>
-      <div className="app-topbar"><span className="app-wordmark">kat<span>music</span></span><span className="app-avatar">V</span></div>
-      <p className="app-overline">MONDAY, 26 OCTOBER</p><h3 className="app-greeting">Find your<br/>next favourite.</h3>
-      <div className="app-search">⌕ <span>Search songs, artists, albums</span></div>
-      <div className="app-row-title"><b>Made for your mood</b><span>SEE ALL</span></div>
-      <div className="app-mix-grid"><div className="mix-tile mix-a"><span>✳</span><b>Late night<br/>drive</b></div><div className="mix-tile mix-b"><span>◉</span><b>Soft focus<br/>hours</b></div></div>
-      <div className="app-row-title"><b>Recently played</b><span>•••</span></div>
-      {["After Hours","Nights","Space Song"].map((name,i)=><div className="app-song" key={name}><span className={"song-cover cover-" + i}>{["✳","◒","✦"][i]}</span><span><b>{name}</b><small>{["The Weeknd","Frank Ocean","Beach House"][i]}</small></span><span className="song-more">•••</span></div>)}
-      <div className="app-now-playing"><span className="now-cover">✳</span><span><b>After Hours</b><small>The Weeknd</small></span><Pause size={13}/></div>
-      <div className="app-bottom-nav"><span>⌂</span><span>⌕</span><span>◉</span><span>☷</span></div>
+      <div className="phone-appbar"><Image src="/katmusic_logo.svg" alt="" width={25} height={25}/><b>Library</b><span>•••</span></div>
+      <p className="phone-kicker">YOUR COLLECTION</p><h3 className="phone-heading">Made for<br/>your listening.</h3>
+      <div className="phone-search">⌕ <span>Search your music</span></div>
+      <div className="phone-section-title">Your library <small>VIEW ALL</small></div>
+      <div className="phone-library-grid"><div><Artwork/><b>Liked songs</b><small>Playlist</small></div><div><Artwork variant="cyan"/><b>On repeat</b><small>Mix</small></div></div>
+      <div className="phone-row"><span className="phone-cover">♫</span><span><b>Recently played</b><small>Continue listening</small></span></div>
+      <div className="phone-row"><span className="phone-cover cyan">◖</span><span><b>Downloads</b><small>Available offline</small></span></div>
+      <div className="phone-bottom-nav"><span>⌂</span><span>⌕</span><span>◉</span><span>☷</span></div>
     </>}
     {screen === "player" && <>
-      <div className="app-player-top"><span>⌄</span><b>NOW PLAYING</b><span>•••</span></div>
-      <MiniArtwork/>
-      <div className="app-track-heading"><div><h3>Midnight City</h3><p>M83 · Hurry Up, We&apos;re Dreaming</p></div><Heart size={18}/></div>
-      <div className="app-scrubber"><i/><div><span>2:18</span><span>4:03</span></div></div>
-      <div className="app-controls"><Repeat2 size={16}/><ChevronLeft size={24}/><span><Pause size={18} fill="currentColor"/></span><ChevronRight size={24}/><ListMusic size={17}/></div>
-      <div className="app-audio-chip"><AudioLines size={16}/><span>Audio engine</span><b>ACTIVE</b></div>
-      <div className="app-up-next"><span>UP NEXT</span><b>Wait · M83</b><small>Outro · M83</small></div>
+      <div className="phone-playerbar"><span>⌄</span><b>NOW PLAYING</b><span>•••</span></div>
+      <Artwork/>
+      <div className="phone-track"><div><h3>Now playing</h3><p>Your current track</p></div><Heart size={17}/></div>
+      <div className="phone-progress"><i/></div><div className="phone-time"><span>1:24</span><span>4:02</span></div>
+      <div className="phone-controls"><span>↻</span><span>◀</span><b>Ⅱ</b><span>▶</span><span>☷</span></div>
+      <div className="phone-audio-status"><AudioLines size={14}/> AUDIO ENGINE <b>READY</b></div>
+      <div className="phone-upnext"><small>UP NEXT</small><b>Queue and playback</b></div>
     </>}
     {screen === "lyrics" && <>
-      <div className="app-player-top"><span>⌄</span><b>LYRICS</b><span>•••</span></div>
-      <div className="lyrics-art"><div className="lyrics-disc">✳</div></div>
-      <div className="lyrics-track"><b>Space Song</b><span>Beach House</span></div>
-      <div className="lyrics-copy"><p>Fall back into place</p><p>It was late at night</p><h3>You held on tight</h3><p>From an empty seat</p><p>A flash of light</p></div>
-      <div className="lyrics-actions"><span>文&nbsp; Translate</span><span>◉&nbsp; Timing</span></div>
-      <div className="lyrics-mini-progress"><i/></div>
+      <div className="phone-playerbar"><span>⌄</span><b>LYRICS</b><span>•••</span></div>
+      <Artwork variant="violet"/>
+      <div className="phone-track"><div><h3>Synced lyrics</h3><p>Line and word timing</p></div></div>
+      <div className="phone-lyric-lines"><span>Lyrics follow the music</span><b>Current line highlight</b><span>Translation and romanisation</span><span>Timing adjustment</span></div>
+      <div className="phone-lyric-tools"><span>文 Translate</span><span>◷ Timing</span></div>
     </>}
     {screen === "audio" && <>
-      <div className="app-player-top"><span>⌄</span><b>AUDIO LAB</b><span>•••</span></div>
-      <div className="audio-title"><span className="audio-icon"><SlidersHorizontal/></span><p>MAKE IT<br/><b>SOUND YOURS.</b></p></div>
-      <div className="audio-preset"><span>PRESET</span><b>Warm & wide <ChevronDown size={12}/></b></div>
-      <div className="eq-graph"><div/><div/><div/><div/><div/><div/><div/></div>
-      <div className="eq-labels"><span>60</span><span>150</span><span>400</span><span>1k</span><span>2.4k</span><span>6k</span><span>15k</span></div>
-      <div className="audio-toggle"><span><b>Parametric EQ</b><small>Fine tune every band</small></span><i>ON</i></div>
-      <div className="audio-toggle"><span><b>AutoEQ profile</b><small>Headphone correction</small></span><i>ON</i></div>
-      <div className="audio-footer"><Waves size={17}/><span>POWERED BY NATIVE AUDIO</span></div>
+      <div className="phone-playerbar"><span>⌄</span><b>AUDIO SETTINGS</b><span>•••</span></div>
+      <div className="phone-audio-heading"><SlidersHorizontal/><p>Shape your<br/><b>sound.</b></p></div>
+      <div className="phone-preset"><small>PRESET</small><b>Equaliser settings <ChevronDown size={12}/></b></div>
+      <div className="phone-eq">{[25,52,72,43,62,35,56].map((n,i)=><i key={i} style={{height:n+"%"}}/>)}</div>
+      <div className="phone-eq-labels"><span>60</span><span>150</span><span>400</span><span>1k</span><span>2.4k</span><span>6k</span><span>15k</span></div>
+      <div className="phone-setting"><b>Parametric EQ</b><span>ON</span></div><div className="phone-setting"><b>AutoEQ profiles</b><span>ON</span></div>
     </>}
   </div>;
 }
 
-const SCREENS: { id: Screen; name: string; caption: string }[] = [
-  { id:"library", name:"Your library", caption:"A home for every listening mood" },
-  { id:"player", name:"The player", caption:"A player that stays out of the way" },
-  { id:"lyrics", name:"Live lyrics", caption:"Follow every line as it happens" },
-  { id:"audio", name:"Audio lab", caption:"Shape the sound to your taste" },
-];
+function Phone({ screen, className = "" }: { screen: Screen; className?: string }) {
+  return <div className={"phone-frame " + className}><PhoneScreen screen={screen}/></div>;
+}
 
 const FEATURES = [
-  { icon:Radio, number:"01", eyebrow:"DISCOVER & PLAY", title:"The music universe.", copy:"Explore songs, albums, artists, playlists, mixes and podcasts from the YouTube Music catalogue. Keep your library and listening queue close." },
-  { icon:Mic2, number:"02", eyebrow:"LYRICS THAT MOVE", title:"In time with every word.", copy:"Line-synced and word-by-word karaoke lyrics, with translation, romanisation, text sizing and timing adjustment." },
-  { icon:AudioLines, number:"03", eyebrow:"NATIVE AUDIO", title:"Go deeper on sound.", copy:"A C++ audio engine built around Oboe, with parametric and graphic EQ, presets, AutoEQ headphone profiles and advanced output paths." },
-  { icon:Download, number:"04", eyebrow:"TAKE IT OFFLINE", title:"Your library, anywhere.", copy:"A visible download queue with progress, cancel and retry controls, plus Wi-Fi-only downloads that can resume when you're back online." },
-  { icon:Waves, number:"05", eyebrow:"AUTOMIX", title:"Let tracks flow.", copy:"Crossfade planning, BPM and phase analysis, and WSOLA time stretching help tracks blend into one continuous session." },
-  { icon:Sparkles, number:"06", eyebrow:"MAKE IT YOURS", title:"Six ways to listen.", copy:"Choose Classic, Poster, Timeline, Lyrics, Artwork or Canvas. Pair your player style with themes and artwork-derived colour." },
+  { icon: Radio, label: "Music & discovery", title: "A catalogue and a library.", copy: "Browse songs, albums, artists, playlists, mixes and podcasts. Keep liked music, listening history, local files and downloads close." },
+  { icon: Mic2, label: "Lyrics", title: "Follow every line.", copy: "Line- and word-synced karaoke lyrics, multiple providers, translation, romanisation, text sizing and timing offset." },
+  { icon: AudioLines, label: "Audio engine", title: "More control over sound.", copy: "A native C++ engine built around Oboe, with parametric and graphic EQ, presets, AutoEQ profiles and supported direct-output paths." },
+  { icon: Download, label: "Downloads", title: "A queue you can manage.", copy: "See transfer progress, cancel or retry items, and use Wi-Fi-only downloads that pause on mobile data and resume later." },
+  { icon: Waves, label: "Automix", title: "Transitions with intention.", copy: "Crossfade planning, BPM and phase analysis, and WSOLA time stretching help tracks move into one another." },
+  { icon: Sparkles, label: "Personalisation", title: "Make the interface yours.", copy: "Six expanded player styles, light, dark and pure-black themes, artwork-derived palettes, widgets and layout controls." },
 ];
 
-function Phone({ screen, className = "" }: { screen: Screen; className?: string }) {
-  return <div className={"device-frame " + className}><PhoneScreen screen={screen}/></div>;
-}
+const FAQ = [
+  ["Is KatMusic an official YouTube Music app?", "No. KatMusic is an independent, third-party Android project. It is not affiliated with, endorsed by or officially connected to Google or YouTube."],
+  ["Which Android versions are supported?", "The current release offers Android 10+ packages and a legacy package for Android 7–9. Some features and media controls use alternatives on older Android versions."],
+  ["Which APK should I install?", "The universal APK is the recommended option for most devices. The ARM64 package is for 64-bit ARM devices. Choose the legacy package only for Android 7–9."],
+  ["Does every audio feature work on every phone?", "No. Output modes, supported codecs and bit-perfect behaviour depend on the Android device, DAC, audio route and operating-system limits."],
+  ["Does KatMusic collect analytics?", "The project README states that KatMusic does not bundle an analytics or advertising-tracking SDK. Network requests are made to services required by the features you use."],
+  ["Can I inspect or contribute to the source?", "Yes. KatMusic is GPL-3.0 licensed. The source, issue tracker, contribution guide and release history are public on GitHub."],
+];
 
 export default function HomePage() {
   const [releases, setReleases] = useState<Release[] | null>(null);
@@ -89,108 +92,145 @@ export default function HomePage() {
   const [activeScreen, setActiveScreen] = useState<Screen>("player");
   const [selectedAsset, setSelectedAsset] = useState("universal");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    fetchReleases(8).then((data) => { if (alive) setReleases(data); }).catch(() => { if (alive) setReleaseError(true); });
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive:true });
-    return () => { alive = false; window.removeEventListener("scroll", onScroll); };
+    fetchReleases(8).then((data) => { if (alive) setReleases(data); })
+      .catch(() => { if (alive) setReleaseError(true); });
+    return () => { alive = false; };
   }, []);
 
   const latest = releases?.find((item) => !item.prerelease) ?? releases?.[0] ?? null;
   const apks = useMemo(() => latest?.assets.filter((asset) => isApk(asset.name)) ?? [], [latest]);
-  const selected = apks.find((asset) => asset.name.toLowerCase().includes(selectedAsset)) ?? apks.find((asset) => asset.name.toLowerCase().includes("universal") && !asset.name.toLowerCase().includes("uncompressed")) ?? apks.find((asset) => !asset.name.toLowerCase().includes("android7")) ?? apks[0];
-  const downloadHref = selected?.downloadUrl ?? RELEASES_PAGE;
+  const selected = apks.find((asset) => asset.name.toLowerCase().includes(selectedAsset)) ??
+    apks.find((asset) => asset.name.toLowerCase().includes("universal") && !asset.name.toLowerCase().includes("uncompressed")) ??
+    apks.find((asset) => !asset.name.toLowerCase().includes("android7")) ?? apks[0];
+  const checksum = latest?.assets.find((asset) => asset.name.toLowerCase().includes("sha256"));
+  const active = SCREENS.find((item) => item.id === activeScreen) ?? SCREENS[1];
 
   return <div className="kat-site">
-    <div className="site-grain"/>
-    <div className="ambient ambient-top"/><div className="ambient ambient-low"/>
-    <header className={"site-header " + (scrolled ? "is-scrolled" : "")}>
+    <header className="site-header">
       <div className="nav-wrap">
-        <a className="brand" href="#top"><Image src="/katmusic_logo.svg" alt="" width={32} height={32} priority/><span>katmusic<span className="brand-period">.</span></span></a>
+        <a className="brand" href="#top" aria-label="KatMusic home"><Image src="/katmusic_logo.svg" alt="" width={34} height={34} priority/><span>KatMusic</span></a>
         <nav className={menuOpen ? "nav-links nav-links-open" : "nav-links"}>
-          <a href="#experience" onClick={() => setMenuOpen(false)}>Experience</a>
           <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
-          <a href="#player-styles" onClick={() => setMenuOpen(false)}>Player styles</a>
-          <a href="#download" onClick={() => setMenuOpen(false)}>Download</a>
-          <a href={REPO_PAGE} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={13}/></a>
+          <a href="#experience" onClick={() => setMenuOpen(false)}>The app</a>
+          <a href="#install" onClick={() => setMenuOpen(false)}>Install</a>
+          <a href="#faq" onClick={() => setMenuOpen(false)}>FAQ</a>
+          <a href={REPO_PAGE} target="_blank" rel="noreferrer">Source <ArrowUpRight size={14}/></a>
         </nav>
-        <a className="nav-download" href="#download">Get KatMusic <ArrowUpRight size={14}/></a>
-        <button className="menu-toggle" aria-label="Toggle menu" onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? <X/> : <span>☰</span>}</button>
+        <a className="nav-cta" href="#download">Download <ArrowDown size={14}/></a>
+        <button className="menu-toggle" aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen((value) => !value)}>{menuOpen ? <X/> : <Menu/>}</button>
       </div>
     </header>
 
     <main id="top">
       <section className="hero">
         <div className="hero-copy">
-          <div className="hero-label"><span className="live-dot"/> A DIFFERENT KIND OF MUSIC APP</div>
-          <h1>Your music.<br/><em>Your universe.</em></h1>
-          <p className="hero-lede">A native Android experience for YouTube Music, built for people who care about how music sounds, feels and fits into their day.</p>
-          <div className="hero-ctas">
-            <a href="#download" className="cta-main"><Download size={17}/> Get KatMusic <ArrowUpRight size={16}/></a>
-            <a href="#experience" className="cta-secondary">Explore the experience <ArrowDownRight size={16}/></a>
+          <p className="eyebrow"><span/> AN ANDROID MUSIC PLAYER</p>
+          <h1>Music, with room<br/>to make it <em>yours.</em></h1>
+          <p className="hero-description">Streaming, your personal library and serious playback tools — brought together in one Android app.</p>
+          <div className="hero-actions">
+            <a className="button-primary" href="#download"><Download size={17}/> Download KatMusic <ArrowUpRight size={15}/></a>
+            <a className="text-link" href="#experience">Explore the app <ArrowDown size={15}/></a>
           </div>
-          <div className="hero-trust"><span><ShieldCheck size={15}/> Open source · GPL-3.0</span><i/><span><Music2 size={15}/> Android 7+ support</span></div>
-          <div className="hero-release"><span className="release-pulse"/> LATEST STABLE <b>{latest?.tag ?? "2.1.0"}</b><span className="hero-release-divider"/> BUILT WITH KOTLIN + C++</div>
+          <div className="hero-meta"><span><ShieldCheck size={15}/> GPL-3.0 open source</span><span>Android 7+</span><span>Kotlin · Compose · C++</span></div>
+          <div className="release-inline"><span className="release-dot"/><span>Latest stable</span><b>{latest?.tag ?? "2.1.0"}</b>{latest?.publishedAt && <time>{formatDate(latest.publishedAt)}</time>}</div>
         </div>
-        <div className="hero-stage">
-          <div className="hero-brand-orbit" aria-hidden="true"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><div className="hero-brand-mark"><Image src="/katmusic_logo.svg" alt="" width={220} height={220} priority/></div><span className="brand-spark spark-one"/><span className="brand-spark spark-two"/><span className="brand-spark spark-three"/></div>
-          <div className="stage-aura"/><div className="stage-ring stage-ring-a"/><div className="stage-ring stage-ring-b"/>
-          <div className="stage-label stage-label-top"><span>01 / 04</span> THE APP, IN MOTION</div>
-          <Phone screen="library" className="device-left"/>
-          <Phone screen="lyrics" className="device-right"/>
-          <Phone screen={activeScreen} className="device-main"/>
-          <div className="stage-float float-a"><span><AudioLines size={16}/></span><div><b>Native audio</b><small>Built around Oboe</small></div></div>
-          <div className="stage-float float-b"><span><Mic2 size={16}/></span><div><b>Word-sync lyrics</b><small>Every beat, every word</small></div></div>
-          <div className="stage-bottom"><span>PREVIEW THE INTERFACE</span><div className="screen-tabs">{SCREENS.map((item) => <button key={item.id} className={activeScreen === item.id ? "screen-tab active" : "screen-tab"} onClick={() => setActiveScreen(item.id)}>{item.name}</button>)}</div></div>
-        </div>
-        <div className="hero-scroll"><span>SCROLL TO EXPLORE</span><i/></div>
-      </section>
-
-      <section className="ticker" aria-label="KatMusic highlights"><div className="ticker-track"><span>YOUTUBE MUSIC</span><i>✳</i><span>WORD-SYNC LYRICS</span><i>✳</i><span>NATIVE AUDIO ENGINE</span><i>✳</i><span>OFFLINE DOWNLOADS</span><i>✳</i><span>AUTOMIX</span><i>✳</i><span>YOUR PLAYER, YOUR WAY</span><i>✳</i></div></section>
-
-      <section className="intro-section section-shell" id="experience">
-        <div className="section-index"><span>01</span><i/> THE EXPERIENCE</div>
-        <div className="intro-grid">
-          <h2>Built around<br/>the <em>feeling.</em></h2>
-          <div className="intro-copy"><p>KatMusic brings your streaming library, local music and serious playback tools into one carefully considered Android app.</p><p>Start with a song. Stay for the details. Whether you&apos;re digging into your sound profile or getting lost in a lyric, the experience stays yours.</p><a href="#features" className="underlined-link">See what makes it different <ArrowUpRight size={15}/></a></div>
-        </div>
-        <div className="experience-strip">
-          <div className="experience-tile tile-art"><div className="tile-artwork"><span>✳</span><b>LISTEN<br/>CLOSER.</b></div><small>01 — THE LITTLE DETAILS</small></div>
-          <div className="experience-tile tile-quote"><span className="quote-mark">“</span><p>Music is personal.<br/><em>Your player should be too.</em></p><small>MADE TO BE MADE YOURS</small></div>
-          <div className="experience-tile tile-stat"><span className="stat-symbol"><SlidersHorizontal size={24}/></span><strong>6</strong><b>distinct player styles</b><small>ONE APP. YOUR KIND OF FLOW.</small></div>
+        <div className="hero-visual">
+          <div className="hero-index">01 <span>/</span> PRODUCT PREVIEW</div>
+          <div className="phone-stage">
+            <Phone screen="library" className="phone-back phone-back-left"/>
+            <Phone screen="lyrics" className="phone-back phone-back-right"/>
+            <Phone screen={activeScreen} className="phone-front"/>
+            <span className="phone-orbit orbit-a"/><span className="phone-orbit orbit-b"/>
+          </div>
+          <div className="preview-caption"><span>INTERFACE STUDY</span><p>{active.note}</p><span className="preview-disclaimer">Illustrative UI preview · not app screenshots</span></div>
+          <div className="preview-tabs" aria-label="Choose interface preview">{SCREENS.map((screen) => <button key={screen.id} className={activeScreen === screen.id ? "preview-tab active" : "preview-tab"} onClick={() => setActiveScreen(screen.id)}>{screen.name}</button>)}</div>
         </div>
       </section>
 
-      <section className="features-section" id="features"><div className="section-shell">
-        <div className="section-index"><span>02</span><i/> MADE FOR THE WAY YOU LISTEN</div>
-        <div className="features-heading"><h2>Every layer<br/>has a <em>purpose.</em></h2><p>Not a list of buzzwords. Real tools for real listening — from discovery to the final fade-out.</p></div>
-        <div className="feature-grid">{FEATURES.map((feature) => <article className="feature-card" key={feature.number}><div className="feature-card-top"><span>{feature.number}</span><feature.icon size={21}/></div><p className="feature-eyebrow">{feature.eyebrow}</p><h3>{feature.title}</h3><p className="feature-copy">{feature.copy}</p><div className="feature-line"/></article>)}</div>
-      </div></section>
+      <div className="fact-strip"><span>YOUTUBE MUSIC CATALOGUE</span><i/><span>SYNCED LYRICS</span><i/><span>NATIVE AUDIO</span><i/><span>OFFLINE DOWNLOADS</span><i/><span>OPEN SOURCE</span></div>
 
-      <section className="player-styles section-shell" id="player-styles">
-        <div className="styles-copy"><div className="section-index"><span>03</span><i/> YOUR INTERFACE, YOUR RULES</div><h2>Six styles.<br/><em>Zero sameness.</em></h2><p>Choose the expanded player that matches your mood. Switch from full controls to artwork-led minimalism, or put the lyrics right in the spotlight.</p><div className="style-list"><div><span>01</span><b>Classic</b><small>Everything at hand</small></div><div><span>02</span><b>Poster</b><small>Artwork takes over</small></div><div><span>03</span><b>Timeline</b><small>Progress in focus</small></div><div><span>04</span><b>Lyrics</b><small>Words take the lead</small></div><div><span>05</span><b>Artwork</b><small>Clean and immersive</small></div><div><span>06</span><b>Canvas</b><small>Motion meets music</small></div></div></div>
-        <div className="styles-visual"><div className="styles-glow"/><div className="styles-orbit"/><Phone screen="player" className="styles-phone"/><div className="styles-caption"><Sparkles size={14}/> PICK A LOOK. MAKE IT YOURS.</div></div>
+      <section className="intro section-wrap" id="experience">
+        <div className="section-label"><span>01</span> THE IDEA</div>
+        <div className="intro-content"><h2>One place for<br/>the way you <em>listen.</em></h2><div><p>KatMusic combines a streaming catalogue with your own library and playback controls that go beyond the basics.</p><p>It is built with Kotlin and Jetpack Compose, with a native C++ audio engine for the parts that benefit from it.</p><a className="inline-link" href={REPO_PAGE + "/blob/main/readme.md"} target="_blank" rel="noreferrer">Read the project overview <ArrowUpRight size={14}/></a></div></div>
+        <div className="principles">
+          <article><span>01 / DISCOVER</span><Music2/><h3>Find something<br/>worth keeping.</h3><p>Songs, artists, albums, mixes, podcasts and local music.</p></article>
+          <article><span>02 / PERSONALISE</span><SlidersHorizontal/><h3>Set it up<br/>your way.</h3><p>Player styles, themes, artwork colours and lyric controls.</p></article>
+          <article><span>03 / LISTEN</span><Headphones/><h3>Stay with<br/>the music.</h3><p>Background playback, queue tools, downloads and audio controls.</p></article>
+        </div>
       </section>
 
-      <section className="download-section section-shell" id="download">
-        <div className="download-panel"><div className="download-copy"><div className="section-index"><span>04</span><i/> GET STARTED</div><h2>Make your<br/>phone <em>play.</em></h2><p>Get the latest stable build, choose the package for your device and settle into your next favourite listening setup.</p><div className="download-note"><ShieldCheck size={16}/><span>Open source under GPL-3.0. Source code and release history are public.</span></div><a href={REPO_PAGE} target="_blank" rel="noreferrer" className="source-link"><Github size={16}/> Browse the source code <ArrowUpRight size={14}/></a></div>
-          <div className="download-card"><div className="download-card-head"><div><span className="download-overline">LATEST STABLE RELEASE</span><h3>{latest?.tag ?? "2.1.0"}</h3><p>{latest ? formatDate(latest.publishedAt) : "Latest release"}</p></div><span className="stable-badge"><i/> STABLE</span></div>
-            <div className="download-select-wrap"><label htmlFor="apk-choice">CHOOSE YOUR DEVICE</label><select id="apk-choice" value={selectedAsset} onChange={(event) => setSelectedAsset(event.target.value)}><option value="universal">Universal APK · Recommended</option><option value="arm64-v8a">ARM64 APK · Android 10+</option><option value="android7">Legacy APK · Android 7–9</option></select><ChevronDown className="select-chevron" size={15}/></div>
-            <div className="download-file"><div className="file-icon"><Download size={17}/></div><div><b>{selected?.name ?? "KatMusic APK"}</b><small>{selected ? formatBytes(selected.size) : "Release assets on GitHub"}</small></div><span className="file-check"><Check size={14}/></span></div>
-            <a className="download-button" href={downloadHref}><Download size={17}/> Download APK <ArrowUpRight size={16}/></a>
-            <a className="all-releases" href={RELEASES_PAGE}>View all releases <ArrowRight size={14}/></a>
-            {releaseError && <p className="download-error">Live release details couldn&apos;t load. You can still browse every build on GitHub.</p>}
-            <p className="install-footnote">Package availability and compatibility depend on your Android device.</p>
+      <section className="features section-wrap" id="features">
+        <div className="section-heading"><div><div className="section-label"><span>02</span> WHAT'S INSIDE</div><h2>Thoughtful tools.<br/><em>Real control.</em></h2></div><p>Specific features, not empty superlatives. Here is what the app actually includes.</p></div>
+        <div className="feature-list">{FEATURES.map((feature, index) => <article className="feature-row" key={feature.label}><span className="feature-number">0{index + 1}</span><feature.icon className="feature-icon" size={22}/><div className="feature-title"><small>{feature.label}</small><h3>{feature.title}</h3></div><p>{feature.copy}</p></article>)}</div>
+      </section>
+
+      <section className="player-section">
+        <div className="section-wrap player-layout">
+          <div className="player-copy"><div className="section-label"><span>03</span> PLAYER STYLES</div><h2>Six ways to<br/><em>see the music.</em></h2><p>Pick the expanded player layout that fits your listening. Change it in Settings → Playback &amp; UI → Player Style.</p><a className="inline-link" href={REPO_PAGE + "/blob/main/readme.md#player-styles"} target="_blank" rel="noreferrer">Compare all six styles <ArrowUpRight size={14}/></a></div>
+          <div className="style-table">
+            {[
+              ["01","Classic","Full player, tabs, queue and controls."],
+              ["02","Poster","Large circular artwork and expressive track text."],
+              ["03","Timeline","Progress-led layout with oversized timestamps."],
+              ["04","Lyrics","Lyrics-focused view with timed syllable highlighting."],
+              ["05","Artwork","Large album art and focused controls."],
+              ["06","Canvas","Immersive background using available Canvas artwork."],
+            ].map((item) => <div className="style-row" key={item[0]}><span>{item[0]}</span><b>{item[1]}</b><p>{item[2]}</p><ArrowUpRight size={14}/></div>)}
           </div>
         </div>
       </section>
 
-      <section className="closing-section"><div className="closing-orb"/><div className="section-index"><span>05</span><i/> BUILT IN THE OPEN</div><h2>Keep the music.<br/><em>Lose the limits.</em></h2><p>KatMusic is built in the open. Explore the code, follow development or help shape what comes next.</p><div className="closing-actions"><a href={REPO_PAGE} target="_blank" rel="noreferrer"><Github size={17}/> Explore on GitHub <ArrowUpRight size={15}/></a><a href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Report an issue <ArrowUpRight size={15}/></a></div></section>
+      <section className="install-section section-wrap" id="install">
+        <div className="section-label"><span>04</span> GETTING STARTED</div>
+        <div className="section-heading"><div><h2>Up and running<br/>in <em>three steps.</em></h2></div><p>Choose the package for your Android version, install it, then configure the services you want to use.</p></div>
+        <div className="install-steps">
+          <article><span>01</span><h3>Choose a build</h3><p>Use Universal for most devices. ARM64 is for 64-bit ARM phones. Legacy is for Android 7–9.</p></article>
+          <article><span>02</span><h3>Install the APK</h3><p>Open the downloaded package and follow Android's installation prompt.</p></article>
+          <article><span>03</span><h3>Set up KatMusic</h3><p>Launch the app and configure account access or optional integrations in Settings.</p></article>
+        </div>
+        <p className="install-caveat">Compatibility varies by device. Some output modes and advanced audio behaviours depend on your hardware and Android version.</p>
+      </section>
+
+      <section className="download-section section-wrap" id="download">
+        <div className="download-main">
+          <div className="download-copy"><div className="section-label"><span>05</span> DOWNLOAD</div><h2>Your next<br/>listening setup.</h2><p>Get the latest stable release directly from the project. No third-party APK mirrors.</p><div className="download-proof"><ShieldCheck size={17}/><span>Public GitHub release · GPL-3.0 source</span></div></div>
+          <div className="release-card">
+            <div className="release-card-top"><div><span className="micro-label">LATEST STABLE RELEASE</span><h3>{latest?.tag ?? "2.1.0"}</h3><p>{latest ? formatDate(latest.publishedAt) : "Release details load from GitHub"}</p></div><Image src="/katmusic_logo.svg" alt="" width={52} height={52}/></div>
+            <label htmlFor="apk-choice">INSTALL PACKAGE</label>
+            <div className="select-wrap"><select id="apk-choice" value={selectedAsset} onChange={(event) => setSelectedAsset(event.target.value)}><option value="universal">Universal · Recommended</option><option value="arm64-v8a">ARM64 · Android 10+</option><option value="android7">Legacy · Android 7–9</option></select><ChevronDown size={16}/></div>
+            <div className="asset-info"><div><b>{selected?.name ?? "APK package"}</b><small>{selected ? formatBytes(selected.size) : "Open GitHub releases to choose a build"}</small></div><Check size={17}/></div>
+            <a className="button-primary download-button" href={selected?.downloadUrl ?? RELEASES_PAGE}><Download size={17}/> Download APK <ArrowUpRight size={15}/></a>
+            <div className="release-links"><a href={latest?.htmlUrl ?? RELEASES_PAGE} target="_blank" rel="noreferrer">Release notes <ArrowUpRight size={13}/></a>{checksum && <a href={checksum.downloadUrl}>SHA-256 checksum <ArrowUpRight size={13}/></a>}<a href={RELEASES_PAGE} target="_blank" rel="noreferrer">All versions <ArrowUpRight size={13}/></a></div>
+            {releaseError && <p className="release-error">GitHub release details could not load. The releases page is still available.</p>}
+          </div>
+        </div>
+      </section>
+
+      <section className="technical section-wrap">
+        <div className="section-label"><span>06</span> UNDER THE HOOD</div>
+        <div className="section-heading"><div><h2>Built with<br/><em>purpose.</em></h2></div><p>A native Android app with a clear technology stack. Explore the source to see how each part fits together.</p></div>
+        <div className="tech-grid">
+          <div><small>APP</small><b>Kotlin</b><span>Jetpack Compose · Material 3</span></div>
+          <div><small>PLAYBACK</small><b>Media3</b><span>Media sessions · background playback</span></div>
+          <div><small>AUDIO</small><b>C++ / Oboe</b><span>Native processing · DSP</span></div>
+          <div><small>DATA</small><b>Room / DataStore</b><span>Local persistence · app state</span></div>
+        </div>
+        <div className="technical-note"><ShieldCheck size={17}/><p>KatMusic does not bundle an analytics or advertising-tracking SDK, according to its project documentation. Optional integrations are controlled by your settings.</p></div>
+      </section>
+
+      <section className="faq-section section-wrap" id="faq">
+        <div className="section-heading"><div><div className="section-label"><span>07</span> GOOD TO KNOW</div><h2>Questions, <em>answered.</em></h2></div><a className="inline-link" href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Ask on GitHub <ArrowUpRight size={14}/></a></div>
+        <div className="faq-list">{FAQ.map((item, index) => <details key={item[0]} className="faq-item"><summary><span>{String(index + 1).padStart(2,"0")}</span><b>{item[0]}</b><i>+</i></summary><p>{item[1]}</p></details>)}</div>
+      </section>
+
+      <section className="open-source">
+        <div className="open-source-inner"><Image src="/katmusic_logo.svg" alt="" width={66} height={66}/><div><span className="micro-label">BUILT IN THE OPEN</span><h2>Good music.<br/><em>Open source.</em></h2><p>Read the code, follow development, report a bug or contribute a feature.</p></div><div className="open-source-actions"><a className="button-primary" href={REPO_PAGE} target="_blank" rel="noreferrer"><Github size={17}/> View source <ArrowUpRight size={15}/></a><a className="text-link" href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Issues and feedback <ArrowUpRight size={14}/></a></div></div>
+      </section>
     </main>
-    <footer className="site-footer"><div className="footer-brand"><a className="brand" href="#top"><Image src="/katmusic_logo.svg" alt="" width={26} height={26}/><span>katmusic<span className="brand-period">.</span></span></a><p>A little more feeling in every play.</p></div><div className="footer-links"><a href="#features">Features</a><a href={RELEASES_PAGE}>Releases</a><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>GPL-3.0</a></div><span className="footer-copy">© {new Date().getFullYear()} ItzFallenMe</span></footer>
+
+    <footer className="site-footer"><a className="brand" href="#top"><Image src="/katmusic_logo.svg" alt="" width={28} height={28}/><span>KatMusic</span></a><p>Independent Android music player · GPL-3.0</p><div><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/CHANGELOG.md"}>Changelog</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>License</a></div><span className="copyright">© {new Date().getFullYear()} ItzFallenMe</span></footer>
   </div>;
 }
