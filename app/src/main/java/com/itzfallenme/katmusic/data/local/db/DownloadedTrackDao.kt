@@ -25,6 +25,9 @@ interface DownloadedTrackDao {
     @Query("SELECT * FROM downloaded_tracks WHERE id = :id LIMIT 1")
     suspend fun findById(id: Long): DownloadedTrackEntity?
 
+    @Query("""UPDATE downloaded_tracks SET syncedLyrics = :syncedLyrics, plainLyrics = :plainLyrics, hasLyrics = 1 WHERE LOWER(title) = LOWER(:title) AND LOWER(artist) = LOWER(:artist)""")
+    suspend fun saveLyrics(title: String, artist: String, syncedLyrics: String?, plainLyrics: String?): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(track: DownloadedTrackEntity): Long
 
