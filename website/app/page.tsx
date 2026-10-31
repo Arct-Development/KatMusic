@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, AudioLines, Check, ChevronDown,
-  ChevronLeft, ChevronRight, Download, Github, Headphones, Heart, ListMusic,
-  Mic2, Music2, Pause, Play, Radio, Repeat2, ShieldCheck, SlidersHorizontal,
-  Sparkles, Waves, X, Zap,
+  ChevronLeft, ChevronRight, Download, Github, Heart, ListMusic,
+  Mic2, Music2, Pause, Radio, Repeat2, ShieldCheck, SlidersHorizontal,
+  Sparkles, Waves, X,
 } from "lucide-react";
 import {
   RELEASES_PAGE, REPO_PAGE, fetchReleases, formatBytes, formatDate, isApk,
