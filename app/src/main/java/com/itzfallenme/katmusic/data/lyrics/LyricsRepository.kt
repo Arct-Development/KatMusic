@@ -119,6 +119,23 @@ class LyricsRepository @Inject constructor(
     private val downloadedTrackDao: dagger.Lazy<com.itzfallenme.katmusic.data.local.db.DownloadedTrackDao>,
 ) {
     private val cache = ConcurrentHashMap<String, LyricsResult>()
+
+    /** Persist fetched lyrics onto an existing download so the next lookup works offline. */
+    suspend fun saveOfflineLyrics(title: String, artist: String, result: LyricsResult.Success) {
+        val synced = if (result.isSynced && result.lines.isNotEmpty()) {
+            result.lines.joinToString("\\n") { line ->
+                val total = line.timeMs.coerceAtLeast(0)
+                val minutes = total / 60_000
+                val seconds = (total % 60_000) / 1_000
+                val hundredths = (total % 1_000) / 10
+                "[%02d:%02d.%02d]%s".format(minutes, seconds, hundredths, line.text)
+            }
+        } else null
+        val plain = result.plainLyrics?.takeIf { it.isNotBlank() }
+            ?: result.lines.joinToString("\\n") { it.text }.takeIf { it.isNotBlank() }
+        if (synced.isNullOrBlank() && plain.isNullOrBlank()) return
+        runCatching { downloadedTrackDao.get().saveLyrics(title, artist, synced, plain) }
+    }
     private val isrcCache = object : LinkedHashMap<String, String>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: Map.Entry<String, String>): Boolean = size > 128
     }
