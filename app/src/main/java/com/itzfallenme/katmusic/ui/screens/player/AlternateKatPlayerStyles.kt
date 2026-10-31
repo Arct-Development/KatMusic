@@ -38,13 +38,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 
 /** Independent presentation presets; playback remains owned by MusicPlayer. */
-enum class KatPlayerStyle(val label: String) {
-    DEFAULT("KatMusic"), POSTER("Poster"), TIMELINE("Timeline"),
-    LYRICS("Lyrics Stage"), IPOD("iPod"), VIDEO("Full Video");
+enum class KatPlayerStyle(val label: String, val description: String) {
+    DEFAULT("Classic", "The full KatMusic player with tabs, queue and advanced controls"),
+    ARTWORK("Artwork", "Large album art, clean track details and focused playback controls"),
+    LYRICS("Lyrics", "Put synchronized lyrics at the center of the player"),
+    VIDEO("Canvas", "Use animated Canvas artwork as an immersive background");
 
     companion object {
-        fun fromStored(value: String?): KatPlayerStyle = entries.firstOrNull { it.name == value } ?: DEFAULT
+        fun fromStored(value: String?): KatPlayerStyle = when (value) {
+            "POSTER" -> ARTWORK
+            "TIMELINE", "IPOD" -> DEFAULT
+            else -> entries.firstOrNull { it.name == value } ?: DEFAULT
+        }
     }
+}
+
+internal object KatPlayerStylePreferences {
+    const val FILE_NAME = "katmusic_player_style"
+    const val KEY_STYLE = "selected_style"
 }
 
 @Composable
@@ -87,9 +98,9 @@ internal fun AlternateKatPlayerScreen(
                 Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.24f), Color.Transparent, dark.copy(.96f)))))
-        } else if (style == KatPlayerStyle.POSTER) {
-            Artwork(track.artworkUrl, Modifier.fillMaxWidth().aspectRatio(1f), false)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, dark.copy(.25f), dark.copy(.96f), dark))))
+        } else if (style == KatPlayerStyle.ARTWORK) {
+            Artwork(track.artworkUrl, Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp), true)
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, dark.copy(.32f), dark.copy(.96f), dark))))
         }
 
         Column(
@@ -101,17 +112,11 @@ internal fun AlternateKatPlayerScreen(
                 Text(style.label.uppercase(), color = Color.White.copy(.78f), style = MaterialTheme.typography.labelMedium, letterSpacing = 2.sp)
                 Spacer(Modifier.size(48.dp))
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                KatPlayerStyle.entries.forEach { option ->
-                    FilterChip(selected = style == option, onClick = { onStyleSelected(option) }, label = { Text(option.label, maxLines = 1) })
-                }
-            }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
             AnimatedContent(targetState = style, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "player-style") { target ->
                 when (target) {
                     KatPlayerStyle.DEFAULT -> Unit
-                    KatPlayerStyle.POSTER -> PosterPresentation(track.artworkUrl)
-                    KatPlayerStyle.TIMELINE -> TimelinePresentation(progress, accent)
+                    KatPlayerStyle.ARTWORK -> ArtworkPresentation(track.artworkUrl)
                     KatPlayerStyle.LYRICS -> LyricsPresentation(
                         state = state,
                         player = player,
@@ -127,11 +132,11 @@ internal fun AlternateKatPlayerScreen(
                         onSelectLyricsProvider = onSelectLyricsProvider,
                         onTryAnotherLyricsSource = onTryAnotherLyricsSource,
                     )
-                    KatPlayerStyle.IPOD -> IpodPresentation(track.title, track.artist, track.album.orEmpty(), progress, accent)
                     KatPlayerStyle.VIDEO -> VideoPresentation(track.title, track.artist)
+                    KatPlayerStyle.DEFAULT -> Unit
                 }
             }
-            if (style != KatPlayerStyle.POSTER && style != KatPlayerStyle.VIDEO) {
+            if (style != KatPlayerStyle.VIDEO) {
                 Spacer(Modifier.height(18.dp))
                 Text(track.title, color = Color.White, fontSize = if (style == KatPlayerStyle.LYRICS) 30.sp else 23.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Color.White.copy(.66f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -172,90 +177,26 @@ internal fun AlternateKatPlayerScreen(
 }
 
 @Composable
-private fun PosterPresentation(artwork: String?) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Artwork(artwork, Modifier.fillMaxWidth().aspectRatio(.94f), true)
-        Spacer(Modifier.height(12.dp))
-        Text("NOW PLAYING", color = Color.White.copy(.62f), style = MaterialTheme.typography.labelSmall, letterSpacing = 3.sp)
-    }
-}
-
-@Composable
-private fun TimelinePresentation(progress: Float, accent: Color) {
-    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
-        Text("YOUR MOMENT IN MUSIC", color = Color.White.copy(.58f), style = MaterialTheme.typography.labelSmall, letterSpacing = 2.sp)
-        Spacer(Modifier.height(22.dp))
-        Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color.White.copy(.14f))) {
-            Box(Modifier.fillMaxWidth(progress).height(7.dp).clip(CircleShape).background(accent))
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("PLAYING", color = Color.White.copy(.7f), style = MaterialTheme.typography.labelSmall)
-            Text("${(progress * 100).toInt()}%", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun LyricsPresentation(
-    state: MusicPlayerState,
-    player: MusicPlayer,
-    lyricsState: LyricsUiState,
-    progressState: StateFlow<PlaybackProgressState>,
-    lyricsOffsetMs: Long,
-    lyricsFontScale: Float,
-    controlsAutoHideSeconds: Int,
-    translationLanguage: String,
-    wavySeekbarEnabled: Boolean,
-    onRetry: () -> Unit,
-    onFontScaleChange: (Float) -> Unit,
-    onSelectLyricsProvider: (com.itzfallenme.katmusic.data.local.LyricsProvider) -> Unit,
-    onTryAnotherLyricsSource: () -> Unit,
-) {
-    ModernLyricsPanel(
-        state = state,
-        player = player,
-        lyricsState = lyricsState,
-        progressState = progressState,
-        wavySeekbarEnabled = wavySeekbarEnabled,
-        onRetry = onRetry,
-        lyricsFontScale = lyricsFontScale,
-        onLyricsFontScaleChange = onFontScaleChange,
-        lyricsOffsetMs = lyricsOffsetMs,
-        controlsAutoHideSeconds = controlsAutoHideSeconds,
-        translationLanguage = translationLanguage,
-        onSelectLyricsProvider = onSelectLyricsProvider,
-        onTryAnotherLyricsSource = onTryAnotherLyricsSource,
-        modifier = Modifier.fillMaxWidth().height(520.dp),
-    )
-}
-
-@Composable
-private fun IpodPresentation(title: String, artist: String, album: String, progress: Float, accent: Color) {
+private fun ArtworkPresentation(artwork: String?) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp).clip(RoundedCornerShape(30.dp))
-            .background(Color(0xFFD8D9D7)).padding(20.dp),
+        Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1B2725)).padding(14.dp)) {
-            Text("KATMUSIC", color = Color(0xFFB9D2C1), style = MaterialTheme.typography.labelSmall, letterSpacing = 2.sp)
-            Spacer(Modifier.height(18.dp))
-            Text(title, color = Color(0xFFE8F0E9), fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(artist, color = Color(0xFFB9D2C1), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(album.ifBlank { "Now Playing" }, color = Color(0xFF8FA99A), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(16.dp))
-            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(.2f))) {
-                Box(Modifier.fillMaxWidth(progress).height(4.dp).background(accent))
-            }
+        Surface(
+            shape = RoundedCornerShape(30.dp),
+            color = Color.White.copy(alpha = 0.06f),
+            shadowElevation = 22.dp,
+            modifier = Modifier.fillMaxWidth().widthIn(max = 360.dp).padding(horizontal = 8.dp),
+        ) {
+            Artwork(artwork, Modifier.fillMaxWidth().aspectRatio(1f), true)
         }
-        Spacer(Modifier.height(20.dp))
-        Box(Modifier.size(190.dp).clip(CircleShape).background(Brush.radialGradient(listOf(Color(0xFFF5F5F3), Color(0xFFB9BAB8)))), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(72.dp).clip(CircleShape).background(Color(0xFF8D908E)))
-            Text("MENU", Modifier.align(Alignment.TopCenter).padding(top = 18.dp), color = Color(0xFF555957), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text("‹", Modifier.align(Alignment.CenterStart).padding(start = 18.dp), color = Color(0xFF555957), fontSize = 30.sp)
-            Text("›", Modifier.align(Alignment.CenterEnd).padding(end = 18.dp), color = Color(0xFF555957), fontSize = 30.sp)
-            Text("●", color = Color(0xFF555957), fontSize = 22.sp)
-        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "NOW PLAYING",
+            color = Color.White.copy(.62f),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 3.sp,
+        )
     }
 }
 
