@@ -4,6 +4,35 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.5.0] - 2026-10-31
+
+### Added
+
+- **Online Listen Together rooms** backed by a deployable WebSocket relay. Create or join rooms with a code, approve incoming members, chat, share queue metadata, hand off host control, and synchronize playback state across devices.
+- Reconnection support using room session tokens, plus bounded room activity events.
+- A production Listen Together server endpoint is prefilled in the app: `wss://katmusic.onrender.com/ws`.
+- Regression coverage for lossless quality fallback ordering, including strict YouTube selection, Hi-Res downshift, and explicit-only Atmos / Data Saver tiers.
+- A responsive website screenshot gallery using real KatMusic Android screenshots, with static export configured for Cloudflare Pages.
+
+### Changed
+
+- **Arct Development branding.** Updated project credits, website footer, repository badges, security and conduct links, and issue/discussion destinations to point to the Arct Development organization.
+- Refined the app's visual system across navigation, masthead, home feed, shapes, stats, and search.
+- Restored the floating glass-pill bottom navigation dock.
+- Lyrics Stage is connected to synced lyrics controls and lyric source options.
+- Website canonical URL and Open Graph metadata now use `https://katmusic.pages.dev`; updated the website's Lucide dependency for React 19 compatibility.
+
+### Fixed
+
+- Corrected the discovery ViewModel test so JUnit recognizes the test method and its asynchronous result is awaited.
+- Fixed duplicate-key crashes in queue and list surfaces, share-intent failures outside Activity contexts, and a service-locator initialization race.
+- Improved crash diagnostics with recent log lines and a warnings-and-errors log in release builds.
+
+### Build and release
+
+- Added a dedicated `arm64-v8a` APK alongside the universal and Android 7–9 legacy packages.
+- Updated release documentation and repository links for the Arct Development organization.
+
 ## [2.1.0] - 2026-10-31
 
 ### Added
