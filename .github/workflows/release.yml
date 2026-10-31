@@ -6,22 +6,33 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.1.0'
+        default: '2.5.0'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.1.0'
+        default: 'KatMusic 2.5.0'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.1.0
+          ## KatMusic 2.5.0
 
-          - Add five alternate player styles: Poster, Timeline, Lyrics Stage, iPod, and Full Video.
-          - Connect Lyrics Stage to KatMusic's synced lyrics controls and source options.
-          - Add animated Canvas artwork support in Full Video mode.
-          - Add a dedicated arm64-v8a APK alongside the universal and legacy packages.
+          ### Added
+          - Online Listen Together rooms with host approval, room chat, reconnect tokens, shared queue metadata and synchronized playback through the production WebSocket relay.
+          - Production server endpoint prefilled in the Listen Together screen.
+          - Responsive website screenshot gallery and static Cloudflare Pages deployment.
 
+          ### Changed
+          - Arct Development branding and repository links across project documentation and website.
+          - Refined navigation, masthead, home feed, shapes, stats and search; restored the floating glass-pill dock.
+
+          ### Fixed
+          - Discovery ViewModel JUnit test initialization and asynchronous result handling.
+          - Stability fixes for duplicate list keys, share intents and service initialization.
+
+          ### Build
+          - Universal, ARM64 and Android 7–9 legacy APK packages.
+          
 jobs:
   release:
     name: Build & Publish Release
