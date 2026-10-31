@@ -230,6 +230,7 @@ private fun LyricsStagePresentation(
     BoxWithConstraints(
         Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(28.dp)),
     ) {
+        val playerWidth = maxWidth
         Canvas(Modifier.fillMaxSize()) {
             val split = size.height * progress.coerceIn(0f, 1f)
             drawRect(remaining)
@@ -278,7 +279,7 @@ private fun LyricsStagePresentation(
                 if (active == null) {
                     ExpressiveTitle(
                         text = title,
-                        baseSize = (maxWidth.value * 0.115f).coerceIn(34f, 54f).sp,
+                        baseSize = (playerWidth.value * 0.115f).coerceIn(34f, 54f).sp,
                         color = Color.White,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -291,7 +292,7 @@ private fun LyricsStagePresentation(
                     ExpressiveLyricLine(
                         line = active,
                         positionMs = lyricPosition,
-                        baseSize = (maxWidth.value * 0.105f).coerceIn(32f, 52f).sp,
+                        baseSize = (playerWidth.value * 0.105f).coerceIn(32f, 52f).sp,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
