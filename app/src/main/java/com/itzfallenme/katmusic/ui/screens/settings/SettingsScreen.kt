@@ -474,6 +474,7 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
     onOpenListenTogether: () -> Unit = {},
+    onOpenGroupBlend: () -> Unit = {},
     onOpenHomeSections: () -> Unit = {},
     onOpenExcludedSongs: () -> Unit = {},
     onOpenYouTubeImport: () -> Unit = {},
@@ -1035,6 +1036,18 @@ fun SettingsScreen(
                                 onClick = onOpenListenTogether,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "audio.listen_together"),
+                            )
+                        }
+                        add { position ->
+                            SettingsActionCard(
+                                icon = Icons.Filled.AutoAwesome,
+                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                title = "Group Blend",
+                                subtitle = "Compare music taste with friends",
+                                onClick = onOpenGroupBlend,
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "audio.group_blend"),
                             )
                         }
                         add { position ->
