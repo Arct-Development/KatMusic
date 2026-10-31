@@ -55,6 +55,7 @@ fun ShareLyricsDialog(
     var selectedStart by rememberSaveable { mutableIntStateOf(initialSelection.first) }
     var selectedEnd by rememberSaveable { mutableIntStateOf(initialSelection.last) }
     var cardModeName by rememberSaveable { mutableStateOf(CardMode.Song.name) }
+    var lyricStyleName by rememberSaveable { mutableStateOf(LyricCardStyle.Minimal.name) }
 
     val currentStep = if (currentStepName == ShareStep.Preview.name) ShareStep.Preview else ShareStep.Select
     val currentRange = if (selectedStart in 0 until totalLines && selectedEnd in 0 until totalLines && selectedStart <= selectedEnd) {
@@ -157,6 +158,8 @@ fun ShareLyricsDialog(
                             artworkResolution = artworkResolution,
                             swatches = swatches,
                             selectedMode = currentMode,
+                            selectedLyricStyle = runCatching { LyricCardStyle.valueOf(lyricStyleName) }.getOrDefault(LyricCardStyle.Minimal),
+                            onLyricStyleChange = { lyricStyleName = it.name },
                             onModeChange = { cardModeName = it.name },
                             selectedSwatchColor = selectedSwatchColor,
                             onSwatchChange = { selectedSwatchColor = it },
