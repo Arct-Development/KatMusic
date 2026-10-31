@@ -323,14 +323,14 @@ fun HomeScreen(
                         rows,
                         key = { _, row ->
                             when (row) {
-                                is HomeRow.DateHeader -> "date_\${row.label}"
+                                is HomeRow.DateHeader -> "date_${row.label}"
                                 is HomeRow.Track -> if (row.track.isNowPlaying) {
-                                    "nowplaying_\${row.track.key}"
+                                    "nowplaying_${row.track.key}"
                                 } else {
-                                    "track_\${row.track.key}_\${row.track.timestampMillis}"
+                                    "track_${row.track.key}_${row.track.timestampMillis}"
                                 }
-                                is HomeRow.Album -> "album_\${row.album.artist}_\${row.album.name}"
-                                is HomeRow.Artist -> "artist_\${row.artist.name}"
+                                is HomeRow.Album -> "album_${row.album.artist}_${row.album.name}"
+                                is HomeRow.Artist -> "artist_${row.artist.name}"
                             }
                         },
                         contentType = { _, row ->
