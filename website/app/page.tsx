@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  ArrowDown, ArrowRight, ArrowUpRight, AudioLines, Check, ChevronDown,
+  ArrowDown, ArrowUpRight, AudioLines, Check, ChevronDown,
   Download, Github, Headphones, Heart, Menu, Mic2, Music2, Radio,
   ShieldCheck, SlidersHorizontal, Sparkles, Waves, X,
 } from "lucide-react";
@@ -163,7 +163,7 @@ export default function HomePage() {
       </section>
 
       <section className="features section-wrap" id="features">
-        <div className="section-heading"><div><div className="section-label"><span>02</span> WHAT'S INSIDE</div><h2>Thoughtful tools.<br/><em>Real control.</em></h2></div><p>Specific features, not empty superlatives. Here is what the app actually includes.</p></div>
+        <div className="section-heading"><div><div className="section-label"><span>02</span> WHAT&apos;S INSIDE</div><h2>Thoughtful tools.<br/><em>Real control.</em></h2></div><p>Specific features, not empty superlatives. Here is what the app actually includes.</p></div>
         <div className="feature-list">{FEATURES.map((feature, index) => <article className="feature-row" key={feature.label}><span className="feature-number">0{index + 1}</span><feature.icon className="feature-icon" size={22}/><div className="feature-title"><small>{feature.label}</small><h3>{feature.title}</h3></div><p>{feature.copy}</p></article>)}</div>
       </section>
 
@@ -188,7 +188,7 @@ export default function HomePage() {
         <div className="section-heading"><div><h2>Up and running<br/>in <em>three steps.</em></h2></div><p>Choose the package for your Android version, install it, then configure the services you want to use.</p></div>
         <div className="install-steps">
           <article><span>01</span><h3>Choose a build</h3><p>Use Universal for most devices. ARM64 is for 64-bit ARM phones. Legacy is for Android 7–9.</p></article>
-          <article><span>02</span><h3>Install the APK</h3><p>Open the downloaded package and follow Android's installation prompt.</p></article>
+          <article><span>02</span><h3>Install the APK</h3><p>Open the downloaded package and follow Android&apos;s installation prompt.</p></article>
           <article><span>03</span><h3>Set up KatMusic</h3><p>Launch the app and configure account access or optional integrations in Settings.</p></article>
         </div>
         <p className="install-caveat">Compatibility varies by device. Some output modes and advanced audio behaviours depend on your hardware and Android version.</p>
