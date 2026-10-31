@@ -1,6 +1,10 @@
 package com.itzfallenme.katmusic.ui.screens.blend
 
 import android.util.Base64
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itzfallenme.katmusic.data.blend.BlendMemberProfile
@@ -18,11 +22,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+
+@kotlinx.serialization.Serializable
+private data class SavedBlendMember(
+    val userId: String,
+    val displayName: String,
+    val profile: BlendTasteProfile,
+)
 
 data class BlendMemberUi(
     val userId: String,
@@ -47,6 +59,7 @@ data class GroupBlendUiState(
 class GroupBlendViewModel @Inject constructor(
     private val statsRepository: SongPlayStatsRepository,
     private val player: MusicPlayer,
+    private val preferences: DataStore<Preferences>,
 ) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
     private val _uiState = MutableStateFlow(GroupBlendUiState())
@@ -54,7 +67,40 @@ class GroupBlendViewModel @Inject constructor(
     private var myProfile = BlendTasteProfile()
     private val importedMembers = linkedMapOf<String, BlendMemberProfile>()
 
-    init { refreshMyProfile() }
+    private val savedMembersKey = stringPreferencesKey("group_blend_saved_members")
+
+    init {
+        refreshMyProfile()
+        loadSavedMembers()
+    }
+
+    private fun loadSavedMembers() {
+        viewModelScope.launch {
+            val raw = runCatching { preferences.data.first()[savedMembersKey].orEmpty() }.getOrDefault("")
+            if (raw.isBlank()) return@launch
+            runCatching { json.decodeFromString<List<SavedBlendMember>>(raw) }
+                .onSuccess { saved ->
+                    importedMembers.clear()
+                    saved.take(9).forEach { member ->
+                        importedMembers[member.userId] = BlendMemberProfile(
+                            member.userId, member.displayName, member.profile,
+                        )
+                    }
+                    publishState()
+                }
+        }
+    }
+
+    private fun persistMembers() {
+        val snapshot = importedMembers.values.map {
+            SavedBlendMember(it.userId, it.displayName, it.profile)
+        }
+        viewModelScope.launch {
+            runCatching {
+                preferences.edit { prefs -> prefs[savedMembersKey] = json.encodeToString(snapshot) }
+            }
+        }
+    }
 
     fun refreshMyProfile() {
         viewModelScope.launch {
@@ -99,6 +145,7 @@ class GroupBlendViewModel @Inject constructor(
             if (importedMembers.size >= 9) return setError("A Blend supports up to 10 people, including you.")
             importedMembers[id] = BlendMemberProfile(id, displayName, payload.profile)
             publishState()
+            persistMembers()
             _uiState.value = _uiState.value.copy(message = "$displayName joined your Blend.", error = null)
         } catch (error: Exception) {
             setError(error.message?.takeIf { it.startsWith("This ") }
@@ -121,6 +168,7 @@ class GroupBlendViewModel @Inject constructor(
 
     fun removeMember(userId: String) {
         val removed = importedMembers.remove(userId) ?: return
+        persistMembers()
         publishState()
         _uiState.value = _uiState.value.copy(message = "${removed.displayName} was removed.")
     }
