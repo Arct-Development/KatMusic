@@ -430,7 +430,7 @@ enum class SettingsTab(
     LAST_FM(
         titleRes = R.string.set_cat_lfm,
         subtitleRes = R.string.set_cat_lfm_sub,
-        title = "Last.fm",
+        title = "Integration",
         subtitle = "Account connection, Scrobbling sync & API credentials",
         icon = Icons.Filled.Album,
     ),
