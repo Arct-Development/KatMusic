@@ -115,6 +115,8 @@ import androidx.compose.material.icons.filled.Waves
 import com.itzfallenme.katmusic.data.local.LyricsProvider
 import com.itzfallenme.katmusic.ui.screens.player.LyricsOffsetDialog
 import com.itzfallenme.katmusic.ui.screens.player.LyricsSizeDialog
+import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStyle
+import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStylePreferences
 import androidx.compose.material.icons.filled.FormatSize
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.filled.Timer
@@ -448,6 +450,13 @@ enum class SettingsTab(
         subtitle = "Cache cleanup, Export & Import settings, Database tools",
         icon = Icons.Filled.Backup,
     ),
+    PLAYER(
+        titleRes = R.string.set_cat_appear,
+        subtitleRes = R.string.set_cat_appear_sub,
+        title = "Player Style",
+        subtitle = "Choose the layout used by the expanded now-playing screen",
+        icon = Icons.Filled.PlayCircle,
+    ),
     ABOUT(
         titleRes = R.string.set_cat_about,
         subtitleRes = R.string.set_cat_about_sub,
@@ -504,6 +513,12 @@ fun SettingsScreen(
     val lastFmAuthUrl by viewModel.lastFmAuthUrl.collectAsStateWithLifecycle()
     val lastFmConnecting by viewModel.lastFmConnecting.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val playerStylePreferences = remember(context) {
+        context.getSharedPreferences(KatPlayerStylePreferences.FILE_NAME, Context.MODE_PRIVATE)
+    }
+    var selectedPlayerStyle by rememberSaveable {
+        mutableStateOf(KatPlayerStyle.fromStored(playerStylePreferences.getString(KatPlayerStylePreferences.KEY_STYLE, null)))
+    }
 
     // Last.fm web auth (Settings → Integrations): open the auth URL in Custom
     // Tabs the moment SettingsViewModel produces one.
@@ -714,7 +729,7 @@ fun SettingsScreen(
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 SectionLabel("Playback & UI")
-                                SettingsGroup(rowCount = 3) { index, position ->
+                                SettingsGroup(rowCount = 4) { index, position ->
                                     when (index) {
                                         1 -> SettingsActionCard(
                                             icon = Icons.Filled.Palette,
@@ -734,7 +749,7 @@ fun SettingsScreen(
                                             onClick = { activeTab = SettingsTab.AUDIO },
                                             position = position,
                                         )
-                                        else -> SettingsActionCard(
+                                        2 -> SettingsActionCard(
                                             icon = Icons.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -744,6 +759,15 @@ fun SettingsScreen(
                                                 if (count > 0) "$count songs downloaded • Imports, Home layout" else "Home layout, Playlist imports, Downloads, Exclusions"
                                             },
                                             onClick = { activeTab = SettingsTab.LIBRARY },
+                                            position = position,
+                                        )
+                                        else -> SettingsActionCard(
+                                            icon = Icons.Filled.PlayCircle,
+                                            iconContainer = MaterialTheme.colorScheme.secondaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            title = "Player style",
+                                            subtitle = "Classic, Artwork, Lyrics or Canvas",
+                                            onClick = { activeTab = SettingsTab.PLAYER },
                                             position = position,
                                         )
                                     }
@@ -927,6 +951,68 @@ fun SettingsScreen(
 
                 }
             }
+                    }
+                    SettingsTab.PLAYER -> {
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SectionLabel("Now playing")
+                                Text(
+                                    "Choose the layout for the expanded player. Your selection is saved and used whenever you open Now Playing.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                )
+                                SettingsGroup(rowCount = KatPlayerStyle.entries.size) { index, position ->
+                                    val style = KatPlayerStyle.entries[index]
+                                    val selected = selectedPlayerStyle == style
+                                    Surface(
+                                        shape = groupShape(position),
+                                        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(groupShape(position))
+                                            .clickable {
+                                                selectedPlayerStyle = style
+                                                playerStylePreferences.edit()
+                                                    .putString(KatPlayerStylePreferences.KEY_STYLE, style.name)
+                                                    .apply()
+                                            },
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            RadioButton(
+                                                selected = selected,
+                                                onClick = {
+                                                    selectedPlayerStyle = style
+                                                    playerStylePreferences.edit()
+                                                        .putString(KatPlayerStylePreferences.KEY_STYLE, style.name)
+                                                        .apply()
+                                                },
+                                            )
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    style.label,
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                                                )
+                                                Text(
+                                                    style.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                            if (selected) {
+                                                Icon(Icons.Filled.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     else -> {
                         item {
