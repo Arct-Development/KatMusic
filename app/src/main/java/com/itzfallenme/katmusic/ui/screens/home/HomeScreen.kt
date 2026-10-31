@@ -245,6 +245,12 @@ fun HomeScreen(
                 )
             }
 
+            if (!uiState.isViewingFriend) {
+                uiState.listeningInsights?.let { insights ->
+                    ListeningWrappedCard(insights, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                }
+            }
+
             uiState.stats?.let { stats ->
                 StatsCard(
                     scrobbles = stats.scrobbles,
@@ -1203,6 +1209,47 @@ private fun TrackRow(
             // used on every screen's song list, not just Home.
             com.itzfallenme.katmusic.ui.components.OverflowMenuButton(onClick = onMenuClick)
         }
+    }
+}
+
+@Composable
+private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier = Modifier) {
+    val hours = insights.totalListeningMs / 3_600_000L
+    val minutes = (insights.totalListeningMs % 3_600_000L) / 60_000L
+    Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Listening Wrapped", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Your all-time listening snapshot", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                WrappedMetric(hours.toString() + " h " + minutes + " m", "Listening time", Modifier.weight(1f))
+                WrappedMetric(insights.completedPlays.toString(), "Completed plays", Modifier.weight(1f))
+                WrappedMetric(insights.uniqueTracks.toString(), "Unique tracks", Modifier.weight(1f))
+            }
+            if (!insights.topTrackTitle.isNullOrBlank()) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("MOST PLAYED TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    Text(insights.topTrackTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(insights.topTrackArtist.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (!insights.topArtist.isNullOrBlank()) Text("Top artist · " + insights.topArtist, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(insights.skips.toString() + " skips recorded · based on listening tracked on this device", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun WrappedMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
