@@ -38,14 +38,14 @@ export const metadata: Metadata = {
     siteName: "KatMusic",
     type: "website",
     url: "https://kat-music.vercel.app",
-    images: [{ url: "/katmusic_logo.svg", alt: "KatMusic logo" }],
+    images: [{ url: "/icon.png", width: 512, height: 512, alt: "KatMusic app icon" }],
   },
   twitter: {
     card: "summary",
     title: "KatMusic — Your music. Your universe.",
     description:
       "A native Android music experience with synced lyrics, offline downloads and a powerful audio engine.",
-    images: ["/katmusic_logo.svg"],
+    images: ["/icon.png"],
   },
   icons: { icon: "/katmusic_logo.svg", apple: "/icon.png" },
   robots: { index: true, follow: true },
