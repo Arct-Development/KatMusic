@@ -37,6 +37,7 @@ Some integrations require you to sign in or provide your own service credentials
 
 - [Features](#features)
 - [Player styles](#player-styles)
+- [Screenshots](#sceenshots)
 - [Download and install](#download-and-install)
 - [Build from source](#build-from-source)
 - [Project structure](#project-structure)
@@ -115,6 +116,19 @@ Choose the expanded player layout in **Settings → Playback & UI → Player Sty
 | **Canvas** | An immersive player background using available Canvas artwork. |
 
 The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Music](https://github.com/InlitX/Mochy-Music). The original source files and their GPL-3.0 licence are preserved in [third_party/Mochy-Music](third_party/Mochy-Music/README.md).
+
+
+## Screenshots
+<div align="center">
+  <img src="website/public/Screenshot_20261031_141818_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/public/Screenshot_20261031_103726_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/public/Screenshot_20261031_141818_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <br/>
+  <br/>
+  <img src="website/public/Screenshot_20261031_141823_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/public/Screenshot_20261031_141831_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/public/Screenshot_20261031_141835_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+</div>
 
 ## Download and install
 
