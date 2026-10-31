@@ -9,7 +9,7 @@
 A native Android music player built around YouTube Music, with synced lyrics, offline downloads, a powerful audio engine and a highly customisable player.
 
 <p>
-  <a href="https://github.com/ItzFallenMe/KatMusic/releases/tag/2.1.0"><strong>Download v2.1.0</strong></a>
+  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.1.0"><strong>Download v2.1.0</strong></a>
   &nbsp;·&nbsp;
   <a href="https://katmusic.pages.dev">Project website</a>
   &nbsp;·&nbsp;
@@ -17,11 +17,11 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 </p>
 
 
-[![Downloads](https://img.shields.io/github/downloads/ItzFallenMe/Katmusic/total?display_name=tag)](https://github.com/ItzFallenMe/KatMusic/releases)
-[![Android CI](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml)
-[![Latest release](https://img.shields.io/github/v/release/ItzFallenMe/KatMusic?display_name=tag)](https://github.com/ItzFallenMe/KatMusic/releases)
+[![Downloads](https://img.shields.io/github/downloads/ItzFallenMe/Katmusic/total?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
+[![Android CI](https://github.com/Arct-Development/KatMusic/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Arct-Development/KatMusic/actions/workflows/android.yml)
+[![Latest release](https://img.shields.io/github/v/release/ItzFallenMe/KatMusic?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
 [![License: GPL-3.0](https://img.shields.io/github/license/ItzFallenMe/KatMusic)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/ItzFallenMe/KatMusic?style=social)](https://github.com/ItzFallenMe/KatMusic/stargazers)
+[![Stars](https://img.shields.io/github/stars/ItzFallenMe/KatMusic?style=social)](https://github.com/Arct-Development/KatMusic/stargazers)
 
 **Kotlin · Jetpack Compose · Material 3 · C++ · Oboe**
 
@@ -136,22 +136,22 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 
 ## Download and install
 
-**Latest stable release: [KatMusic 2.1.0](https://github.com/ItzFallenMe/KatMusic/releases/tag/2.1.0)**
+**Latest stable release: [KatMusic 2.1.0](https://github.com/Arct-Development/KatMusic/releases/tag/2.1.0)**
 
 Choose the package that matches your device:
 
 | Package | Android version | Recommended for |
 | --- | --- | --- |
-| [Universal APK](https://github.com/ItzFallenMe/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
-| [ARM64 APK](https://github.com/ItzFallenMe/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
-| [Legacy APK](https://github.com/ItzFallenMe/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
-| [Uncompressed universal APK](https://github.com/ItzFallenMe/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
+| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
+| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
+| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
+| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.1.0/KatMusic-v2.1.0-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
 
 1. Download the APK that matches your device.
 2. Open the downloaded file and approve installation when Android asks.
 3. Launch KatMusic and configure account access or optional integrations from Settings.
 
-You can also download the [SHA-256 checksums](https://github.com/ItzFallenMe/KatMusic/releases/download/2.1.0/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/ItzFallenMe/KatMusic/releases).
+You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.1.0/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
 
 ## Build from source
 
@@ -165,7 +165,7 @@ You can also download the [SHA-256 checksums](https://github.com/ItzFallenMe/Kat
 ### Clone and build
 
 ```bash
-git clone https://github.com/ItzFallenMe/KatMusic.git
+git clone https://github.com/Arct-Development/KatMusic.git
 cd KatMusic
 
 # Build a debug APK
@@ -272,6 +272,6 @@ KatMusic is an independent, third-party project. It is not affiliated with, endo
 
 **Made by [Arct Developments](https://github.com/ItzFallenMe)**
 
-[Website](https://katmusic.pages.dev) · [Releases](https://github.com/ItzFallenMe/KatMusic/releases) · [Issues](https://github.com/ItzFallenMe/KatMusic/issues)
+[Website](https://katmusic.pages.dev) · [Releases](https://github.com/Arct-Development/KatMusic/releases) · [Issues](https://github.com/Arct-Development/KatMusic/issues)
 
 </div>
