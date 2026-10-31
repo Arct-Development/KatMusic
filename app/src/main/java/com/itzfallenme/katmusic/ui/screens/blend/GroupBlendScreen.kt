@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -195,23 +196,42 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                 if (state.result.sharedTracks.isNotEmpty()) {
                     item { Text("Tracks everyone shares", style = MaterialTheme.typography.titleMedium) }
                     items(state.result.sharedTracks, key = { it.key }) { track ->
-                        Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                            Text(track.title, fontWeight = FontWeight.Medium)
-                            Text(track.artist, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(track.title, fontWeight = FontWeight.Medium)
+                                Text(track.artist, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { viewModel.playTrack(track) }, enabled = !track.videoId.isNullOrBlank()) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Play ${track.title}")
+                            }
                         }
                     }
                 }
                 if (state.result.recommendations.isNotEmpty()) {
                     item { Text("Group picks", style = MaterialTheme.typography.titleMedium) }
                     items(state.result.recommendations, key = { it.track.key }) { recommendation ->
-                        Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                            Text(recommendation.track.title, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${recommendation.track.artist} • ${recommendation.memberCoverage}/${state.members.size} members",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(recommendation.track.title, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "${recommendation.track.artist} • ${recommendation.memberCoverage}/${state.members.size} members",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.playTrack(recommendation.track) },
+                                enabled = !recommendation.track.videoId.isNullOrBlank(),
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Play ${recommendation.track.title}")
+                            }
                         }
                     }
                 }
