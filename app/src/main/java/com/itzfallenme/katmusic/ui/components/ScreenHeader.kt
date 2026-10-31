@@ -1,6 +1,5 @@
 package com.itzfallenme.katmusic.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +12,11 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.FilledTonalIconButton
@@ -22,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,14 +34,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.itzfallenme.katmusic.ui.theme.Backdrop
-import com.itzfallenme.katmusic.ui.theme.LocalLiquidGlass
-import com.itzfallenme.katmusic.ui.theme.LiquidGlassPreset
-import com.itzfallenme.katmusic.ui.theme.liquidGlassChrome
 
-private val HeaderPillShape = RoundedCornerShape(26.dp)
-
-/** Shared floating header used across KatMusic's primary destinations. */
+/** Shared editorial masthead used across KatMusic destinations. */
 @Composable
 fun ScreenHeader(
     title: String,
@@ -46,91 +43,72 @@ fun ScreenHeader(
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
     containerColor: Color = Color.Unspecified,
-    backdrop: Backdrop? = null,
+    backdrop: com.kyant.backdrop.Backdrop? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val glassEnabled = LocalLiquidGlass.current
-    val panelColor = when {
-        containerColor != Color.Unspecified -> containerColor
-        glassEnabled -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.62f)
-        else -> MaterialTheme.colorScheme.surfaceContainerLow
-    }
-
     Column(
         modifier
             .fillMaxWidth()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
-            .padding(horizontal = 14.dp)
-            .padding(top = 8.dp, bottom = 10.dp),
+            .padding(horizontal = 20.dp)
+            .padding(top = 14.dp, bottom = 8.dp),
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (glassEnabled) Modifier.liquidGlassChrome(
-                        HeaderPillShape,
-                        true,
-                        LiquidGlassPreset.Header,
-                        backdrop,
-                    ) else Modifier
-                ),
-            shape = HeaderPillShape,
-            color = panelColor,
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (glassEnabled) 0.24f else 0.42f),
-            ),
-            tonalElevation = if (glassEnabled) 0.dp else 1.dp,
-            shadowElevation = if (glassEnabled) 0.dp else 2.dp,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = if (subtitle == null) 8.dp else 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (onBack != null) {
-                    FilledTonalIconButton(
-                        onClick = onBack,
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f),
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                    Spacer(Modifier.width(10.dp))
+            if (onBack != null) {
+                FilledTonalIconButton(
+                    onClick = onBack,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
+                Spacer(Modifier.width(12.dp))
+            }
 
-                Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    style = if (onBack != null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!subtitle.isNullOrBlank()) {
                     Text(
-                        title,
-                        style = if (onBack != null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        softWrap = false,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    subtitle?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                } else {
+                    androidx.compose.foundation.layout.Box(
+                        Modifier
+                            .padding(top = 3.dp)
+                            .width(30.dp)
+                            .height(3.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(percent = 50),
+                            ),
+                    )
                 }
+            }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    actions()
-                }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                actions()
             }
         }
     }
