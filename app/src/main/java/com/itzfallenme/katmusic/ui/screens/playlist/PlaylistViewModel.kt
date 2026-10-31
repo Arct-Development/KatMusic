@@ -79,6 +79,7 @@ class PlaylistViewModel @Inject constructor(
     private val innerTubeApi: com.itzfallenme.katmusic.data.music.StreamApi,
     private val routeNavigator: com.itzfallenme.katmusic.ui.navigation.AppRouteNavigator,
     private val localMusicLibrary: com.itzfallenme.katmusic.data.localmusic.LocalMusicLibrary,
+    private val songPlayStatsRepository: com.itzfallenme.katmusic.data.repository.SongPlayStatsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlaylistUiState())
@@ -314,6 +315,54 @@ class PlaylistViewModel @Inject constructor(
             }
         }
         return sortPlaylists(local + dedupedRemote, mode).distinctBy { it.id }
+    }
+
+    /** Creates refreshable-by-recreation smart playlist snapshots from local listening history. */
+    fun createSmartPlaylists() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGenerating = true, generatingMessage = "Building smart playlists…") }
+            try {
+                val stats = songPlayStatsRepository.allStats()
+                    .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+                if (stats.isEmpty()) {
+                    _uiState.update { it.copy(toastMessage = "Play some music first to build smart playlists.") }
+                    return@launch
+                }
+                val now = System.currentTimeMillis()
+                val recent = stats.filter { now - it.lastPlayedAtMillis <= 30L * 86_400_000L }
+                    .sortedByDescending { it.lastPlayedAtMillis }.take(50)
+                val mostPlayed = stats.sortedWith(compareByDescending<com.itzfallenme.katmusic.data.local.db.SongPlayStatsEntity> { it.totalPlayTimeMs }.thenByDescending { it.playCount }).take(50)
+                val favorites = stats.filter { it.playCount > 0 }
+                    .sortedWith(compareByDescending<com.itzfallenme.katmusic.data.local.db.SongPlayStatsEntity> { it.totalPlayTimeMs / (it.skipCount + 1).toDouble() }.thenByDescending { it.playCount }).take(50)
+                val groups = listOf(
+                    Triple("Recently Played", "smart_recent", recent),
+                    Triple("Most Played", "smart_most_played", mostPlayed),
+                    Triple("Your Favorites", "smart_favorites", favorites),
+                ).filter { it.third.isNotEmpty() }
+                var created = 0
+                for ((title, mode, rows) in groups) {
+                    val tracks = rows.map { row ->
+                        com.itzfallenme.katmusic.data.generate.GeneratedTrack(
+                            name = row.title,
+                            artist = row.artist,
+                            artworkUrl = row.artworkUrl,
+                            url = row.videoId?.let { "https://music.youtube.com/watch?v=$it" }.orEmpty(),
+                        )
+                    }
+                    playlistRepository.save(title, "Smart playlist · based on your listening history", mode, tracks)
+                    created++
+                }
+                _uiState.update { it.copy(toastMessage = "$created smart playlists created from your listening history.") }
+                load()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                android.util.Log.e("PlaylistViewModel", "Smart playlist generation failed", error)
+                _uiState.update { it.copy(toastMessage = "Couldn't build smart playlists. Try again.") }
+            } finally {
+                _uiState.update { it.copy(isGenerating = false, generatingMessage = "") }
+            }
+        }
     }
 
     fun regenerateLatest() {
