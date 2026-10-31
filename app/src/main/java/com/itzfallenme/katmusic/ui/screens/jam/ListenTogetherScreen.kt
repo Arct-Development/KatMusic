@@ -37,7 +37,7 @@ fun ListenTogetherScreen(onBack: () -> Unit, viewModel: ListenTogetherViewModel 
     val isHost by client.isHost.collectAsState()
     val pendingRequests by client.pendingRequests.collectAsState()
     val events by client.events.collectAsState()
-    var endpoint by rememberSaveable { mutableStateOf("") }
+    var endpoint by rememberSaveable { mutableStateOf("wss://katmusic.onrender.com/ws") }
     var displayName by rememberSaveable { mutableStateOf("") }
     var joinCode by rememberSaveable { mutableStateOf("") }
     var chatText by rememberSaveable { mutableStateOf("") }
