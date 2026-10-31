@@ -12,6 +12,8 @@ import com.itzfallenme.katmusic.data.local.db.SavedPlaylistDao
 import com.itzfallenme.katmusic.data.local.db.SavedPlaylistEntity
 import com.itzfallenme.katmusic.data.local.db.RecommendationExclusionDao
 import com.itzfallenme.katmusic.data.local.db.RecommendationExclusionEntity
+import com.itzfallenme.katmusic.data.local.db.SongPlayStatsDao
+import com.itzfallenme.katmusic.data.local.db.SongPlayStatsEntity
 import com.itzfallenme.katmusic.data.local.readSafely
 import com.itzfallenme.katmusic.data.playlist.PlaylistPublicMirror
 import kotlinx.coroutines.flow.first
@@ -22,7 +24,7 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val SCHEMA_VERSION = 8
+private const val SCHEMA_VERSION = 9
 private const val BACKUP_TYPE = "katmusic-backup"
 
 /**
@@ -87,6 +89,19 @@ data class BackupRecommendationExclusionSnapshot(
 )
 
 @Serializable
+data class BackupSongPlayStatSnapshot(
+    val trackKey: String,
+    val title: String = "",
+    val artist: String = "",
+    val videoId: String? = null,
+    val artworkUrl: String? = null,
+    val totalPlayTimeMs: Long = 0L,
+    val playCount: Int = 0,
+    val skipCount: Int = 0,
+    val lastPlayedAtMillis: Long = 0L,
+)
+
+@Serializable
 data class BackupFile(
     val type: String = BACKUP_TYPE,
     val schemaVersion: Int = SCHEMA_VERSION,
@@ -95,6 +110,7 @@ data class BackupFile(
     val prefs: BackupPrefsSnapshot,
     val playlists: List<BackupPlaylistSnapshot>,
     val recommendationExclusions: List<BackupRecommendationExclusionSnapshot> = emptyList(),
+    val listeningStats: List<BackupSongPlayStatSnapshot> = emptyList(),
 )
 
 sealed interface RestoreResult {
@@ -125,6 +141,7 @@ class BackupRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val playlistDao: SavedPlaylistDao,
     private val recommendationExclusionDao: RecommendationExclusionDao,
+    private val songPlayStatsDao: SongPlayStatsDao,
     private val playlistPublicMirror: PlaylistPublicMirror,
 ) {
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true }
@@ -179,6 +196,19 @@ class BackupRepository @Inject constructor(
                 artistName = it.artistName,
             )
         }
+        val listeningStats = songPlayStatsDao.getAll().map {
+            BackupSongPlayStatSnapshot(
+                trackKey = it.trackKey,
+                title = it.title,
+                artist = it.artist,
+                videoId = it.videoId,
+                artworkUrl = it.artworkUrl,
+                totalPlayTimeMs = it.totalPlayTimeMs,
+                playCount = it.playCount,
+                skipCount = it.skipCount,
+                lastPlayedAtMillis = it.lastPlayedAtMillis,
+            )
+        }
         val backup = BackupFile(
             createdAt = System.currentTimeMillis(),
             appVersion = appVersionName,
@@ -191,6 +221,7 @@ class BackupRepository @Inject constructor(
             ),
             playlists = playlists,
             recommendationExclusions = exclusions,
+            listeningStats = listeningStats,
         )
         json.encodeToString(backup)
     }
@@ -223,6 +254,7 @@ class BackupRepository @Inject constructor(
         val previousPrefsSnapshot = try { buildBackup("rollback") } catch (e: Exception) { null }
         val previousPlaylists = try { playlistDao.getAll() } catch (e: Exception) { emptyList() }
         val previousExclusions = try { recommendationExclusionDao.getAll() } catch (e: Exception) { emptyList() }
+        val previousStats = try { songPlayStatsDao.getAll() } catch (e: Exception) { emptyList() }
 
         return try {
             dataStore.edit { mutablePrefs ->
@@ -273,6 +305,20 @@ class BackupRepository @Inject constructor(
                     },
                 )
             }
+            songPlayStatsDao.clearAll()
+            songPlayStatsDao.upsertAll(backup.listeningStats.map {
+                SongPlayStatsEntity(
+                    trackKey = it.trackKey,
+                    title = it.title,
+                    artist = it.artist,
+                    videoId = it.videoId,
+                    artworkUrl = it.artworkUrl,
+                    totalPlayTimeMs = it.totalPlayTimeMs,
+                    playCount = it.playCount,
+                    skipCount = it.skipCount,
+                    lastPlayedAtMillis = it.lastPlayedAtMillis,
+                )
+            })
             playlistPublicMirror.writeFromDatabase()
             RestoreResult.Success(backup.playlists.size, backup.recommendationExclusions.size)
         } catch (e: Exception) {
@@ -281,6 +327,8 @@ class BackupRepository @Inject constructor(
                 playlistDao.replaceAll(previousPlaylists)
                 recommendationExclusionDao.clear()
                 recommendationExclusionDao.upsertAll(previousExclusions)
+                songPlayStatsDao.clearAll()
+                songPlayStatsDao.upsertAll(previousStats)
             } catch (rollbackError: Exception) {
                 // Nothing more we can safely do — surface the original failure.
             }
