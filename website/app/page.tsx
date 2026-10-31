@@ -44,29 +44,64 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const targets = document.querySelectorAll<HTMLElement>(
-      ".section-heading, .feature-row, .principles article, .style-row, .install-steps article, .shot, .download-main, .tech-grid > div, .faq-item, .open-source-inner"
-    );
+    let cancelled = false;
+    let context: { revert: () => void } | undefined;
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (!("IntersectionObserver" in window)) return;
+    const setupMotion = async () => {
+      const [{ gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+      if (cancelled) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
+      gsap.registerPlugin(ScrollTrigger);
+      context = gsap.context(() => {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+        gsap.timeline({ defaults: { ease: "power3.out" } })
+          .from(".hero-copy .eyebrow", { y: 14, autoAlpha: 0, duration: 0.45 })
+          .from(".hero h1", { y: 28, autoAlpha: 0, duration: 0.7 }, "-=0.2")
+          .from(".hero-description", { y: 16, autoAlpha: 0, duration: 0.5 }, "-=0.35")
+          .from(".hero-actions > *", { y: 12, autoAlpha: 0, duration: 0.42, stagger: 0.09 }, "-=0.25")
+          .from(".hero-meta > *, .release-inline > *", { y: 8, autoAlpha: 0, duration: 0.32, stagger: 0.045 }, "-=0.18");
+
+        gsap.utils.toArray<HTMLElement>(
+          ".section-heading, .intro-content, .principles article, .feature-row, .style-row, .install-steps article, .shot, .download-main, .tech-grid > div, .faq-item, .open-source-inner"
+        ).forEach((element) => {
+          gsap.fromTo(element, { y: 24, autoAlpha: 0 }, {
+            y: 0,
+            autoAlpha: 1,
+            duration: 0.65,
+            ease: "power2.out",
+            scrollTrigger: { trigger: element, start: "top 88%", once: true },
+          });
+        });
+
+        gsap.to(".real-phone-left", {
+          y: -12,
+          rotation: -10,
+          ease: "none",
+          scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 0.7 },
+        });
+        gsap.to(".real-phone-right", {
+          y: 12,
+          rotation: 10,
+          ease: "none",
+          scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 0.7 },
+        });
+        gsap.to(".real-phone-center", {
+          y: -20,
+          ease: "none",
+          scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 0.8 },
+        });
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -36px 0px" });
+    };
 
-    targets.forEach((target, index) => {
-      target.classList.add("scroll-reveal");
-      target.style.transitionDelay = `${(index % 4) * 65}ms`;
-      observer.observe(target);
-    });
-
-    return () => observer.disconnect();
+    void setupMotion();
+    return () => {
+      cancelled = true;
+      context?.revert();
+    };
   }, []);
 
   const latest = releases?.find((item) => !item.prerelease) ?? releases?.[0] ?? null;
