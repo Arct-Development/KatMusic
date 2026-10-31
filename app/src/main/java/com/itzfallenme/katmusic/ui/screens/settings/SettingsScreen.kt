@@ -816,18 +816,38 @@ fun SettingsScreen(
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 SectionLabel("System & About")
-                                SettingsGroup(rowCount = 1) { _, position ->
-                        SettingsActionCard(
-                            icon = Icons.Filled.Code,
-                            iconContainer = MaterialTheme.colorScheme.secondaryContainer,
-                            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            title = stringResource(R.string.settings_diagnostics),
-                            subtitle = stringResource(R.string.settings_diagnostics_sub),
-                            onClick = { viewModel.exportDiagnostics() },
-                            position = position,
-                            isHighlighted = (highlightedSettingId == "about.diagnostics"),
-                        )
-                    }
+                                SettingsGroup(rowCount = 3) { index, position ->
+                                    when (index) {
+                                        0 -> SettingsActionCard(
+                                            icon = Icons.Filled.Backup,
+                                            iconContainer = MaterialTheme.colorScheme.primaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            title = stringResource(R.string.set_cat_data),
+                                            subtitle = "Backup, restore and reset app data",
+                                            onClick = { activeTab = SettingsTab.DATA_BACKUP },
+                                            position = position,
+                                        )
+                                        1 -> SettingsActionCard(
+                                            icon = Icons.Filled.Info,
+                                            iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            title = stringResource(R.string.set_cat_about),
+                                            subtitle = "App language, updates, diagnostics and source code",
+                                            onClick = { activeTab = SettingsTab.ABOUT },
+                                            position = position,
+                                        )
+                                        else -> SettingsActionCard(
+                                            icon = Icons.Filled.Code,
+                                            iconContainer = MaterialTheme.colorScheme.secondaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            title = stringResource(R.string.settings_diagnostics),
+                                            subtitle = stringResource(R.string.settings_diagnostics_sub),
+                                            onClick = { viewModel.exportDiagnostics() },
+                                            position = position,
+                                            isHighlighted = highlightedSettingId == "about.diagnostics",
+                                        )
+                                    }
+                                }
                     Spacer(Modifier.height(4.dp))
 
                     // Prominent Update Available Banner Card (if newer version detected)
