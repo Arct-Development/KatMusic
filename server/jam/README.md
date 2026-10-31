@@ -1,46 +1,65 @@
-# KatMusic Listen Together WebSocket server
+# KatMusic Listen Together server
 
-This is an original room relay for KatMusic. It is separate from the Android process and can be deployed on any Node.js 20+ host that supports WebSockets.
+Node.js WebSocket room relay with Supabase persistence. It relays playback metadata and position only; every listener resolves audio independently through their own authorized provider. It does not relay audio or stream URLs.
 
-## Run locally
+## Deploy on Render
+
+- Root Directory: \`server/jam\`
+- Runtime: Docker
+- Dockerfile: \`Dockerfile\`
+- Health Check Path: \`/healthz\`
+- Add the environment variables below before deploying.
+- Keep exactly one Render instance for now. Supabase persists data, but this server's live WebSocket connections and broadcasts are process-local. Multiple instances need a shared pub/sub layer (for example, Supabase Realtime or Redis) before they can safely host the same rooms.
+
+## Supabase setup
+
+1. Create a Supabase project.
+2. Open **SQL Editor** and run \`supabase/migrations/0001_jam_persistence.sql\`.
+3. In Render, set:
+   - \`SUPABASE_URL\`: Project URL from Supabase project settings.
+   - \`SUPABASE_SERVICE_ROLE_KEY\`: service-role key from Supabase API settings. Treat it as a secret.
+   - \`REQUIRE_SUPABASE=true\`: makes the server refuse to start if Supabase is not configured.
+   - \`MAX_ROOM_MEMBERS=20\`: optional, maximum 50.
+   - \`ALLOWED_ORIGINS\`: optional comma-separated browser origins. Native Android clients normally send no Origin header; leave empty unless you know the app's browser origin.
+4. Never put the service-role key in the Android app, source control, build config, or public client settings. Rotate it immediately if exposed.
+
+The server uses the service-role key only on Render. RLS is enabled and there are no anon/authenticated table policies.
+
+## Storage model
+
+- \`jam_rooms\`: room code, host, last playback snapshot, queue, expiry.
+- \`jam_members\`: member identity, display name, SHA-256 hash of reconnect token, timestamps.
+- \`jam_chat\`: recent chat messages (server retains the latest 50 per room).
+
+Room codes and membership survive a Render restart. On reconnect, the client receives the restored room snapshot and recent chat history in the existing \`room_reconnected\` / \`room_joined\` message as an additional \`chatHistory\` field. Older clients can ignore that field.
+
+Playback updates are broadcast immediately and persisted as a recovery snapshot. For high-frequency playback events, database writes are best-effort and do not block the live broadcast. Queue and chat writes are persisted before the server confirms/broadcasts them.
+
+Disconnected member sessions are retained for up to six hours. Rooms expire after 24 hours without activity. A server restart restores rooms and members, but clients must reconnect using their session token.
+
+## Local development
 
     cd server/jam
     npm install
-    npm start
+    SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm start
 
-The health endpoint is http://localhost:8787/healthz and the WebSocket endpoint is ws://localhost:8787/ws.
+Without Supabase credentials, local development uses temporary in-memory storage. The health endpoint reports this as \`persistence: "memory"\`. In production, set \`REQUIRE_SUPABASE=true\`.
 
-## Deploy with Docker
+- Health: \`http://localhost:8787/healthz\`
+- WebSocket: \`ws://localhost:8787/ws\`
 
-    docker build -t katmusic-jam .
-    docker run --rm -p 8787:8787 -e PORT=8787 katmusic-jam
+## Existing protocol
 
-Put it behind a TLS reverse proxy and use wss:// in production. Do not expose an unencrypted WebSocket endpoint to the public internet.
+- \`create_room\`, \`join_room\`, \`approve_member\`, \`reconnect\`
+- \`playback_state\`, \`queue_suggestion\`, \`queue_update\`
+- \`chat\`, \`transfer_host\`, \`kick_member\`, \`leave_room\`, \`ping\`
 
-## Environment
+Join requests still require explicit host approval. Host-only actions are checked server-side. Reconnect tokens are random, room-scoped, and stored only as SHA-256 hashes.
 
-- PORT: listening port (default 8787)
-- MAX_ROOM_MEMBERS: room capacity from 2 to 50 (default 20)
-- ALLOWED_ORIGINS: optional comma-separated browser origins; native Android clients generally omit Origin
+## Operational notes
 
-## Protocol
-
-Messages are JSON objects with a type field.
-
-- create_room: { "type": "create_room", "displayName": "Host" }
-- join_room: { "type": "join_room", "roomCode": "ABC234", "displayName": "Guest" }
-- approve_member: { "type": "approve_member", "roomCode": "ABC234", "requestId": "...", "approved": true }
-- reconnect: { "type": "reconnect", "roomCode": "ABC234", "sessionToken": "..." }
-- playback_state: host-only; payload includes track, isPlaying, positionMs and durationMs
-- queue_suggestion: guests send payload.track; the host receives queue_suggestion
-- queue_update: host broadcasts payload.queue
-- chat: { "type": "chat", "text": "..." }
-- transfer_host: host-only; memberId identifies the next host
-- kick_member: host-only; memberId identifies the listener to remove
-- leave_room and ping
-
-Join requests require explicit host approval. Session tokens are random, scoped to a room, and can be used to reconnect after a transient disconnect. Room state is in memory: restarting the service ends active rooms. This is intentional for the first deployable version; use a shared store before running multiple server replicas.
-
-## Security notes
-
-The server enforces payload and message-rate limits, sanitizes display names and chat, bounds queue sizes, uses TLS at the deployment edge, and never relays stream URLs or protected audio. It synchronizes metadata and playback position only; each listener resolves and plays audio independently from their own authorized provider.
+- Render terminates public TLS; use \`wss://YOUR-SERVICE.onrender.com/ws\` from the app.
+- Configure UptimeRobot to check \`https://YOUR-SERVICE.onrender.com/healthz\`.
+- A successful HTTP health check does not test a complete WebSocket session.
+- Supabase Free has project and usage limits; monitor database size and egress.
+- Supabase persistence is not a distributed WebSocket broker. Keep one server instance until shared pub/sub and cross-instance membership coordination are implemented.
