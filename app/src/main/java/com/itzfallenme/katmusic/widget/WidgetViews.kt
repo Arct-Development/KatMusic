@@ -173,15 +173,23 @@ internal object WidgetViews {
             R.id.widget_title,
             snapshot.title.ifBlank { "Unknown track" },
         )
-        views.setTextViewText(
-            R.id.widget_subtitle,
-            snapshot.artist.ifBlank { "Unknown artist" },
+        val subtitle = buildList {
+            snapshot.artist.takeIf { it.isNotBlank() }?.let(::add)
+            snapshot.album.takeIf { it.isNotBlank() && !it.equals(snapshot.artist, ignoreCase = true) }?.let(::add)
+        }.joinToString(" · ").ifBlank { "Unknown artist" }
+        views.setTextViewText(R.id.widget_subtitle, subtitle)
+        views.setContentDescription(
+            R.id.widget_art,
+            listOf(snapshot.title, snapshot.artist, snapshot.album).filter { it.isNotBlank() }.joinToString(" · ")
         )
         val playing = snapshot.isPlaying
         views.setTextViewText(
             R.id.widget_state,
             if (playing) "Pause" else "Play",
         )
+        views.setContentDescription(R.id.widget_play_pause, if (playing) "Pause playback" else "Resume playback")
+        views.setContentDescription(R.id.widget_prev, "Play previous track")
+        views.setContentDescription(R.id.widget_next, "Play next track")
         views.setImageViewResource(
             R.id.widget_play_pause,
             if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
