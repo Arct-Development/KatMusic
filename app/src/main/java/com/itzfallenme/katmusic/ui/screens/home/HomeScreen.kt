@@ -200,7 +200,8 @@ fun HomeScreen(
         topBar = {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 ScreenHeader(
-                    title = "Statistics",
+                    title = "Your listening",
+                    subtitle = "History, habits and favourites",
                     modifier = Modifier.adaptiveContentWidth(maxWidth = 860.dp),
                     actions = {
                         HeaderActionIcon(Icons.Filled.Download, "Downloads", onOpenDownloads)
