@@ -219,213 +219,208 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().padding(scaffoldPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .adaptiveContentWidth(maxWidth = 860.dp)
-                    .safeHorizontalContentPadding(),
-            ) {
-            HeaderRow(
-                displayUsername = when {
-                    uiState.isViewingFriend -> uiState.viewingUsername
-                    uiState.username.isNotBlank() -> uiState.username
-                    uiState.isLocalStatsMode -> "Guest"
-                    else -> uiState.username
-                },
-                isViewingFriend = uiState.isViewingFriend,
-                onClick = onOpenFriends,
-                viewModel = viewModel,
-            )
-            Spacer(Modifier.height(2.dp))
-
-            if (uiState.isLocalStatsMode && !uiState.isViewingFriend) {
-                LocalStatsBanner(
-                    onOpenSettings = onOpenSettings,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
-                )
-            }
-
-            if (!uiState.isViewingFriend) {
-                uiState.listeningInsights?.let { insights ->
-                    ListeningWrappedCard(insights, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            val listState = rememberLazyListState()
+            val rows by viewModel.rows.collectAsStateWithLifecycle()
+            val playbackQueue = remember(rows) {
+                rows.mapNotNull { row ->
+                    (row as? HomeRow.Track)?.track?.let { track ->
+                        com.itzfallenme.katmusic.playback.PlayableTrack(
+                            title = track.name,
+                            artist = track.artist,
+                            artworkUrl = track.artworkUrl,
+                            videoId = track.videoId,
+                        )
+                    }
                 }
             }
-
-            uiState.stats?.let { stats ->
-                StatsCard(
-                    scrobbles = stats.scrobbles,
-                    trackCount = stats.trackCount,
-                    artistCount = stats.artistCount,
-                    albumCount = stats.albumCount,
-                    // Honest label: local Room aggregates are plays, not global scrobbles.
-                    headlineLabel = if (uiState.isLocalStatsMode && !uiState.isViewingFriend) "Plays" else "Scrobbles",
-                    onOpenGenres = onOpenGenres,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
-                )
-                Spacer(Modifier.height(12.dp))
+            val playbackIndexByRow = remember(rows) {
+                var nextPlaybackIndex = 0
+                IntArray(rows.size) { rowIndex ->
+                    if (rows[rowIndex] is HomeRow.Track) nextPlaybackIndex++ else -1
+                }
             }
+            val musicPlayer = com.itzfallenme.katmusic.ui.screens.player.LocalMusicPlayer.current
+            var miniTrayRowIndex by remember { mutableStateOf<Int?>(null) }
 
+            LaunchedEffect(listState, uiState.allTracks.size) {
+                snapshotFlowNearEnd(listState) { viewModel.loadNextPage() }
+            }
 
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = viewModel::refresh,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
             ) {
-                val listState = rememberLazyListState()
-                LaunchedEffect(listState, uiState.allTracks.size) {
-                    snapshotFlowNearEnd(listState) { viewModel.loadNextPage() }
-                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .adaptiveContentWidth(maxWidth = 860.dp)
+                        .safeHorizontalContentPadding(),
+                    contentPadding = PaddingValues(bottom = FloatingNavDefaults.contentBottomPadding()),
+                ) {
+                    item(key = "stats_header", contentType = "stats_header") {
+                        HeaderRow(
+                            displayUsername = when {
+                                uiState.isViewingFriend -> uiState.viewingUsername
+                                uiState.username.isNotBlank() -> uiState.username
+                                uiState.isLocalStatsMode -> "Guest"
+                                else -> uiState.username
+                            },
+                            isViewingFriend = uiState.isViewingFriend,
+                            onClick = onOpenFriends,
+                            viewModel = viewModel,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                    }
 
-                // Computed off the main thread in HomeViewModel — see its
-                // doc comment on `rows` for why this used to jank on every
-                // Last.fm poll tick when it ran inline here instead.
-                val rows by viewModel.rows.collectAsStateWithLifecycle()
-                val playbackQueue = remember(rows) {
-                    rows.mapNotNull { row ->
-                        (row as? HomeRow.Track)?.track?.let { track ->
-                            com.itzfallenme.katmusic.playback.PlayableTrack(
-                                title = track.name,
-                                artist = track.artist,
-                                artworkUrl = track.artworkUrl,
-                                videoId = track.videoId,
+                    if (uiState.isLocalStatsMode && !uiState.isViewingFriend) {
+                        item(key = "local_stats_banner", contentType = "stats_banner") {
+                            LocalStatsBanner(
+                                onOpenSettings = onOpenSettings,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
                             )
                         }
                     }
-                }
-                val playbackIndexByRow = remember(rows) {
-                    var nextPlaybackIndex = 0
-                    IntArray(rows.size) { rowIndex ->
-                        if (rows[rowIndex] is HomeRow.Track) nextPlaybackIndex++ else -1
-                    }
-                }
-                val musicPlayer = com.itzfallenme.katmusic.ui.screens.player.LocalMusicPlayer.current
-                // Long-press (deep press) on a track row opens the mini tray;
-                // the 3-dot button keeps opening the full menu sheet.
-                var miniTrayRowIndex by remember { mutableStateOf<Int?>(null) }
 
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .clip(ListContainerShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer),
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-                        MixHeader(sortMode = uiState.sortMode, onSortModeChange = viewModel::setSortMode)
-                    }
-
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(
-                            start = 8.dp,
-                            end = 8.dp,
-                            top = 0.dp,
-                            bottom = FloatingNavDefaults.contentBottomPadding(),
-                        ),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        itemsIndexed(
-                            rows,
-                            key = { _, row ->
-                                when (row) {
-                                    is HomeRow.DateHeader -> "date_${row.label}"
-                                    is HomeRow.Track -> if (row.track.isNowPlaying) {
-                                        "nowplaying_${row.track.key}"
-                                    } else {
-                                        "track_${row.track.key}_${row.track.timestampMillis}"
-                                    }
-                                    is HomeRow.Album -> "album_${row.album.artist}_${row.album.name}"
-                                    is HomeRow.Artist -> "artist_${row.artist.name}"
-                                }
-                            },
-                            contentType = { _, row ->
-                                when (row) {
-                                    is HomeRow.DateHeader -> "date"
-                                    is HomeRow.Track -> "track"
-                                    is HomeRow.Album -> "album"
-                                    is HomeRow.Artist -> "artist"
-                                }
-                            },
-                        ) { rowIndex, row ->
-                            Box {
-                                when (row) {
-                                    is HomeRow.DateHeader -> DateHeaderRow(row.label)
-                                    is HomeRow.Track -> TrackRow(
-                                        track = row.track,
-                                        badge = row.badge,
-                                        onClick = {
-                                            musicPlayer.playQueue(
-                                                tracks = playbackQueue,
-                                                startIndex = playbackIndexByRow[rowIndex],
-                                                sourceLabel = "Home",
-                                            )
-                                        },
-                                        onLongClick = { miniTrayRowIndex = rowIndex },
-                                        onMenuClick = { menuTrack = row.track },
-                                    )
-                                    is HomeRow.Album -> AlbumRow(
-                                        album = row.album,
-                                        badge = row.badge,
-                                        onClick = {
-                                            artistAlbumNavigator.openAlbum(
-                                                title = row.album.name,
-                                                artist = row.album.artist,
-                                                browseId = "", // The room DB doesn't have browseId for HomeAlbum easily accessible here unless we added it, but HomeAlbum has no browseId field. It will search.
-                                            )
-                                        }
-                                    )
-                                    is HomeRow.Artist -> ArtistRow(
-                                        artist = row.artist,
-                                        badge = row.badge,
-                                        onClick = {
-                                            artistAlbumNavigator.openArtist(
-                                                name = row.artist.name,
-                                                browseId = "", // Will search by name
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        if (rows.isEmpty()) {
-                            item(key = "empty", contentType = "empty") {
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(stringResource(R.string.home_no_tracks), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                    if (!uiState.isViewingFriend) {
+                        uiState.listeningInsights?.let { insights ->
+                            item(key = "listening_wrapped", contentType = "wrapped") {
+                                ListeningWrappedCard(insights, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                             }
                         }
                     }
 
-                    miniTrayRowIndex?.let { trayIndex ->
-                        (rows.getOrNull(trayIndex) as? HomeRow.Track)?.let { trayRow ->
-                            TrackMiniTraySheet(
-                                data = TrackMiniTrayData(
-                                    title = trayRow.track.name,
-                                    artist = trayRow.track.artist,
-                                    artworkUrl = trayRow.track.artworkUrl,
-                                    sourceLabel = "Home",
-                                    onPlay = {
+                    uiState.stats?.let { stats ->
+                        item(key = "stats_summary", contentType = "stats_summary") {
+                            StatsCard(
+                                scrobbles = stats.scrobbles,
+                                trackCount = stats.trackCount,
+                                artistCount = stats.artistCount,
+                                albumCount = stats.albumCount,
+                                headlineLabel = if (uiState.isLocalStatsMode && !uiState.isViewingFriend) "Plays" else "Scrobbles",
+                                onOpenGenres = onOpenGenres,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+
+                    item(key = "mix_header", contentType = "mix_header") {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .clip(ListContainerShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .padding(horizontal = 14.dp)
+                        ) {
+                            MixHeader(sortMode = uiState.sortMode, onSortModeChange = viewModel::setSortMode)
+                        }
+                    }
+
+                    itemsIndexed(
+                        rows,
+                        key = { _, row ->
+                            when (row) {
+                                is HomeRow.DateHeader -> "date_\${row.label}"
+                                is HomeRow.Track -> if (row.track.isNowPlaying) {
+                                    "nowplaying_\${row.track.key}"
+                                } else {
+                                    "track_\${row.track.key}_\${row.track.timestampMillis}"
+                                }
+                                is HomeRow.Album -> "album_\${row.album.artist}_\${row.album.name}"
+                                is HomeRow.Artist -> "artist_\${row.artist.name}"
+                            }
+                        },
+                        contentType = { _, row ->
+                            when (row) {
+                                is HomeRow.DateHeader -> "date"
+                                is HomeRow.Track -> "track"
+                                is HomeRow.Album -> "album"
+                                is HomeRow.Artist -> "artist"
+                            }
+                        },
+                    ) { rowIndex, row ->
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .clip(ListContainerShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                        ) {
+                            when (row) {
+                                is HomeRow.DateHeader -> DateHeaderRow(row.label)
+                                is HomeRow.Track -> TrackRow(
+                                    track = row.track,
+                                    badge = row.badge,
+                                    onClick = {
                                         musicPlayer.playQueue(
                                             tracks = playbackQueue,
-                                            startIndex = playbackIndexByRow[trayIndex],
+                                            startIndex = playbackIndexByRow[rowIndex],
                                             sourceLabel = "Home",
                                         )
                                     },
-                                ),
-                                onDismiss = { miniTrayRowIndex = null },
-                            )
+                                    onLongClick = { miniTrayRowIndex = rowIndex },
+                                    onMenuClick = { menuTrack = row.track },
+                                )
+                                is HomeRow.Album -> AlbumRow(
+                                    album = row.album,
+                                    badge = row.badge,
+                                    onClick = {
+                                        artistAlbumNavigator.openAlbum(
+                                            title = row.album.name,
+                                            artist = row.album.artist,
+                                            browseId = "",
+                                        )
+                                    }
+                                )
+                                is HomeRow.Artist -> ArtistRow(
+                                    artist = row.artist,
+                                    badge = row.badge,
+                                    onClick = {
+                                        artistAlbumNavigator.openArtist(name = row.artist.name, browseId = "")
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (rows.isEmpty()) {
+                        item(key = "empty", contentType = "empty") {
+                            Box(
+                                Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(stringResource(R.string.home_no_tracks), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
             }
+
+            miniTrayRowIndex?.let { trayIndex ->
+                (rows.getOrNull(trayIndex) as? HomeRow.Track)?.let { trayRow ->
+                    TrackMiniTraySheet(
+                        data = TrackMiniTrayData(
+                            title = trayRow.track.name,
+                            artist = trayRow.track.artist,
+                            artworkUrl = trayRow.track.artworkUrl,
+                            sourceLabel = "Home",
+                            onPlay = {
+                                musicPlayer.playQueue(
+                                    tracks = playbackQueue,
+                                    startIndex = playbackIndexByRow[trayIndex],
+                                    sourceLabel = "Home",
+                                )
+                            },
+                        ),
+                        onDismiss = { miniTrayRowIndex = null },
+                    )
+                }
+            }
         }
     }
-    }
-
     menuTrack?.let { track ->
         com.itzfallenme.katmusic.ui.components.TrackContextMenuSheet(
             target = com.itzfallenme.katmusic.ui.components.TrackMenuTarget.Track(track.name, track.artist, track.artworkUrl.orEmpty()),
