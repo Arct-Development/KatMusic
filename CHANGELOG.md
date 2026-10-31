@@ -4,6 +4,18 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.1.0] - 2026-10-31
+
+### Added
+
+- Five alternate player styles: Poster, Timeline, Lyrics Stage, iPod and Full Video
+- Animated Canvas artwork support in Full Video mode
+- A dedicated `arm64-v8a` APK alongside the universal and Android 7–9 legacy packages
+
+### Changed
+
+- Lyrics Stage is connected to KatMusic's synced lyrics controls and lyric source options
+
 ## [2.0.0] - 2026-10-30
 
 ### Changed
