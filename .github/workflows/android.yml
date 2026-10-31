@@ -52,6 +52,33 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      # A dedicated arm64-v8a build for modern 64-bit ARM Android devices.
+      # Keep the universal debug APK above for other supported CPU architectures.
+      - name: Build ARM64 (arm64-v8a) debug APK
+        run: ./gradlew :app:assembleDebug -PtargetAbis=arm64-v8a --stacktrace
+
+      - name: Verify ARM64 APK ABI
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/' || {
+            echo "::error::The APK does not contain arm64-v8a native libraries"
+            exit 1
+          }
+          if unzip -Z1 "$APK" | grep -q '^lib/armeabi-v7a/'; then
+            echo "::error::The ARM64-only APK unexpectedly contains 32-bit ARM libraries"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$APK" dist/KatMusic-arm64-v8a-debug.apk
+          sha256sum dist/KatMusic-arm64-v8a-debug.apk > dist/SHA256SUMS.txt
+
+      - name: Upload ARM64 debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: katmusic-arm64-v8a-debug-apk
+          path: dist/*
+          if-no-files-found: error
+
   release:
     name: Build release APK
     needs: build
