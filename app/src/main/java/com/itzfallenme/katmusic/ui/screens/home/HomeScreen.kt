@@ -140,6 +140,11 @@ import com.itzfallenme.katmusic.data.repository.HomeSortMode
 import com.itzfallenme.katmusic.data.repository.HomeTrack
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import android.widget.Toast
+import com.itzfallenme.katmusic.util.FileExportHelper
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+
 
 // Immutable shapes hoisted out of composition: previously each of these was
 // constructed inline inside row/card composables, i.e. re-allocated for every
@@ -186,6 +191,9 @@ fun HomeScreen(
     }
 
     var menuTrack by remember { mutableStateOf<HomeTrack?>(null) }
+    val shareContext = LocalContext.current
+    val shareScope = rememberCoroutineScope()
+    val receiptExporter = remember(shareContext) { FileExportHelper(shareContext.applicationContext) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -286,7 +294,20 @@ fun HomeScreen(
                     if (!uiState.isViewingFriend) {
                         uiState.listeningInsights?.let { insights ->
                             item(key = "listening_wrapped", contentType = "wrapped") {
-                                ListeningWrappedCard(insights, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                                ListeningWrappedCard(
+                                    insights,
+                                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    onShare = {
+                                        shareScope.launch {
+                                            runCatching {
+                                                val receipt = ListeningReceiptRenderer.render(insights)
+                                                receiptExporter.shareImage(shareContext, receipt, "KatMusic Listening Wrapped")
+                                            }.onFailure {
+                                                Toast.makeText(shareContext, "Couldn't create your listening receipt", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                )
                             }
                         }
                     }
@@ -1208,7 +1229,7 @@ private fun TrackRow(
 }
 
 @Composable
-private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier = Modifier) {
+private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier = Modifier, onShare: () -> Unit) {
     val hours = insights.totalListeningMs / 3_600_000L
     val minutes = (insights.totalListeningMs % 3_600_000L) / 60_000L
     Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
@@ -1236,6 +1257,11 @@ private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier
             }
             if (!insights.topArtist.isNullOrBlank()) Text("Top artist · " + insights.topArtist, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(insights.skips.toString() + " skips recorded · based on listening tracked on this device", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onShare) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Share your receipt")
+            }
         }
     }
 }
