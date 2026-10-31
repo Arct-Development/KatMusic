@@ -6,11 +6,11 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.0.1'
+        default: '2.1.0'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.0.1'
+        default: 'KatMusic 2.1.0'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
