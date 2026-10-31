@@ -39,7 +39,7 @@ Some integrations require you to sign in or provide your own service credentials
 
 - [Features](#features)
 - [Player styles](#player-styles)
-- [Screenshots](#sceenshots)
+- [Screenshots](#screenshots)
 - [Download and install](#download-and-install)
 - [Build from source](#build-from-source)
 - [Project structure](#project-structure)
@@ -122,14 +122,16 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 
 ## Screenshots
 <div align="center">
-  <img src="website/public/Screenshot_20261031_141818_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/public/Screenshot_20261031_103726_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/public/Screenshot_20261031_141818_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  ![KatMusic home screen](website/assets/img/home.jpg)
+
+  <img src="website/assets/img/library.jpg" width="31%" alt="Library screen" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/player.jpg" width="31%" alt="Player screen" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/lyrics.jpg" width="31%" alt="Lyrics screen" style="border-radius: 14px; margin: 4px;" />
   <br/>
   <br/>
-  <img src="website/public/Screenshot_20261031_141823_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/public/Screenshot_20261031_141831_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/public/Screenshot_20261031_141835_KatMusic.jpg" width="31%" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/settings.jpg" width="31%" alt="Settings screen" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/stats.jpg" width="31%" alt="Listening statistics screen" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/screen-5.jpg" width="31%" alt="Additional player screen" style="border-radius: 14px; margin: 4px;" />
 </div>
 
 ## Download and install
