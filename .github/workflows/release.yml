@@ -117,6 +117,32 @@ jobs:
           fi
           ls -lh final_apk/
 
+      - name: Build Android 10+ ARM64 Release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ALIAS || secrets.RELEASE_KEY_ALIAS || 'release_key' }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease -PtargetAbis=arm64-v8a --stacktrace
+
+      - name: Stage ARM64 Release APK
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if [ -f "app/build/outputs/apk/release/app-release-signed.apk" ]; then
+            APK="app/build/outputs/apk/release/app-release-signed.apk"
+          fi
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/' || {
+            echo "::error::ARM64 release APK is missing arm64-v8a native libraries"
+            exit 1
+          }
+          if unzip -Z1 "$APK" | grep -q '^lib/armeabi-v7a/'; then
+            echo "::error::ARM64-only release APK unexpectedly contains 32-bit ARM libraries"
+            exit 1
+          fi
+          cp "$APK" "final_apk/KatMusic-v${TAG}-arm64-v8a.apk"
+          ls -lh final_apk/
+
       - name: Verify APK signatures + publish checksums
         env:
           EXPECTED_CERT_SHA256: ${{ secrets.EXPECTED_CERT_SHA256 }}
@@ -160,7 +186,8 @@ jobs:
 
           | Package | Recommended OS | Description |
           | :--- | :--- | :--- |
-          | **`KatMusic-v__TAG__-universal.apk`** (~22 MB) | **Android 10+ (Android 10 – 16+)** | **Standard Recommended Release.** R8-optimized with uncompressed page-aligned native libraries for instant memory mapping. |
+          | **`KatMusic-v__TAG__-universal.apk`** (~22 MB) | **Android 10+ (Android 10 – 16+)** | **Standard Recommended Release.** R8-optimized universal APK for supported CPU architectures. |
+          | **`KatMusic-v__TAG__-arm64-v8a.apk`** | **Android 10+ (64-bit ARM)** | **ARM64 build.** Smaller ABI-specific package for arm64-v8a phones and tablets. |
           | **`KatMusic-v__TAG__-universal-uncompressed.apk`** (~89 MB) | **Android 10+ (Android 10 – 16+)** | **Raw Release.** Unminified debuggable variant with uncompressed native libraries. |
           | **`KatMusic-v__TAG__-android7.apk`** (~17 MB) | **Android 7.0 – 9.0 (Legacy)** | **Legacy Android 7.0+ Variant.** Built with compressed native libraries for older package managers. |
 
