@@ -46,6 +46,7 @@ data class GroupBlendUiState(
 @HiltViewModel
 class GroupBlendViewModel @Inject constructor(
     private val statsRepository: SongPlayStatsRepository,
+    private val player: MusicPlayer,
 ) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
     private val _uiState = MutableStateFlow(GroupBlendUiState())
