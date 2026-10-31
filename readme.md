@@ -122,7 +122,7 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 
 ## Screenshots
 <div align="center">
-  ![KatMusic home screen](website/assets/img/home.jpg)
+  <img src="website/assets/img/home.jpg" width="31%" alt="Home screen" style="border-radius: 14px; margin: 4px;" />
 
   <img src="website/assets/img/library.jpg" width="31%" alt="Library screen" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/player.jpg" width="31%" alt="Player screen" style="border-radius: 14px; margin: 4px;" />
