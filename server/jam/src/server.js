@@ -205,7 +205,7 @@ async function removeMember(room, memberId, reason = "left") {
     await persistRoom(room, true);
     broadcast(room, "host_changed", { hostId: room.hostId });
   } else {
-    await persistRoom(room);
+    await persistRoom(room, true);
   }
   broadcast(room, "member_left", { memberId, displayName: member.displayName, reason });
 }
@@ -233,7 +233,7 @@ async function handleMessage(ws, raw) {
       const member = { id: state.id, ws, displayName: cleanName(message.displayName), sessionHash: hashToken(sessionToken), joinedAt: Date.now(), disconnectedAt: null };
       const room = { code, hostId: member.id, members: new Map([[member.id, member]]), sessions: new Map([[member.sessionHash, member.id]]), pending: new Map(), playback: null, queue: [], createdAt: Date.now(), lastActivityAt: Date.now() };
       try {
-        await persistRoom(room);
+        await persistRoom(room, true);
         await persistMember(room, member);
       } catch (error) {
         if (db) await db.from("jam_rooms").delete().eq("code", code);
@@ -330,7 +330,7 @@ async function handleMessage(ws, raw) {
       if (!ctx || ctx.member.id !== ctx.room.hostId) return send(ws, "error", { code: "host_only", message: "Only the host can update the shared queue." });
       const queue = Array.isArray(message.payload?.queue) ? message.payload.queue.slice(0, 100).map(safeTrack).filter(track => track?.videoId) : [];
       ctx.room.queue = queue;
-      try { await persistRoom(ctx.room); } catch (error) { return send(ws, "error", { code: "storage_unavailable", message: "Queue could not be saved." }); }
+      try { await persistRoom(ctx.room, true); } catch (error) { return send(ws, "error", { code: "storage_unavailable", message: "Queue could not be saved." }); }
       broadcast(ctx.room, "queue_update", { payload: { queue } }, ws);
       break;
     }
