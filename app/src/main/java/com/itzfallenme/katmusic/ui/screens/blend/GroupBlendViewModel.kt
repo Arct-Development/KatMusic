@@ -10,6 +10,8 @@ import com.itzfallenme.katmusic.data.blend.BlendTasteProfileBuilder
 import com.itzfallenme.katmusic.data.blend.GroupBlendEngine
 import com.itzfallenme.katmusic.data.blend.GroupBlendResult
 import com.itzfallenme.katmusic.data.repository.SongPlayStatsRepository
+import com.itzfallenme.katmusic.playback.MusicPlayer
+import com.itzfallenme.katmusic.playback.PlayableTrack
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +103,19 @@ class GroupBlendViewModel @Inject constructor(
             setError(error.message?.takeIf { it.startsWith("This ") }
                 ?: "Couldn't read that code. Ask your friend to copy it again.")
         }
+    }
+
+    fun playTrack(track: com.itzfallenme.katmusic.data.blend.BlendTrack) {
+        val videoId = track.videoId?.takeIf { it.isNotBlank() }
+        if (videoId == null) {
+            setError("This track has no saved playable YouTube Music ID.")
+            return
+        }
+        player.play(
+            PlayableTrack(title = track.title, artist = track.artist, videoId = videoId),
+            sourceLabel = "Group Blend",
+            startRadio = false,
+        )
     }
 
     fun removeMember(userId: String) {
