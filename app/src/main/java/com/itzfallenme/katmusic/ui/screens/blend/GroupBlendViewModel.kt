@@ -93,7 +93,7 @@ class GroupBlendViewModel @Inject constructor(
             require(payload.profile.artistAffinity.values.all { it.isFinite() && it in 0.0..1.0 })
             require(payload.profile.trackAffinity.values.all { it.isFinite() && it in 0.0..1.0 })
             require(payload.profile.tracks.all { it.title.length <= 300 && it.artist.length <= 300 })
-            val id = payload.profile.fingerprint()
+            val id = payload.profile.fingerprint() + ":" + displayName.lowercase()
             if (id == myProfile.fingerprint()) return setError("That's your own Blend code.")
             if (importedMembers.containsKey(id)) return setError("That person is already in this Blend.")
             if (importedMembers.size >= 9) return setError("A Blend supports up to 10 people, including you.")
