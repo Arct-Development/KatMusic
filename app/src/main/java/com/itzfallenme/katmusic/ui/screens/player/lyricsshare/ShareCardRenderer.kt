@@ -341,12 +341,9 @@ object ShareCardRenderer {
         if (spec.lyricStyle == LyricCardStyle.Cover && spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
             drawCenterCropCover(canvas, spec.coverBitmap, width, height)
             canvas.drawColor(0x99000000.toInt())
-            val overlay = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(0f, 0f, 0f, height.toFloat(),
-                    intArrayOf(0x44000000, 0x22000000, 0xCC000000.toInt()),
-                    floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP)
-            }
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlay)
+            // Keep the real supplied album artwork photographic; use one even scrim
+            // only to preserve lyric legibility. No synthetic glow or decorative haze.
+            canvas.drawColor(0x66000000.toInt())
         } else {
             val base = when (spec.lyricStyle) {
                 LyricCardStyle.Paper -> 0xFFF3E8D8.toInt()
@@ -364,19 +361,8 @@ object ShareCardRenderer {
                 }
             }
             canvas.drawColor(base)
-            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(),
-                    intArrayOf(base, end), null, Shader.TileMode.CLAMP)
-            }
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
-            if (spec.lyricStyle == LyricCardStyle.Neon) {
-                val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = spec.swatchColor
-                    alpha = 34
-                    maskFilter = android.graphics.BlurMaskFilter(90f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-                }
-                canvas.drawCircle(width * 0.82f, height * 0.20f, width * 0.28f, glow)
-            }
+            // A single, intentional colour field keeps the layout editorial and print-like.
+            canvas.drawColor(base)
         }
 
         var currentY = (60 * scale)
@@ -465,23 +451,9 @@ object ShareCardRenderer {
         scale: Float,
         plan: LayoutPlan,
     ) {
-        // 1. Background: rich flat / subtle gradient of selected swatch (NO muddy blur!)
-        val topColor = spec.derivedColors.backgroundColor or 0xFF000000.toInt()
-        val hsv = FloatArray(3)
-        AndroidColor.colorToHSV(topColor, hsv)
-        hsv[2] = (hsv[2] * 0.82f).coerceAtLeast(0.08f)
-        val bottomColor = AndroidColor.HSVToColor(0xFF, hsv) or 0xFF000000.toInt()
-
-        canvas.drawColor(topColor) // Explicit opaque fill
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, height.toFloat(),
-                intArrayOf(topColor, bottomColor),
-                null,
-                Shader.TileMode.CLAMP,
-            )
-        }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+        // 1. Quiet, opaque editorial canvas. The album cover carries the visual identity.
+        val topColor = if (spec.derivedColors.isDarkBackground) 0xFF151515.toInt() else 0xFFF4F1EA.toInt()
+        canvas.drawColor(topColor)
 
         var currentY = (60 * scale)
 
