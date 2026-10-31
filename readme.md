@@ -17,11 +17,11 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 </p>
 
 
-[![Downloads](https://img.shields.io/github/downloads/ItzFallenMe/Katmusic/total?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
+[![Downloads](https://img.shields.io/github/downloads/Arct-Development/KatMusic/total?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
 [![Android CI](https://github.com/Arct-Development/KatMusic/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Arct-Development/KatMusic/actions/workflows/android.yml)
-[![Latest release](https://img.shields.io/github/v/release/ItzFallenMe/KatMusic?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
-[![License: GPL-3.0](https://img.shields.io/github/license/ItzFallenMe/KatMusic)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/ItzFallenMe/KatMusic?style=social)](https://github.com/Arct-Development/KatMusic/stargazers)
+[![Latest release](https://img.shields.io/github/v/release/Arct-Development/KatMusic?display_name=tag)](https://github.com/Arct-Development/KatMusic/releases)
+[![License: GPL-3.0](https://img.shields.io/github/license/Arct-Development/KatMusic)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/Arct-Development/KatMusic?style=social)](https://github.com/Arct-Development/KatMusic/stargazers)
 
 **Kotlin · Jetpack Compose · Material 3 · C++ · Oboe**
 
@@ -270,7 +270,7 @@ KatMusic is an independent, third-party project. It is not affiliated with, endo
 
 <div align="center">
 
-**Made by [Arct Developments](https://github.com/ItzFallenMe)**
+**Made by [Arct Development](https://github.com/Arct-Development)**
 
 [Website](https://katmusic.pages.dev) · [Releases](https://github.com/Arct-Development/KatMusic/releases) · [Issues](https://github.com/Arct-Development/KatMusic/issues)
 
