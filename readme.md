@@ -144,6 +144,8 @@ Settings → About.
 
 ## Credits
 
+- **[Mochy Music](https://github.com/InlitX/Mochy-Music)** by [InlitX](https://github.com/InlitX) — Poster, Timeline and expressive Lyrics player-style source and design. The original five style source files and GPL-3.0 license are preserved under [third_party/Mochy-Music](third_party/Mochy-Music/README.md); KatMusic's player integration is adapted for its own playback and lyrics APIs.
+
 
 ### These incredible project helped mochy a lot! check them out too :3
 
