@@ -106,38 +106,6 @@ internal fun AlternateKatPlayerScreen(
     val progress = (state.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
     val dark = Color(0xFF090A0E)
 
-    if (style == KatPlayerStyle.LYRICS) {
-        Box(Modifier.fillMaxSize().background(dark)) {
-            ModernLyricsPanel(
-                state = state,
-                player = player,
-                lyricsState = lyricsState,
-                progressState = progressState,
-                wavySeekbarEnabled = wavySeekbarEnabled,
-                onRetry = onRetryLyrics,
-                lyricsFontScale = lyricsFontScale,
-                onLyricsFontScaleChange = onSetLyricsFontScale,
-                lyricsOffsetMs = lyricsOffsetMs,
-                controlsAutoHideSeconds = lyricsButtonsAutoHideSeconds,
-                translationLanguage = translationLanguage,
-                onSelectLyricsProvider = onSelectLyricsProvider,
-                onTryAnotherLyricsSource = onTryAnotherLyricsSource,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Surface(
-                onClick = onCollapse,
-                modifier = Modifier.align(Alignment.TopStart).padding(14.dp).size(42.dp),
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.38f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Collapse player", tint = Color.White)
-                }
-            }
-        }
-        return
-    }
-
     Box(Modifier.fillMaxSize().background(dark)) {
         if (style == KatPlayerStyle.VIDEO) {
             if (canvasEnabled && canvas != null) {
@@ -184,11 +152,19 @@ internal fun AlternateKatPlayerScreen(
                         progress = progress,
                     )
                     KatPlayerStyle.ARTWORK -> ArtworkPresentation(track.artworkUrl)
-                    KatPlayerStyle.LYRICS -> Unit
+                    KatPlayerStyle.LYRICS -> LyricsStagePresentation(
+                        artwork = track.artworkUrl,
+                        title = track.title,
+                        artist = track.artist,
+                        lyricsState = lyricsState,
+                        positionMs = state.positionMs,
+                        lyricsOffsetMs = lyricsOffsetMs,
+                        progress = progress,
+                    )
                     KatPlayerStyle.VIDEO -> VideoPresentation()
                 }
             }
-            if (style != KatPlayerStyle.VIDEO && style != KatPlayerStyle.POSTER && style != KatPlayerStyle.TIMELINE) {
+            if (style != KatPlayerStyle.VIDEO && style != KatPlayerStyle.POSTER && style != KatPlayerStyle.TIMELINE && style != KatPlayerStyle.LYRICS) {
                 Spacer(Modifier.height(18.dp))
                 Text(track.title, color = Color.White, fontSize = if (style == KatPlayerStyle.LYRICS) 30.sp else 23.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Color.White.copy(.66f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -229,6 +205,167 @@ internal fun AlternateKatPlayerScreen(
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LyricsStagePresentation(
+    artwork: String?,
+    title: String,
+    artist: String,
+    lyricsState: LyricsUiState,
+    positionMs: Long,
+    lyricsOffsetMs: Long,
+    progress: Float,
+) {
+    val lines = (lyricsState as? LyricsUiState.Success)
+        ?.takeIf { it.isSynced }
+        ?.lines
+        .orEmpty()
+    val lyricPosition = positionMs + lyricsOffsetMs
+    val activeIndex = lines.indexOfLast { it.timeMs <= lyricPosition }
+    val active = lines.getOrNull(activeIndex)
+    val next = lines.getOrNull(activeIndex + 1)
+    val played = MaterialTheme.colorScheme.primaryContainer
+    val remaining = Color(0xFF10141D)
+    val accent = MaterialTheme.colorScheme.primary
+
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(440.dp).clip(RoundedCornerShape(28.dp)),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val split = size.height * progress.coerceIn(0f, 1f)
+            drawRect(remaining)
+            drawRect(played.copy(alpha = 0.95f), size = Size(size.width, split))
+            drawLine(
+                color = accent,
+                start = Offset(0f, split),
+                end = Offset(size.width, split),
+                strokeWidth = 2.dp.toPx(),
+            )
+        }
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Artwork(artwork, Modifier.size(52.dp), true)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        artist,
+                        color = Color.White.copy(alpha = 0.70f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    "LYRICS",
+                    color = Color.White.copy(alpha = 0.60f),
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 2.sp,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (active == null) {
+                    ExpressiveTitle(
+                        text = title,
+                        baseSize = (maxWidth.value * 0.115f).coerceIn(34f, 54f).sp,
+                        color = Color.White,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        if (lyricsState is LyricsUiState.Loading) "Finding synced lyrics…" else "No synced lyrics available for this track",
+                        color = Color.White.copy(alpha = 0.62f),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    ExpressiveLyricLine(
+                        line = active,
+                        positionMs = lyricPosition,
+                        baseSize = (maxWidth.value * 0.105f).coerceIn(32f, 52f).sp,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (!next?.text.isNullOrBlank()) {
+                    Text(
+                        next!!.text,
+                        color = Color.White.copy(alpha = 0.42f),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    formatPlayerTime(positionMs),
+                    color = Color.White.copy(alpha = 0.78f),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Text(
+                    artist,
+                    color = Color.White.copy(alpha = 0.60f),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExpressiveLyricLine(
+    line: LyricLine,
+    positionMs: Long,
+    baseSize: TextUnit,
+    modifier: Modifier = Modifier,
+) {
+    val syllables = remember(line) {
+        line.syllables.filter { !it.isBackground && it.text.isNotBlank() }
+    }
+    if (syllables.isEmpty()) {
+        ExpressiveTitle(line.text, baseSize, Color.White, modifier)
+        return
+    }
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        syllables.forEach { word ->
+            val current = positionMs >= word.timeMs && positionMs < word.timeMs + word.durationMs.coerceAtLeast(1L)
+            val alreadySung = positionMs >= word.timeMs + word.durationMs
+            Text(
+                word.text,
+                color = when {
+                    current -> Color.White
+                    alreadySung -> Color.White.copy(alpha = 0.58f)
+                    else -> Color.White.copy(alpha = 0.30f)
+                },
+                fontSize = baseSize * if (current) 1.08f else 1f,
+                fontWeight = if (current) FontWeight.Black else FontWeight.Bold,
+                letterSpacing = (-0.035).em,
+                lineHeight = baseSize * 0.98f,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PosterPresentation(
     artwork: String?,
