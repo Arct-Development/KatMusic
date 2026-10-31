@@ -110,7 +110,7 @@ export default function HomePage() {
     <div className="ambient ambient-top"/><div className="ambient ambient-low"/>
     <header className={"site-header " + (scrolled ? "is-scrolled" : "")}>
       <div className="nav-wrap">
-        <a className="brand" href="#top"><Image src="/icon.png" alt="" width={32} height={32} priority/><span>katmusic<span className="brand-period">.</span></span></a>
+        <a className="brand" href="#top"><Image src="/katmusic_logo.svg" alt="" width={32} height={32} priority/><span>katmusic<span className="brand-period">.</span></span></a>
         <nav className={menuOpen ? "nav-links nav-links-open" : "nav-links"}>
           <a href="#experience" onClick={() => setMenuOpen(false)}>Experience</a>
           <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
@@ -137,6 +137,7 @@ export default function HomePage() {
           <div className="hero-release"><span className="release-pulse"/> LATEST STABLE <b>{latest?.tag ?? "2.1.0"}</b><span className="hero-release-divider"/> BUILT WITH KOTLIN + C++</div>
         </div>
         <div className="hero-stage">
+          <div className="hero-brand-orbit" aria-hidden="true"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><div className="hero-brand-mark"><Image src="/katmusic_logo.svg" alt="" width={220} height={220} priority/></div><span className="brand-spark spark-one"/><span className="brand-spark spark-two"/><span className="brand-spark spark-three"/></div>
           <div className="stage-aura"/><div className="stage-ring stage-ring-a"/><div className="stage-ring stage-ring-b"/>
           <div className="stage-label stage-label-top"><span>01 / 04</span> THE APP, IN MOTION</div>
           <Phone screen="library" className="device-left"/>
@@ -190,6 +191,6 @@ export default function HomePage() {
 
       <section className="closing-section"><div className="closing-orb"/><div className="section-index"><span>05</span><i/> BUILT IN THE OPEN</div><h2>Keep the music.<br/><em>Lose the limits.</em></h2><p>KatMusic is built in the open. Explore the code, follow development or help shape what comes next.</p><div className="closing-actions"><a href={REPO_PAGE} target="_blank" rel="noreferrer"><Github size={17}/> Explore on GitHub <ArrowUpRight size={15}/></a><a href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Report an issue <ArrowUpRight size={15}/></a></div></section>
     </main>
-    <footer className="site-footer"><div className="footer-brand"><a className="brand" href="#top"><Image src="/icon.png" alt="" width={26} height={26}/><span>katmusic<span className="brand-period">.</span></span></a><p>A little more feeling in every play.</p></div><div className="footer-links"><a href="#features">Features</a><a href={RELEASES_PAGE}>Releases</a><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>GPL-3.0</a></div><span className="footer-copy">© {new Date().getFullYear()} ItzFallenMe</span></footer>
+    <footer className="site-footer"><div className="footer-brand"><a className="brand" href="#top"><Image src="/katmusic_logo.svg" alt="" width={26} height={26}/><span>katmusic<span className="brand-period">.</span></span></a><p>A little more feeling in every play.</p></div><div className="footer-links"><a href="#features">Features</a><a href={RELEASES_PAGE}>Releases</a><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>GPL-3.0</a></div><span className="footer-copy">© {new Date().getFullYear()} ItzFallenMe</span></footer>
   </div>;
 }
