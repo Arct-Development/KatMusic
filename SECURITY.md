@@ -3,8 +3,8 @@
 ## Reporting a vulnerability
 
 Please don't open a public issue for security problems. Report them privately through
-GitHub's [security advisories](https://github.com/ItzFallenMe/KatMusic/security/advisories/new)
-or contact [ItzFallenMe](https://github.com/ItzFallenMe) directly.
+GitHub's [security advisories](https://github.com/Arct-Development/KatMusic/security/advisories/new)
+or contact [Arct Development](https://github.com/Arct-Development) through the organization profile.
 
 Include what is affected, how to reproduce it and the impact you expect. You should get
 an acknowledgement within a few days.
