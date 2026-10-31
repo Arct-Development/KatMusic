@@ -43,6 +43,32 @@ export default function HomePage() {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    const targets = document.querySelectorAll<HTMLElement>(
+      ".section-heading, .feature-row, .principles article, .style-row, .install-steps article, .shot, .download-main, .tech-grid > div, .faq-item, .open-source-inner"
+    );
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -36px 0px" });
+
+    targets.forEach((target, index) => {
+      target.classList.add("scroll-reveal");
+      target.style.transitionDelay = `${(index % 4) * 65}ms`;
+      observer.observe(target);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const latest = releases?.find((item) => !item.prerelease) ?? releases?.[0] ?? null;
   const apks = useMemo(() => latest?.assets.filter((asset) => isApk(asset.name)) ?? [], [latest]);
   const selected = apks.find((asset) => asset.name.toLowerCase().includes(selectedAsset)) ??
@@ -127,9 +153,9 @@ export default function HomePage() {
               ["01","Classic","Full player, tabs, queue and controls."],
               ["02","Poster","Large circular artwork and expressive track text."],
               ["03","Timeline","Progress-led layout with oversized timestamps."],
-              ["04","Lyrics","Lyrics-focused view with timed syllable highlighting."],
-              ["05","Artwork","Large album art and focused controls."],
-              ["06","Canvas","Immersive background using available Canvas artwork."],
+              ["04","Lyrics Stage","Lyrics-focused view with synced highlighting and source controls."],
+              ["05","iPod","A compact, tactile player inspired by classic music devices."],
+              ["06","Full Video","Immersive playback with animated Canvas artwork when available."],
             ].map((item) => <div className="style-row" key={item[0]}><span>{item[0]}</span><b>{item[1]}</b><p>{item[2]}</p><ArrowUpRight size={14}/></div>)}
           </div>
         </div>
