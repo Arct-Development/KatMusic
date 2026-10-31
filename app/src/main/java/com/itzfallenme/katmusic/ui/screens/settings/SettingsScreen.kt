@@ -514,7 +514,7 @@ fun SettingsScreen(
     val lastFmConnecting by viewModel.lastFmConnecting.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val playerStylePreferences = remember(context) {
-        context.getSharedPreferences(KatPlayerStylePreferences.FILE_NAME, Context.MODE_PRIVATE)
+        context.getSharedPreferences(KatPlayerStylePreferences.FILE_NAME, android.content.Context.MODE_PRIVATE)
     }
     var selectedPlayerStyle by rememberSaveable {
         mutableStateOf(KatPlayerStyle.fromStored(playerStylePreferences.getString(KatPlayerStylePreferences.KEY_STYLE, null)))
