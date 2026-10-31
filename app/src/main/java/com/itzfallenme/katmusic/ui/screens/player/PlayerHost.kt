@@ -847,6 +847,12 @@ fun PlayerHost(
         }
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val stylePreferences = remember(context) {
+        context.getSharedPreferences("katmusic_player_style", Context.MODE_PRIVATE)
+    }
+    var selectedPlayerStyle by rememberSaveable {
+        mutableStateOf(KatPlayerStyle.fromStored(stylePreferences.getString("selected_style", null)))
+    }
     val requestAddToPlaylist = remember(viewModel) {
         { track: PlayableTrack ->
             viewModel.prepareCustomPlaylists()
@@ -983,18 +989,42 @@ fun PlayerHost(
                     enabled = expanded && state.current != null && currentTab == FullPlayerTab.NOW_PLAYING,
                     onBack = { expanded = false },
                 ) {
-                    ExpandedPlayer(
-                        viewModel = viewModel,
-                        currentTab = currentTab,
-                        onTabChange = { currentTab = it },
-                        onRetryLyrics = viewModel::retryLyrics,
-                        onCollapse = { expanded = false },
-                        onOpenArtist = { artist ->
-                            expanded = false
-                            viewModel.openArtist(artist)
-                        },
-                        onDragStatusChange = { isPlayerDragging = it },
-                    )
+                    Box(Modifier.fillMaxSize()) {
+                        if (selectedPlayerStyle == KatPlayerStyle.DEFAULT) {
+                            ExpandedPlayer(
+                                viewModel = viewModel,
+                                currentTab = currentTab,
+                                onTabChange = { currentTab = it },
+                                onRetryLyrics = viewModel::retryLyrics,
+                                onCollapse = { expanded = false },
+                                onOpenArtist = { artist ->
+                                    expanded = false
+                                    viewModel.openArtist(artist)
+                                },
+                                onDragStatusChange = { isPlayerDragging = it },
+                            )
+                            FilterChip(
+                                selected = false,
+                                onClick = {
+                                    selectedPlayerStyle = KatPlayerStyle.POSTER
+                                    stylePreferences.edit().putString("selected_style", selectedPlayerStyle.name).apply()
+                                },
+                                label = { Text("Player styles") },
+                                modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 18.dp),
+                            )
+                        } else {
+                            AlternateKatPlayerScreen(
+                                state = playbackState,
+                                player = viewModel.player,
+                                style = selectedPlayerStyle,
+                                onStyleSelected = { style ->
+                                    selectedPlayerStyle = style
+                                    stylePreferences.edit().putString("selected_style", style.name).apply()
+                                },
+                                onCollapse = { expanded = false },
+                            )
+                        }
+                    }
                 }
             }
             
