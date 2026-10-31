@@ -100,8 +100,10 @@ async function dbCall(query) {
   dbHealthy = true;
   return data;
 }
-async function persistRoom(room) {
+async function persistRoom(room, force = false) {
   if (!db) return;
+  const now = Date.now();
+  if (!force && room.lastPersistAt && now - room.lastPersistAt < 10_000) return;
   await dbCall(db.from("jam_rooms").upsert({
     code: room.code,
     host_member_id: room.hostId,
@@ -111,6 +113,7 @@ async function persistRoom(room) {
     updated_at: nowIso(),
     expires_at: new Date(Date.now() + ROOM_TTL_MS).toISOString()
   }, { onConflict: "code" }));
+  room.lastPersistAt = now;
 }
 async function persistMember(room, member) {
   if (!db) return;
@@ -175,7 +178,7 @@ async function restoreRooms() {
       createdAt: new Date(row.created_at).getTime(), lastActivityAt: Date.now()
     };
     rooms.set(room.code, room);
-    if (hostId !== row.host_member_id) await persistRoom(room);
+    if (hostId !== row.host_member_id) await persistRoom(room, true);
   }
   process.stdout.write("Restored " + rooms.size + " persistent Jam rooms from Supabase.\\n");
 }
@@ -199,7 +202,7 @@ async function removeMember(room, memberId, reason = "left") {
   }
   if (room.hostId === memberId) {
     room.hostId = room.members.values().next().value.id;
-    await persistRoom(room);
+    await persistRoom(room, true);
     broadcast(room, "host_changed", { hostId: room.hostId });
   } else {
     await persistRoom(room);
@@ -270,7 +273,7 @@ async function handleMessage(ws, raw) {
       if (ctx.room.members.size >= MAX_MEMBERS) return send(pending.ws, "error", { code: "room_full", message: "That room is full." });
       const sessionToken = token();
       const member = { id: pending.clientId, ws: pending.ws, displayName: pending.displayName, sessionHash: hashToken(sessionToken), joinedAt: Date.now(), disconnectedAt: null };
-      try { await persistMember(ctx.room, member); await persistRoom(ctx.room); }
+      try { await persistMember(ctx.room, member); await persistRoom(ctx.room, true); }
       catch (error) { send(pending.ws, "error", { code: "storage_unavailable", message: "Could not save room membership. Try again." }); return; }
       ctx.room.members.set(member.id, member); ctx.room.sessions.set(member.sessionHash, member.id);
       pendingState.roomCode = ctx.room.code; pendingState.memberId = member.id;
@@ -368,10 +371,7 @@ async function handleMessage(ws, raw) {
   }
   const current = clients.get(ws);
   const activeRoom = current?.roomCode && rooms.get(current.roomCode);
-  if (activeRoom) {
-    activeRoom.lastActivityAt = Date.now();
-    if (db) persistRoom(activeRoom).catch(error => process.stderr.write("room activity persistence failed: " + error.message + "\\n"));
-  }
+  if (activeRoom) activeRoom.lastActivityAt = Date.now();
 }
 
 const server = http.createServer((req, res) => {
