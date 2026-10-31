@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ArrowDown, ArrowUpRight, AudioLines, Check, ChevronDown,
-  Download, Github, Headphones, Heart, Menu, Mic2, Music2, Radio,
+  Download, Code2, Headphones, Heart, Menu, Mic2, Music2, Radio,
   ShieldCheck, SlidersHorizontal, Sparkles, Waves, X,
 } from "lucide-react";
 import {
@@ -179,7 +179,7 @@ export default function HomePage() {
       </section>
 
       <section className="open-source">
-        <div className="open-source-inner"><Image src="/katmusic_logo.svg" alt="" width={66} height={66}/><div><span className="micro-label">BUILT IN THE OPEN</span><h2>Good music.<br/><em>Open source.</em></h2><p>Read the code, follow development, report a bug or contribute a feature.</p></div><div className="open-source-actions"><a className="button-primary" href={REPO_PAGE} target="_blank" rel="noreferrer"><Github size={17}/> View source <ArrowUpRight size={15}/></a><a className="text-link" href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Issues and feedback <ArrowUpRight size={14}/></a></div></div>
+        <div className="open-source-inner"><Image src="/katmusic_logo.svg" alt="" width={66} height={66}/><div><span className="micro-label">BUILT IN THE OPEN</span><h2>Good music.<br/><em>Open source.</em></h2><p>Read the code, follow development, report a bug or contribute a feature.</p></div><div className="open-source-actions"><a className="button-primary" href={REPO_PAGE} target="_blank" rel="noreferrer"><Code2 size={17}/> View source <ArrowUpRight size={15}/></a><a className="text-link" href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Issues and feedback <ArrowUpRight size={14}/></a></div></div>
       </section>
     </main>
 
