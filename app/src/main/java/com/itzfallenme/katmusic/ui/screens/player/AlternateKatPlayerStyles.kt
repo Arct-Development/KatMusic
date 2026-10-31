@@ -5,7 +5,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,31 +26,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.em
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.playback.MusicPlayer
 import com.itzfallenme.katmusic.playback.MusicPlayerState
 import com.itzfallenme.katmusic.playback.PlaybackProgressState
 import com.itzfallenme.katmusic.data.canvas.CanvasArtwork
+import com.itzfallenme.katmusic.data.lyrics.isRtlText
+import com.itzfallenme.katmusic.data.lyrics.LyricLine
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 
 /** Independent presentation presets; playback remains owned by MusicPlayer. */
 enum class KatPlayerStyle(val label: String, val description: String) {
-    DEFAULT("Classic", "The full KatMusic player with tabs, queue and advanced controls"),
-    ARTWORK("Artwork", "Large album art, clean track details and focused playback controls"),
-    LYRICS("Lyrics", "Put synchronized lyrics at the center of the player"),
-    VIDEO("Canvas", "Use animated Canvas artwork as an immersive background");
+    DEFAULT("Classic", "KatMusic's full player with tabs, queue and advanced controls"),
+    POSTER("Poster", "Oversized circular cover art with expressive, synchronized lyrics"),
+    TIMELINE("Timeline", "A colour-split playhead layout with oversized elapsed and total time"),
+    LYRICS("Lyrics", "Mochy-inspired expressive lyrics using KatMusic's synced lyric engine"),
+    ARTWORK("Artwork", "Large album artwork with focused playback controls"),
+    VIDEO("Canvas", "Immersive animated Canvas artwork as the player background");
 
     companion object {
         fun fromStored(value: String?): KatPlayerStyle = when (value) {
-            "POSTER" -> ARTWORK
-            "TIMELINE", "IPOD" -> DEFAULT
+            "IPOD" -> DEFAULT
             else -> entries.firstOrNull { it.name == value } ?: DEFAULT
         }
     }
@@ -83,6 +97,38 @@ internal fun AlternateKatPlayerScreen(
     val progress = (state.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
     val dark = Color(0xFF090A0E)
 
+    if (style == KatPlayerStyle.LYRICS) {
+        Box(Modifier.fillMaxSize().background(dark)) {
+            ModernLyricsPanel(
+                state = state,
+                player = player,
+                lyricsState = lyricsState,
+                progressState = progressState,
+                wavySeekbarEnabled = wavySeekbarEnabled,
+                onRetry = onRetryLyrics,
+                lyricsFontScale = lyricsFontScale,
+                onLyricsFontScaleChange = onSetLyricsFontScale,
+                lyricsOffsetMs = lyricsOffsetMs,
+                controlsAutoHideSeconds = lyricsButtonsAutoHideSeconds,
+                translationLanguage = translationLanguage,
+                onSelectLyricsProvider = onSelectLyricsProvider,
+                onTryAnotherLyricsSource = onTryAnotherLyricsSource,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Surface(
+                onClick = onCollapse,
+                modifier = Modifier.align(Alignment.TopStart).padding(14.dp).size(42.dp),
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.38f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Collapse player", tint = Color.White)
+                }
+            }
+        }
+        return
+    }
+
     Box(Modifier.fillMaxSize().background(dark)) {
         if (style == KatPlayerStyle.VIDEO) {
             if (canvasEnabled && canvas != null) {
@@ -111,30 +157,33 @@ internal fun AlternateKatPlayerScreen(
             AnimatedContent(targetState = style, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "player-style") { target ->
                 when (target) {
                     KatPlayerStyle.DEFAULT -> Unit
-                    KatPlayerStyle.ARTWORK -> ArtworkPresentation(track.artworkUrl)
-                    KatPlayerStyle.LYRICS -> LyricsPresentation(
-                        state = state,
-                        player = player,
+                    KatPlayerStyle.POSTER -> PosterPresentation(
+                        artwork = track.artworkUrl,
+                        title = track.title,
+                        artist = track.artist,
                         lyricsState = lyricsState,
-                        progressState = progressState,
+                        positionMs = state.positionMs,
                         lyricsOffsetMs = lyricsOffsetMs,
-                        lyricsFontScale = lyricsFontScale,
-                        controlsAutoHideSeconds = lyricsButtonsAutoHideSeconds,
-                        translationLanguage = translationLanguage,
-                        wavySeekbarEnabled = wavySeekbarEnabled,
-                        onRetry = onRetryLyrics,
-                        onFontScaleChange = onSetLyricsFontScale,
-                        onSelectLyricsProvider = onSelectLyricsProvider,
-                        onTryAnotherLyricsSource = onTryAnotherLyricsSource,
+                        progress = progress,
                     )
+                    KatPlayerStyle.TIMELINE -> TimelinePresentation(
+                        artwork = track.artworkUrl,
+                        title = track.title,
+                        artist = track.artist,
+                        positionMs = state.positionMs,
+                        durationMs = duration,
+                        progress = progress,
+                    )
+                    KatPlayerStyle.ARTWORK -> ArtworkPresentation(track.artworkUrl)
+                    KatPlayerStyle.LYRICS -> Unit
                     KatPlayerStyle.VIDEO -> VideoPresentation()
                 }
             }
-            if (style != KatPlayerStyle.VIDEO) {
+            if (style != KatPlayerStyle.VIDEO && style != KatPlayerStyle.POSTER && style != KatPlayerStyle.TIMELINE) {
                 Spacer(Modifier.height(18.dp))
                 Text(track.title, color = Color.White, fontSize = if (style == KatPlayerStyle.LYRICS) 30.sp else 23.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Color.White.copy(.66f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            } else {
+            } else if (style == KatPlayerStyle.VIDEO) {
                 Spacer(Modifier.height(14.dp))
                 Text(track.title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Color.White.copy(.72f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -166,6 +215,217 @@ internal fun AlternateKatPlayerScreen(
                 }
             }
             Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PosterPresentation(
+    artwork: String?,
+    title: String,
+    artist: String,
+    lyricsState: LyricsUiState,
+    positionMs: Long,
+    lyricsOffsetMs: Long,
+    progress: Float,
+) {
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(560.dp).clip(RoundedCornerShape(28.dp)),
+    ) {
+        val width = maxWidth
+        val coverSize = width * 2.28f
+        val accent = MaterialTheme.colorScheme.primary
+        val synced = (lyricsState as? LyricsUiState.Success)
+            ?.takeIf { it.isSynced }
+            ?.lines
+            .orEmpty()
+            .filter { it.text.isNotBlank() }
+        val lyricPosition = positionMs + lyricsOffsetMs
+        val activeIndex = synced.indexOfLast { it.timeMs <= lyricPosition }.coerceAtLeast(0)
+        val activeLine = synced.getOrNull(activeIndex)?.text?.takeIf { synced.isNotEmpty() }
+        val nextLine = synced.getOrNull(activeIndex + 1)?.text
+
+        AsyncImage(
+            model = artwork,
+            contentDescription = "Album artwork",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(coverSize)
+                .offset(x = -(width * 1.01f), y = -(width * 1.08f))
+                .clip(CircleShape),
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.05f),
+                    0.42f to Color.Black.copy(alpha = 0.08f),
+                    0.73f to Color(0xFF090A0E).copy(alpha = 0.80f),
+                    1f to Color(0xFF090A0E),
+                ),
+            ),
+        )
+        Canvas(Modifier.fillMaxSize()) {
+            val radius = size.width * 1.14f
+            val center = Offset(size.width * 0.13f, size.width * 0.06f)
+            val arcSize = Size(radius * 2f, radius * 2f)
+            val topLeft = Offset(center.x - radius, center.y - radius)
+            drawArc(
+                color = Color.White.copy(alpha = 0.22f),
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+            )
+            drawArc(
+                color = accent.copy(alpha = 0.92f),
+                startAngle = -90f,
+                sweepAngle = 360f * progress.coerceIn(0f, 1f),
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
+            )
+        }
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                if (activeLine != null) "NOW SINGING" else "NOW PLAYING",
+                color = Color.White.copy(alpha = 0.66f),
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 2.5.sp,
+            )
+            ExpressiveTitle(
+                text = activeLine ?: title,
+                baseSize = (width.value * 0.115f).coerceIn(34f, 58f).sp,
+                color = Color.White,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (!nextLine.isNullOrBlank()) {
+                Text(
+                    nextLine,
+                    color = Color.White.copy(alpha = 0.48f),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                artist,
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelinePresentation(
+    artwork: String?,
+    title: String,
+    artist: String,
+    positionMs: Long,
+    durationMs: Long,
+    progress: Float,
+) {
+    val played = MaterialTheme.colorScheme.primaryContainer
+    val accent = MaterialTheme.colorScheme.primary
+    val remaining = Color(0xFF121722)
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(470.dp).clip(RoundedCornerShape(28.dp)),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val boundary = size.height * progress.coerceIn(0f, 1f)
+            drawRect(remaining)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to played,
+                    1f to played.copy(alpha = 0.72f),
+                ),
+                size = Size(size.width, boundary),
+            )
+            drawLine(
+                color = accent,
+                start = Offset(0f, boundary),
+                end = Offset(size.width, boundary),
+                strokeWidth = 2.dp.toPx(),
+            )
+        }
+        Column(
+            Modifier.fillMaxSize().padding(22.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Artwork(artwork, Modifier.size(66.dp), true)
+                Column(Modifier.weight(1f)) {
+                    Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(artist, color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    formatPlayerTime(positionMs),
+                    color = Color.White,
+                    fontSize = 64.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-2).sp,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.width(30.dp).height(2.dp).background(Color.White.copy(alpha = 0.70f)))
+                    Text(
+                        "OF " + formatPlayerTime(durationMs),
+                        color = Color.White.copy(alpha = 0.76f),
+                        style = MaterialTheme.typography.labelLarge,
+                        letterSpacing = 2.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExpressiveTitle(
+    text: String,
+    baseSize: TextUnit,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val words = remember(text) { text.split(' ').filter(String::isNotBlank) }
+    val emphasised = remember(words) {
+        words.withIndex().filter { it.value.length >= 3 }.minByOrNull { it.value.length }?.index ?: -1
+    }
+    val rtl = remember(text) { isRtlText(text) }
+    CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+        FlowRow(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            words.forEachIndexed { index, word ->
+                val scale = when {
+                    index == emphasised && words.size > 1 -> 1.45f
+                    word.length >= 11 -> 0.74f
+                    word.length >= 9 -> 0.86f
+                    else -> 1f
+                }
+                Text(
+                    word,
+                    color = color,
+                    fontSize = baseSize * scale,
+                    fontWeight = if (scale > 1f) FontWeight.Black else FontWeight.Bold,
+                    letterSpacing = (-0.035).em,
+                    lineHeight = baseSize * 0.96f,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
