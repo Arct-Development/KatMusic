@@ -14,7 +14,13 @@ on:
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
-        default: ''
+        default: |
+          ## KatMusic 2.1.0
+
+          - Add five alternate player styles: Poster, Timeline, Lyrics Stage, iPod, and Full Video.
+          - Connect Lyrics Stage to KatMusic's synced lyrics controls and source options.
+          - Add animated Canvas artwork support in Full Video mode.
+          - Add a dedicated arm64-v8a APK alongside the universal and legacy packages.
 
 jobs:
   release:
