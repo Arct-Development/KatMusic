@@ -11,7 +11,7 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 <p>
   <a href="https://github.com/ItzFallenMe/KatMusic/releases/tag/2.1.0"><strong>Download v2.1.0</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://katmusic.netlify.app">Project website</a>
+  <a href="https://katmusic.pages.dev">Project website</a>
   &nbsp;·&nbsp;
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -268,6 +268,6 @@ KatMusic is an independent, third-party project. It is not affiliated with, endo
 
 **Made by [Arct Developments](https://github.com/ItzFallenMe)**
 
-[Website](https://katmusic.netlify.app) · [Releases](https://github.com/ItzFallenMe/KatMusic/releases) · [Issues](https://github.com/ItzFallenMe/KatMusic/issues)
+[Website](https://katmusic.pages.dev) · [Releases](https://github.com/ItzFallenMe/KatMusic/releases) · [Issues](https://github.com/ItzFallenMe/KatMusic/issues)
 
 </div>
