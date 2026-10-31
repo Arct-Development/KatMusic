@@ -144,6 +144,13 @@ Settings → About.
 
 ## Credits
 
+
+### These incredible project helped mochy a lot! check them out too :3
+
+- **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- For the lyrics API provider.
+- **Lastwave** by [Rukamori](https://github.com/Clash-Projects) ([Repository](https://github.com/Clash-Projects/LastWave-native)) -- For design and architectural inspiration.
+- **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
+- **Monochrome Music** by [monochrome-music](https://github.com/monochrome-music) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
 - [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) for stream
   extraction
 - [Coil](https://coil-kt.github.io/coil/), [Oboe](https://github.com/google/oboe) and the
