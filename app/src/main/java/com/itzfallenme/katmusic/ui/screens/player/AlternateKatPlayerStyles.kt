@@ -81,7 +81,6 @@ internal fun AlternateKatPlayerScreen(
     val track = state.current ?: return
     val duration = max(state.durationMs, 1L)
     val progress = (state.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-    val accent = MaterialTheme.colorScheme.primary
     val dark = Color(0xFF090A0E)
 
     Box(Modifier.fillMaxSize().background(dark)) {
@@ -128,7 +127,7 @@ internal fun AlternateKatPlayerScreen(
                         onSelectLyricsProvider = onSelectLyricsProvider,
                         onTryAnotherLyricsSource = onTryAnotherLyricsSource,
                     )
-                    KatPlayerStyle.VIDEO -> VideoPresentation(track.title, track.artist)
+                    KatPlayerStyle.VIDEO -> VideoPresentation()
                 }
             }
             if (style != KatPlayerStyle.VIDEO) {
@@ -196,12 +195,9 @@ private fun ArtworkPresentation(artwork: String?) {
 }
 
 @Composable
-private fun VideoPresentation(title: String, artist: String) {
+private fun VideoPresentation() {
     Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("IMMERSIVE MODE", color = Color.White.copy(.72f), style = MaterialTheme.typography.labelSmall, letterSpacing = 3.sp)
-        Spacer(Modifier.height(10.dp))
-        Text(title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(artist, color = Color.White.copy(.72f), style = MaterialTheme.typography.titleMedium)
     }
 }
 
