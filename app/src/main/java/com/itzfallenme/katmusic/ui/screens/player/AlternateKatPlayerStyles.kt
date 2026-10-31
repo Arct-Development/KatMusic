@@ -97,7 +97,7 @@ internal fun AlternateKatPlayerScreen(
                 Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.24f), Color.Transparent, dark.copy(.96f)))))
-        }        }
+        }
 
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp),
