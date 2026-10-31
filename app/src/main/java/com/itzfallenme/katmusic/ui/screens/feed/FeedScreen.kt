@@ -337,7 +337,8 @@ fun FeedScreen(
                 .adaptiveContentWidth(maxWidth = 920.dp),
         ) {
             ScreenHeader(
-                title = stringResource(R.string.feed_home),
+                title = "For you",
+                subtitle = "Your daily soundtrack",
                 containerColor = if (isPodcastsActive) Color.Transparent else Color.Unspecified,
                 actions = {
                     HeaderActionIcon(Icons.Filled.Download, "Downloads", onOpenDownloads)
