@@ -1293,6 +1293,24 @@ object SettingsSearchIndex {
                 )
             )
 
+            add(
+                SettingsEntry(
+                    id = "player.style",
+                    title = "Player Style",
+                    subtitle = "Choose Classic, Artwork, Lyrics or Canvas for the expanded now-playing screen",
+                    keywords = listOf(
+                        "player", "player style", "now playing", "music player", "layout",
+                        "artwork", "lyrics", "canvas", "classic", "appearance"
+                    ),
+                    icon = Icons.Filled.PlayCircle,
+                    iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
+                    iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
+                    parentTab = SettingsTab.PLAYER,
+                    section = "Player",
+                    type = EntryType.CUSTOM,
+                )
+            )
+
             // ==========================================
             // TAB: ABOUT & SYSTEM
             // ==========================================
