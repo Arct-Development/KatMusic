@@ -1304,6 +1304,8 @@ fun SettingsScreen(
     if (showLoudnessDialog) {
         LoudnessModeDialog(
             current = loudness.mode,
+            preampDb = loudness.preampDb,
+            onPreampChange = viewModel::setLoudnessPreamp,
             onSelect = {
                 viewModel.setLoudnessMode(it)
                 showLoudnessDialog = false
@@ -4648,6 +4650,8 @@ private fun clarityPresetDescription(preset: com.itzfallenme.katmusic.playback.C
 @Composable
 private fun LoudnessModeDialog(
     current: LoudnessMode,
+    preampDb: Float,
+    onPreampChange: (Float) -> Unit,
     onSelect: (LoudnessMode) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -4664,7 +4668,11 @@ private fun LoudnessModeDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Preamp · ${if (preampDb > 0f) "+" else ""}${"%.1f".format(preampDb)} dB", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Slider(value = preampDb.coerceIn(-6f, 6f), onValueChange = onPreampChange, valueRange = -6f..6f, steps = 23)
+                Text("Adjusts the gain applied before normalization. Positive values can increase clipping risk; negative values leave more headroom.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
                 LoudnessMode.entries.forEach { mode ->
                     val selected = mode == current
                     Row(
