@@ -49,6 +49,12 @@ interface SongPlayStatsDao {
     @Query("SELECT * FROM song_play_stats ORDER BY totalPlayTimeMs DESC LIMIT :limit")
     fun observeTopPlayed(limit: Int): Flow<List<SongPlayStatsEntity>>
 
+    @Query("SELECT * FROM song_play_stats ORDER BY lastPlayedAtMillis DESC")
+    suspend fun getAll(): List<SongPlayStatsEntity>
+
+    @Upsert
+    suspend fun upsertAll(entities: List<SongPlayStatsEntity>)
+
     @Query("SELECT trackKey FROM song_play_stats")
     suspend fun getAllTrackKeys(): List<String>
 
