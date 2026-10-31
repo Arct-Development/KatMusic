@@ -38,21 +38,21 @@ export const metadata: Metadata = {
     siteName: "KatMusic",
     type: "website",
     url: "https://kat-music.vercel.app",
-    images: [{ url: "/icon.png", width: 512, height: 512, alt: "KatMusic app icon" }],
+    images: [{ url: "/katmusic_logo.svg", alt: "KatMusic logo" }],
   },
   twitter: {
     card: "summary",
     title: "KatMusic — Your music. Your universe.",
     description:
       "A native Android music experience with synced lyrics, offline downloads and a powerful audio engine.",
-    images: ["/icon.png"],
+    images: ["/katmusic_logo.svg"],
   },
-  icons: { icon: "/icon.png", apple: "/icon.png" },
+  icons: { icon: "/katmusic_logo.svg", apple: "/icon.png" },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#090a0a",
+  themeColor: "#05080e",
   width: "device-width",
   initialScale: 1,
 };
