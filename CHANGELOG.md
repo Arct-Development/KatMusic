@@ -31,6 +31,14 @@ All notable changes to KatMusic are documented here. The format follows
 
 ## [Unreleased]
 
+### Website
+
+- Replaced simulated phone previews with real KatMusic Android screenshots and added a responsive screenshot gallery
+- Configured the website for Next.js static export and Cloudflare Pages deployment, publishing the generated `out` directory
+- Updated the site's canonical URL and Open Graph metadata for `https://katmusic.pages.dev`
+- Updated the website's Lucide icon dependency for React 19 compatibility and replaced the removed GitHub brand icon
+
+
 ### Added
 
 - **Download queue** with one transfer at a time: every tap joins a visible queue instead
