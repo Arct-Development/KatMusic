@@ -11,7 +11,7 @@ KatMusic's own local listening statistics.
 3. Each person copies their own compact `KATBLEND1:` share code and sends it
    to a friend.
 4. The friend pastes that code into Group Blend. Up to 9 other profiles can be
-   added (10 people total).
+   added (10 people total); imported profiles are saved locally between app launches.
 5. `GroupBlendEngine` calculates pairwise taste compatibility, shared
    artists, tracks shared by everyone, and group picks.
 
