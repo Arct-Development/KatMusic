@@ -350,7 +350,7 @@ async function handleMessage(ws, raw) {
       const target = ctx.room.members.get(String(message.memberId || ""));
       if (!target) return send(ws, "error", { code: "member_not_found", message: "That listener is no longer in the room." });
       ctx.room.hostId = target.id;
-      try { await persistRoom(ctx.room); } catch { ctx.room.hostId = ctx.member.id; return send(ws, "error", { code: "storage_unavailable", message: "Host transfer could not be saved." }); }
+      try { await persistRoom(ctx.room, true); } catch { ctx.room.hostId = ctx.member.id; return send(ws, "error", { code: "storage_unavailable", message: "Host transfer could not be saved." }); }
       broadcast(ctx.room, "host_changed", { hostId: target.id });
       break;
     }
