@@ -22,8 +22,7 @@ level, background, identity or language.
 ## Enforcement
 
 Maintainers may edit or remove comments, close issues and block accounts that violate
-this document. Report problems to the maintainer via a private channel (see the GitHub
-profile of [ItzFallenMe](https://github.com/ItzFallenMe)). Reports are handled discreetly.
+this document. Report problems to the maintainer via a private channel through the [Arct Development GitHub organization](https://github.com/Arct-Development). Reports are handled discreetly.
 
 ## Attribution
 
