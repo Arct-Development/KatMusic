@@ -679,6 +679,9 @@ class PlayerViewModel @Inject constructor(
                         com.itzfallenme.katmusic.data.lyrics.LyricsRepository.normalizeLyricTiming(result.lines),
                     )
                 } else result.lines
+                viewModelScope.launch {
+                    lyricsRepository.saveOfflineLyrics(wanted?.title ?: player.state.value.current?.title.orEmpty(), wanted?.artist ?: player.state.value.current?.artist.orEmpty(), result.copy(lines = lines))
+                }
                 _lyricsState.value = LyricsUiState.Success(
                     lines = lines,
                     isSynced = result.isSynced,
