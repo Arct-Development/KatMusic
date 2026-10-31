@@ -473,6 +473,7 @@ fun SettingsScreen(
     onBack: () -> Unit = {},
     onLoggedOut: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
+    onOpenListenTogether: () -> Unit = {},
     onOpenHomeSections: () -> Unit = {},
     onOpenExcludedSongs: () -> Unit = {},
     onOpenYouTubeImport: () -> Unit = {},
@@ -1022,6 +1023,18 @@ fun SettingsScreen(
                                 onClick = { showDownloadQualityDialog = true },
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "audio.download_quality"),
+                            )
+                        }
+                        add { position ->
+                            SettingsActionCard(
+                                icon = Icons.Filled.Group,
+                                iconContainer = MaterialTheme.colorScheme.secondaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                title = "Listen Together",
+                                subtitle = "Create or join an online listening room",
+                                onClick = onOpenListenTogether,
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "audio.listen_together"),
                             )
                         }
                         add { position ->

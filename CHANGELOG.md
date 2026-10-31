@@ -43,6 +43,12 @@ All notable changes to KatMusic are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Online Listen Together rooms with host approval, room chat, reconnect tokens, shared queue metadata and host-driven playback sync through a deployable WebSocket relay (`server/jam`). Audio remains independently resolved on each device.
+- Regression tests for lossless quality fallback ordering, including strict YouTube selection, Hi-Res downshift, and explicit-only Atmos / Data Saver tiers.
+
+
 ### Website
 
 - Replaced simulated phone previews with real KatMusic Android screenshots and added a responsive screenshot gallery
