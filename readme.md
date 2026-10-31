@@ -17,7 +17,7 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 </p>
 
 
-[![Downloads]([https://img.shields.io/github/v/release/ItzFallenMe/KatMusic?display_name=tag](https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?style=for-the-badge))](https://github.com/ItzFallenMe/KatMusic/releases)
+[![Downloads](https://img.shields.io/github/downloads/ItzFallenMe/Katmusic/total?display_name=tag)](https://github.com/ItzFallenMe/KatMusic/releases)
 [![Android CI](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/ItzFallenMe/KatMusic/actions/workflows/android.yml)
 [![Latest release](https://img.shields.io/github/v/release/ItzFallenMe/KatMusic?display_name=tag)](https://github.com/ItzFallenMe/KatMusic/releases)
 [![License: GPL-3.0](https://img.shields.io/github/license/ItzFallenMe/KatMusic)](LICENSE)
