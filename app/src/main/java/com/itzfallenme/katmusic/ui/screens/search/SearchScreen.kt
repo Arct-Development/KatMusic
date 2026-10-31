@@ -182,7 +182,7 @@ fun SearchScreen(
                     HeaderActionIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", onBack)
                     Spacer(Modifier.width(10.dp))
 
-                    val pillBg = MaterialTheme.colorScheme.surfaceContainerLowest
+                    val pillBg = MaterialTheme.colorScheme.surfaceContainerHigh
 
 
                     BasicTextField(
@@ -216,7 +216,7 @@ fun SearchScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(CircleShape)
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(pillBg)
                                     .padding(horizontal = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
