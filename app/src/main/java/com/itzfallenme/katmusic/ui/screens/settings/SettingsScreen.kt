@@ -767,7 +767,7 @@ fun SettingsScreen(
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = "Player style",
-                                            subtitle = "Classic, Artwork, Lyrics or Canvas",
+                                            subtitle = "Classic, Poster, Timeline, Lyrics, Artwork or Canvas",
                                             onClick = { activeTab = SettingsTab.PLAYER },
                                             position = position,
                                         )
@@ -958,7 +958,7 @@ fun SettingsScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Now playing")
                                 Text(
-                                    "Choose the layout for the expanded player. Your selection is saved and used whenever you open Now Playing.",
+                                    "Choose between the original Mochy-inspired Poster, Timeline and Lyrics layouts, plus KatMusic Artwork and Canvas styles. Your choice is saved for the next time you open Now Playing.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 4.dp),
