@@ -1297,10 +1297,10 @@ object SettingsSearchIndex {
                 SettingsEntry(
                     id = "player.style",
                     title = "Player Style",
-                    subtitle = "Choose Classic, Artwork, Lyrics or Canvas for the expanded now-playing screen",
+                    subtitle = "Choose Classic, Poster, Timeline, Lyrics, Artwork or Canvas for the expanded now-playing screen",
                     keywords = listOf(
                         "player", "player style", "now playing", "music player", "layout",
-                        "artwork", "lyrics", "canvas", "classic", "appearance"
+                        "poster", "timeline", "artwork", "lyrics", "canvas", "classic", "appearance"
                     ),
                     icon = Icons.Filled.PlayCircle,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
