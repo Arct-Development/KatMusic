@@ -1022,6 +1022,19 @@ fun PlayerHost(
                                     stylePreferences.edit().putString("selected_style", style.name).apply()
                                 },
                                 onCollapse = { expanded = false },
+                                lyricsState = lyricsState,
+                                progressState = viewModel.progressState,
+                                canvas = canvas,
+                                lyricsOffsetMs = liveLyricsOffsetMs,
+                                lyricsFontScale = settings.lyricsFontScale,
+                                lyricsButtonsAutoHideSeconds = settings.lyricsButtonsAutoHideSeconds,
+                                translationLanguage = settings.translationLanguage,
+                                canvasEnabled = settings.canvasEnabled,
+                                wavySeekbarEnabled = settings.wavySeekbarEnabled,
+                                onRetryLyrics = viewModel::retryLyrics,
+                                onSetLyricsFontScale = viewModel::setLyricsFontScale,
+                                onSelectLyricsProvider = viewModel::selectLyricsProvider,
+                                onTryAnotherLyricsSource = viewModel::tryAnotherLyricsSource,
                             )
                         }
                     }
