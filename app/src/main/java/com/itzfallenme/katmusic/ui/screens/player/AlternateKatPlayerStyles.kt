@@ -77,7 +77,7 @@ internal fun AlternateKatPlayerScreen(
                 Spacer(Modifier.size(48.dp))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                KatPlayerStyle.entries.filter { it != KatPlayerStyle.DEFAULT }.forEach { option ->
+                KatPlayerStyle.entries.forEach { option ->
                     FilterChip(selected = style == option, onClick = { onStyleSelected(option) }, label = { Text(option.label, maxLines = 1) })
                 }
             }
