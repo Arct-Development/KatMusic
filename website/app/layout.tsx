@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kat-music.vercel.app"),
+  metadataBase: new URL("https://katmusic.pages.dev"),
   title: {
     default: "KatMusic — Your music. Your universe.",
     template: "%s · KatMusic",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
       "A native Android experience for YouTube Music. Explore synced lyrics, offline listening, a native audio engine and six player styles.",
     siteName: "KatMusic",
     type: "website",
-    url: "https://kat-music.vercel.app",
+    url: "https://katmusic.pages.dev",
     images: [{ url: "/icon.png", width: 512, height: 512, alt: "KatMusic app icon" }],
   },
   twitter: {
