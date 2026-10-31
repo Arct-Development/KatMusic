@@ -48,6 +48,7 @@ class ListenTogetherWebSocketClient : Closeable {
     val sessionToken: StateFlow<String> = _sessionToken.asStateFlow()
 
     private val _isHost = MutableStateFlow(false)
+    private val _memberId = MutableStateFlow("")
     val isHost: StateFlow<Boolean> = _isHost.asStateFlow()
 
     private val _pendingRequests = MutableStateFlow<List<JamJoinRequest>>(emptyList())
@@ -107,6 +108,11 @@ class ListenTogetherWebSocketClient : Closeable {
                 val token = message["sessionToken"]?.jsonPrimitive?.contentOrNull
                 if (!token.isNullOrBlank()) _sessionToken.value = token
                 when (type) {
+                    "room_created", "room_joined", "room_reconnected" -> {
+                        message["memberId"]?.jsonPrimitive?.contentOrNull?.let { _memberId.value = it }
+                    }
+                }
+                when (type) {
                     "room_created", "room_reconnected" -> _isHost.value =
                         message["role"]?.jsonPrimitive?.contentOrNull == "host" ||
                             (type == "room_created")
@@ -119,7 +125,12 @@ class ListenTogetherWebSocketClient : Closeable {
                         )
                         _pendingRequests.value = _pendingRequests.value + request
                     }
+                    "host_changed" -> {
+                        val hostId = message["hostId"]?.jsonPrimitive?.contentOrNull
+                        _isHost.value = !hostId.isNullOrBlank() && hostId == _memberId.value
+                    }
                     "room_left", "join_denied" -> {
+                        _memberId.value = ""
                         _roomCode.value = ""
                         _sessionToken.value = ""
                         _isHost.value = false

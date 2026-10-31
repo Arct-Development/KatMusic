@@ -1,5 +1,5 @@
 import http from "node:http";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -70,7 +70,7 @@ function removeMember(room, memberId, reason = "left") {
   if (!member) return;
   room.members.delete(memberId);
   if (member.sessionToken) room.sessions.delete(member.sessionToken);
-  clients.delete(member.ws);
+  if (member.ws) clients.delete(member.ws);
   send(member.ws, "room_left", { roomCode: room.code, reason });
   if (room.members.size === 0) {
     rooms.delete(room.code);
@@ -169,6 +169,10 @@ function handleMessage(ws, raw) {
       if (!pending) return send(ws, "error", { code: "request_expired", message: "That join request has expired." });
       context.room.pending.delete(pending.requestId);
       const pendingState = clients.get(pending.ws);
+      if (!pendingState || pending.ws.readyState !== WebSocket.OPEN) {
+        context.room.pending.delete(pending.requestId);
+        return;
+      }
       if (message.approved !== true) {
         if (pendingState) {
           pendingState.pendingRoomCode = null;
@@ -220,6 +224,7 @@ function handleMessage(ws, raw) {
         clients.delete(member.ws);
       }
       member.ws = ws;
+      member.disconnectedAt = null;
       member.displayName = cleanName(message.displayName || member.displayName);
       state.roomCode = room.code;
       state.memberId = member.id;
@@ -381,6 +386,7 @@ wss.on("connection", (ws) => {
       const member = room?.members.get(current.memberId);
       if (member && member.ws === ws) {
         member.ws = null;
+        member.disconnectedAt = Date.now();
         broadcast(room, "member_disconnected", { memberId: member.id, displayName: member.displayName });
       }
     }
@@ -403,6 +409,16 @@ const heartbeat = setInterval(() => {
     ws.ping();
   }
   for (const [code, room] of rooms) {
+    for (const [memberId, member] of room.members) {
+      if (!member.ws && member.disconnectedAt && now - member.disconnectedAt > ROOM_TTL_MS) {
+        room.members.delete(memberId);
+        room.sessions.delete(member.sessionToken);
+        if (room.hostId === memberId && room.members.size > 0) {
+          room.hostId = room.members.values().next().value.id;
+          broadcast(room, "host_changed", { hostId: room.hostId });
+        }
+      }
+    }
     for (const [requestId, pending] of room.pending) {
       if (now - pending.createdAt > 60_000) {
         room.pending.delete(requestId);
