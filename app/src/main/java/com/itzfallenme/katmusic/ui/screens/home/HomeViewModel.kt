@@ -32,6 +32,12 @@ import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.Dispatchers
 
 @Immutable
+data class ListeningInsights(
+    val totalListeningMs: Long, val completedPlays: Int, val skips: Int, val uniqueTracks: Int,
+    val topTrackTitle: String?, val topTrackArtist: String?, val topArtist: String?,
+)
+
+@Immutable
 data class HomeUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -67,6 +73,7 @@ data class HomeUiState(
      * "Connect Last.fm in Settings to sync global scrobbles" banner.
      */
     val isLocalStatsMode: Boolean = false,
+    val listeningInsights: ListeningInsights? = null,
 ) {
     val isViewingFriend: Boolean get() = viewingUsername.isNotBlank() && viewingUsername != username
 
@@ -226,6 +233,7 @@ class HomeViewModel @Inject constructor(
     private val settingsPreferences: com.itzfallenme.katmusic.data.local.SettingsPreferences,
     private val scrobbleRepository: com.itzfallenme.katmusic.data.repository.ScrobbleRepository,
     private val artworkRepository: com.itzfallenme.katmusic.data.artwork.ArtworkRepository,
+    private val songPlayStatsRepository: com.itzfallenme.katmusic.data.repository.SongPlayStatsRepository,
 ) : ViewModel() {
 
     companion object {
@@ -255,6 +263,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadInitial()
+        loadListeningInsights()
         // Last.fm connect/disconnect in Settings must switch Stats between
         // global and local modes without an app restart.
         viewModelScope.launch {
@@ -327,6 +336,27 @@ class HomeViewModel @Inject constructor(
                     }
                     _rows.value = computed
                 }
+        }
+    }
+
+    private fun loadListeningInsights() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val rows = runCatching { songPlayStatsRepository.allStats() }.getOrDefault(emptyList())
+            val valid = rows.filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            val topTrack = valid.maxByOrNull { it.totalPlayTimeMs }
+            val topArtist = valid.groupBy { it.artist.trim() }
+                .maxByOrNull { (_, tracks) -> tracks.sumOf { it.totalPlayTimeMs } }?.key
+            _uiState.update { state ->
+                state.copy(listeningInsights = ListeningInsights(
+                    totalListeningMs = valid.sumOf { it.totalPlayTimeMs },
+                    completedPlays = valid.sumOf { it.playCount },
+                    skips = valid.sumOf { it.skipCount },
+                    uniqueTracks = valid.size,
+                    topTrackTitle = topTrack?.title,
+                    topTrackArtist = topTrack?.artist,
+                    topArtist = topArtist,
+                ))
+            }
         }
     }
 
