@@ -154,3 +154,47 @@ a{color:inherit;text-decoration:none}button,select{font:inherit}button{color:inh
 .section-wrap{padding-left:22px;padding-right:22px}.intro{padding-top:85px;padding-bottom:80px}.intro-content{grid-template-columns:1fr;gap:23px;margin-top:27px}.intro h2,.section-heading h2,.player-copy h2,.download-copy h2{font-size:49px}.intro-content>div>p,.player-copy>p,.download-copy>p{font-size:12px}.principles{grid-template-columns:1fr;gap:9px;margin-top:35px}.principles article{min-height:175px;padding:18px}.principles article>svg{margin:17px 0 12px}.principles h3 br{display:none}.features{padding-top:80px;padding-bottom:85px}.section-heading{display:block;margin-bottom:32px}.section-heading>p{margin-top:20px;font-size:12px}.feature-row{grid-template-columns:26px 24px 1fr;gap:10px;padding:18px 2px;min-height:0}.feature-icon{width:19px}.feature-title h3{font-size:15px}.feature-title small{font-size:8px}.feature-row>p{grid-column:3;font-size:10px;margin-top:-3px}.player-layout{grid-template-columns:1fr;gap:35px;padding-top:80px;padding-bottom:80px}.style-row{grid-template-columns:27px 78px 1fr 14px;gap:8px;min-height:62px}.style-row>p{font-size:9px}.install-section{padding-top:85px;padding-bottom:85px}.install-steps{grid-template-columns:1fr;gap:24px}.install-steps h3{margin:10px 0 7px}.install-steps p{max-width:100%}.download-section{padding-bottom:85px}.download-main{grid-template-columns:1fr;padding:27px 18px;gap:27px}.release-card{padding:18px}.release-card-top h3{font-size:27px}.technical{padding-top:80px;padding-bottom:80px}.tech-grid{grid-template-columns:1fr 1fr}.tech-grid>div{padding:17px 12px;border-bottom:1px solid #25364a}.tech-grid>div:nth-child(2){border-right:0}.tech-grid>div:nth-child(3){padding-left:0}.tech-grid>div:nth-child(4){border-right:0}.tech-grid b{font-size:16px}.tech-grid span{font-size:8px}.faq-section{padding-top:80px;padding-bottom:85px}.faq-item summary{grid-template-columns:28px 1fr 20px;gap:8px;padding:17px 0}.faq-item summary>b{font-size:11px}.faq-item>p{margin:0 25px 18px 36px;font-size:10px}.open-source-inner{padding:55px 22px;grid-template-columns:55px 1fr;gap:15px}.open-source-inner>img{width:52px;height:52px}.open-source h2{font-size:38px}.open-source-inner>div>p{font-size:10px}.open-source-actions{grid-column:2}.site-footer{padding:25px 22px;flex-wrap:wrap;gap:15px}.site-footer>p{order:3;width:100%;margin:0}.site-footer>div{order:4;margin:0;width:100%;flex-wrap:wrap}.copyright{margin-left:auto}}
 @media(max-width:390px){.hero h1{font-size:47px}.phone-stage{height:385px}.phone-frame{width:174px;height:360px}.phone-back{transform:scale(.66)}.preview-tab{font-size:9px;padding:7px 9px}.hero-actions .button-primary{font-size:10px;padding:12px}.hero-meta{font-size:8px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+
+/* Real-device screenshot presentation */
+.real-phone-stage{height:490px;position:relative;display:flex;align-items:center;justify-content:center;isolation:isolate}
+.real-phone-stage:before{content:"";position:absolute;width:360px;height:360px;border:1px solid #1b5a8a30;border-radius:50%;box-shadow:0 0 0 48px #087bff08,0 0 0 96px #087bff05}
+.real-phone{position:absolute;width:205px;height:445px;border:1px solid #8eb9dc55;border-radius:25px;padding:5px;background:linear-gradient(145deg,#b2c6d9,#263e5a 30%,#07111e 75%);box-shadow:0 28px 70px #000b,0 0 25px #087bff15;overflow:hidden}
+.real-phone img{object-fit:cover;object-position:top;border-radius:19px}
+.real-phone-center{z-index:3;position:relative;width:220px;height:470px;animation:real-phone-float 8s ease-in-out infinite}
+.real-phone-left{z-index:1;left:0;transform:translateY(20px) rotate(-8deg) scale(.88);opacity:.92}
+.real-phone-right{z-index:2;right:0;transform:translateY(17px) rotate(8deg) scale(.9);opacity:.96}
+@keyframes real-phone-float{0%,100%{transform:translateY(0) rotate(.5deg)}50%{transform:translateY(-10px) rotate(-.5deg)}}
+.screenshots-section{padding-top:105px;padding-bottom:115px;border-top:1px solid #17263a}
+.screenshots-section .section-heading{margin-bottom:42px}
+.screenshot-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px;align-items:start}
+.shot{position:relative;margin:0;min-width:0;background:#080e18;border:1px solid #20344d;padding:10px;overflow:hidden}
+.shot img{position:relative!important;width:100%;height:auto!important;display:block;object-fit:contain;border-radius:3px;background:#0a0d10}
+.shot figcaption{display:flex;flex-direction:column;gap:8px;padding:17px 8px 10px}
+.shot figcaption span{font:9px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;color:#36baff}
+.shot figcaption b{font-size:17px;letter-spacing:-.4px}
+.shot figcaption small{font-size:10px;line-height:1.65;color:#91a3b8}
+.shot-player{grid-column:span 4}.shot-lyrics{grid-column:span 4}.shot-home{grid-column:span 4}
+.shot-library,.shot-settings,.shot-stats{grid-column:span 4}
+.shot-player img,.shot-lyrics img{max-height:590px}
+.shot-home img,.shot-library img,.shot-settings img,.shot-stats img{max-height:460px}
+.shot:hover{border-color:#3984bd;box-shadow:0 15px 40px #0005;transform:translateY(-3px);transition:transform .3s,border-color .3s,box-shadow .3s}
+@media(max-width:720px){
+ .real-phone-stage{height:390px;margin:0 -8px}
+ .real-phone{width:29%;height:345px;padding:4px;border-radius:18px}
+ .real-phone img{border-radius:13px}
+ .real-phone-center{width:34%;height:375px}
+ .real-phone-left{left:2%;transform:translateY(13px) rotate(-7deg) scale(.9)}
+ .real-phone-right{right:2%;transform:translateY(13px) rotate(7deg) scale(.9)}
+ .real-phone-stage:before{width:250px;height:250px}
+ .screenshots-section{padding-top:80px;padding-bottom:85px}
+ .screenshot-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .shot-player,.shot-lyrics,.shot-home,.shot-library,.shot-settings,.shot-stats{grid-column:span 1}
+ .shot{padding:6px}
+ .shot figcaption{padding:12px 4px 7px;gap:6px}
+ .shot figcaption b{font-size:13px}
+ .shot figcaption small{font-size:9px}
+ .shot-player img,.shot-lyrics img{max-height:390px}
+ .shot-home img,.shot-library img,.shot-settings img,.shot-stats img{max-height:310px}
+}
+@media(prefers-reduced-motion:reduce){.real-phone-center{animation:none!important}.shot:hover{transform:none}}
