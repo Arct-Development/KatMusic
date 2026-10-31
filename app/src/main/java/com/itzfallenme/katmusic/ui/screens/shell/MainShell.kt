@@ -538,75 +538,198 @@ private fun FloatingNavBar(
     onOpenGenerator: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val navShape = RoundedCornerShape(28.dp)
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        shape = navShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
-        ),
-        shadowElevation = 10.dp,
-        tonalElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
+    val liquidGlass = true // Keep the main dock in liquid-glass style.
+    val md3NavBar = LocalMd3NavBar.current
+    val glassHoverIndex = remember(liquidGlass) { mutableStateOf<Int?>(null) }
+    val glassNavBounds = remember { mutableStateMapOf<Int, Rect>() }
+    val dockInteraction = remember { MutableInteractionSource() }
+    val fabInteraction = remember { MutableInteractionSource() }
+    
+    if (false) { // Always use the floating liquid-glass pill dock.
+        val navContainerColor = liquidGlassContainerColor(
+            MaterialTheme.colorScheme.surfaceContainer,
+            enabled = liquidGlass,
+            backdrop = backdrop,
+        )
+        Surface(
+            modifier = modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .then(
+                    if (liquidGlass) {
+                        // Zero-radius CornerBasedShape, NOT RectangleShape: the
+                        // glass lens SDF only accepts corner-based shapes and
+                        // crashes the render pass for a plain rectangle.
+                        Modifier.liquidGlassChrome(
+                            RoundedCornerShape(0.dp),
+                            liquidGlass,
+                            LiquidGlassPreset.BottomNavigation,
+                            backdrop,
+                            interactionSource = dockInteraction,
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+            shape = RoundedCornerShape(0.dp),
+            color = navContainerColor,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            tonalElevation = if (liquidGlass) 0.dp else 3.dp,
         ) {
-            tabs.forEachIndexed { index, tab ->
-                val selected = selectedIndex == index
-                Surface(
-                    onClick = { onSelect(index) },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(66.dp)
+                        .selectableGroup(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(vertical = 5.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            imageVector = tab.icon(),
-                            contentDescription = null,
-                            tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(23.dp),
+                    tabs.forEachIndexed { index, tab ->
+                        val onClick = remember(index) { { onSelect(index) } }
+                        val selected = selectedIndex == index
+                        val indicatorColor by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer.copy(
+                                alpha = if (liquidGlass) 0.35f else 1f,
+                            ) else Color.Transparent,
+                            animationSpec = MotionSpec.effectsDefault(),
+                            label = "md3IndicatorColor_$index",
                         )
-                        Spacer(Modifier.height(3.dp))
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(tab.labelRes),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
+                        val indicatorWidth by animateDpAsState(
+                            targetValue = if (selected) 64.dp else 32.dp,
+                            animationSpec = navSpring(),
+                            label = "md3IndicatorWidth_$index",
                         )
+                        val iconTint by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            animationSpec = MotionSpec.effectsDefault(),
+                            label = "md3IconTint_$index",
+                        )
+                        val labelColor by animateColorAsState(
+                            targetValue = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            animationSpec = MotionSpec.effectsDefault(),
+                            label = "md3LabelColor_$index",
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = remember(index) { MutableInteractionSource() },
+                                    indication = androidx.compose.material3.ripple(bounded = false, radius = 32.dp),
+                                    onClick = onClick,
+                                ),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .width(indicatorWidth)
+                                    .clip(CircleShape)
+                                    .background(indicatorColor),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = tab.icon(),
+                                    contentDescription = null,
+                                    tint = iconTint,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = androidx.compose.ui.res.stringResource(tab.labelRes),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = labelColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }
+        }
+        return
+    }
+
+    Box(
+        modifier = modifier
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        // No animateContentSize here: the dock pills already animate their own
+        // width and the FAB animates its enter/exit size. Animating this outer
+        // wrapper at the same time squeezes the Row mid-transition, clipping
+        // the dock to a narrow rectangle and pushing the FAB over the pill.
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
             Surface(
-                onClick = onOpenGenerator,
-                modifier = Modifier.size(54.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shadowElevation = 4.dp,
+                shape = DockShape,
+                color = liquidGlassContainerColor(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    enabled = liquidGlass,
+                    backdrop = backdrop,
+                ),
+                tonalElevation = if (liquidGlass) 0.dp else 6.dp,
+                shadowElevation = if (liquidGlass) 0.dp else 12.dp,
+                modifier = Modifier.liquidGlassChrome(DockShape, liquidGlass, LiquidGlassPreset.BottomNavigation, backdrop, interactionSource = dockInteraction),
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.AutoAwesome,
-                        contentDescription = "Create a mix",
-                        modifier = Modifier.size(25.dp),
-                    )
+                Row(
+                    modifier = Modifier
+                        .pointerInput(tabs, selectedIndex) {
+                            val bridge = 8.dp.toPx()
+                            val hitIndex: (Offset) -> Int? = { pos ->
+                                glassNavBounds.entries
+                                    .firstOrNull { it.value.inflate(bridge).contains(pos) }
+                                    ?.key
+                            }
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val initialHit = hitIndex(down.position)
+                                if (initialHit != null && initialHit != selectedIndex) {
+                                    onSelect(initialHit)
+                                }
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id }
+                                    if (change == null || !change.pressed) break
+                                    val currentHit = hitIndex(change.position)
+                                    if (currentHit != null && currentHit != selectedIndex) {
+                                        onSelect(currentHit)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        val onClick = remember(index) { { onSelect(index) } }
+                        FloatingNavItem(
+                            label = androidx.compose.ui.res.stringResource(tab.labelRes),
+                            icon = tab.icon(),
+                            selected = selectedIndex == index,
+                            onClick = onClick,
+                            modifier = Modifier.onGloballyPositioned { coords ->
+                                glassNavBounds[index] = coords.boundsInParent()
+                            },
+                        )
+                    }
                 }
             }
         }
