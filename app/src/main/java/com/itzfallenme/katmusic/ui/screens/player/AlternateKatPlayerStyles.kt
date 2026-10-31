@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.itzfallenme.katmusic.playback.MusicPlayer
 import com.itzfallenme.katmusic.playback.MusicPlayerState
+import com.itzfallenme.katmusic.playback.PlaybackProgressState
+import com.itzfallenme.katmusic.data.canvas.CanvasArtwork
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.max
 
 /** Independent presentation presets; playback remains owned by MusicPlayer. */
@@ -51,6 +54,19 @@ internal fun AlternateKatPlayerScreen(
     style: KatPlayerStyle,
     onStyleSelected: (KatPlayerStyle) -> Unit,
     onCollapse: () -> Unit,
+    lyricsState: LyricsUiState,
+    progressState: StateFlow<PlaybackProgressState>,
+    canvas: CanvasArtwork?,
+    lyricsOffsetMs: Long,
+    lyricsFontScale: Float,
+    lyricsButtonsAutoHideSeconds: Int,
+    translationLanguage: String,
+    canvasEnabled: Boolean,
+    wavySeekbarEnabled: Boolean,
+    onRetryLyrics: () -> Unit,
+    onSetLyricsFontScale: (Float) -> Unit,
+    onSelectLyricsProvider: (com.itzfallenme.katmusic.data.local.LyricsProvider) -> Unit,
+    onTryAnotherLyricsSource: () -> Unit,
 ) {
     val track = state.current ?: return
     val duration = max(state.durationMs, 1L)
@@ -60,7 +76,16 @@ internal fun AlternateKatPlayerScreen(
 
     Box(Modifier.fillMaxSize().background(dark)) {
         if (style == KatPlayerStyle.VIDEO) {
-            Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
+            if (canvasEnabled && canvas != null) {
+                CanvasArtworkPlayer(
+                    canvas = canvas,
+                    isPlaying = state.isPlaying,
+                    modifier = Modifier.fillMaxSize(),
+                    bottomFade = 0.22f,
+                )
+            } else {
+                Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
+            }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.24f), Color.Transparent, dark.copy(.96f)))))
         } else if (style == KatPlayerStyle.POSTER) {
             Artwork(track.artworkUrl, Modifier.fillMaxWidth().aspectRatio(1f), false)
@@ -87,7 +112,21 @@ internal fun AlternateKatPlayerScreen(
                     KatPlayerStyle.DEFAULT -> Unit
                     KatPlayerStyle.POSTER -> PosterPresentation(track.artworkUrl)
                     KatPlayerStyle.TIMELINE -> TimelinePresentation(progress, accent)
-                    KatPlayerStyle.LYRICS -> LyricsPresentation(track.title, track.artist)
+                    KatPlayerStyle.LYRICS -> LyricsPresentation(
+                        state = state,
+                        player = player,
+                        lyricsState = lyricsState,
+                        progressState = progressState,
+                        lyricsOffsetMs = lyricsOffsetMs,
+                        lyricsFontScale = lyricsFontScale,
+                        controlsAutoHideSeconds = lyricsButtonsAutoHideSeconds,
+                        translationLanguage = translationLanguage,
+                        wavySeekbarEnabled = wavySeekbarEnabled,
+                        onRetry = onRetryLyrics,
+                        onFontScaleChange = onSetLyricsFontScale,
+                        onSelectLyricsProvider = onSelectLyricsProvider,
+                        onTryAnotherLyricsSource = onTryAnotherLyricsSource,
+                    )
                     KatPlayerStyle.IPOD -> IpodPresentation(track.title, track.artist, track.album.orEmpty(), progress, accent)
                     KatPlayerStyle.VIDEO -> VideoPresentation(track.title, track.artist)
                 }
@@ -158,15 +197,37 @@ private fun TimelinePresentation(progress: Float, accent: Color) {
 }
 
 @Composable
-private fun LyricsPresentation(title: String, artist: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 26.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text("A SONG IN FOCUS", color = Color.White.copy(.52f), style = MaterialTheme.typography.labelSmall, letterSpacing = 2.sp)
-        Text(title, color = Color.White, fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold)
-        Text(artist.uppercase(), color = Color.White.copy(.62f), style = MaterialTheme.typography.labelLarge, letterSpacing = 2.sp)
-        Spacer(Modifier.height(8.dp))
-        Text("Let the music\nfill the silence.", color = Color.White.copy(.34f), fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.SemiBold)
-        Text("Open KatMusic's Lyrics tab for the live synced lyrics.", color = Color.White.copy(.55f), style = MaterialTheme.typography.bodySmall)
-    }
+private fun LyricsPresentation(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    lyricsState: LyricsUiState,
+    progressState: StateFlow<PlaybackProgressState>,
+    lyricsOffsetMs: Long,
+    lyricsFontScale: Float,
+    controlsAutoHideSeconds: Int,
+    translationLanguage: String,
+    wavySeekbarEnabled: Boolean,
+    onRetry: () -> Unit,
+    onFontScaleChange: (Float) -> Unit,
+    onSelectLyricsProvider: (com.itzfallenme.katmusic.data.local.LyricsProvider) -> Unit,
+    onTryAnotherLyricsSource: () -> Unit,
+) {
+    ModernLyricsPanel(
+        state = state,
+        player = player,
+        lyricsState = lyricsState,
+        progressState = progressState,
+        wavySeekbarEnabled = wavySeekbarEnabled,
+        onRetry = onRetry,
+        lyricsFontScale = lyricsFontScale,
+        onLyricsFontScaleChange = onFontScaleChange,
+        lyricsOffsetMs = lyricsOffsetMs,
+        controlsAutoHideSeconds = controlsAutoHideSeconds,
+        translationLanguage = translationLanguage,
+        onSelectLyricsProvider = onSelectLyricsProvider,
+        onTryAnotherLyricsSource = onTryAnotherLyricsSource,
+        modifier = Modifier.fillMaxWidth().height(520.dp),
+    )
 }
 
 @Composable
