@@ -63,7 +63,6 @@ internal fun AlternateKatPlayerScreen(
     state: MusicPlayerState,
     player: MusicPlayer,
     style: KatPlayerStyle,
-    onStyleSelected: (KatPlayerStyle) -> Unit,
     onCollapse: () -> Unit,
     lyricsState: LyricsUiState,
     progressState: StateFlow<PlaybackProgressState>,
@@ -133,7 +132,6 @@ internal fun AlternateKatPlayerScreen(
                         onTryAnotherLyricsSource = onTryAnotherLyricsSource,
                     )
                     KatPlayerStyle.VIDEO -> VideoPresentation(track.title, track.artist)
-                    KatPlayerStyle.DEFAULT -> Unit
                 }
             }
             if (style != KatPlayerStyle.VIDEO) {
