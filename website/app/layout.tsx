@@ -11,31 +11,48 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: "KatMusic — YouTube Music, on your terms",
+  metadataBase: new URL("https://kat-music.vercel.app"),
+  title: {
+    default: "KatMusic — Your music. Your universe.",
+    template: "%s · KatMusic",
+  },
   description:
-    "A native Android client for YouTube Music: ad-free streaming, offline downloads, word-by-word lyrics, a parametric equaliser and automix. Download the latest APK directly.",
+    "A native Android experience for YouTube Music, with word-synced lyrics, offline downloads, a native audio engine, Automix and six customisable player styles.",
   applicationName: "KatMusic",
   authors: [{ name: "ItzFallenMe", url: "https://github.com/ItzFallenMe" }],
+  creator: "ItzFallenMe",
   keywords: [
     "KatMusic",
-    "YouTube Music client",
+    "YouTube Music Android",
     "Android music player",
+    "synced lyrics",
+    "offline music",
+    "parametric equalizer",
+    "Automix",
     "APK download",
-    "lossless",
-    "lyrics",
   ],
   openGraph: {
-    title: "KatMusic — YouTube Music, on your terms",
+    title: "KatMusic — Your music. Your universe.",
     description:
-      "Native Android client for YouTube Music. Stream, download, read synced lyrics and blend tracks with automix.",
+      "A native Android experience for YouTube Music. Explore synced lyrics, offline listening, a native audio engine and six player styles.",
     siteName: "KatMusic",
     type: "website",
+    url: "https://kat-music.vercel.app",
+    images: [{ url: "/icon.png", width: 512, height: 512, alt: "KatMusic app icon" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "KatMusic — Your music. Your universe.",
+    description:
+      "A native Android music experience with synced lyrics, offline downloads and a powerful audio engine.",
+    images: ["/icon.png"],
   },
   icons: { icon: "/icon.png", apple: "/icon.png" },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050B18",
+  themeColor: "#090a0a",
   width: "device-width",
   initialScale: 1,
 };
