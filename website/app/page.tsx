@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, AudioLines, Check, ChevronDown,
   ChevronLeft, ChevronRight, Download, Github, Heart, ListMusic,
@@ -35,7 +36,7 @@ function PhoneScreen({ screen }: { screen: Screen }) {
     {screen === "player" && <>
       <div className="app-player-top"><span>⌄</span><b>NOW PLAYING</b><span>•••</span></div>
       <MiniArtwork/>
-      <div className="app-track-heading"><div><h3>Midnight City</h3><p>M83 · Hurry Up, We're Dreaming</p></div><Heart size={18}/></div>
+      <div className="app-track-heading"><div><h3>Midnight City</h3><p>M83 · Hurry Up, We&apos;re Dreaming</p></div><Heart size={18}/></div>
       <div className="app-scrubber"><i/><div><span>2:18</span><span>4:03</span></div></div>
       <div className="app-controls"><Repeat2 size={16}/><ChevronLeft size={24}/><span><Pause size={18} fill="currentColor"/></span><ChevronRight size={24}/><ListMusic size={17}/></div>
       <div className="app-audio-chip"><AudioLines size={16}/><span>Audio engine</span><b>ACTIVE</b></div>
@@ -109,7 +110,7 @@ export default function HomePage() {
     <div className="ambient ambient-top"/><div className="ambient ambient-low"/>
     <header className={"site-header " + (scrolled ? "is-scrolled" : "")}>
       <div className="nav-wrap">
-        <a className="brand" href="#top"><img src="/icon.png" alt=""/><span>katmusic<span className="brand-period">.</span></span></a>
+        <a className="brand" href="#top"><Image src="/icon.png" alt="" width={32} height={32} priority/><span>katmusic<span className="brand-period">.</span></span></a>
         <nav className={menuOpen ? "nav-links nav-links-open" : "nav-links"}>
           <a href="#experience" onClick={() => setMenuOpen(false)}>Experience</a>
           <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
@@ -154,7 +155,7 @@ export default function HomePage() {
         <div className="section-index"><span>01</span><i/> THE EXPERIENCE</div>
         <div className="intro-grid">
           <h2>Built around<br/>the <em>feeling.</em></h2>
-          <div className="intro-copy"><p>KatMusic brings your streaming library, local music and serious playback tools into one carefully considered Android app.</p><p>Start with a song. Stay for the details. Whether you're digging into your sound profile or getting lost in a lyric, the experience stays yours.</p><a href="#features" className="underlined-link">See what makes it different <ArrowUpRight size={15}/></a></div>
+          <div className="intro-copy"><p>KatMusic brings your streaming library, local music and serious playback tools into one carefully considered Android app.</p><p>Start with a song. Stay for the details. Whether you&apos;re digging into your sound profile or getting lost in a lyric, the experience stays yours.</p><a href="#features" className="underlined-link">See what makes it different <ArrowUpRight size={15}/></a></div>
         </div>
         <div className="experience-strip">
           <div className="experience-tile tile-art"><div className="tile-artwork"><span>✳</span><b>LISTEN<br/>CLOSER.</b></div><small>01 — THE LITTLE DETAILS</small></div>
@@ -181,7 +182,7 @@ export default function HomePage() {
             <div className="download-file"><div className="file-icon"><Download size={17}/></div><div><b>{selected?.name ?? "KatMusic APK"}</b><small>{selected ? formatBytes(selected.size) : "Release assets on GitHub"}</small></div><span className="file-check"><Check size={14}/></span></div>
             <a className="download-button" href={downloadHref}><Download size={17}/> Download APK <ArrowUpRight size={16}/></a>
             <a className="all-releases" href={RELEASES_PAGE}>View all releases <ArrowRight size={14}/></a>
-            {releaseError && <p className="download-error">Live release details couldn't load. You can still browse every build on GitHub.</p>}
+            {releaseError && <p className="download-error">Live release details couldn&apos;t load. You can still browse every build on GitHub.</p>}
             <p className="install-footnote">Package availability and compatibility depend on your Android device.</p>
           </div>
         </div>
@@ -189,6 +190,6 @@ export default function HomePage() {
 
       <section className="closing-section"><div className="closing-orb"/><div className="section-index"><span>05</span><i/> BUILT IN THE OPEN</div><h2>Keep the music.<br/><em>Lose the limits.</em></h2><p>KatMusic is built in the open. Explore the code, follow development or help shape what comes next.</p><div className="closing-actions"><a href={REPO_PAGE} target="_blank" rel="noreferrer"><Github size={17}/> Explore on GitHub <ArrowUpRight size={15}/></a><a href={REPO_PAGE + "/issues"} target="_blank" rel="noreferrer">Report an issue <ArrowUpRight size={15}/></a></div></section>
     </main>
-    <footer className="site-footer"><div className="footer-brand"><a className="brand" href="#top"><img src="/icon.png" alt=""/><span>katmusic<span className="brand-period">.</span></span></a><p>A little more feeling in every play.</p></div><div className="footer-links"><a href="#features">Features</a><a href={RELEASES_PAGE}>Releases</a><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>GPL-3.0</a></div><span className="footer-copy">© {new Date().getFullYear()} ItzFallenMe</span></footer>
+    <footer className="site-footer"><div className="footer-brand"><a className="brand" href="#top"><Image src="/icon.png" alt="" width={26} height={26}/><span>katmusic<span className="brand-period">.</span></span></a><p>A little more feeling in every play.</p></div><div className="footer-links"><a href="#features">Features</a><a href={RELEASES_PAGE}>Releases</a><a href={REPO_PAGE + "/blob/main/readme.md"}>Documentation</a><a href={REPO_PAGE + "/blob/main/LICENSE"}>GPL-3.0</a></div><span className="footer-copy">© {new Date().getFullYear()} ItzFallenMe</span></footer>
   </div>;
 }
