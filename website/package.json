@@ -1,5 +1,5 @@
 {
-  "name": "alpha-dashboard",
+  "name": "katmusic-website",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,10 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "build:worker": "opennextjs-cloudflare build"
+    "preview": "wrangler pages dev out",
+    "deploy": "wrangler pages deploy out --project-name=katmusic",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.1.2",
