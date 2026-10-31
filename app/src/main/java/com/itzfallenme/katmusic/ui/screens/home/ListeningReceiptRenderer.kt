@@ -30,7 +30,6 @@ object ListeningReceiptRenderer {
                 textSize = size
                 this.color = color
                 typeface = Typeface.create("sans-serif", weight)
-                letterSpacing = 0f
             }
         fun label(value: String, x: Float, y: Float, size: Float = 24f, color: Int = secondary) {
             canvas.drawText(value.uppercase(Locale.ROOT), x, y, paint(size, color, Typeface.BOLD))
