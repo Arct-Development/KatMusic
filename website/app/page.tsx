@@ -12,62 +12,6 @@ import {
   type Release,
 } from "@/lib/releases";
 
-type Screen = "library" | "player" | "lyrics" | "audio";
-const SCREENS: { id: Screen; name: string; note: string }[] = [
-  { id: "library", name: "Library", note: "Your music, collected in one place." },
-  { id: "player", name: "Player", note: "Playback controls without the clutter." },
-  { id: "lyrics", name: "Lyrics", note: "Timed lyrics with translation and adjustment." },
-  { id: "audio", name: "Audio", note: "Equalisation and output controls." },
-];
-
-function Artwork({ variant = "blue" }: { variant?: string }) {
-  return <div className={"preview-artwork " + variant}><span className="artwork-shape"/><span className="artwork-caption">KAT / MUSIC</span></div>;
-}
-
-function PhoneScreen({ screen }: { screen: Screen }) {
-  return <div className="phone-screen">
-    <div className="phone-status"><span>9:41</span><span>◔ ◔ ▰</span></div>
-    {screen === "library" && <>
-      <div className="phone-appbar"><Image src="/katmusic_logo.svg" alt="" width={25} height={25}/><b>Library</b><span>•••</span></div>
-      <p className="phone-kicker">YOUR COLLECTION</p><h3 className="phone-heading">Made for<br/>your listening.</h3>
-      <div className="phone-search">⌕ <span>Search your music</span></div>
-      <div className="phone-section-title">Your library <small>VIEW ALL</small></div>
-      <div className="phone-library-grid"><div><Artwork/><b>Liked songs</b><small>Playlist</small></div><div><Artwork variant="cyan"/><b>On repeat</b><small>Mix</small></div></div>
-      <div className="phone-row"><span className="phone-cover">♫</span><span><b>Recently played</b><small>Continue listening</small></span></div>
-      <div className="phone-row"><span className="phone-cover cyan">◖</span><span><b>Downloads</b><small>Available offline</small></span></div>
-      <div className="phone-bottom-nav"><span>⌂</span><span>⌕</span><span>◉</span><span>☷</span></div>
-    </>}
-    {screen === "player" && <>
-      <div className="phone-playerbar"><span>⌄</span><b>NOW PLAYING</b><span>•••</span></div>
-      <Artwork/>
-      <div className="phone-track"><div><h3>Now playing</h3><p>Your current track</p></div><Heart size={17}/></div>
-      <div className="phone-progress"><i/></div><div className="phone-time"><span>1:24</span><span>4:02</span></div>
-      <div className="phone-controls"><span>↻</span><span>◀</span><b>Ⅱ</b><span>▶</span><span>☷</span></div>
-      <div className="phone-audio-status"><AudioLines size={14}/> AUDIO ENGINE <b>READY</b></div>
-      <div className="phone-upnext"><small>UP NEXT</small><b>Queue and playback</b></div>
-    </>}
-    {screen === "lyrics" && <>
-      <div className="phone-playerbar"><span>⌄</span><b>LYRICS</b><span>•••</span></div>
-      <Artwork variant="violet"/>
-      <div className="phone-track"><div><h3>Synced lyrics</h3><p>Line and word timing</p></div></div>
-      <div className="phone-lyric-lines"><span>Lyrics follow the music</span><b>Current line highlight</b><span>Translation and romanisation</span><span>Timing adjustment</span></div>
-      <div className="phone-lyric-tools"><span>文 Translate</span><span>◷ Timing</span></div>
-    </>}
-    {screen === "audio" && <>
-      <div className="phone-playerbar"><span>⌄</span><b>AUDIO SETTINGS</b><span>•••</span></div>
-      <div className="phone-audio-heading"><SlidersHorizontal/><p>Shape your<br/><b>sound.</b></p></div>
-      <div className="phone-preset"><small>PRESET</small><b>Equaliser settings <ChevronDown size={12}/></b></div>
-      <div className="phone-eq">{[25,52,72,43,62,35,56].map((n,i)=><i key={i} style={{height:n+"%"}}/>)}</div>
-      <div className="phone-eq-labels"><span>60</span><span>150</span><span>400</span><span>1k</span><span>2.4k</span><span>6k</span><span>15k</span></div>
-      <div className="phone-setting"><b>Parametric EQ</b><span>ON</span></div><div className="phone-setting"><b>AutoEQ profiles</b><span>ON</span></div>
-    </>}
-  </div>;
-}
-
-function Phone({ screen, className = "" }: { screen: Screen; className?: string }) {
-  return <div className={"phone-frame " + className}><PhoneScreen screen={screen}/></div>;
-}
-
 const FEATURES = [
   { icon: Radio, label: "Music & discovery", title: "A catalogue and a library.", copy: "Browse songs, albums, artists, playlists, mixes and podcasts. Keep liked music, listening history, local files and downloads close." },
   { icon: Mic2, label: "Lyrics", title: "Follow every line.", copy: "Line- and word-synced karaoke lyrics, multiple providers, translation, romanisation, text sizing and timing offset." },
@@ -89,7 +33,6 @@ const FAQ = [
 export default function HomePage() {
   const [releases, setReleases] = useState<Release[] | null>(null);
   const [releaseError, setReleaseError] = useState(false);
-  const [activeScreen, setActiveScreen] = useState<Screen>("player");
   const [selectedAsset, setSelectedAsset] = useState("universal");
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -106,7 +49,6 @@ export default function HomePage() {
     apks.find((asset) => asset.name.toLowerCase().includes("universal") && !asset.name.toLowerCase().includes("uncompressed")) ??
     apks.find((asset) => !asset.name.toLowerCase().includes("android7")) ?? apks[0];
   const checksum = latest?.assets.find((asset) => asset.name.toLowerCase().includes("sha256"));
-  const active = SCREENS.find((item) => item.id === activeScreen) ?? SCREENS[1];
 
   return <div className="kat-site">
     <header className="site-header">
@@ -114,7 +56,7 @@ export default function HomePage() {
         <a className="brand" href="#top" aria-label="KatMusic home"><Image src="/katmusic_logo.svg" alt="" width={34} height={34} priority/><span>KatMusic</span></a>
         <nav className={menuOpen ? "nav-links nav-links-open" : "nav-links"}>
           <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
-          <a href="#experience" onClick={() => setMenuOpen(false)}>The app</a>
+          <a href="#experience" onClick={() => setMenuOpen(false)}>Screenshots</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Install</a>
           <a href="#faq" onClick={() => setMenuOpen(false)}>FAQ</a>
           <a href={REPO_PAGE} target="_blank" rel="noreferrer">Source <ArrowUpRight size={14}/></a>
@@ -138,21 +80,31 @@ export default function HomePage() {
           <div className="release-inline"><span className="release-dot"/><span>Latest stable</span><b>{latest?.tag ?? "2.1.0"}</b>{latest?.publishedAt && <time>{formatDate(latest.publishedAt)}</time>}</div>
         </div>
         <div className="hero-visual">
-          <div className="hero-index">01 <span>/</span> PRODUCT PREVIEW</div>
-          <div className="phone-stage">
-            <Phone screen="library" className="phone-back phone-back-left"/>
-            <Phone screen="lyrics" className="phone-back phone-back-right"/>
-            <Phone screen={activeScreen} className="phone-front"/>
-            <span className="phone-orbit orbit-a"/><span className="phone-orbit orbit-b"/>
+          <div className="hero-index">01 <span>/</span> REAL APP SCREENS</div>
+          <div className="real-phone-stage">
+            <div className="real-phone real-phone-left"><Image src="/Screenshot_20261031_141806_KatMusic.jpg" alt="KatMusic home screen" fill priority sizes="(max-width: 720px) 28vw, 190px"/></div>
+            <div className="real-phone real-phone-center"><Image src="/Screenshot_20261031_141847_KatMusic.jpg" alt="KatMusic now playing screen" fill priority sizes="(max-width: 720px) 34vw, 230px"/></div>
+            <div className="real-phone real-phone-right"><Image src="/Screenshot_20261031_141907_KatMusic.jpg" alt="KatMusic word-synchronised lyrics screen" fill priority sizes="(max-width: 720px) 28vw, 190px"/></div>
           </div>
-          <div className="preview-caption"><span>INTERFACE STUDY</span><p>{active.note}</p><span className="preview-disclaimer">Illustrative UI preview · not app screenshots</span></div>
-          <div className="preview-tabs" aria-label="Choose interface preview">{SCREENS.map((screen) => <button key={screen.id} className={activeScreen === screen.id ? "preview-tab active" : "preview-tab"} onClick={() => setActiveScreen(screen.id)}>{screen.name}</button>)}</div>
+          <div className="preview-caption"><span>CAPTURED IN KATMUSIC</span><p>The real interface, running on Android.</p></div>
         </div>
       </section>
 
       <div className="fact-strip"><span>YOUTUBE MUSIC CATALOGUE</span><i/><span>SYNCED LYRICS</span><i/><span>NATIVE AUDIO</span><i/><span>OFFLINE DOWNLOADS</span><i/><span>OPEN SOURCE</span></div>
 
-      <section className="intro section-wrap" id="experience">
+      <section className="screenshots-section section-wrap" id="experience">
+        <div className="section-heading"><div><div className="section-label"><span>01</span> INSIDE KATMUSIC</div><h2>Every screen has<br/><em>a point of view.</em></h2></div><p>Real captures from the Android app. Browse the player, lyrics, library and the details that make KatMusic yours.</p></div>
+        <div className="screenshot-grid">
+          <figure className="shot shot-player"><Image src="/Screenshot_20261031_141847_KatMusic.jpg" alt="KatMusic expanded now playing interface" fill sizes="(max-width: 720px) 85vw, 380px"/><figcaption><span>01 / PLAYER</span><b>Artwork takes the lead.</b><small>An immersive now-playing screen with playback and queue controls.</small></figcaption></figure>
+          <figure className="shot shot-lyrics"><Image src="/Screenshot_20261031_141907_KatMusic.jpg" alt="KatMusic word-synchronised lyrics" fill sizes="(max-width: 720px) 85vw, 380px"/><figcaption><span>02 / LYRICS</span><b>Word sync, in focus.</b><small>Follow the current line while surrounding lyrics stay in context.</small></figcaption></figure>
+          <figure className="shot shot-home"><Image src="/Screenshot_20261031_141806_KatMusic.jpg" alt="KatMusic home and discovery feed" fill sizes="(max-width: 720px) 85vw, 300px"/><figcaption><span>03 / DISCOVER</span><b>A home for your listening.</b><small>Recommendations, quick access and Infinite Radio.</small></figcaption></figure>
+          <figure className="shot shot-library"><Image src="/Screenshot_20261031_141818_KatMusic.jpg" alt="KatMusic playlist library" fill sizes="(max-width: 720px) 85vw, 300px"/><figcaption><span>04 / LIBRARY</span><b>Your collection, organised.</b><small>Playlists, sorting and smart creation tools.</small></figcaption></figure>
+          <figure className="shot shot-settings"><Image src="/Screenshot_20261031_141831_KatMusic.jpg" alt="KatMusic settings overview" fill sizes="(max-width: 720px) 85vw, 300px"/><figcaption><span>05 / SETTINGS</span><b>Make it feel like yours.</b><small>Playback, appearance, services and player style controls.</small></figcaption></figure>
+          <figure className="shot shot-stats"><Image src="/Screenshot_20261031_141823_KatMusic.jpg" alt="KatMusic listening statistics" fill sizes="(max-width: 720px) 85vw, 300px"/><figcaption><span>06 / LISTENING STATS</span><b>Your listening, reflected.</b><small>Listening time, plays, top tracks and personal history.</small></figcaption></figure>
+        </div>
+      </section>
+
+      <section className="intro section-wrap" id="about">
         <div className="section-label"><span>01</span> THE IDEA</div>
         <div className="intro-content"><h2>One place for<br/>the way you <em>listen.</em></h2><div><p>KatMusic combines a streaming catalogue with your own library and playback controls that go beyond the basics.</p><p>It is built with Kotlin and Jetpack Compose, with a native C++ audio engine for the parts that benefit from it.</p><a className="inline-link" href={REPO_PAGE + "/blob/main/readme.md"} target="_blank" rel="noreferrer">Read the project overview <ArrowUpRight size={14}/></a></div></div>
         <div className="principles">
