@@ -928,6 +928,16 @@ fun SettingsScreen(
                 }
             }
                     }
+                    else -> {
+                        item {
+                            Text(
+                                text = "This settings category is not available yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
