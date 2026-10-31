@@ -314,6 +314,7 @@ private fun getTargetSectionIndex(settingId: String?): Int {
     val entry = SettingsSearchIndex.allEntries.firstOrNull { it.id == settingId } ?: return 0
     return when (entry.parentTab) {
         SettingsTab.AUDIO -> if (entry.section == "Output & Loudness") 1 else 0
+        SettingsTab.PLAYER -> 0
         SettingsTab.APPEARANCE -> when (entry.section) {
             "Accent Color" -> 1
             "Experimental & Features", "Experimental & Player" -> 2
