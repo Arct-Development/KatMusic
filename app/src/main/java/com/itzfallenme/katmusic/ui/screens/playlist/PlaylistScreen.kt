@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -87,6 +88,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
@@ -135,11 +137,19 @@ fun PlaylistScreen(
     onOpenGenerator: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onScrollToTopChanged: (Boolean) -> Unit = {},
     viewModel: PlaylistViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val likedPlaylist = remember(state.playlists) { state.playlists.firstOrNull { it.mode == LIKED_SONGS_MODE } }
     val localSongsPlaylist = remember(state.playlists) { state.playlists.firstOrNull { it.mode == LOCAL_SONGS_MODE } }
+    val libraryListState = rememberLazyListState()
+
+    LaunchedEffect(libraryListState) {
+        snapshotFlow {
+            libraryListState.firstVisibleItemIndex == 0 && libraryListState.firstVisibleItemScrollOffset == 0
+        }.collect(onScrollToTopChanged)
+    }
     val context = LocalContext.current
     val musicPlayer = com.itzfallenme.katmusic.ui.screens.player.LocalMusicPlayer.current
     val playbackState by musicPlayer.chromeState.collectAsStateWithLifecycle()
@@ -350,6 +360,7 @@ fun PlaylistScreen(
                     state.isLoading && state.playlists.isEmpty() && !state.isGenerating -> LoadingState()
                     filteredPlaylists.isEmpty() && searchQuery.isNotBlank() && !state.isGenerating -> EmptyState()
                     else -> LazyColumn(
+                        state = libraryListState,
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = FloatingNavDefaults.contentBottomPadding()),
                         verticalArrangement = Arrangement.spacedBy(com.itzfallenme.katmusic.ui.components.GroupGap),
                         modifier = Modifier.fillMaxWidth(),
