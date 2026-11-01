@@ -269,8 +269,8 @@ data class ToggleDetailInfo(
 val LocalToggleDetailViewer = staticCompositionLocalOf<((ToggleDetailInfo) -> Unit)?> { null }
 
 // -- Expressive shape scale used only within this screen --
-private val CardOuterShape = RoundedCornerShape(28.dp)
-private val IconBadgeShape = RoundedCornerShape(14.dp)
+private val CardOuterShape = RoundedCornerShape(12.dp)
+private val IconBadgeShape = RoundedCornerShape(8.dp)
 
 /** Where a row sits within a visually-connected group of settings rows —
  *  drives per-row corner radii so a multi-row group reads as one premium
@@ -278,12 +278,12 @@ private val IconBadgeShape = RoundedCornerShape(14.dp)
  *  below and the GROUP_GAP spacing used between rows in a group's Column). */
 private enum class GroupPosition { SINGLE, TOP, MIDDLE, BOTTOM }
 
-private val GROUP_OUTER_RADIUS = 28.dp
+private val GROUP_OUTER_RADIUS = 12.dp
 private val GROUP_INNER_RADIUS = 6.dp
-private val GROUP_GAP = 3.dp
+private val GROUP_GAP = 1.dp
 
 private fun groupShape(position: GroupPosition): RoundedCornerShape =
-    RoundedCornerShape(22.dp)
+    RoundedCornerShape(10.dp)
 
 /** Wraps a fixed list of settings rows and assigns each one its
  *  GroupPosition automatically — SINGLE for a lone row, TOP/BOTTOM for the
@@ -718,19 +718,19 @@ fun SettingsScreen(
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 16.dp,
-                    bottom = 32.dp + LocalMiniPlayerScrollClearance.current + safeDrawingBottomPadding(),
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 10.dp,
+                    bottom = 24.dp + LocalMiniPlayerScrollClearance.current + safeDrawingBottomPadding(),
                 ),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize().safeHorizontalContentPadding(),
             ) {
                 when (tab) {
                     null -> {
 
                         item {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 SectionLabel("Playback & UI")
                                 SettingsGroup(rowCount = 4) { index, position ->
                                     when (index) {
@@ -3274,15 +3274,27 @@ private fun SectionLabel(text: String) {
 private fun IconBadge(icon: ImageVector, container: Color, tint: Color, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(container),
+            .size(34.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
     }
 }
 
+@Composable
+private fun IconBadge(painter: Painter, container: Color, tint: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painter, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+    }
+}
 @Composable
 private fun IconBadge(painter: Painter, container: Color, tint: Color, modifier: Modifier = Modifier) {
     Box(
@@ -3316,7 +3328,7 @@ private fun ThemeModeSelectorCard(
             .settingHighlightGlow(isHighlighted = isHighlighted, shape = shape),
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconBadge(
@@ -3412,7 +3424,7 @@ private fun SettingsToggleCard(
             ),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(
@@ -3420,7 +3432,7 @@ private fun SettingsToggleCard(
                 if (enabled) iconContainer else iconContainer.copy(alpha = 0.5f),
                 if (enabled) iconTint else iconTint.copy(alpha = 0.5f),
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     title,
@@ -3429,15 +3441,7 @@ private fun SettingsToggleCard(
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
+                )            }
             Spacer(Modifier.width(8.dp))
             Switch(
                 checked = checked,
@@ -3504,7 +3508,7 @@ private fun SettingsToggleCard(
             ),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(
@@ -3512,7 +3516,7 @@ private fun SettingsToggleCard(
                 if (enabled) iconContainer else iconContainer.copy(alpha = 0.5f),
                 if (enabled) iconTint else iconTint.copy(alpha = 0.5f),
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     title,
@@ -3521,15 +3525,7 @@ private fun SettingsToggleCard(
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
+                )            }
             Spacer(Modifier.width(8.dp))
             Switch(
                 checked = checked,
@@ -3743,11 +3739,11 @@ private fun SettingsActionCard(
             .settingHighlightGlow(isHighlighted = isHighlighted, shape = shape),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(icon, iconContainer, iconTint)
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = titleColor, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
