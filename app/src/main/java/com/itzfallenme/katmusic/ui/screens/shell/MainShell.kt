@@ -364,7 +364,11 @@ fun MainShell(
                 when (tabs[page]) {
                     MainTab.FEED -> FeedScreen(
                         onOpenSettings = onOpenSettings,
-                        onOpenSearch = onOpenSearch,
+                        onOpenSearch = {
+                            val searchIndex = tabs.indexOf(MainTab.SEARCH)
+                            if (selectedTabIndex != searchIndex) selectedTabIndex = searchIndex
+                            scope.launch { pagerState.animateScrollToPage(searchIndex) }
+                        },
                         onOpenDiscover = onOpenDiscover,
                         onOpenPlaylist = onOpenPlaylist,
                         onOpenFeedPlaylist = onOpenFeedPlaylist,
@@ -380,6 +384,7 @@ fun MainShell(
                         feedTapEvents = feedTapEvents,
                     )
                     MainTab.SEARCH -> com.itzfallenme.katmusic.ui.screens.search.SearchScreen(
+                        showBackButton = false,
                         onOpenArtist = onOpenSearchResultArtist,
                         onOpenAlbum = onOpenSearchResultAlbum,
                         onOpenPlaylist = onOpenSearchResultPlaylist,
