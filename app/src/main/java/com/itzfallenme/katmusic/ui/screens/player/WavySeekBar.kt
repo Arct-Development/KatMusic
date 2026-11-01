@@ -20,10 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -119,22 +117,6 @@ fun WavySeekBar(
     // never seek anywhere, and a gesture that ends without
     // onValueChangeFinished can never pin the slider to a dead value.
     var dragPositionMs by remember(trackKey) { mutableStateOf<Float?>(null) }
-    // Heal: framework reports finger lifted or cancelled but the finished callback
-    // never ran -> drop the dead value and resume live position.
-    LaunchedEffect(isInteracting, trackKey) {
-        if (!isInteracting) {
-            delay(120L)
-            dragPositionMs = null
-        }
-    }
-    // Watchdog: if dragPositionMs was set by a tap/cancelled gesture while not interacting,
-    // ensure it never permanently wedges the seekbar.
-    LaunchedEffect(dragPositionMs, isInteracting, trackKey) {
-        if (dragPositionMs != null && !isInteracting) {
-            delay(250L)
-            dragPositionMs = null
-            }
-    }
     val dragging = isInteracting || dragPositionMs != null
 
     // ExoPlayer reports C.TIME_UNSET (-9223372036854775807) until the
@@ -337,7 +319,7 @@ fun WavySeekBar(
                         } finally {
                             isInteracting = false
                             dragPositionMs = null
-                                    }
+                        }
                     }
                 },
         ) {
