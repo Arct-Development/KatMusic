@@ -332,90 +332,70 @@ object ShareCardRenderer {
         plan: LayoutPlan,
     ) {
         // 1. Style-specific background with contrast-safe foreground palette.
-        val styleColors = when (spec.lyricStyle) {
-            LyricCardStyle.Paper -> ColorContrastHelper.deriveTextColors(0xFFF3E8D8.toInt())
-            LyricCardStyle.Neon -> ColorContrastHelper.deriveTextColors(0xFF090D25.toInt())
-            LyricCardStyle.Cover -> ColorContrastHelper.deriveTextColors(spec.swatchColor, isCoverScrim = true)
-            LyricCardStyle.Minimal -> spec.derivedColors
-        }
-        if (spec.lyricStyle == LyricCardStyle.Cover && spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
-            drawCenterCropCover(canvas, spec.coverBitmap, width, height)
-            // One controlled scrim keeps the actual album cover visible while
-            // preserving readable type across light and dark artwork.
-            canvas.drawColor(0x78000000.toInt())
-        } else {
-            val base = when (spec.lyricStyle) {
-                LyricCardStyle.Paper -> 0xFFF3E8D8.toInt()
-                LyricCardStyle.Neon -> 0xFF090D25.toInt()
-                else -> styleColors.backgroundColor or 0xFF000000.toInt()
-            }
-            val end = when (spec.lyricStyle) {
-                LyricCardStyle.Paper -> 0xFFE6D5C0.toInt()
-                LyricCardStyle.Neon -> 0xFF25104D.toInt()
-                else -> base
-            }
-            if (spec.lyricStyle == LyricCardStyle.Paper || spec.lyricStyle == LyricCardStyle.Neon) {
-                val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    shader = LinearGradient(
-                        0f, 0f, width.toFloat(), height.toFloat(),
-                        base, end, Shader.TileMode.CLAMP,
-                    )
+        val styleColors = ColorContrastHelper.professionalLyricsColors(
+            spec.lyricStyle,
+            spec.swatchColor,
+        )
+        when (spec.lyricStyle) {
+            LyricCardStyle.Cover -> {
+                if (spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
+                    drawCenterCropCover(canvas, spec.coverBitmap, width, height)
+                    canvas.drawColor(0x72000000.toInt())
+                } else {
+                    canvas.drawColor(0xFF20242A.toInt())
                 }
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
-            } else {
-                canvas.drawColor(base)
             }
+            LyricCardStyle.Minimal,
+            LyricCardStyle.Neon,
+            LyricCardStyle.Paper -> canvas.drawColor(styleColors.backgroundColor)
         }
 
         var currentY = (60 * scale)
 
-        // 2. Header: Rounded Cover Thumbnail (left) + Title and Artist (right)
-        val thumbSize = (180 * scale).roundToInt()
-        val thumbRadius = 22f * scale
-        val textGap = (24 * scale).roundToInt()
+        // 2. Editorial header: a modest square image and carefully aligned metadata.
+        val thumbSize = (156 * scale).roundToInt()
+        val thumbRadius = 8f * scale
+        val textGap = (28 * scale).roundToInt()
         val textX = (hPadding + thumbSize + textGap).toFloat()
-
-        if (spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
-            val roundedThumb = getRoundedBitmap(spec.coverBitmap, thumbRadius, thumbSize, thumbSize)
-            canvas.drawBitmap(roundedThumb, hPadding.toFloat(), currentY, null)
+        val cover = spec.coverBitmap?.takeUnless { it.isRecycled }
+        if (cover != null) {
+            val thumbnail = getRoundedBitmap(cover, thumbRadius, thumbSize, thumbSize)
+            canvas.drawBitmap(thumbnail, hPadding.toFloat(), currentY + (12 * scale), null)
         } else {
-            // Fallback thumbnail with subtle gradient and brand mark
-            val thumbRect = RectF(hPadding.toFloat(), currentY, (hPadding + thumbSize).toFloat(), currentY + thumbSize)
-            val thumbBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = AndroidColor.argb(40, 255, 255, 255)
-            }
-            canvas.drawRoundRect(thumbRect, thumbRadius, thumbRadius, thumbBgPaint)
-            drawLogoMark(canvas, context, thumbRect.centerX(), thumbRect.centerY(), (48 * scale).roundToInt(), styleColors.lyricsTextColor)
+            val thumbRect = RectF(
+                hPadding.toFloat(), currentY + (12 * scale),
+                (hPadding + thumbSize).toFloat(), currentY + (12 * scale) + thumbSize,
+            )
+            canvas.drawRoundRect(
+                thumbRect, thumbRadius, thumbRadius,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = styleColors.dividerColor },
+            )
         }
 
-        // Title and Artist alongside thumbnail
         val titleLayout = plan.titleLayout
         val artistLayout = plan.artistLayout
         if (titleLayout != null && artistLayout != null) {
-            val textBlockHeight = titleLayout.height + (8 * scale).roundToInt() + artistLayout.height
-            val textOffsetY = if (thumbSize > textBlockHeight) (thumbSize - textBlockHeight) / 2f else 0f
-            val textStartY = currentY + textOffsetY
-
+            val textBlockHeight = titleLayout.height + (10 * scale).roundToInt() + artistLayout.height
+            val textStartY = currentY + (12 * scale) + ((thumbSize - textBlockHeight).coerceAtLeast(0) / 2f)
             canvas.save()
             canvas.translate(textX, textStartY)
             titleLayout.draw(canvas)
             canvas.restore()
-
             canvas.save()
-            canvas.translate(textX, textStartY + titleLayout.height + (8 * scale))
+            canvas.translate(textX, textStartY + titleLayout.height + (10 * scale))
             artistLayout.draw(canvas)
             canvas.restore()
         }
 
-        currentY += plan.headerHeight + (26 * scale)
+        currentY += plan.headerHeight + (30 * scale)
 
-        // 3. Thin divider line
+        // A quiet hairline separates metadata from the lyric excerpt.
         val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = styleColors.dividerColor
-            strokeWidth = 2f * scale
+            strokeWidth = max(1f, 1.2f * scale)
         }
         canvas.drawLine(hPadding.toFloat(), currentY, (width - hPadding).toFloat(), currentY, dividerPaint)
-        currentY += (32 * scale)
+        currentY += (42 * scale)
 
         // 4. Large bold tinted lyrics (word wrapped naturally, tight line spacing, generous block gap)
         val blockGap = plan.fontSize * LYRIC_BLOCK_GAP_FACTOR
@@ -435,8 +415,20 @@ object ShareCardRenderer {
             currentY += layout.height + blockGap
         }
 
-        // 5. Brand footer: bottom-left aligned to hPadding!
-        drawBrandFooterLeft(canvas, context, hPadding, height, scale, styleColors.brandTextColor)
+        // Quiet imprint footer, aligned to the same editorial grid.
+        val footerY = height - (56 * scale)
+        val footerPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = getTypeface(context, 600)
+            textSize = 27f * scale
+            color = styleColors.brandTextColor
+            letterSpacing = 0.04f
+        }
+        canvas.drawText("KATMUSIC", hPadding.toFloat(), footerY, footerPaint)
+        val markSize = (22 * scale).roundToInt()
+        drawLogoMark(
+            canvas, context, (width - hPadding - markSize / 2f),
+            footerY - (9 * scale), markSize, styleColors.brandTextColor,
+        )
     }
 
     // ==========================================
