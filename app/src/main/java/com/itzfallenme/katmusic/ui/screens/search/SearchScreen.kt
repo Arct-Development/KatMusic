@@ -99,6 +99,7 @@ import com.itzfallenme.katmusic.ui.components.TrackMenuTarget
 import com.itzfallenme.katmusic.ui.components.TrackMiniTrayData
 import com.itzfallenme.katmusic.ui.components.TrackMiniTraySheet
 import com.itzfallenme.katmusic.ui.components.safeDrawingBottomPadding
+import com.itzfallenme.katmusic.ui.screens.shell.FloatingNavDefaults
 import com.itzfallenme.katmusic.ui.components.safeHorizontalContentPadding
 import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
 import com.itzfallenme.katmusic.ui.screens.player.LocalMiniPlayerScrollClearance
@@ -297,7 +298,7 @@ fun SearchScreen(
                     LazyColumn(
                         contentPadding = PaddingValues(
                             top = 8.dp,
-                            bottom = 24.dp + LocalMiniPlayerScrollClearance.current + safeDrawingBottomPadding(),
+                            bottom = FloatingNavDefaults.contentBottomPadding(),
                         ),
                         modifier = Modifier.fillMaxSize(),
                     ) {
@@ -365,7 +366,7 @@ fun SearchScreen(
                     LazyColumn(
                         contentPadding = PaddingValues(
                             top = 12.dp,
-                            bottom = 24.dp + LocalMiniPlayerScrollClearance.current + safeDrawingBottomPadding(),
+                            bottom = FloatingNavDefaults.contentBottomPadding(),
                         ),
                         modifier = Modifier.fillMaxSize(),
                     ) {
@@ -484,7 +485,7 @@ fun SearchScreen(
                                 LazyColumn(
                                     contentPadding = PaddingValues(
                                         top = 8.dp,
-                                        bottom = 24.dp + LocalMiniPlayerScrollClearance.current + safeDrawingBottomPadding(),
+                                        bottom = FloatingNavDefaults.contentBottomPadding(),
                                     ),
                                 ) {
                                     if (topResult != null && state.tab != SearchTab.USERS) {
