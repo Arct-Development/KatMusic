@@ -74,6 +74,42 @@ All notable changes to KatMusic are documented here. The format follows
 
 ### Added
 
+- **Branded startup sequence.** The supplied KatMusic logo animation is packaged as an Android raw video resource. After playback completes, the final emblem transitions into the static logo; the logo slides left as the “Kat Music” wordmark enters, before the app opens Login or Home.
+- **First-run experience preference.** Onboarding offers Classic and Modern appearance presets with animated selection feedback and a description of each mode. The choice is saved in the existing theme preferences.
+- **App-wide release update prompt.** The app checks the latest release from `Arct-Development/KatMusic` and can show the version and release-note preview on both Login and Home, with per-version dismissal.
+- **Dedicated Group Blend Supabase backend foundation.** Added a separate Blend project schema under `server/blend/supabase/migrations`, authenticated create/join/leave functions, row-level security, hashed invitation codes, membership limits, compact-profile storage and build-time client configuration.
+- Group Blend Android cloud flows for email/password sign-up and sign-in, persisted/refreshed sessions, compact taste-profile upload, online Blend creation and joining, member/profile retrieval, refresh and leaving a group. Local profile-code sharing remains available as a fallback.
+- Website shortcut in Settings → About, alongside Arct Development repository attribution.
+
+### Changed
+
+- Expanded bottom navigation and Search are centred together; the collapsed dock remains left-aligned to avoid the mini-player.
+- Onboarding preference cards now animate their selection state, outline and selected-mode explanation.
+- Settings received a density and geometry pass: tighter rows, smaller icon containers, reduced corner radii and fewer repeated descriptions.
+- Soundprint now uses a restrained, data-first editorial layout instead of the earlier decorative waveform treatment.
+- Lyrics share cards have distinct Swiss, Midnight, Archive and Artwork directions, with a stronger typographic hierarchy and more restrained backgrounds.
+- Alternate player styles gained smoother style transitions, artwork breathing, timeline progress motion and synced-lyric word emphasis.
+- Listen Together now surfaces room members, host identity, playback metadata, shared queue state and guest track suggestions in its room screen.
+- Queue header copy is simplified; overflow and drag controls use consistent 40dp touch targets, icon sizing and alignment.
+- Public-facing repository and project links now point to the Arct Development organisation.
+
+### Fixed
+
+- Startup playback now uses an Android resource URI rather than a fragile asset file URI, waits for the video completion callback, and keeps the app on the black splash screen until the logo/wordmark transition finishes. A decoder timeout is retained as a fallback.
+- Startup animation is replayed after a fresh app launch, including when Android restores a previous navigation back stack.
+- Expanded navigation no longer inherits the collapsed dock's left alignment.
+- Corrected Supabase Auth response parsing in the Group Blend client and session refresh flow.
+- Queue helper text that crowded the queue header has been removed, and the menu/drag-handle symbols now share consistent sizing and placement.
+
+### Setup and verification notes
+
+- Group Blend uses a **separate Supabase project** from Listen Together. Apply `server/blend/supabase/migrations/0001_blend_schema.sql` and configure `KATMUSIC_BLEND_SUPABASE_URL` plus `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` in the local environment or GitHub Actions secrets before enabling cloud access. Never use a service-role key in the Android app.
+- Group Blend cloud flows require a configured Supabase project and have not yet been verified against a live project.
+- CI has produced successful debug and ARM64 APK builds for the startup/navigation work preceding the latest splash handoff refinement; the latest splash refinement's workflow result should be checked before release.
+
+
+### Added
+
 - Online Listen Together rooms with host approval, room chat, reconnect tokens, shared queue metadata and host-driven playback sync through a deployable WebSocket relay (`server/jam`). Audio remains independently resolved on each device.
 - Regression tests for lossless quality fallback ordering, including strict YouTube selection, Hi-Res downshift, and explicit-only Atmos / Data Saver tiers.
 
