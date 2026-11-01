@@ -5525,22 +5525,6 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
-                Text(
-                    if (state.isEndlessQueue) {
-                        "Unlimited songs · ${state.currentIndex.coerceAtLeast(0) + 1} playing"
-                    } else {
-                        "${state.queue.size} songs · ${state.currentIndex.coerceAtLeast(0) + 1} playing"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.70f),
-                )
-                if (state.queue.size > 1 && !isQueueLocked) {
-                    Text(
-                        stringResource(com.itzfallenme.katmusic.R.string.queue_rearrange_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.55f),
-                    )
-                }
             }
             val statsText = remember(state.queue) {
                 QueueStatsFormatter.formatQueueStats(state.queue)
@@ -5768,28 +5752,28 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                         }
                         IconButton(
                             onClick = { menuIndex = currentQueueKeys.indexOf(stableKey).takeIf { it >= 0 } ?: currentIndex },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f)),
                         ) {
                             Icon(
                                 Icons.Filled.MoreVert,
                                 contentDescription = stringResource(com.itzfallenme.katmusic.R.string.player_menu_cd),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
                             )
                         }
                         if (!isQueueLocked) {
-                            Icon(
-                                Icons.Filled.DragHandle,
-                                stringResource(com.itzfallenme.katmusic.R.string.queue_drag_hint),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isDragging) 1f else 0.6f),
+                            Box(
                                 modifier = Modifier
-                                    .padding(start = 8.dp)
+                                    .padding(start = 6.dp)
                                     .size(40.dp)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(
                                         if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                                         else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                                     )
-                                    .padding(8.dp)
                                     .pointerInput(stableKey) {
                                         detectDragGesturesAfterLongPress(
                                             onDragStart = {
@@ -5846,7 +5830,15 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                                             },
                                         )
                                     },
-                            )
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Icons.Filled.DragHandle,
+                                    contentDescription = stringResource(com.itzfallenme.katmusic.R.string.queue_drag_hint),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isDragging) 1f else 0.72f),
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
                         }
                     }
                 }
