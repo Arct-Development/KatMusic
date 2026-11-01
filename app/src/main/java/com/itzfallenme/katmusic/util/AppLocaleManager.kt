@@ -73,6 +73,14 @@ class AppLocaleManager @Inject constructor(
         }
     }
 
+    /** Used by Clear all data: return to the system locale and update both mirrors. */
+    suspend fun resetToSystem() {
+        settingsPreferences.setAppLanguage(AppLanguage.SYSTEM)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            withContext(Dispatchers.Main) { setFrameworkLocales(null) }
+        }
+    }
+
     /**
      * API 33+: if the framework holds a different value than DataStore
      * (user changed it via system Settings), adopt it so the in-app picker
