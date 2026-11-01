@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +64,16 @@ class GenreExplorerNavBridge @Inject constructor(genreExplorer: GenreExplorer) :
 
 @HiltViewModel
 class MixLauncherNavBridge @Inject constructor(val mixLauncher: com.itzfallenme.katmusic.ui.screens.generate.MixLauncher) : ViewModel()
+
+
+@HiltViewModel
+class AppUpdateNavBridge @Inject constructor(
+    private val appUpdateManager: com.itzfallenme.katmusic.data.update.AppUpdateManager,
+) : ViewModel() {
+    val updateInfo = appUpdateManager.updateInfo
+    fun dismiss(version: String) = appUpdateManager.dismissUpdate(version)
+    fun open(context: android.content.Context) = appUpdateManager.openUpdate(context)
+}
 
 @HiltViewModel
 class ArtistAlbumNavBridge @Inject constructor(val navigator: ArtistAlbumNavigator) : ViewModel()
@@ -127,6 +140,8 @@ fun KatMusicNavHost(
     val pendingAppRoute by appRouteBridge.routeNavigator.pendingRoute.collectAsStateWithLifecycle()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+    val updateBridge: AppUpdateNavBridge = hiltViewModel()
+    val updateInfo by updateBridge.updateInfo.collectAsStateWithLifecycle()
     LaunchedEffect(pendingAppRoute, currentRoute) {
         val route = pendingAppRoute
         if (route != null && currentRoute != null &&
@@ -697,6 +712,45 @@ fun KatMusicNavHost(
                 )
             }
         }
+    }
+    // Check for releases in the app-wide manager and show the same prompt
+    // after the black startup animation, regardless of login or guest state.
+    if (
+        currentRoute != null &&
+        currentRoute != Screen.Splash.route &&
+        updateInfo.isUpdateAvailable &&
+        !updateInfo.isDismissed
+    ) {
+        AlertDialog(
+            onDismissRequest = { updateBridge.dismiss(updateInfo.latestVersion) },
+            shape = RoundedCornerShape(14.dp),
+            title = { Text("KatMusic update available", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column {
+                    Text("Version ${updateInfo.latestVersion} is ready.")
+                    if (updateInfo.releaseNotes.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            updateInfo.releaseNotes.take(420).let {
+                                if (updateInfo.releaseNotes.length > 420) "${it}…" else it
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { updateBridge.open(androidx.compose.ui.platform.LocalContext.current) }) {
+                    Text("View update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { updateBridge.dismiss(updateInfo.latestVersion) }) {
+                    Text("Later")
+                }
+            },
+        )
     }
 }
 
