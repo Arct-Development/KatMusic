@@ -53,7 +53,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -185,8 +185,8 @@ class MainShellViewModel @Inject constructor(
 
 private enum class MainTab(val labelRes: Int) {
     FEED(com.itzfallenme.katmusic.R.string.nav_feed),
+    SEARCH(com.itzfallenme.katmusic.R.string.nav_search),
     LIBRARY(com.itzfallenme.katmusic.R.string.nav_library),
-    STATS(com.itzfallenme.katmusic.R.string.nav_stats),
 }
 
 /** Shared with any screen hosted inside [MainShell] so their scrolling
@@ -233,6 +233,10 @@ fun MainShell(
     onOpenDownloads: () -> Unit = {},
     onOpenPodcasts: () -> Unit = {},
     onOpenPodcastShow: (String) -> Unit = {},
+    onOpenListenTogether: () -> Unit = {},
+    onOpenSearchResultArtist: (String, String?) -> Unit = { _, _ -> },
+    onOpenSearchResultAlbum: (String, String, String?) -> Unit = { _, _, _ -> },
+    onOpenSearchResultPlaylist: (String) -> Unit = {},
     onOpenYouTubeLogin: () -> Unit = {},
     onReturnToHome: () -> Boolean = { false },
     mainShellViewModel: MainShellViewModel = hiltViewModel(),
@@ -369,22 +373,21 @@ fun MainShell(
                         onOpenFriendProfile = onOpenFriendProfile,
                         onOpenNewReleases = onOpenNewReleases,
                         onOpenDownloads = onOpenDownloads,
+                        onOpenListenTogether = onOpenListenTogether,
                         onOpenPodcasts = onOpenPodcasts,
                         onOpenPodcastShow = onOpenPodcastShow,
                         onOpenYouTubeLogin = onOpenYouTubeLogin,
                         feedTapEvents = feedTapEvents,
                     )
-                    MainTab.STATS -> HomeScreen(
-                        onOpenSettings = onOpenSettings,
-                        onOpenSearch = onOpenSearch,
-                        onOpenDiscover = onOpenDiscover,
-                        onOpenGenres = onOpenGenres,
-                        onOpenFriends = onOpenFriends,
-                        onOpenDownloads = onOpenDownloads,
+                    MainTab.SEARCH -> com.itzfallenme.katmusic.ui.screens.search.SearchScreen(
+                        onOpenArtist = onOpenSearchResultArtist,
+                        onOpenAlbum = onOpenSearchResultAlbum,
+                        onOpenPlaylist = onOpenSearchResultPlaylist,
                     )
                     MainTab.LIBRARY -> PlaylistScreen(
                         onOpenPlaylist = onOpenPlaylist,
                         onOpenGenerator = onOpenGenerator,
+                        onOpenDownloads = onOpenDownloads,
                     )
                 }
             }
@@ -819,6 +822,6 @@ private fun FloatingNavItem(
 
 private fun MainTab.icon(): ImageVector = when (this) {
     MainTab.FEED -> Icons.Filled.Home
+    MainTab.SEARCH -> Icons.Filled.Search
     MainTab.LIBRARY -> Icons.AutoMirrored.Filled.QueueMusic
-    MainTab.STATS -> Icons.Filled.Leaderboard
 }
