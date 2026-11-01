@@ -55,6 +55,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Home
@@ -191,8 +192,9 @@ class MainShellViewModel @Inject constructor(
 
 private enum class MainTab(val labelRes: Int) {
     FEED(com.itzfallenme.katmusic.R.string.nav_feed),
-    SEARCH(com.itzfallenme.katmusic.R.string.nav_search),
+    STATS(com.itzfallenme.katmusic.R.string.nav_stats),
     LIBRARY(com.itzfallenme.katmusic.R.string.nav_library),
+    SEARCH(com.itzfallenme.katmusic.R.string.nav_search),
 }
 
 /** Shared with any screen hosted inside [MainShell] so their scrolling
@@ -250,6 +252,7 @@ fun MainShell(
 ) {
     val tabs = MainTab.entries
     var isHomeScrolledToTop by rememberSaveable { mutableStateOf(true) }
+    var isStatsScrolledToTop by rememberSaveable { mutableStateOf(true) }
     var isLibraryScrolledToTop by rememberSaveable { mutableStateOf(true) }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val feedTapEvents = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
@@ -393,18 +396,35 @@ fun MainShell(
                         feedTapEvents = feedTapEvents,
                         onScrollToTopChanged = { isHomeScrolledToTop = it },
                     )
-                    MainTab.SEARCH -> com.itzfallenme.katmusic.ui.screens.search.SearchScreen(
-                        showBackButton = false,
-                        onOpenArtist = onOpenSearchResultArtist,
-                        onOpenAlbum = onOpenSearchResultAlbum,
-                        onOpenPlaylist = onOpenSearchResultPlaylist,
+                    MainTab.STATS -> HomeScreen(
+                        onOpenSettings = onOpenSettings,
+                        onOpenSearch = {
+                            val searchIndex = tabs.indexOf(MainTab.SEARCH)
+                            if (selectedTabIndex != searchIndex) selectedTabIndex = searchIndex
+                            scope.launch { pagerState.animateScrollToPage(searchIndex) }
+                        },
+                        onOpenDiscover = onOpenDiscover,
+                        onOpenGenres = onOpenGenres,
+                        onOpenFriends = onOpenFriends,
+                        onOpenDownloads = onOpenDownloads,
+                        onScrollToTopChanged = { isStatsScrolledToTop = it },
                     )
                     MainTab.LIBRARY -> PlaylistScreen(
                         onOpenPlaylist = onOpenPlaylist,
                         onOpenGenerator = onOpenGenerator,
                         onOpenDownloads = onOpenDownloads,
-                        onOpenStats = onOpenStats,
+                        onOpenStats = {
+                            val statsIndex = tabs.indexOf(MainTab.STATS)
+                            if (selectedTabIndex != statsIndex) selectedTabIndex = statsIndex
+                            scope.launch { pagerState.animateScrollToPage(statsIndex) }
+                        },
                         onScrollToTopChanged = { isLibraryScrolledToTop = it },
+                    )
+                    MainTab.SEARCH -> com.itzfallenme.katmusic.ui.screens.search.SearchScreen(
+                        showBackButton = false,
+                        onOpenArtist = onOpenSearchResultArtist,
+                        onOpenAlbum = onOpenSearchResultAlbum,
+                        onOpenPlaylist = onOpenSearchResultPlaylist,
                     )
                 }
             }
@@ -441,6 +461,7 @@ fun MainShell(
         val currentIsScrolledToTop by androidx.compose.runtime.rememberUpdatedState(
             when (tabs.getOrNull(selectedTabIndex)) {
                 MainTab.FEED -> isHomeScrolledToTop
+                MainTab.STATS -> isStatsScrolledToTop
                 MainTab.LIBRARY -> isLibraryScrolledToTop
                 else -> true
             }
@@ -580,8 +601,8 @@ private fun FloatingNavBar(
     val searchInteraction = remember { MutableInteractionSource() }
     val collapsedState = LocalBottomNavCollapsed.current
 
-    // SimpMusic behaviour: Search is a separate glass FAB; the main capsule
-    // folds when a feed/library list scrolls, and remains folded on Search.
+    // Search remains a separate glass FAB; the three primary destinations
+    // live in the capsule, which folds as the active list scrolls.
     var isExpanded by rememberSaveable { mutableStateOf(true) }
     LaunchedEffect(isSearchSelected, isScrolledToTop) {
         isExpanded = !isSearchSelected && isScrolledToTop
@@ -824,6 +845,7 @@ private fun FloatingNavItem(
 
 private fun MainTab.icon(): ImageVector = when (this) {
     MainTab.FEED -> Icons.Filled.Home
-    MainTab.SEARCH -> Icons.Filled.Search
+    MainTab.STATS -> Icons.Filled.BarChart
     MainTab.LIBRARY -> Icons.AutoMirrored.Filled.QueueMusic
+    MainTab.SEARCH -> Icons.Filled.Search
 }
