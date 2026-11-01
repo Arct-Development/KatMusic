@@ -2883,6 +2883,17 @@ class TrackDownloadManager @Inject constructor(
                 if (failed.isNotEmpty()) {
                     throw IOException("Failed to delete ${failed.size} downloaded track(s)")
                 }
+                // A completed wipe must not leave the restore marker behind:
+                // otherwise stale MediaStore/download state could be adopted again.
+                val scanPrefsCleared = context.getSharedPreferences(SCAN_PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .clear()
+                    .commit()
+                val markerFile = File(context.noBackupFilesDir, SCAN_MARKER_FILE)
+                val markerRemoved = !markerFile.exists() || markerFile.delete()
+                if (!scanPrefsCleared || !markerRemoved) {
+                    throw IOException("Couldn't reset the downloaded-media restore marker")
+                }
             }
         } finally {
             synchronized(admissionLock) {
