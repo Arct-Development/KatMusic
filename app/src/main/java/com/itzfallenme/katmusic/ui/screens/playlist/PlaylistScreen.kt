@@ -128,6 +128,7 @@ import java.util.Locale
 fun PlaylistScreen(
     onOpenPlaylist: (Long) -> Unit = {},
     onOpenGenerator: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
     viewModel: PlaylistViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -195,6 +196,12 @@ fun PlaylistScreen(
                             modifier = Modifier.size(40.dp),
                         ) {
                             Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.pl_create_cd))
+                        }
+                        IconButton(
+                            onClick = onOpenDownloads,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = "Downloads")
                         }
                         Box {
                             Surface(
