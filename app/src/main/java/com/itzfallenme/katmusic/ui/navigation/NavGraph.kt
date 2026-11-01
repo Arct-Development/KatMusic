@@ -227,6 +227,7 @@ fun KatMusicNavHost(
         composable(Screen.Login.route) {
             val authViewModel: AuthViewModel = hiltViewModel()
             val themeViewModel: com.itzfallenme.katmusic.ui.theme.ThemeViewModel = hiltViewModel()
+            val appearanceState by themeViewModel.uiState.collectAsStateWithLifecycle()
             val gateViewModel: LaunchGateViewModel = hiltViewModel()
             val gateTarget by gateViewModel.gateTarget.collectAsStateWithLifecycle()
             val webAuthState by authViewModel.webAuthState.collectAsStateWithLifecycle()
@@ -259,6 +260,7 @@ fun KatMusicNavHost(
                 errorMessage = restoreError,
                 isBusy = restoring,
                 onLegacyFriendlyModeChange = themeViewModel::setLegacyFriendlyMode,
+                isLegacyFriendlyMode = !appearanceState.liquidGlass && appearanceState.md3NavBar,
                 onOpenDownloads = {
                     navController.navigate(Screen.Downloads.route)
                 },
@@ -757,65 +759,97 @@ fun KatMusicNavHost(
 
 @Composable
 private fun LaunchGate(onAnimationFinished: () -> Unit) {
-    var finished by remember { mutableStateOf(false) }
+    var videoFinished by remember { mutableStateOf(false) }
     var showName by remember { mutableStateOf(false) }
     val logoOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (finished) (-48).dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(520),
+        targetValue = if (showName) (-34).dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(560),
         label = "startupLogoSlide",
     )
+
+    // Never skip the animation because auth/session loading finishes early.
+    // The timeout is only a decoder-failure safety net; normal navigation is
+    // driven by the actual video completion callback.
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(3_500L)
-        if (!finished) {
-            finished = true
-            onAnimationFinished()
-        }
+        kotlinx.coroutines.delay(18_000L)
+        if (!videoFinished) videoFinished = true
     }
-    LaunchedEffect(finished) {
-        if (finished) {
-            kotlinx.coroutines.delay(300L)
+    LaunchedEffect(videoFinished) {
+        if (videoFinished) {
+            kotlinx.coroutines.delay(240L)
             showName = true
         }
     }
+    LaunchedEffect(showName) {
+        if (showName) {
+            // Let the mark settle and the wordmark complete its entrance
+            // before removing the splash destination from the back stack.
+            kotlinx.coroutines.delay(760L)
+            onAnimationFinished()
+        }
+    }
+
     Box(
         Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
         contentAlignment = Alignment.Center,
     ) {
-        if (!finished) {
+        if (!videoFinished) {
             androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
                     android.widget.VideoView(context).apply {
-                        setVideoPath("file:///android_asset/startup-logo.mp4")
-                        setOnPreparedListener { it.isLooping = false; start() }
-                        setOnCompletionListener {
-                            finished = true
-                            onAnimationFinished()
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                        setVideoURI(
+                            android.net.Uri.parse(
+                                "android.resource://${context.packageName}/${com.itzfallenme.katmusic.R.raw.startup_logo}",
+                            ),
+                        )
+                        setOnPreparedListener { player ->
+                            player.isLooping = false
+                            start()
                         }
-                        setOnErrorListener { _, _, _ ->
-                            finished = true
-                            onAnimationFinished()
+                        setOnCompletionListener {
+                            videoFinished = true
+                        }
+                        setOnErrorListener { _, what, extra ->
+                            android.util.Log.w(
+                                "KatMusicSplash",
+                                "Logo animation playback failed (what=$what, extra=$extra)",
+                            )
+                            videoFinished = true
                             true
                         }
                     }
                 },
             )
         }
+
         androidx.compose.animation.AnimatedVisibility(
-            visible = finished,
-            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(280)),
+            visible = showName,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(360)),
         ) {
             androidx.compose.foundation.layout.Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
             ) {
                 androidx.compose.foundation.Image(
-                    painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_foreground),
+                    painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_logo),
                     contentDescription = "KatMusic logo",
                     modifier = Modifier.size(76.dp).offset(x = logoOffset),
                 )
-                androidx.compose.animation.AnimatedVisibility(visible = showName, enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = androidx.compose.animation.core.tween(420))) {
-                    Text("Kat Music", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineLarge)
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showName,
+                    enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(420)) +
+                        androidx.compose.animation.slideInHorizontally(
+                            initialOffsetX = { it / 2 },
+                            animationSpec = androidx.compose.animation.core.tween(520),
+                        ),
+                ) {
+                    Text(
+                        "Kat Music",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.headlineLarge,
+                    )
                 }
             }
         }
