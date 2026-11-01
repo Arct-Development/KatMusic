@@ -8,10 +8,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.interaction.DragInteraction
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
@@ -31,8 +27,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.draw.alpha
@@ -114,21 +112,8 @@ fun WavySeekBar(
     secondaryColor: Color = MaterialTheme.colorScheme.secondary,
     tertiaryColor: Color = MaterialTheme.colorScheme.tertiary,
 ) {
-    val interactionSource = remember(trackKey) { MutableInteractionSource() }
+    val latestOnSeek by rememberUpdatedState(onSeek)
     var isInteracting by remember(trackKey) { mutableStateOf(false) }
-    LaunchedEffect(interactionSource, trackKey) {
-        var dragCount = 0
-        var pressCount = 0
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is DragInteraction.Start -> dragCount++
-                is DragInteraction.Stop, is DragInteraction.Cancel -> dragCount = maxOf(0, dragCount - 1)
-                is PressInteraction.Press -> pressCount++
-                is PressInteraction.Release, is PressInteraction.Cancel -> pressCount = maxOf(0, pressCount - 1)
-            }
-            isInteracting = dragCount > 0 || pressCount > 0
-        }
-    }
     // Current-gesture drag value only; null = finger off, show live position.
     // Nullable (never a stale 0f) so a press that yields no onValueChange can
     // never seek anywhere, and a gesture that ends without
@@ -299,7 +284,66 @@ fun WavySeekBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(50.dp)
+                .pointerInput(trackKey, boundedDurationMs) {
+                    if (boundedDurationMs <= 0L) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val gestureWidth = size.width.coerceAtLeast(1f)
+                        fun positionAt(x: Float): Long {
+                            val fraction = (x / gestureWidth).coerceIn(0f, 1f).toDouble()
+                            return (boundedDurationMs.toDouble() * fraction)
+                                .toLong()
+                                .coerceIn(0L, boundedDurationMs)
+                        }
+
+                        var lastX = down.position.x
+                        var horizontalDragStarted = false
+                        var cancelledByVerticalScroll = false
+                        isInteracting = true
+                        dragPositionMs = positionAt(lastX).toFloat()
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) {
+                                    lastX = change.position.x
+                                    if (!cancelledByVerticalScroll) {
+                                        latestOnSeek(positionAt(lastX))
+                                        change.consume()
+                                    }
+                                    break
+                                }
+
+                                val total = change.position - down.position
+                                if (!horizontalDragStarted &&
+                                    kotlin.math.abs(total.y) > viewConfiguration.touchSlop &&
+                                    kotlin.math.abs(total.y) > kotlin.math.abs(total.x)
+                                ) {
+                                    cancelledByVerticalScroll = true
+                                    dragPositionMs = null
+                                    break
+                                }
+
+                                if (horizontalDragStarted ||
+                                    kotlin.math.abs(total.x) > viewConfiguration.touchSlop
+                                ) {
+                                    horizontalDragStarted = true
+                                    lastX = change.position.x
+                                    dragPositionMs = positionAt(lastX).toFloat()
+                                    change.consume()
+                                } else {
+                                    lastX = change.position.x
+                                    dragPositionMs = positionAt(lastX).toFloat()
+                                }
+                            }
+                        } finally {
+                            isInteracting = false
+                            dragPositionMs = null
+                            lastSeekValue = null
+                        }
+                    }
+                },
         ) {
             Canvas(modifier = Modifier.matchParentSize()) {
                 val width = size.width
@@ -462,45 +506,7 @@ fun WavySeekBar(
                 }
             }
 
-            Slider(
-                // When duration is unknown the bar is indeterminate (fraction 0):
-                // pin the invisible touch layer to 0 so a real elapsed time
-                // (e.g. 5000ms with range 0..1) can't coerce to the end stop.
-                // Once the late duration arrives, value/range recover together.
-                value = if (boundedDurationMs > 0L) shownMs.toFloat().coerceIn(0f, boundedDurationMs.toFloat()) else 0f,
-                onValueChange = {
-                    dragPositionMs = it
-                    lastSeekValue = it
-                },
-                onValueChangeFinished = {
-                    // Commit only this gesture's value; a finished callback
-                    // with no value (press without movement) seeks nowhere.
-                    // Guarded by enabled above, but re-check: no duration = no seek.
-                    if (boundedDurationMs <= 0L) {
-                        dragPositionMs = null
-                        lastSeekValue = null
-                        return@Slider
-                    }
-                    val target = (lastSeekValue ?: dragPositionMs)?.toLong()?.coerceIn(0L, boundedDurationMs)
-                    dragPositionMs = null
-                    lastSeekValue = null
-                    if (target != null) onSeek(target)
-                },
-                valueRange = 0f..boundedDurationMs.coerceAtLeast(1L).toFloat(),
-                enabled = boundedDurationMs > 0L,
-                interactionSource = interactionSource,
-                modifier = Modifier.matchParentSize(),
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.Transparent,
-                    activeTrackColor = Color.Transparent,
-                    inactiveTrackColor = Color.Transparent,
-                    activeTickColor = Color.Transparent,
-                    inactiveTickColor = Color.Transparent,
-                    disabledThumbColor = Color.Transparent,
-                    disabledActiveTrackColor = Color.Transparent,
-                    disabledInactiveTrackColor = Color.Transparent,
-                ),
-            )
+
         }
 
         if (showTimeLabels) {
