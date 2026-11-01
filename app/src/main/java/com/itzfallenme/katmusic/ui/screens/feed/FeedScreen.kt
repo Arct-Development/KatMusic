@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.ui.screens.feed
 import androidx.activity.compose.BackHandler
 import com.itzfallenme.katmusic.playback.toPlayableTrack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -175,6 +176,7 @@ fun FeedScreen(
     onOpenGenerator: () -> Unit = {},
     onOpenFriends: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
+    onOpenListenTogether: () -> Unit = {},
     onOpenFriendProfile: (username: String, displayName: String?, avatarUrl: String?) -> Unit = { _, _, _ -> },
     onOpenNewReleases: () -> Unit = {},
     onOpenPodcasts: () -> Unit = {},
@@ -341,8 +343,7 @@ fun FeedScreen(
                 subtitle = "Your daily soundtrack",
                 containerColor = if (isPodcastsActive) Color.Transparent else Color.Unspecified,
                 actions = {
-                    HeaderActionIcon(Icons.Filled.Download, "Downloads", onOpenDownloads)
-                    HeaderActionIcon(Icons.Filled.Search, "Search", onOpenSearch)
+                    HeaderActionIcon(Icons.Filled.Group, "Listen Together", onOpenListenTogether)
                     IconButton(onClick = onOpenSettings) {
                         com.itzfallenme.katmusic.ui.screens.home.ProfileAvatar(avatarUrl = state.avatarUrl, modifier = Modifier.size(38.dp))
                     }
