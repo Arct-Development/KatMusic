@@ -161,7 +161,7 @@ object SoundprintRenderer {
         val centerTitle = textPaint(32f, ink, Typeface.BOLD)
         centerTitle.textAlign = Paint.Align.CENTER
         canvas.drawText("SOUNDPRINT", cx, cy - 4f, centerTitle)
-        val centerSub = textPaint(19f, muted, Typeface.MEDIUM)
+        val centerSub = textPaint(19f, muted, Typeface.NORMAL)
         centerSub.textAlign = Paint.Align.CENTER
         canvas.drawText("MADE OF YOUR LISTENS", cx, cy + 34f, centerSub)
 
@@ -176,7 +176,7 @@ object SoundprintRenderer {
         val hours = totalMs / 3_600_000L
         val minutes = (totalMs % 3_600_000L) / 60_000L
         val metrics = listOf(
-            Triple("LISTENING TIME", "\${hours}h \${minutes}m", 104f),
+            Triple("LISTENING TIME", hours.toString() + "h " + minutes + "m", 104f),
             Triple("COMPLETED PLAYS", String.format(Locale.ROOT, "%,d", insights.completedPlays.coerceAtLeast(0L)), 390f),
             Triple("UNIQUE TRACKS", String.format(Locale.ROOT, "%,d", insights.uniqueTracks.coerceAtLeast(0L)), 704f),
         )
