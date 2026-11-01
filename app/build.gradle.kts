@@ -57,7 +57,23 @@ android {
         return ""
     }
 
+    fun buildConfigString(value: String): String =
+        "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
     defaultConfig {
+        // Blend uses its own Supabase project. These are public client config
+        // values (URL + publishable/anon key), never service-role credentials.
+        buildConfigField(
+            "String",
+            "BLEND_SUPABASE_URL",
+            buildConfigString(resolveSecret("KATMUSIC_BLEND_SUPABASE_URL")),
+        )
+        buildConfigField(
+            "String",
+            "BLEND_SUPABASE_PUBLISHABLE_KEY",
+            buildConfigString(resolveSecret("KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY")),
+        )
+
         applicationId = "com.itzfallenme.katmusic"
         minSdk = (project.findProperty("minSdk") as? String)?.toIntOrNull() ?: 29
         targetSdk = 35
