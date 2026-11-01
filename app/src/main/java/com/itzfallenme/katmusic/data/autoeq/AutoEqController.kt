@@ -185,6 +185,16 @@ class AutoEqController @Inject constructor(
         writeState(AutoEqState())
     }
 
+    /** Remove the enabled flag, custom curve and every saved per-device profile. */
+    suspend fun clearAll() {
+        store.edit { it.clear() }
+        ParametricEqNative.publish(
+            enabled = false,
+            preampDb = 0f,
+            filters = emptyList(),
+        )
+    }
+
     suspend fun measurement(entry: AutoEqEntry): AutoEqMeasurement? = runCatching { catalog.measurement(entry) }.getOrNull()
 
     /** Associates the current state with the current output device. */
