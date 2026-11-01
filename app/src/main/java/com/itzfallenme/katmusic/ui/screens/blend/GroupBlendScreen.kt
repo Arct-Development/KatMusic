@@ -51,6 +51,11 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
     val clipboard = LocalClipboardManager.current
     var friendName by rememberSaveable { mutableStateOf("") }
     var friendCode by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var displayName by rememberSaveable { mutableStateOf("") }
+    var blendName by rememberSaveable { mutableStateOf("Our Blend") }
+    var inviteCode by rememberSaveable { mutableStateOf("") }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -78,6 +83,68 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                         "A taste match built from KatMusic listening history. No Spotify account or login needed.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Online Blend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        when {
+                            !state.cloudConfigured -> {
+                                Text("Cloud Blend is ready in the app code, but this build has no Blend Supabase configuration. Add KATMUSIC_BLEND_SUPABASE_URL and KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY to your local environment or GitHub secrets, then rebuild.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            state.signedInEmail == null -> {
+                                Text("Sign in so your Blend groups and taste profile can sync across devices.")
+                                OutlinedTextField(email, { email = it.take(254) }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                OutlinedTextField(password, { password = it.take(128) }, label = { Text("Password (8+ characters)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { viewModel.signIn(email, password, false) }, enabled = !state.isLoading && email.isNotBlank() && password.length >= 8, modifier = Modifier.weight(1f)) { Text("Sign in") }
+                                    OutlinedButton(onClick = { viewModel.signIn(email, password, true) }, enabled = !state.isLoading && email.isNotBlank() && password.length >= 8, modifier = Modifier.weight(1f)) { Text("Create account") }
+                                }
+                                Text("If email confirmation is enabled in Supabase, confirm your address before signing in.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            else -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(state.signedInEmail ?: "Signed in", fontWeight = FontWeight.SemiBold)
+                                        Text("Taste profile syncs to your separate Blend project.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    TextButton(onClick = viewModel::signOut) { Text("Sign out") }
+                                }
+                                if (state.activeBlendId == null) {
+                                    OutlinedTextField(displayName, { displayName = it.take(32) }, label = { Text("Your display name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                    OutlinedTextField(blendName, { blendName = it.take(60) }, label = { Text("New Blend name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                    Button(onClick = { viewModel.createCloudBlend(blendName, displayName) }, enabled = !state.isLoading && displayName.isNotBlank() && blendName.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Create a Blend") }
+                                    Text("Or join an existing group", style = MaterialTheme.typography.titleSmall)
+                                    OutlinedTextField(inviteCode, { inviteCode = it.take(32) }, label = { Text("Invitation code") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                    OutlinedButton(onClick = { viewModel.joinCloudBlend(inviteCode, displayName) }, enabled = !state.isLoading && displayName.isNotBlank() && inviteCode.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Join Blend") }
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Your online Blend", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = viewModel::refreshCloudBlend) { Icon(Icons.Default.Refresh, contentDescription = "Refresh online Blend") }
+                                        TextButton(onClick = viewModel::leaveCloudBlend) { Text("Leave") }
+                                    }
+                                    state.inviteCode?.let { code ->
+                                        Text("Invitation code: $code", fontWeight = FontWeight.SemiBold)
+                                        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(code)) }, modifier = Modifier.fillMaxWidth()) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null)
+                                            Text("  Copy invitation code")
+                                        }
+                                    }
+                                    Text("Members: ${state.cloudMembers.size}/10")
+                                    items(state.cloudMembers, key = { "cloud-${it.userId}" }) { member ->
+                                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(member.displayName, fontWeight = FontWeight.Medium)
+                                                Text("${member.trackCount} tracks · ${member.artistCount} artists", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            if (member.isYou) Text("You", color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             item {
