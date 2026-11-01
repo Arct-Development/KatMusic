@@ -2,6 +2,7 @@ package com.itzfallenme.katmusic.ui.screens.settings
 
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
+import com.itzfallenme.katmusic.data.autoeq.AutoEqController
 import androidx.lifecycle.viewModelScope
 import com.itzfallenme.katmusic.data.backup.BackupRepository
 import com.itzfallenme.katmusic.data.backup.RestoreResult
@@ -97,6 +98,10 @@ class SettingsViewModel @Inject constructor(
     private val discordPresencePreferences: com.itzfallenme.katmusic.data.presence.DiscordPresencePreferences,
     private val equalizerPreferences: com.itzfallenme.katmusic.data.local.EqualizerPreferences,
     private val loudnessPrefs: com.itzfallenme.katmusic.playback.LoudnessPrefs,
+    private val autoEqController: AutoEqController,
+    private val searchHistoryRepository: com.itzfallenme.katmusic.data.search.SearchHistoryRepository,
+    private val localMusicLibrary: com.itzfallenme.katmusic.data.localmusic.LocalMusicLibrary,
+    private val appDatabase: com.itzfallenme.katmusic.data.local.db.AppDatabase,
     private val ytAuthManager: com.itzfallenme.katmusic.data.ytmusic.YtMusicAuthManager,
     private val ytMusicSyncManager: com.itzfallenme.katmusic.data.ytmusic.YtMusicSyncManager,
     private val ytMusicPreferences: com.itzfallenme.katmusic.data.ytmusic.YtMusicPreferences,
@@ -760,10 +765,21 @@ class SettingsViewModel @Inject constructor(
             withContext(Dispatchers.Main.immediate) {
                 musicPlayer.stopAndClear(clearSession = true)
             }
+            // Clear app-private files and independent local stores before the
+            // shared session DataStore, which can trigger navigation/cancellation.
             downloadManager.clearAllDownloads()
+            localMusicLibrary.clearAll()
+            searchHistoryRepository.clear()
+            appDatabase.clearListeningHistoryAndCaches()
+            autoEqController.clearAll()
+            equalizerPreferences.reset()
+            loudnessPrefs.clearAll()
             discoverRepository.clearRecommendationExclusions()
             podcastProgressStore.clear()
             playlistRepository.clearAll()
+            // Remove locally stored provider credentials; remote accounts and
+            // their playlists/history are deliberately left untouched.
+            spotifyPreferences.clearConnection()
             runCatching { ytAuthManager.signOut() }
             // Session last: clearing it navigates to login and can cancel this
             // scope, which used to interrupt the reset halfway through.

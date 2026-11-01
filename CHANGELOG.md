@@ -4,7 +4,7 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [2.5.0] - 2026-10-31
+## [2.4.0] - 2026-10-31
 
 ### Added
 
@@ -70,7 +70,7 @@ All notable changes to KatMusic are documented here. The format follows
 - Genre explorer, artist/album/playlist detail stacks, podcast and video surfaces, Spotify
   Canvas and Jam sessions
 
-## [Unreleased]
+## [2.5.0] - 2026-11-01
 
 ### Added
 

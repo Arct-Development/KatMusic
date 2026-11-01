@@ -268,7 +268,7 @@ fun WavySeekBar(
                     if (boundedDurationMs <= 0L) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        val gestureWidth = size.width.coerceAtLeast(1f)
+                        val gestureWidth = size.width.toFloat().coerceAtLeast(1f)
                         fun positionAt(x: Float): Long {
                             val fraction = (x / gestureWidth).coerceIn(0f, 1f).toDouble()
                             return (boundedDurationMs.toDouble() * fraction)
