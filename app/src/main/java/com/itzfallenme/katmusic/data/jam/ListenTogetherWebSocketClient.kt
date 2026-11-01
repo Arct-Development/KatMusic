@@ -232,7 +232,7 @@ class ListenTogetherWebSocketClient : Closeable {
                 )
             }.getOrNull()
         }.orEmpty()
-        _playback.value = room["playback"]?.jsonObject?.let { runCatching { it.toJamPlayback() }.getOrNull() }
+        _playback.value = room["playback"]?.let { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }
         _sharedQueue.value = room["queue"]?.jsonArray?.mapNotNull { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }.orEmpty()
     }
 
