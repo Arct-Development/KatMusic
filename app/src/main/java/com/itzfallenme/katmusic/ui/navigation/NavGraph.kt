@@ -238,17 +238,6 @@ fun KatMusicNavHost(
                 onOpenDownloads = {
                     navController.navigate(Screen.Downloads.route)
                 },
-                onOpenStats = { navController.navigate(Screen.Stats.route) },
-                onOpenListenTogether = { navController.navigate(Screen.ListenTogether.route) },
-                onOpenSearchResultArtist = { name, browseId ->
-                    navController.navigate(Screen.ArtistDetail.createRoute(name, browseId))
-                },
-                onOpenSearchResultAlbum = { title, artist, browseId ->
-                    navController.navigate(Screen.AlbumDetail.createRoute(title, artist, browseId))
-                },
-                onOpenSearchResultPlaylist = { playlistId ->
-                    navController.navigate(Screen.FeedPlaylistDetail.createRoute(playlistId))
-                },
             )
         }
 
