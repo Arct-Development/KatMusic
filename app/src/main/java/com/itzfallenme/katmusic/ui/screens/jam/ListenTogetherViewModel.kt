@@ -5,6 +5,7 @@ package com.itzfallenme.katmusic.ui.screens.jam
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itzfallenme.katmusic.data.jam.ListenTogetherWebSocketClient
+import com.itzfallenme.katmusic.data.jam.JamTrackSuggestion
 import com.itzfallenme.katmusic.playback.MusicPlayer
 import com.itzfallenme.katmusic.playback.PlayableTrack
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,6 +77,22 @@ class ListenTogetherViewModel @Inject constructor(val player: MusicPlayer) : Vie
 
     fun createRoom(endpoint: String, name: String) = client.createRoom(endpoint, name)
     fun joinRoom(endpoint: String, code: String, name: String) = client.joinRoom(endpoint, code, name)
+    fun suggestCurrentTrack() {
+        val track = player.state.value.current ?: return
+        val videoId = track.videoId?.takeIf(String::isNotBlank) ?: return
+        client.suggestTrack(track.title, track.artist, videoId, track.artworkUrl.orEmpty())
+    }
+
+    fun playSuggestion(suggestion: JamTrackSuggestion) {
+        if (suggestion.videoId.isBlank()) return
+        player.play(
+            PlayableTrack(title = suggestion.title, artist = suggestion.artist, videoId = suggestion.videoId, artworkUrl = suggestion.artworkUrl),
+            sourceLabel = "Listen Together suggestion",
+            startRadio = false,
+        )
+        client.dismissSuggestion(suggestion.videoId)
+    }
+
     fun leaveRoom() { client.leaveRoom(); lastRemoteTrackId = null }
 
     override fun onCleared() {
