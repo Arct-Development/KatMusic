@@ -430,22 +430,46 @@ fun MainShell(
             }
         }
 
-        // App update prompt banner (only shown on app open when an update is available and not dismissed)
-        AnimatedVisibility(
-            visible = showUpdateBanner,
-            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .adaptiveContentWidth(maxWidth = 600.dp)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .zIndex(10f),
-        ) {
-            UpdatePromptCard(
-                version = updateInfo.latestVersion,
-                onUpdate = { mainShellViewModel.openUpdate(context) },
-                onDismiss = { mainShellViewModel.dismissUpdate(updateInfo.latestVersion) },
+        // A version-scoped dialog appears after the release check discovers
+        // a newer organisation release. Dismissal is remembered per version.
+        if (showUpdateBanner) {
+            AlertDialog(
+                onDismissRequest = { mainShellViewModel.dismissUpdate(updateInfo.latestVersion) },
+                shape = RoundedCornerShape(14.dp),
+                title = {
+                    Text(
+                        "KatMusic update available",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Version ${updateInfo.latestVersion} is ready.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        updateInfo.releaseNotes
+                            .takeIf { it.isNotBlank() }
+                            ?.let { notes ->
+                                Text(
+                                    notes.take(420).let { if (notes.length > 420) "${it}…" else it },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { mainShellViewModel.openUpdate(context) }) {
+                        Text("View update")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mainShellViewModel.dismissUpdate(updateInfo.latestVersion) }) {
+                        Text("Later")
+                    }
+                },
             )
         }
 
