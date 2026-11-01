@@ -182,6 +182,16 @@ object ShareCardRenderer {
     ): LayoutPlan {
         val boldTypeface = getTypeface(context, 700)
         val regularTypeface = getTypeface(context, 450)
+        val lyricTypeface = when (spec.lyricStyle) {
+            LyricCardStyle.Paper -> Typeface.create("serif", Typeface.BOLD)
+            LyricCardStyle.Neon -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            LyricCardStyle.Minimal, LyricCardStyle.Cover -> boldTypeface
+        }
+        val headingTypeface = if (spec.lyricStyle == LyricCardStyle.Paper) {
+            Typeface.create("serif", Typeface.BOLD)
+        } else {
+            boldTypeface
+        }
 
         val topPadding = (60 * scale).roundToInt()
         val bottomPadding = (60 * scale).roundToInt()
@@ -194,7 +204,7 @@ object ShareCardRenderer {
             val textWidth = (contentWidth - thumbSize - textGap).coerceAtLeast(100)
 
             val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                typeface = boldTypeface
+                typeface = headingTypeface
                 textSize = BASE_TITLE_FONT_SIZE * scale
                 color = spec.derivedColors.lyricsTextColor
             }
@@ -220,7 +230,7 @@ object ShareCardRenderer {
 
             while (fontSize >= floor) {
                 val lyricPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                    typeface = boldTypeface
+                    typeface = lyricTypeface
                     textSize = fontSize
                     color = spec.derivedColors.lyricsTextColor
                 }
