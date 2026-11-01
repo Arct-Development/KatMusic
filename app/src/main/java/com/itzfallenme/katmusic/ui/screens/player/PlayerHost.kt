@@ -5775,9 +5775,12 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                                         else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                                     )
                                     .pointerInput(stableKey) {
-                                        detectDragGesturesAfterLongPress(
+                                        // The handle is a dedicated drag target: start after
+                                        // touch slop instead of requiring a long-press timeout.
+                                        detectDragGestures(
                                             onDragStart = {
-                                                val actualIndex = currentQueueKeys.indexOf(stableKey).takeIf { it >= 0 } ?: currentIndex
+                                                val actualIndex = currentQueueKeys.indexOf(stableKey)
+                                                    .takeIf { it >= 0 } ?: currentIndex
                                                 draggingIndex = actualIndex
                                                 dragOffsetY = 0f
                                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -5792,52 +5795,67 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                                             },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
-                                                val source = draggingIndex
-                                                if (source < 0) return@detectDragGesturesAfterLongPress
+                                                val source = currentQueueKeys.indexOf(stableKey)
+                                                if (source < 0) return@detectDragGestures
+                                                draggingIndex = source
                                                 dragOffsetY += dragAmount.y
                                                 val layoutInfo = listState.layoutInfo
+                                                // Match the row by its stable LazyColumn key.
+                                                // Its adapter index changes during a move.
                                                 val draggedInfo = layoutInfo.visibleItemsInfo
-                                                    .firstOrNull { it.index == source }
-                                                    ?: return@detectDragGesturesAfterLongPress
-                                                val draggedCenter = draggedInfo.offset + draggedInfo.size / 2 + dragOffsetY.toInt()
-                                                val target = layoutInfo.visibleItemsInfo.firstOrNull { info ->
-                                                    info.index != source &&
-                                                        info.index in currentQueue.indices &&
-                                                        draggedCenter in info.offset..(info.offset + info.size)
-                                                }?.index
+                                                    .firstOrNull { it.key == stableKey }
+                                                    ?: return@detectDragGestures
+                                                val draggedCenter =
+                                                    draggedInfo.offset + draggedInfo.size / 2 + dragOffsetY.toInt()
+                                                val targetInfo = layoutInfo.visibleItemsInfo
+                                                    .firstOrNull { info ->
+                                                        info.key != stableKey &&
+                                                            info.index in currentQueue.indices &&
+                                                            draggedCenter in info.offset..(info.offset + info.size)
+                                                    }
+                                                val target = targetInfo?.index
                                                 if (target != null && target != source) {
                                                     player.moveQueueItem(source, target)
-                                                    // Keep the row glued under the finger across
-                                                    // the layout shift caused by the move.
-                                                    val targetInfo = layoutInfo.visibleItemsInfo
-                                                        .firstOrNull { it.index == target }
-                                                    if (targetInfo != null) {
-                                                        dragOffsetY += (draggedInfo.offset - targetInfo.offset).toFloat()
-                                                    }
+                                                    // Preserve the finger-to-row offset while LazyColumn
+                                                    // animates the stable-key item into its new position.
+                                                    dragOffsetY += (draggedInfo.offset - targetInfo.offset).toFloat()
                                                     draggingIndex = target
                                                     haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                                                 }
-                                                // Edge auto-scroll while dragging.
                                                 val viewportStart = layoutInfo.viewportStartOffset
                                                 val viewportEnd = layoutInfo.viewportEndOffset
-                                                val edgeZone = 180
+                                                val edgeZone = 120
                                                 when {
                                                     draggedCenter < viewportStart + edgeZone ->
-                                                        scope.launch { listState.scrollBy(-28f) }
+                                                        scope.launch { listState.scrollBy(-32f) }
                                                     draggedCenter > viewportEnd - edgeZone ->
-                                                        scope.launch { listState.scrollBy(28f) }
+                                                        scope.launch { listState.scrollBy(32f) }
                                                 }
                                             },
                                         )
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(
-                                    Icons.Filled.DragHandle,
-                                    contentDescription = stringResource(com.itzfallenme.katmusic.R.string.queue_drag_hint),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isDragging) 1f else 0.72f),
-                                    modifier = Modifier.size(22.dp),
-                                )
+                                Canvas(Modifier.size(22.dp)) {
+                                    val dotColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                        alpha = if (isDragging) 1f else 0.78f,
+                                    )
+                                    val radius = 1.55.dp.toPx()
+                                    val columnGap = 4.5.dp.toPx()
+                                    val rowGap = 5.5.dp.toPx()
+                                    for (row in -1..1) {
+                                        for (column in -1..0) {
+                                            drawCircle(
+                                                color = dotColor,
+                                                radius = radius,
+                                                center = Offset(
+                                                    x = size.width / 2f + column * columnGap + columnGap / 2f,
+                                                    y = size.height / 2f + row * rowGap,
+                                                ),
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
