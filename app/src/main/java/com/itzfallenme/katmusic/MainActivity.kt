@@ -245,6 +245,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
      */
     override fun onDestroy() {
         if (isFinishing) {
+            // A new Activity launch in the same still-alive process should
+            // replay the brand intro just like a fresh process launch.
+            StartupAnimationProcessState.hasPlayed = false
             com.itzfallenme.katmusic.diagnostics.Diagnostics.markCleanShutdown(this)
         }
         super.onDestroy()
