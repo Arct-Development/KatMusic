@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.itzfallenme.katmusic.data.model.AuthState
 import com.itzfallenme.katmusic.ui.screens.auth.AuthViewModel
 import com.itzfallenme.katmusic.ui.screens.auth.LoginScreen
+import com.itzfallenme.katmusic.ui.screens.home.HomeScreen
 import com.itzfallenme.katmusic.ui.screens.settings.SettingsScreen
 import com.itzfallenme.katmusic.ui.screens.jam.ListenTogetherScreen
 import com.itzfallenme.katmusic.ui.screens.blend.GroupBlendScreen
@@ -237,6 +238,7 @@ fun KatMusicNavHost(
                 onOpenDownloads = {
                     navController.navigate(Screen.Downloads.route)
                 },
+                onOpenStats = { navController.navigate(Screen.Stats.route) },
                 onOpenListenTogether = { navController.navigate(Screen.ListenTogether.route) },
                 onOpenSearchResultArtist = { name, browseId ->
                     navController.navigate(Screen.ArtistDetail.createRoute(name, browseId))
@@ -312,6 +314,19 @@ fun KatMusicNavHost(
                     }
                 },
             )
+        }
+
+        composable(Screen.Stats.route) {
+            BackAwareScreen(onBack = { navController.popBackStack() }) {
+                HomeScreen(
+                    onOpenSettings = { navController.navigate(Screen.Settings.route) { launchSingleTop = true } },
+                    onOpenSearch = { navController.navigate(Screen.Search.route) },
+                    onOpenDiscover = { navController.navigate(Screen.Discover.route) },
+                    onOpenGenres = { navController.navigate(Screen.Genres.route) },
+                    onOpenFriends = { navController.navigate(Screen.Friends.route) },
+                    onOpenDownloads = { navController.navigate(Screen.Downloads.route) },
+                )
+            }
         }
 
         // Settings is a pushed destination on the root NavController.
