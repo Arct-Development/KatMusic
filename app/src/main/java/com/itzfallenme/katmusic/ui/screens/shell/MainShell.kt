@@ -628,7 +628,14 @@ private fun FloatingNavBar(
         val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
         val clusterWidth = capsuleWidth + searchGap * searchVisibility + searchSize * searchVisibility
-        val clusterOffset = 0.dp
+        // Keep the expanded capsule + separate Search action centered as a
+        // single cluster. The compact collapsed dock stays left anchored so
+        // it never drifts beneath the mini-player.
+        val clusterOffset = if (isExpanded) {
+            (maxWidth - clusterWidth).coerceAtLeast(0.dp) / 2
+        } else {
+            0.dp
+        }
         Row(
             modifier = Modifier.offset(x = clusterOffset),
             verticalAlignment = Alignment.CenterVertically,
