@@ -943,12 +943,12 @@ fun SettingsScreen(
                         icon = Icons.Filled.Person,
                         iconContainer = MaterialTheme.colorScheme.primaryContainer,
                         iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        title = "Built by ItzFallenMe",
-                        subtitle = "github.com/ItzFallenMe",
+                        title = "By Arct Development",
+                        subtitle = "github.com/Arct-Development",
                         onClick = {
                             val intent = Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/ItzFallenMe"),
+                                Uri.parse("https://github.com/Arct-Development"),
                             )
                             if (!startActivitySafely(context, intent)) {
                                 viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
@@ -962,14 +962,29 @@ fun SettingsScreen(
                         iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         title = stringResource(R.string.settings_source_code),
-                        subtitle = "github.com/ItzFallenMe/KatMusic",
+                        subtitle = "github.com/Arct-Development/KatMusic",
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ItzFallenMe/KatMusic"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Arct-Development/KatMusic"))
                             if (!startActivitySafely(context, intent)) {
                                 viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
                             }
                         },
                         isHighlighted = (highlightedSettingId == "about.source_code"),
+                    )
+
+                    SettingsActionCard(
+                        icon = Icons.Filled.Language,
+                        iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        title = "KatMusic website",
+                        subtitle = "katmusic.pages.dev",
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://katmusic.pages.dev"))
+                            if (!startActivitySafely(context, intent)) {
+                                viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
+                            }
+                        },
+                        isHighlighted = (highlightedSettingId == "about.website"),
                     )
 
                 }
@@ -2243,7 +2258,7 @@ fun SettingsScreen(
                                 }
                                 SectionLabel("About & Community")
                                 AboutCard(versionName = appVersionName(context))
-                                SettingsGroup(rowCount = 3) { index, position ->
+                                SettingsGroup(rowCount = 4) { index, position ->
                                     when (index) {
                                         0 -> SettingsActionCard(
                                             icon = Icons.Filled.CloudDownload,
@@ -2273,18 +2288,31 @@ fun SettingsScreen(
                                             position = position,
                                             isHighlighted = highlightedSettingId == "about.diagnostics",
                                         )
-                                        else -> SettingsActionCard(
+                                        2 -> SettingsActionCard(
                                             icon = Icons.Filled.Code,
                                             iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                             title = stringResource(R.string.settings_source_code),
-                                            subtitle = "github.com/ItzFallenMe/KatMusic",
+                                            subtitle = "github.com/Arct-Development/KatMusic",
                                             onClick = {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ItzFallenMe/KatMusic"))
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Arct-Development/KatMusic"))
                                                 if (!startActivitySafely(context, intent)) viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
                                             },
                                             position = position,
                                             isHighlighted = highlightedSettingId == "about.source_code",
+                                        )
+                                        else -> SettingsActionCard(
+                                            icon = Icons.Filled.Language,
+                                            iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                                            iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            title = "KatMusic website",
+                                            subtitle = "katmusic.pages.dev",
+                                            onClick = {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://katmusic.pages.dev"))
+                                                if (!startActivitySafely(context, intent)) viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
+                                            },
+                                            position = position,
+                                            isHighlighted = highlightedSettingId == "about.website",
                                         )
                                     }
                                 }
@@ -2292,10 +2320,10 @@ fun SettingsScreen(
                                     icon = Icons.Filled.Person,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    title = "Built by ItzFallenMe",
-                                    subtitle = "github.com/ItzFallenMe",
+                                    title = "By Arct Development",
+                                    subtitle = "github.com/Arct-Development",
                                     onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ItzFallenMe"))
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Arct-Development"))
                                         if (!startActivitySafely(context, intent)) viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
                                     },
                                 )
@@ -4677,7 +4705,7 @@ private fun AboutCard(versionName: String) {
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Built by ItzFallenMe",
+                "By Arct Development",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
