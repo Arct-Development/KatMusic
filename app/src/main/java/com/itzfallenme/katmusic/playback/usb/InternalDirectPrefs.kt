@@ -44,4 +44,8 @@ object InternalDirectPrefs {
     suspend fun setForceSoftwareVolume(context: Context, enabled: Boolean) {
         context.applicationContext.internalDirectDataStore.edit { it[KEY_FORCE_SOFTWARE_VOLUME] = enabled }
     }
+
+    suspend fun clearAll(context: Context) {
+        context.applicationContext.internalDirectDataStore.edit { it.clear() }
+    }
 }
