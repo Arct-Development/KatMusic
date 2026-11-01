@@ -820,6 +820,11 @@ val LocalBottomNavSlot = androidx.compose.runtime.staticCompositionLocalOf<andro
     error("LocalBottomNavSlot not provided")
 }
 
+/** Shared folded state so the mini-player can dock beside the collapsed glass capsule. */
+val LocalBottomNavCollapsed = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.runtime.MutableState<Boolean>> {
+    error("LocalBottomNavCollapsed not provided")
+}
+
 /** App-wide collapsed + maximized player layered over every navigation route. */
 @Composable
 fun PlayerHost(
@@ -910,6 +915,7 @@ fun PlayerHost(
     val miniGlass = LocalLiquidGlass.current && isLiquidGlassBackdropSupported()
 
     val bottomNavSlot = remember { mutableStateOf<@Composable () -> Unit>({}) }
+    val bottomNavCollapsed = remember { mutableStateOf(false) }
     LaunchedEffect(viewModel) {
         viewModel.toastMessage.collect { msg ->
             android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
@@ -920,6 +926,7 @@ fun PlayerHost(
         LocalAddToPlaylist provides requestAddToPlaylist,
         LocalMiniPlayerScrollClearance provides if (state.current != null && !settings.buttonNowPlayingEnabled) 98.dp else 0.dp,
         LocalBottomNavSlot provides bottomNavSlot,
+        LocalBottomNavCollapsed provides bottomNavCollapsed,
         LocalLiquidGlassBackdrop provides (if (miniGlass) miniBackdrop else null),
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -941,6 +948,7 @@ fun PlayerHost(
                         14.dp
                     },
                     edgeToEdge = !hasBottomNavigation,
+                    compactBottomRow = hasBottomNavigation && bottomNavCollapsed.value,
                     backdrop = if (miniGlass) miniBackdrop else null,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
@@ -1178,6 +1186,7 @@ private fun MiniPlayer(
     onClose: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
     edgeToEdge: Boolean,
+    compactBottomRow: Boolean = false,
     backdrop: Backdrop? = LocalLiquidGlassBackdrop.current,
     modifier: Modifier = Modifier,
 ) {
@@ -1206,10 +1215,20 @@ private fun MiniPlayer(
     val threshold = with(LocalDensity.current) { 72.dp.toPx() }
     val isTablet = isTabletOrWideScreen()
     val shape = if (edgeToEdge && !isTablet) RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) else RoundedCornerShape(100)
-    val positionedModifier = if (isGlass && edgeToEdge && !isTablet) {
-        modifier.fillMaxWidth()
-    } else {
-        modifier
+    val positionedModifier = when {
+        compactBottomRow -> {
+            // SimpMusic layout: when the tab capsule folds to 48dp, the mini-player
+            // occupies the remaining horizontal space on the same bottom row.
+            modifier
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                )
+                .padding(start = 76.dp, end = 14.dp, bottom = 12.dp)
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+        }
+        isGlass && edgeToEdge && !isTablet -> modifier.fillMaxWidth()
+        else -> modifier
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
@@ -1276,10 +1295,10 @@ private fun MiniPlayer(
                     },
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = if (compactBottomRow) 5.dp else 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.size(56.dp)) {
+                        Box(Modifier.size(if (compactBottomRow) 40.dp else 56.dp)) {
                             Surface(
                                 shape = RoundedCornerShape(18.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -1319,7 +1338,7 @@ private fun MiniPlayer(
                         Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                             Text(
                                 track.title,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = if (compactBottomRow) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = miniTitleColor,
                                 maxLines = 1,
@@ -1328,7 +1347,7 @@ private fun MiniPlayer(
                             )
                             Text(
                                 track.artist,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = if (compactBottomRow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                                 color = miniArtistColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1341,7 +1360,7 @@ private fun MiniPlayer(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(if (compactBottomRow) 40.dp else 48.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 if (state.isBuffering) {
@@ -1360,7 +1379,7 @@ private fun MiniPlayer(
                             enabled = state.queueSize > 1,
                             modifier = Modifier
                                 .padding(start = 8.dp)
-                                .size(44.dp)
+                                .size(if (compactBottomRow) 38.dp else 44.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.secondaryContainer),
                         ) {
