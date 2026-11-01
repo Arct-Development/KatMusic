@@ -81,6 +81,10 @@ class LoudnessPrefs @Inject constructor(
         context.loudnessDataStore.edit { it[Keys.PREAMP_DB] = sanitizePreamp(preampDb) }
     }
 
+    suspend fun clearAll() {
+        context.loudnessDataStore.edit { it.clear() }
+    }
+
     private fun sanitizePreamp(value: Float?): Float =
         if (value != null && value.isFinite()) {
             value.coerceIn(-LOUDNESS_PREAMP_MAX_DB, LOUDNESS_PREAMP_MAX_DB)
