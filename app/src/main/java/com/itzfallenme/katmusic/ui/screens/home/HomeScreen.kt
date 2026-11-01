@@ -178,6 +178,7 @@ fun HomeScreen(
     onOpenGenres: () -> Unit,
     onOpenFriends: () -> Unit,
     onOpenDownloads: () -> Unit = {},
+    onScrollToTopChanged: (Boolean) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     artistAlbumNavigator: com.itzfallenme.katmusic.ui.navigation.ArtistAlbumNavigator = hiltViewModel<ArtistAlbumNavBridgeHome>().navigator,
 ) {
@@ -193,7 +194,7 @@ fun HomeScreen(
     var menuTrack by remember { mutableStateOf<HomeTrack?>(null) }
     val shareContext = LocalContext.current
     val shareScope = rememberCoroutineScope()
-    val receiptExporter = remember(shareContext) { FileExportHelper(shareContext.applicationContext) }
+    val shareExporter = remember(shareContext) { FileExportHelper(shareContext.applicationContext) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -229,6 +230,11 @@ fun HomeScreen(
             contentAlignment = Alignment.TopCenter,
         ) {
             val listState = rememberLazyListState()
+            LaunchedEffect(listState) {
+                snapshotFlow {
+                    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                }.distinctUntilChanged().collect(onScrollToTopChanged)
+            }
             val rows by viewModel.rows.collectAsStateWithLifecycle()
             val playbackQueue = remember(rows) {
                 rows.mapNotNull { row ->
@@ -295,16 +301,16 @@ fun HomeScreen(
                     if (!uiState.isViewingFriend) {
                         uiState.listeningInsights?.let { insights ->
                             item(key = "listening_wrapped", contentType = "wrapped") {
-                                ListeningWrappedCard(
+                                SoundprintCard(
                                     insights,
                                     Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                                     onShare = {
                                         shareScope.launch {
                                             runCatching {
-                                                val receipt = ListeningReceiptRenderer.render(insights)
-                                                receiptExporter.shareImage(shareContext, receipt, "KatMusic Listening Wrapped")
+                                                val soundprint = SoundprintRenderer.render(insights)
+                                                shareExporter.shareImage(shareContext, soundprint, "KatMusic Soundprint")
                                             }.onFailure {
-                                                Toast.makeText(shareContext, "Couldn't create your listening receipt", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(shareContext, "Couldn't create your Soundprint", Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     },
@@ -1230,7 +1236,7 @@ private fun TrackRow(
 }
 
 @Composable
-private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier = Modifier, onShare: () -> Unit) {
+private fun SoundprintCard(insights: ListeningInsights, modifier: Modifier = Modifier, onShare: () -> Unit) {
     val hours = insights.totalListeningMs / 3_600_000L
     val minutes = (insights.totalListeningMs % 3_600_000L) / 60_000L
     Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
@@ -1240,8 +1246,8 @@ private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier
                 Icon(Icons.Filled.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Listening Wrapped", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Your all-time listening snapshot", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Your Soundprint", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("A visual signature of your listening", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1261,7 +1267,7 @@ private fun ListeningWrappedCard(insights: ListeningInsights, modifier: Modifier
             TextButton(onClick = onShare) {
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Share your receipt")
+                Text("Create Soundprint")
             }
         }
     }
