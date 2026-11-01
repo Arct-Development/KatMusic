@@ -32,6 +32,11 @@ import com.itzfallenme.katmusic.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+/** One splash animation per app process, including restored tasks after process death. */
+private object StartupAnimationProcessState {
+    var hasPlayed = false
+}
+
 // Last.fm redirects its Custom Tab to this Activity after approval.
 @AndroidEntryPoint
 class MainActivity : androidx.fragment.app.FragmentActivity() {
@@ -73,6 +78,8 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val shouldPlayStartupAnimation = !StartupAnimationProcessState.hasPlayed
+        StartupAnimationProcessState.hasPlayed = true
         StartupTrail.mark("activity.onCreate.start")
         // Must be called before super.onCreate() and before setContent().
         val splashScreen = runCatching { installSplashScreen() }
@@ -190,7 +197,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     val hasBottomNavigation = backStackEntry?.destination?.route == Screen.MainShell.route && !themeState.hideNavTabs
 
                     PlayerHost(hasBottomNavigation = hasBottomNavigation) {
-                        KatMusicNavHost(navController)
+                        KatMusicNavHost(navController, forceStartupAnimation = shouldPlayStartupAnimation)
                     }
                 }
             }
