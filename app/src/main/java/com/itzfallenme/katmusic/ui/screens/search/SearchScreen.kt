@@ -129,6 +129,7 @@ private val EXPLORE_GENRES = listOf(
 @Composable
 fun SearchScreen(
     onBack: () -> Unit = {},
+    showBackButton: Boolean = true,
     onOpenArtist: (name: String, browseId: String?) -> Unit = { _, _ -> },
     onOpenAlbum: (title: String, artist: String, browseId: String?) -> Unit = { _, _, _ -> },
     onOpenPlaylist: (playlistId: String) -> Unit = {},
@@ -179,8 +180,10 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HeaderActionIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", onBack)
-                    Spacer(Modifier.width(10.dp))
+                    if (showBackButton) {
+                        HeaderActionIcon(Icons.AutoMirrored.Filled.ArrowBack, "Back", onBack)
+                        Spacer(Modifier.width(10.dp))
+                    }
 
                     val pillBg = MaterialTheme.colorScheme.surfaceContainerHigh
 
