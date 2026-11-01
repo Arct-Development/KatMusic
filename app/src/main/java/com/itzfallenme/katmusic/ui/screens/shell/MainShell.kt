@@ -103,7 +103,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -450,6 +449,7 @@ fun MainShell(
         }
 
         val bottomNavSlot = com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavSlot.current
+        val bottomNavCollapsed = LocalBottomNavCollapsed.current
         val hideNavTabs = com.itzfallenme.katmusic.ui.theme.LocalHideNavTabs.current
         val md3NavBar = LocalMd3NavBar.current
     // KatMusic's primary navigation intentionally stays in the floating liquid-glass dock style.
@@ -508,7 +508,7 @@ fun MainShell(
             }
             onDispose {
                 bottomNavSlot.value = {}
-                com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavCollapsed.current.value = false
+                bottomNavCollapsed.value = false
             }
         }
     }
@@ -631,8 +631,8 @@ private fun FloatingNavBar(
         val capsuleBudget = (maxWidth - searchSize - searchGap).coerceAtLeast(48.dp)
         val tabWidth = (((capsuleBudget - 12.dp) / capsuleTabs.size).coerceAtMost(96.dp)).coerceAtLeast(48.dp)
         val expandedCapsuleWidth = tabWidth * capsuleTabs.size + 12.dp
-        val capsuleWidth = lerp(48.dp, expandedCapsuleWidth, expansion)
-        val capsuleHeight = lerp(48.dp, 64.dp, expansion)
+        val capsuleWidth = androidx.compose.ui.unit.lerp(48.dp, expandedCapsuleWidth, expansion)
+        val capsuleHeight = androidx.compose.ui.unit.lerp(48.dp, 64.dp, expansion)
         val searchVisibility = ((expansion - 0.5f) / 0.5f).coerceIn(0f, 1f)
         val foldedIconAlpha = (1f - expansion * 2.8f).coerceIn(0f, 1f)
 
