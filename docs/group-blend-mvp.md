@@ -23,10 +23,7 @@ KatMusic's own local listening statistics.
 - The share code contains a compact snapshot of up to 40 artists and 100
   tracks, including track titles and artist names. Only share it with people
   you trust.
-- This version exchanges profiles manually using copy/paste. It does not
-  create an online room, sync changes automatically, or provide live
-  multi-device membership. Those features need a hosted backend and account
-  identity, which are intentionally not required for this offline MVP.
+- The current Android UI still exchanges profiles manually using copy/paste and stores imported profiles locally. A separate Supabase project schema and build-time client configuration have now been added under `server/blend/`, but the Android Supabase Auth/profile-sync/room repository is not connected yet. Do not treat cloud membership or automatic sync as active until that client integration ships.
 - Recommendations show track metadata and group affinity. Connecting those
   recommendations to the existing playback queue is a separate integration.
 
@@ -45,3 +42,10 @@ Run the normal Android unit test task:
 ```bash
 ./gradlew :app:testDebugUnitTest
 ```
+
+
+## Dedicated Supabase project setup
+
+Group Blend has its own Supabase project, separate from Listen Together. Follow [the Blend database setup guide](../server/jam/README.md#separate-group-blend-supabase-project) and run `server/blend/supabase/migrations/0001_blend_schema.sql` in that project. Local builds read `KATMUSIC_BLEND_SUPABASE_URL` and `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` from the ignored root `.env` or `local.properties`; CI reads the same names from GitHub Actions repository secrets.
+
+The URL and publishable/anon key are public client configuration, not privileged secrets. Never place the Supabase service-role/secret key in the Android app. Database access must rely on Supabase Auth and RLS.
