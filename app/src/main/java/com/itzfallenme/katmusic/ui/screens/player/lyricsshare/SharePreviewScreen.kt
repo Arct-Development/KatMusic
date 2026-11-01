@@ -112,7 +112,11 @@ fun SharePreviewScreen(
         selectedSwatchColor,
         isCoverSelected,
     ) {
-        val derived = ColorContrastHelper.deriveTextColors(selectedSwatchColor, isCoverScrim = isCoverSelected)
+        val derived = if (selectedMode == CardMode.Lyrics) {
+            ColorContrastHelper.professionalLyricsColors(selectedLyricStyle, selectedSwatchColor)
+        } else {
+            ColorContrastHelper.deriveTextColors(selectedSwatchColor, isCoverScrim = isCoverSelected)
+        }
         val hasRtl = selectedLines.any { it.isRtl }
         ShareCardSpec(
             mode = selectedMode,
@@ -333,10 +337,10 @@ fun SharePreviewScreen(
                         ) {
                             Text(
                                 text = when (style) {
-                                    LyricCardStyle.Minimal -> "Minimal"
-                                    LyricCardStyle.Neon -> "Neon"
-                                    LyricCardStyle.Paper -> "Paper"
-                                    LyricCardStyle.Cover -> "Cover"
+                                    LyricCardStyle.Minimal -> "Swiss"
+                                    LyricCardStyle.Neon -> "Midnight"
+                                    LyricCardStyle.Paper -> "Archive"
+                                    LyricCardStyle.Cover -> "Artwork"
                                 },
                                 color = if (selected) Color(0xFF17131E) else Color.White,
                                 fontWeight = FontWeight.SemiBold,
