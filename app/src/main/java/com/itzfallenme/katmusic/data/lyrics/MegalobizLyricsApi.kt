@@ -60,7 +60,7 @@ class MegalobizLyricsApi @Inject constructor(
 
     companion object {
         private const val BASE = "https://www.megalobiz.com"
-        private const val USER_AGENT = "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)"
+        private const val USER_AGENT = "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)"
 
         private val LRC_LINK = Regex("""href=["'](/lrc/maker/download/[^"']+)["']""", RegexOption.IGNORE_CASE)
         private val LRC_BODY = Regex(
