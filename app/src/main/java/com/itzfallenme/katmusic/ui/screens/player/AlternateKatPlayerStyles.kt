@@ -12,6 +12,11 @@ package com.itzfallenme.katmusic.ui.screens.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
@@ -131,7 +136,14 @@ internal fun AlternateKatPlayerScreen(
                 Spacer(Modifier.size(48.dp))
             }
             Spacer(Modifier.height(14.dp))
-            AnimatedContent(targetState = style, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "player-style") { target ->
+            AnimatedContent(
+                targetState = style,
+                transitionSpec = {
+                    (fadeIn(tween(260)) + slideInVertically(tween(320)) { it / 18 }) togetherWith
+                        (fadeOut(tween(180)) + slideOutVertically(tween(220)) { -it / 24 })
+                },
+                label = "player-style",
+            ) { target ->
                 when (target) {
                     KatPlayerStyle.DEFAULT -> Unit
                     KatPlayerStyle.POSTER -> PosterPresentation(
@@ -142,6 +154,7 @@ internal fun AlternateKatPlayerScreen(
                         positionMs = state.positionMs,
                         lyricsOffsetMs = lyricsOffsetMs,
                         progress = progress,
+                        isPlaying = state.isPlaying,
                     )
                     KatPlayerStyle.TIMELINE -> TimelinePresentation(
                         artwork = track.artworkUrl,
@@ -190,7 +203,20 @@ internal fun AlternateKatPlayerScreen(
                 IconButton(onClick = player::previous, modifier = Modifier.size(52.dp)) {
                     Icon(Icons.Filled.SkipPrevious, "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
-                Surface(onClick = player::togglePlayPause, shape = CircleShape, color = Color.White, modifier = Modifier.size(70.dp)) {
+                val playControlScale by animateFloatAsState(
+                    targetValue = if (state.isPlaying) 1.06f else 1f,
+                    animationSpec = spring(dampingRatio = 0.58f, stiffness = 420f),
+                    label = "play-control-scale",
+                )
+                Surface(
+                    onClick = player::togglePlayPause,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(70.dp).graphicsLayer {
+                        scaleX = playControlScale
+                        scaleY = playControlScale
+                    },
+                ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (state.isPlaying) "Pause" else "Play", tint = Color.Black, modifier = Modifier.size(38.dp))
                     }
@@ -376,6 +402,7 @@ private fun PosterPresentation(
     positionMs: Long,
     lyricsOffsetMs: Long,
     progress: Float,
+    isPlaying: Boolean,
 ) {
     BoxWithConstraints(
         Modifier.fillMaxWidth().height(560.dp).clip(RoundedCornerShape(28.dp)),
@@ -393,6 +420,11 @@ private fun PosterPresentation(
         val activeLine = synced.getOrNull(activeIndex)?.text?.takeIf { synced.isNotEmpty() }
         val nextLine = synced.getOrNull(activeIndex + 1)?.text
 
+        val coverScale by animateFloatAsState(
+            targetValue = if (isPlaying) 1.035f else 1f,
+            animationSpec = spring(dampingRatio = 0.82f, stiffness = 90f),
+            label = "poster-cover-breathe",
+        )
         AsyncImage(
             model = artwork,
             contentDescription = "Album artwork",
@@ -400,6 +432,7 @@ private fun PosterPresentation(
             modifier = Modifier
                 .size(coverSize)
                 .offset(x = -(width * 1.01f), y = -(width * 1.08f))
+                .graphicsLayer { scaleX = coverScale; scaleY = coverScale }
                 .clip(CircleShape),
         )
         Box(
@@ -484,11 +517,16 @@ private fun TimelinePresentation(
     val played = MaterialTheme.colorScheme.primaryContainer
     val accent = MaterialTheme.colorScheme.primary
     val remaining = Color(0xFF121722)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = androidx.compose.animation.core.tween(240),
+        label = "timeline-progress",
+    )
     BoxWithConstraints(
         Modifier.fillMaxWidth().height(470.dp).clip(RoundedCornerShape(28.dp)),
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val boundary = size.height * progress.coerceIn(0f, 1f)
+            val boundary = size.height * animatedProgress
             drawRect(remaining)
             drawRect(
                 brush = Brush.verticalGradient(
