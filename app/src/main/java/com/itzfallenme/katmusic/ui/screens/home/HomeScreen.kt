@@ -1237,47 +1237,96 @@ private fun TrackRow(
 
 @Composable
 private fun SoundprintCard(insights: ListeningInsights, modifier: Modifier = Modifier, onShare: () -> Unit) {
-    val hours = insights.totalListeningMs / 3_600_000L
-    val minutes = (insights.totalListeningMs % 3_600_000L) / 60_000L
-    Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Your Soundprint", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("A visual signature of your listening", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+    val hours = insights.totalListeningMs.coerceAtLeast(0L) / 3_600_000L
+    val minutes = (insights.totalListeningMs.coerceAtLeast(0L) % 3_600_000L) / 60_000L
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    "LISTENING ARCHIVE  /  KATMUSIC",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.4.sp,
+                )
+                Text("Your Soundprint", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "A record of what you return to.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                WrappedMetric(hours.toString() + " h " + minutes + " m", "Listening time", Modifier.weight(1f))
-                WrappedMetric(insights.completedPlays.toString(), "Completed plays", Modifier.weight(1f))
-                WrappedMetric(insights.uniqueTracks.toString(), "Unique tracks", Modifier.weight(1f))
+            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SoundprintMetric(hours.toString() + "h " + minutes + "m", "Listening time", Modifier.weight(1f))
+                SoundprintMetric(insights.completedPlays.toString(), "Completed plays", Modifier.weight(1f))
+                SoundprintMetric(insights.uniqueTracks.toString(), "Unique tracks", Modifier.weight(1f))
             }
             if (!insights.topTrackTitle.isNullOrBlank()) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("MOST PLAYED TRACK", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    Text(insights.topTrackTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(insights.topTrackArtist.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "MOST PLAYED",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                    )
+                    Text(
+                        insights.topTrackTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        insights.topTrackArtist.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
-            if (!insights.topArtist.isNullOrBlank()) Text("Top artist · " + insights.topArtist, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(insights.skips.toString() + " skips recorded · based on listening tracked on this device", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = onShare) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Create Soundprint")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    insights.skips.toString() + " skips · tracked on this device",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onShare) {
+                    Text("Export Soundprint")
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun WrappedMetric(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun SoundprintMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+        )
     }
 }
 
