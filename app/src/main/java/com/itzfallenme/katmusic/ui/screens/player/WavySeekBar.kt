@@ -119,14 +119,12 @@ fun WavySeekBar(
     // never seek anywhere, and a gesture that ends without
     // onValueChangeFinished can never pin the slider to a dead value.
     var dragPositionMs by remember(trackKey) { mutableStateOf<Float?>(null) }
-    var lastSeekValue by remember(trackKey) { mutableStateOf<Float?>(null) }
     // Heal: framework reports finger lifted or cancelled but the finished callback
     // never ran -> drop the dead value and resume live position.
     LaunchedEffect(isInteracting, trackKey) {
         if (!isInteracting) {
             delay(120L)
             dragPositionMs = null
-            lastSeekValue = null
         }
     }
     // Watchdog: if dragPositionMs was set by a tap/cancelled gesture while not interacting,
@@ -135,8 +133,7 @@ fun WavySeekBar(
         if (dragPositionMs != null && !isInteracting) {
             delay(250L)
             dragPositionMs = null
-            lastSeekValue = null
-        }
+            }
     }
     val dragging = isInteracting || dragPositionMs != null
 
@@ -340,8 +337,7 @@ fun WavySeekBar(
                         } finally {
                             isInteracting = false
                             dragPositionMs = null
-                            lastSeekValue = null
-                        }
+                                    }
                     }
                 },
         ) {
