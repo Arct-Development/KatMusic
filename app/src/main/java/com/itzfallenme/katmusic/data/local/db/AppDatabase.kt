@@ -36,7 +36,5 @@ abstract class AppDatabase : RoomDatabase() {
         songPlayStatsDao().clearAll()
         artworkCacheDao().clearAll()
         relatedGraphDao().clearAll()
-        recommendationExclusionDao().clearAll()
-        podcastProgressDao().clear()
     }
 }
