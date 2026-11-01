@@ -702,11 +702,23 @@ fun KatMusicNavHost(
 @Composable
 private fun LaunchGate(onAnimationFinished: () -> Unit) {
     var finished by remember { mutableStateOf(false) }
+    var showName by remember { mutableStateOf(false) }
+    val logoOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (finished) (-48).dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(520),
+        label = "startupLogoSlide",
+    )
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(3_500L)
         if (!finished) {
             finished = true
             onAnimationFinished()
+        }
+    }
+    LaunchedEffect(finished) {
+        if (finished) {
+            kotlinx.coroutines.delay(300L)
+            showName = true
         }
     }
     Box(
@@ -731,7 +743,6 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
                         }
                     }
                 },
-                update = { if (!it.isPlaying && !finished) it.start() },
             )
         }
         androidx.compose.animation.AnimatedVisibility(
@@ -745,9 +756,11 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_foreground),
                     contentDescription = "KatMusic logo",
-                    modifier = Modifier.size(76.dp),
+                    modifier = Modifier.size(76.dp).offset(x = logoOffset),
                 )
-                Text("Kat Music", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineLarge)
+                androidx.compose.animation.AnimatedVisibility(visible = showName, enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = androidx.compose.animation.core.tween(420))) {
+                    Text("Kat Music", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineLarge)
+                }
             }
         }
     }
