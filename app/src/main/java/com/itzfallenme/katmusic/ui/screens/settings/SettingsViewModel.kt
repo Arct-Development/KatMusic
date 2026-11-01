@@ -788,6 +788,7 @@ class SettingsViewModel @Inject constructor(
             clearLocalPreferences("katmusic_player_style")
             clearLocalPreferences("playlist_track_sort")
             clearLocalPreferences("katmusic_exclusive_usb")
+            clearLocalPreferences("katmusic_updates")
             com.itzfallenme.katmusic.widget.WidgetSnapshot.write(
                 appContext,
                 com.itzfallenme.katmusic.widget.WidgetSnapshot(),
@@ -803,12 +804,13 @@ class SettingsViewModel @Inject constructor(
 
     // ── Backup & Restore (§8.6) ──
 
-    private suspend fun clearLocalPreferences(fileName: String) = withContext(Dispatchers.IO) {
-        val cleared = appContext.getSharedPreferences(fileName, android.content.Context.MODE_PRIVATE)
+    private fun clearLocalPreferences(fileName: String) {
+        // apply() updates the in-process snapshot immediately and persists
+        // asynchronously without blocking the playback/settings dispatcher.
+        appContext.getSharedPreferences(fileName, android.content.Context.MODE_PRIVATE)
             .edit()
             .clear()
-            .commit()
-        if (!cleared) throw java.io.IOException("Couldn't clear local preferences: $fileName")
+            .apply()
     }
 
     fun exportBackup(uri: android.net.Uri, appVersionName: String) {
