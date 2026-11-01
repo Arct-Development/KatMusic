@@ -19,6 +19,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.SideEffect
+import com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavCollapsed
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -559,35 +564,56 @@ private fun FloatingNavBar(
     val isSearchSelected = selectedIndex == searchIndex
     val capsuleTabs = remember(tabs) { tabs.filterNot { it == MainTab.SEARCH } }
     val selectedTab = tabs.getOrNull(selectedIndex) ?: MainTab.FEED
+    val selectedCapsuleIndex = capsuleTabs.indexOf(selectedTab)
     val dockInteraction = remember { MutableInteractionSource() }
     val searchInteraction = remember { MutableInteractionSource() }
+    val collapsedState = LocalBottomNavCollapsed.current
 
-    // Match SimpMusic: Search owns a separate glass button. The capsule folds to
-    // the selected destination when a list scrolls away from its top, and Search
-    // always enters with the capsule folded.
+    // SimpMusic behaviour: Search is a separate glass FAB; the main capsule
+    // folds when a feed/library list scrolls, and remains folded on Search.
     var isExpanded by rememberSaveable { mutableStateOf(true) }
     LaunchedEffect(isSearchSelected, isScrolledToTop) {
         isExpanded = !isSearchSelected && isScrolledToTop
     }
+    SideEffect {
+        collapsedState.value = !isExpanded
+    }
+
     val expansion by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "navigationMorph",
     )
-    val capsuleWidth = lerp(48.dp, 216.dp, expansion)
-    val searchVisibility = ((expansion - 0.5f) / 0.5f).coerceIn(0f, 1f)
-    val searchButtonWidth = 56.dp * searchVisibility
-    val searchGap = 12.dp * searchVisibility
-    val foldedIconAlpha = (1f - expansion * 2.8f).coerceIn(0f, 1f)
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.CenterStart,
     ) {
+        val searchSize = 56.dp
+        val searchGap = 12.dp
+        val capsuleBudget = (maxWidth - searchSize - searchGap).coerceAtLeast(48.dp)
+        val tabWidth = (((capsuleBudget - 12.dp) / capsuleTabs.size).coerceAtMost(96.dp)).coerceAtLeast(48.dp)
+        val expandedCapsuleWidth = tabWidth * capsuleTabs.size + 12.dp
+        val capsuleWidth = lerp(48.dp, expandedCapsuleWidth, expansion)
+        val capsuleHeight = lerp(48.dp, 64.dp, expansion)
+        val searchVisibility = ((expansion - 0.5f) / 0.5f).coerceIn(0f, 1f)
+        val foldedIconAlpha = (1f - expansion * 2.8f).coerceIn(0f, 1f)
+
+        val targetIndicatorIndex = selectedCapsuleIndex.coerceAtLeast(0)
+        val indicatorPosition by animateFloatAsState(
+            targetValue = targetIndicatorIndex.toFloat(),
+            animationSpec = spring(dampingRatio = 0.72f, stiffness = 520f),
+            label = "glassTabIndicatorPosition",
+        )
+        var dragPosition by remember { mutableStateOf<Float?>(null) }
+        val indicatorProgress = dragPosition ?: indicatorPosition
+        val indicatorOffset = 6.dp + (tabWidth * indicatorProgress)
+        val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
@@ -603,7 +629,7 @@ private fun FloatingNavBar(
                 shadowElevation = 0.dp,
                 modifier = Modifier
                     .width(capsuleWidth)
-                    .height(56.dp)
+                    .height(capsuleHeight)
                     .clip(DockShape)
                     .liquidGlassChrome(
                         DockShape,
@@ -613,21 +639,61 @@ private fun FloatingNavBar(
                         interactionSource = dockInteraction,
                     ),
             ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                    if (selectedCapsuleIndex >= 0) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = indicatorOffset)
+                                .width(tabWidth)
+                                .height(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.20f))
+                                .liquidGlassChrome(
+                                    CircleShape,
+                                    liquidGlass,
+                                    LiquidGlassPreset.BottomNavigation,
+                                    backdrop,
+                                    interactionSource = dockInteraction,
+                                ),
+                        )
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { alpha = expansion }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                            .pointerInput(capsuleTabs, tabWidthPx, selectedIndex) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        dragPosition = indicatorPosition
+                                    },
+                                    onHorizontalDrag = { change, amount ->
+                                        change.consume()
+                                        val next = ((dragPosition ?: indicatorPosition) + amount / tabWidthPx)
+                                            .coerceIn(0f, (capsuleTabs.lastIndex).toFloat())
+                                        dragPosition = next
+                                    },
+                                    onDragEnd = {
+                                        val target = (dragPosition ?: indicatorPosition)
+                                            .roundToInt()
+                                            .coerceIn(0, capsuleTabs.lastIndex)
+                                        onSelect(tabs.indexOf(capsuleTabs[target]))
+                                        dragPosition = null
+                                    },
+                                    onDragCancel = { dragPosition = null },
+                                )
+                            }
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        capsuleTabs.forEach { tab ->
+                        capsuleTabs.forEachIndexed { position, tab ->
                             val index = tabs.indexOf(tab)
                             FloatingNavItem(
                                 label = androidx.compose.ui.res.stringResource(tab.labelRes),
                                 icon = tab.icon(),
                                 selected = selectedIndex == index,
+                                width = tabWidth,
                                 onClick = { onSelect(index) },
                             )
                         }
@@ -650,12 +716,11 @@ private fun FloatingNavBar(
                 }
             }
 
-            Spacer(Modifier.width(searchGap))
+            Spacer(Modifier.width(searchGap * searchVisibility))
             Box(
                 modifier = Modifier
-                    .width(searchButtonWidth)
-                    .height(56.dp)
-                    .clip(CircleShape),
+                    .width(searchSize * searchVisibility)
+                    .height(searchSize),
                 contentAlignment = Alignment.Center,
             ) {
                 Surface(
@@ -671,7 +736,7 @@ private fun FloatingNavBar(
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp,
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(searchSize)
                         .graphicsLayer {
                             alpha = searchVisibility
                             scaleX = lerp(0.82f, 1f, searchVisibility)
@@ -703,79 +768,42 @@ private fun FloatingNavItem(
     label: String,
     icon: ImageVector,
     selected: Boolean,
+    width: Dp,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(
-            alpha = if (LocalLiquidGlass.current) 0.28f else 1f,
-        ) else Color.Transparent,
-        animationSpec = MotionSpec.effectsDefault(),
-        label = "navItemBackground",
-    )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = MotionSpec.effectsDefault(),
-        label = "navItemContent",
+        label = "glassNavTabContent",
     )
-    // Animate the pill padding instead of jumping it: combined with the label
-    // expand below this gives one smooth width change. (Previously this
-    // Surface also had animateContentSize on top of the label expand — the two
-    // competing width animations clipped the pill to a rectangle and cut the
-    // label mid-switch.)
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (selected) 18.dp else 12.dp,
-        animationSpec = navSpring(),
-        label = "navItemPadding",
-    )
-
-    Surface(
-        onClick = onClick,
-        shape = PillShape,
-        color = backgroundColor,
-        modifier = modifier.height(48.dp),
+    Column(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                onClick = onClick,
+            ),
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .padding(horizontal = horizontalPadding)
-                .height(48.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp),
-            )
-            AnimatedVisibility(
-                visible = selected,
-                enter = fadeIn(animationSpec = navSpring()) + expandHorizontally(
-                    animationSpec = navSpring(),
-                    expandFrom = Alignment.Start,
-                    clip = false,
-                ),
-                exit = fadeOut(animationSpec = tween(90)) + shrinkHorizontally(
-                    animationSpec = navSpring(),
-                    shrinkTowards = Alignment.Start,
-                    clip = false,
-                ),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 8.dp),
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
-                }
-            }
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = contentColor,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
