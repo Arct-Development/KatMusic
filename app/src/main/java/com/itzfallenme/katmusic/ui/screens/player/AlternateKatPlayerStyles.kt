@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -378,14 +379,28 @@ private fun ExpressiveLyricLine(
         syllables.forEach { word ->
             val current = positionMs >= word.timeMs && positionMs < word.timeMs + word.durationMs.coerceAtLeast(1L)
             val alreadySung = positionMs >= word.timeMs + word.durationMs
-            Text(
-                word.text,
-                color = when {
+            val lyricColor by animateColorAsState(
+                targetValue = when {
                     current -> Color.White
                     alreadySung -> Color.White.copy(alpha = 0.58f)
                     else -> Color.White.copy(alpha = 0.30f)
                 },
-                fontSize = baseSize * if (current) 1.08f else 1f,
+                animationSpec = tween(180),
+                label = "lyric-word-highlight",
+            )
+            val lyricEmphasis by animateFloatAsState(
+                targetValue = if (current) 1.07f else 1f,
+                animationSpec = spring(dampingRatio = 0.72f, stiffness = 360f),
+                label = "lyric-word-emphasis",
+            )
+            Text(
+                word.text,
+                color = lyricColor,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = lyricEmphasis
+                    scaleY = lyricEmphasis
+                },
+                fontSize = baseSize,
                 fontWeight = if (current) FontWeight.Black else FontWeight.Bold,
                 letterSpacing = (-0.035).em,
                 lineHeight = baseSize * 0.98f,
