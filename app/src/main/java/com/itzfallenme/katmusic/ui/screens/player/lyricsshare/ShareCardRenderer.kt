@@ -340,10 +340,9 @@ object ShareCardRenderer {
         }
         if (spec.lyricStyle == LyricCardStyle.Cover && spec.coverBitmap != null && !spec.coverBitmap.isRecycled) {
             drawCenterCropCover(canvas, spec.coverBitmap, width, height)
-            canvas.drawColor(0x99000000.toInt())
-            // Keep the real supplied album artwork photographic; use one even scrim
-            // only to preserve lyric legibility. No synthetic glow or decorative haze.
-            canvas.drawColor(0x66000000.toInt())
+            // One controlled scrim keeps the actual album cover visible while
+            // preserving readable type across light and dark artwork.
+            canvas.drawColor(0x78000000.toInt())
         } else {
             val base = when (spec.lyricStyle) {
                 LyricCardStyle.Paper -> 0xFFF3E8D8.toInt()
@@ -353,16 +352,19 @@ object ShareCardRenderer {
             val end = when (spec.lyricStyle) {
                 LyricCardStyle.Paper -> 0xFFE6D5C0.toInt()
                 LyricCardStyle.Neon -> 0xFF25104D.toInt()
-                else -> {
-                    val hsv = FloatArray(3)
-                    AndroidColor.colorToHSV(base, hsv)
-                    hsv[2] = (hsv[2] * 0.82f).coerceAtLeast(0.08f)
-                    AndroidColor.HSVToColor(0xFF, hsv)
-                }
+                else -> base
             }
-            canvas.drawColor(base)
-            // A single, intentional colour field keeps the layout editorial and print-like.
-            canvas.drawColor(base)
+            if (spec.lyricStyle == LyricCardStyle.Paper || spec.lyricStyle == LyricCardStyle.Neon) {
+                val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    shader = LinearGradient(
+                        0f, 0f, width.toFloat(), height.toFloat(),
+                        base, end, Shader.TileMode.CLAMP,
+                    )
+                }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
+            } else {
+                canvas.drawColor(base)
+            }
         }
 
         var currentY = (60 * scale)
