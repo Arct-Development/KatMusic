@@ -21,6 +21,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
@@ -75,6 +87,7 @@ fun LoginScreen(
     isBusy: Boolean = false,
     onOpenDownloads: (() -> Unit)? = null,
     onLegacyFriendlyModeChange: (Boolean) -> Unit = {},
+    isLegacyFriendlyMode: Boolean = true,
 ) {
     val context = LocalContext.current
     var restoreReadError by remember { mutableStateOf<String?>(null) }
@@ -134,29 +147,41 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Surface(
-                        modifier = Modifier.weight(1f).clickable { onLegacyFriendlyModeChange(true) },
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    ) {
-                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Classic", style = MaterialTheme.typography.titleSmall)
-                            Text("Simpler surfaces, fewer effects", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                        }
-                    }
-                    Surface(
-                        modifier = Modifier.weight(1f).clickable { onLegacyFriendlyModeChange(false) },
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    ) {
-                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Modern", style = MaterialTheme.typography.titleSmall)
-                            Text("Glass styling and effects", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                        }
-                    }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ExperienceChoiceCard(
+                        title = "Classic",
+                        description = "Simple surfaces, lighter effects",
+                        selected = isLegacyFriendlyMode,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onLegacyFriendlyModeChange(true) },
+                    )
+                    ExperienceChoiceCard(
+                        title = "Modern",
+                        description = "Liquid Glass and richer motion",
+                        selected = !isLegacyFriendlyMode,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onLegacyFriendlyModeChange(false) },
+                    )
+                }
+                Spacer(Modifier.height(9.dp))
+                androidx.compose.animation.AnimatedContent(
+                    targetState = isLegacyFriendlyMode,
+                    label = "experiencePreferenceDescription",
+                ) { classic ->
+                    Text(
+                        text = if (classic) {
+                            "Classic keeps the interface straightforward and reduces visual effects on older devices."
+                        } else {
+                            "Modern enables the floating glass navigation and richer surface treatments."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 Spacer(Modifier.height(22.dp))
                 Spacer(Modifier.height(32.dp))
@@ -241,6 +266,77 @@ fun LoginScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ExperienceChoiceCard(
+    title: String,
+    description: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = tween(220),
+        label = "experienceCardContainer",
+    )
+    val outlineColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.outlineVariant,
+        animationSpec = tween(220),
+        label = "experienceCardOutline",
+    )
+    val outlineWidth by animateDpAsState(
+        targetValue = if (selected) 1.6.dp else 1.dp,
+        animationSpec = tween(220),
+        label = "experienceCardOutlineWidth",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.985f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = 520f),
+        label = "experienceCardScale",
+    )
+
+    Surface(
+        modifier = modifier
+            .height(104.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        border = BorderStroke(outlineWidth, outlineColor),
+        tonalElevation = if (selected) 2.dp else 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface,
+                )
+                RadioButton(selected = selected, onClick = null)
+            }
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f)
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+            )
         }
     }
 }
