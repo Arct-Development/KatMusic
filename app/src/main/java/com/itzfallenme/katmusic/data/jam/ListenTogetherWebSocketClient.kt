@@ -104,6 +104,15 @@ class ListenTogetherWebSocketClient : Closeable {
         }
         socket?.close(1000, "reconnecting")
         _connectionState.value = "Connecting…"
+        _roomCode.value = ""
+        _sessionToken.value = ""
+        _memberId.value = ""
+        _isHost.value = false
+        _members.value = emptyList()
+        _playback.value = null
+        _sharedQueue.value = emptyList()
+        _suggestions.value = emptyList()
+        _pendingRequests.value = emptyList()
         _events.value = emptyList()
         val request = runCatching { Request.Builder().url(normalized).build() }.getOrElse {
             _connectionState.value = "Invalid server URL"
