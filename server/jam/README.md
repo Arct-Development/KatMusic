@@ -63,3 +63,26 @@ Join requests still require explicit host approval. Host-only actions are checke
 - A successful HTTP health check does not test a complete WebSocket session.
 - Supabase Free has project and usage limits; monitor database size and egress.
 - Supabase persistence is not a distributed WebSocket broker. Keep one server instance until shared pub/sub and cross-instance membership coordination are implemented.
+
+
+## Group Blend and Supabase
+
+Group Blend is separate from Listen Together. **The current Group Blend implementation does not use Supabase**, so there are no Blend tables, environment variables, API keys, or extra SQL migrations to configure for the feature as it exists today.
+
+### How Blend works today
+
+- KatMusic builds a compact taste profile from the listener's local `song_play_stats` data.
+- The app creates a `KATBLEND1:` share code containing up to 40 artist affinities and 100 track affinities/track records.
+- Friends exchange codes manually. Imported profiles are saved in Android DataStore on that device.
+- Full listening history stays on the device. No profile is uploaded to Supabase by Group Blend.
+- Group compatibility, shared artists/tracks, and group recommendations are calculated locally in the app.
+
+### Supabase configuration required for Blend
+
+None for the current offline/manual-sharing version. Follow the Supabase setup above only for the Listen Together server's room, member, and chat persistence. The existing `0001_jam_persistence.sql` migration creates Jam tables only; it does not create or enable cloud Blend sharing.
+
+### If cloud Blend sharing is added later
+
+Cloud sharing would be a separate backend feature, not a switch in the current Android app. Before enabling it, implement and test authenticated Blend APIs plus a dedicated migration for profile/Blend membership storage. Use Supabase Auth or another verified identity provider, enforce per-user row-level security, validate profile schema/size limits server-side, and provide deletion/expiry controls. Never ship the Supabase service-role key in the Android app. Do not store raw full listening histories or treat a display name/share code as authentication.
+
+For the current feature's data format, privacy boundaries, scoring, and manual sharing flow, see [Group Blend MVP](../../docs/group-blend-mvp.md).
