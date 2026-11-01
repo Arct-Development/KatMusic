@@ -69,7 +69,6 @@ object SoundprintRenderer {
                 textSize = size
                 this.color = color
                 typeface = Typeface.create("sans-serif", weight)
-                letterSpacing = if (size < 30f) 0.06f else 0f
             }
 
         fun fit(value: String, paint: TextPaint, maxWidth: Float): String {
@@ -103,9 +102,9 @@ object SoundprintRenderer {
         val cx = WIDTH / 2f
         val cy = 735f
         val totalSeed =
-            insights.completedPlays.coerceAtLeast(0L) * 13L +
-            insights.uniqueTracks.coerceAtLeast(0L) * 31L +
-            insights.skips.coerceAtLeast(0L) * 7L +
+            insights.completedPlays.coerceAtLeast(0).toLong() * 13L +
+            insights.uniqueTracks.coerceAtLeast(0).toLong() * 31L +
+            insights.skips.coerceAtLeast(0).toLong() * 7L +
             (insights.totalListeningMs.coerceAtLeast(0L) / 60_000L)
 
         val orbitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -177,8 +176,8 @@ object SoundprintRenderer {
         val minutes = (totalMs % 3_600_000L) / 60_000L
         val metrics = listOf(
             Triple("LISTENING TIME", hours.toString() + "h " + minutes + "m", 104f),
-            Triple("COMPLETED PLAYS", String.format(Locale.ROOT, "%,d", insights.completedPlays.coerceAtLeast(0L)), 390f),
-            Triple("UNIQUE TRACKS", String.format(Locale.ROOT, "%,d", insights.uniqueTracks.coerceAtLeast(0L)), 704f),
+            Triple("COMPLETED PLAYS", String.format(Locale.ROOT, "%,d", insights.completedPlays.coerceAtLeast(0)), 390f),
+            Triple("UNIQUE TRACKS", String.format(Locale.ROOT, "%,d", insights.uniqueTracks.coerceAtLeast(0)), 704f),
         )
         metrics.forEach { (label, value, x) ->
             drawLabel(label, x, 1110f)
