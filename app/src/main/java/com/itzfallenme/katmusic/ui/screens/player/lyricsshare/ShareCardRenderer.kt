@@ -429,7 +429,6 @@ object ShareCardRenderer {
             typeface = getTypeface(context, 600)
             textSize = 27f * scale
             color = styleColors.brandTextColor
-            letterSpacing = 0.04f
         }
         canvas.drawText("KATMUSIC", hPadding.toFloat(), footerY, footerPaint)
         val markSize = (22 * scale).roundToInt()
