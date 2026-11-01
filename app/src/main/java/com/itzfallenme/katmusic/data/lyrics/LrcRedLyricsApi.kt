@@ -104,7 +104,7 @@ class LrcRedLyricsApi @Inject constructor(
     private suspend fun fetchUrl(url: String): String? {
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .header("Accept", "*/*")
             .get()
             .build()
