@@ -90,7 +90,8 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                                 Text("Reading listening history…")
                             }
                         } else {
-                            Text("${state.myTrackCount} tracks • ${state.myArtistCount} artists")
+                            Text("${state.myTrackCount} tracks • ${state.myArtistCount} artists", style = MaterialTheme.typography.titleMedium)
+                        Text("Your full listening history stays on this device. Only the compact profile in your share code is sent to friends.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 "Copy your code and send it to a friend. Ask them to send their code back.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -182,7 +183,7 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Text(
-                                "KatMusic's own score, based on shared artist and track preferences.",
+                                "Average taste similarity across every pair in this group, weighted toward artists (75%) and tracks (25%). This is a KatMusic score, not a popularity ranking.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
@@ -190,11 +191,22 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                     }
                 }
                 if (state.result.sharedArtists.isNotEmpty()) {
-                    item { Text("Artists you share", style = MaterialTheme.typography.titleMedium) }
-                    item { Text(state.result.sharedArtists.joinToString("  •  ") { it.artist }) }
+                    item { Text("Your common ground", style = MaterialTheme.typography.titleMedium) }
+                    items(state.result.sharedArtists, key = { it.artist }) { artist ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+                            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(artist.artist, fontWeight = FontWeight.SemiBold)
+                                    Text("Shared by ${artist.memberCount} of ${state.members.size} listeners", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Text("${(artist.averageAffinity * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
                 if (state.result.sharedTracks.isNotEmpty()) {
                     item { Text("Tracks everyone shares", style = MaterialTheme.typography.titleMedium) }
+                    item { Text("These tracks appear in every member profile.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     items(state.result.sharedTracks, key = { it.key }) { track ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 5.dp),
@@ -212,7 +224,8 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                     }
                 }
                 if (state.result.recommendations.isNotEmpty()) {
-                    item { Text("Group picks", style = MaterialTheme.typography.titleMedium) }
+                    item { Text("Made for this group", style = MaterialTheme.typography.titleMedium) }
+                    item { Text("Recommendations balance how strongly people like a track with how many members have it in their profile.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     items(state.result.recommendations, key = { it.track.key }) { recommendation ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 5.dp),
@@ -221,7 +234,7 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                             Column(Modifier.weight(1f)) {
                                 Text(recommendation.track.title, fontWeight = FontWeight.Medium)
                                 Text(
-                                    "${recommendation.track.artist} • ${recommendation.memberCoverage}/${state.members.size} members",
+                                    "${recommendation.track.artist} • in ${recommendation.memberCoverage} of ${state.members.size} profiles",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
