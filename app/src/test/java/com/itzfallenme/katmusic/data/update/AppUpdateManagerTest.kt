@@ -8,19 +8,19 @@ class AppUpdateManagerTest {
     private val sampleAssets = listOf(
         ReleaseAsset(
             name = "KatMusic-v4.2.4-android7.apk",
-            downloadUrl = "https://github.com/Clash-Projects/KatMusic-Native/releases/download/4.2.4/KatMusic-v4.2.4-android7.apk",
+            downloadUrl = "https://github.com/Arct-Development/KatMusic/releases/download/4.2.4/KatMusic-v4.2.4-android7.apk",
         ),
         ReleaseAsset(
             name = "KatMusic-v4.2.4-universal-uncompressed.apk",
-            downloadUrl = "https://github.com/Clash-Projects/KatMusic-Native/releases/download/4.2.4/KatMusic-v4.2.4-universal-uncompressed.apk",
+            downloadUrl = "https://github.com/Arct-Development/KatMusic/releases/download/4.2.4/KatMusic-v4.2.4-universal-uncompressed.apk",
         ),
         ReleaseAsset(
             name = "KatMusic-v4.2.4-universal.apk",
-            downloadUrl = "https://github.com/Clash-Projects/KatMusic-Native/releases/download/4.2.4/KatMusic-v4.2.4-universal.apk",
+            downloadUrl = "https://github.com/Arct-Development/KatMusic/releases/download/4.2.4/KatMusic-v4.2.4-universal.apk",
         ),
         ReleaseAsset(
             name = "SHA256SUMS.txt",
-            downloadUrl = "https://github.com/Clash-Projects/KatMusic-Native/releases/download/4.2.4/SHA256SUMS.txt",
+            downloadUrl = "https://github.com/Arct-Development/KatMusic/releases/download/4.2.4/SHA256SUMS.txt",
         ),
     )
 
