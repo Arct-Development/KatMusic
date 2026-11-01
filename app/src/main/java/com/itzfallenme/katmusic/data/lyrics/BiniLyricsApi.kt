@@ -93,7 +93,7 @@ class BiniLyricsApi @Inject constructor(
         params.forEach { (key, value) -> builder.addQueryParameter(key, value) }
         val request = Request.Builder()
             .url(builder.build())
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .header("Accept", "application/json")
             .get()
             .build()
@@ -144,7 +144,7 @@ class BiniLyricsApi @Inject constructor(
         val ttml = try {
             val request = Request.Builder()
                 .url(documentUrl)
-                .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+                .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
                 .header("Accept", "application/xml, text/xml, */*")
                 .get()
                 .build()
