@@ -67,6 +67,9 @@ interface RelatedGraphDao {
     @Query("SELECT COUNT(*) FROM related_graph_edges")
     suspend fun count(): Int
 
+    @Query("DELETE FROM related_graph_edges")
+    suspend fun clearAll()
+
     @Query("DELETE FROM related_graph_edges WHERE lastSeenAtMillis < :cutoffMillis")
     suspend fun pruneOlderThan(cutoffMillis: Long)
 
