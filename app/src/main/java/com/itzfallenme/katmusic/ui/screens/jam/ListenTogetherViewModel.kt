@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itzfallenme.katmusic.data.jam.ListenTogetherWebSocketClient
 import com.itzfallenme.katmusic.data.jam.JamTrackSuggestion
+import com.itzfallenme.katmusic.data.jam.JamPlayback
+import kotlinx.coroutines.flow.collect
 import com.itzfallenme.katmusic.playback.MusicPlayer
 import com.itzfallenme.katmusic.playback.PlayableTrack
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,39 +41,42 @@ class ListenTogetherViewModel @Inject constructor(val player: MusicPlayer) : Vie
             }
         }
         viewModelScope.launch {
-            client.events.collect { events ->
-                val event = events.lastOrNull() ?: return@collect
-                if (event.type != "playback_state" || client.isHost.value) return@collect
-                val payload = event.payload["payload"]?.jsonObject ?: return@collect
-                val trackJson = payload["track"]?.jsonObject ?: return@collect
-                val videoId = trackJson["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                if (videoId.isBlank()) return@collect
-                val title = trackJson["title"]?.jsonPrimitive?.contentOrNull ?: "Unknown track"
-                val artist = trackJson["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist"
-                val artwork = trackJson["artworkUrl"]?.jsonPrimitive?.contentOrNull
-                val position = payload["positionMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
-                val duration = payload["durationMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L
-                val playing = payload["isPlaying"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
-                val current = player.state.value
-                if (lastRemoteTrackId != videoId || current.current?.videoId != videoId) {
-                    lastRemoteTrackId = videoId
-                    player.play(
-                        PlayableTrack(title = title, artist = artist, artworkUrl = artwork, videoId = videoId,
-                            durationMs = duration.takeIf { it > 0 }),
-                        sourceLabel = "Listen Together", startRadio = false, startPositionMs = position + 350L,
-                    )
-                    if (!playing) player.pause()
-                } else if (current.current?.videoId == videoId) {
-                    if (kotlin.math.abs(current.positionMs - position) > 2_000L) player.seekTo(position + 350L)
-                    if (playing && !current.isPlaying) player.togglePlayPause()
-                    if (!playing && current.isPlaying) player.pause()
-                }
+            client.playback.collect { remote -> syncRemotePlayback(remote) }
+        }
+        viewModelScope.launch {
+            client.isHost.collect { host ->
+                if (host) client.publishQueue(player.state.value.queue)
             }
         }
         viewModelScope.launch {
             player.state.map { it.queue }.distinctUntilChanged().collect { queue ->
                 if (client.isHost.value) client.publishQueue(queue)
             }
+        }
+    }
+
+    private fun syncRemotePlayback(remote: JamPlayback?) {
+        if (remote == null || client.isHost.value || remote.videoId.isBlank()) return
+        val current = player.state.value
+        if (lastRemoteTrackId != remote.videoId || current.current?.videoId != remote.videoId) {
+            lastRemoteTrackId = remote.videoId
+            player.play(
+                PlayableTrack(
+                    title = remote.title,
+                    artist = remote.artist,
+                    artworkUrl = remote.artworkUrl.takeIf(String::isNotBlank),
+                    videoId = remote.videoId,
+                    durationMs = remote.durationMs.takeIf { it > 0 },
+                ),
+                sourceLabel = "Listen Together",
+                startRadio = false,
+                startPositionMs = remote.positionMs + 350L,
+            )
+            if (!remote.isPlaying) player.pause()
+        } else if (current.current?.videoId == remote.videoId) {
+            if (kotlin.math.abs(current.positionMs - remote.positionMs) > 2_000L) player.seekTo(remote.positionMs + 350L)
+            if (remote.isPlaying && !current.isPlaying) player.togglePlayPause()
+            if (!remote.isPlaying && current.isPlaying) player.pause()
         }
     }
 
