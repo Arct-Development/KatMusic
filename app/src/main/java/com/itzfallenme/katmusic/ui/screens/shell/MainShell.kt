@@ -249,7 +249,8 @@ fun MainShell(
     mainShellViewModel: MainShellViewModel = hiltViewModel(),
 ) {
     val tabs = MainTab.entries
-    var isScrolledToTop by rememberSaveable { mutableStateOf(true) }
+    var isHomeScrolledToTop by rememberSaveable { mutableStateOf(true) }
+    var isLibraryScrolledToTop by rememberSaveable { mutableStateOf(true) }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val feedTapEvents = remember { kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
     val scope = rememberCoroutineScope()
@@ -390,7 +391,7 @@ fun MainShell(
                         onOpenPodcastShow = onOpenPodcastShow,
                         onOpenYouTubeLogin = onOpenYouTubeLogin,
                         feedTapEvents = feedTapEvents,
-                        onScrollToTopChanged = { isScrolledToTop = it },
+                        onScrollToTopChanged = { isHomeScrolledToTop = it },
                     )
                     MainTab.SEARCH -> com.itzfallenme.katmusic.ui.screens.search.SearchScreen(
                         showBackButton = false,
@@ -403,7 +404,7 @@ fun MainShell(
                         onOpenGenerator = onOpenGenerator,
                         onOpenDownloads = onOpenDownloads,
                         onOpenStats = onOpenStats,
-                        onScrollToTopChanged = { isScrolledToTop = it },
+                        onScrollToTopChanged = { isLibraryScrolledToTop = it },
                     )
                 }
             }
@@ -437,7 +438,13 @@ fun MainShell(
         val systemBottomInset = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
 
         val currentSelectedIndex by androidx.compose.runtime.rememberUpdatedState(selectedTabIndex)
-        val currentIsScrolledToTop by androidx.compose.runtime.rememberUpdatedState(isScrolledToTop)
+        val currentIsScrolledToTop by androidx.compose.runtime.rememberUpdatedState(
+            when (tabs.getOrNull(selectedTabIndex)) {
+                MainTab.FEED -> isHomeScrolledToTop
+                MainTab.LIBRARY -> isLibraryScrolledToTop
+                else -> true
+            }
+        )
         val currentOnSelect by androidx.compose.runtime.rememberUpdatedState { index: Int ->
             if (tabs[index] == MainTab.FEED) {
                 val wasOnDetail = onReturnToHome()
