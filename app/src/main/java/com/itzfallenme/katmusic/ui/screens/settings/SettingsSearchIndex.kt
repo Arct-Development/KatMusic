@@ -1365,6 +1365,22 @@ object SettingsSearchIndex {
                     type = EntryType.ACTION,
                 )
             )
+
+            add(
+                SettingsEntry(
+                    id = "about.website",
+                    title = "KatMusic website",
+                    subtitle = "Open katmusic.pages.dev",
+                    keywords = listOf("website", "web", "homepage", "project site", "katmusic.pages.dev"),
+                    icon = Icons.Filled.Language,
+                    iconContainer = { MaterialTheme.colorScheme.tertiaryContainer },
+                    iconTint = { MaterialTheme.colorScheme.onTertiaryContainer },
+                    parentTab = SettingsTab.ABOUT,
+                    section = "About & Community",
+                    type = EntryType.ACTION,
+                )
+            )
+
             add(
                 SettingsEntry(
                     id = "about.source_code",
