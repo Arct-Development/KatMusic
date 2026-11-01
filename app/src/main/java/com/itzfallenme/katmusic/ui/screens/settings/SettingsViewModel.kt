@@ -772,7 +772,6 @@ class SettingsViewModel @Inject constructor(
             searchHistoryRepository.clear()
             appDatabase.clearListeningHistoryAndCaches()
             autoEqController.clearAll()
-            equalizerPreferences.reset()
             loudnessPrefs.clearAll()
             discoverRepository.clearRecommendationExclusions()
             podcastProgressStore.clear()
@@ -781,8 +780,21 @@ class SettingsViewModel @Inject constructor(
             // their playlists/history are deliberately left untouched.
             spotifyPreferences.clearConnection()
             runCatching { ytAuthManager.signOut() }
-            // Session last: clearing it navigates to login and can cancel this
-            // scope, which used to interrupt the reset halfway through.
+
+            // Preferences that live outside the shared DataStore are part of
+            // the local reset too. Keep the export URI so user-created backup
+            // and playlist files in shared storage remain untouched.
+            clearLocalPreferences(com.itzfallenme.katmusic.data.local.AppLanguage.SYNC_FILE)
+            clearLocalPreferences("katmusic_player_style")
+            clearLocalPreferences("playlist_track_sort")
+            clearLocalPreferences("katmusic_exclusive_usb")
+            com.itzfallenme.katmusic.widget.WidgetSnapshot.write(
+                appContext,
+                com.itzfallenme.katmusic.widget.WidgetSnapshot(),
+            )
+
+            // Session last: clearing it resets the shared settings store and
+            // may navigate to login/cancel this scope.
             sessionPreferences.clearAll()
             _uiState.update { it.copy(showClearAllConfirm = false) }
             onComplete()
@@ -790,6 +802,14 @@ class SettingsViewModel @Inject constructor(
     }
 
     // ── Backup & Restore (§8.6) ──
+
+    private suspend fun clearLocalPreferences(fileName: String) = withContext(Dispatchers.IO) {
+        val cleared = appContext.getSharedPreferences(fileName, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
+        if (!cleared) throw java.io.IOException("Couldn't clear local preferences: $fileName")
+    }
 
     fun exportBackup(uri: android.net.Uri, appVersionName: String) {
         viewModelScope.launch {

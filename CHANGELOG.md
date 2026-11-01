@@ -4,7 +4,7 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [2.4.0] - 2026-10-31
+## [2.5.0] - 2026-11-01
 
 ### Added
 
@@ -27,50 +27,13 @@ All notable changes to KatMusic are documented here. The format follows
 - Corrected the discovery ViewModel test so JUnit recognizes the test method and its asynchronous result is awaited.
 - Fixed duplicate-key crashes in queue and list surfaces, share-intent failures outside Activity contexts, and a service-locator initialization race.
 - Improved crash diagnostics with recent log lines and a warnings-and-errors log in release builds.
+- Clear all data now removes local downloads and imported music, playlists, listening history, recommendation exclusions, podcast progress, caches, search history and independent audio preferences without deleting exported backups or remote account data.
+- Fixed Kotlin compilation errors caused by a duplicate AutoEQ reset method and the wavy seek bar's gesture-width type.
 
 ### Build and release
 
 - Added a dedicated `arm64-v8a` APK alongside the universal and Android 7–9 legacy packages.
 - Updated release documentation and repository links for the Arct Development organization.
-
-## [2.1.0] - 2026-10-31
-
-### Added
-
-- Five alternate player styles: Poster, Timeline, Lyrics Stage, iPod and Full Video
-- Animated Canvas artwork support in Full Video mode
-- A dedicated `arm64-v8a` APK alongside the universal and Android 7–9 legacy packages
-
-### Changed
-
-- Lyrics Stage is connected to KatMusic's synced lyrics controls and lyric source options
-
-## [2.0.0] - 2026-10-30
-
-### Changed
-
-- **New base: the native audio engine and interface now live in KatMusic.** Playback runs
-  through the native audio engine with the parametric equaliser, crossfade/automix planner,
-  USB exclusive output and loudness processing; lyrics, downloads, discovery, genres,
-  artists, albums, playlists, podcasts, podcasts video, jam sessions and the YouTube
-  account stack are all on the new code paths
-- **Simpler chrome.** The full-bleed header that appeared to hang off the top of the screen
-  is gone: screens now open on a plain top bar painted in the background colour, with the
-  status bar padded out and no panel, rounding or glass. Search uses the same flat bar
-- Settings reordered around what people open it for: **Playback & UI** first (Audio, then
-  Appearance, then Library), then **Services** (YouTube, Spotify, then Last.fm), then
-  **System & About**
-- Typography moved to Figtree with weight-only axes, so the bold-font toggle keeps working
-  and heading tracking no longer silently falls back to body weight
-
-### Added
-
-- Native audio engine, parametric EQ and automix (crossfade, transition planner, WSOLA
-  time stretching) with unit tests under `app/src/main/cpp/tests`
-- Genre explorer, artist/album/playlist detail stacks, podcast and video surfaces, Spotify
-  Canvas and Jam sessions
-
-## [2.5.0] - 2026-11-01
 
 ### Added
 
@@ -105,7 +68,7 @@ All notable changes to KatMusic are documented here. The format follows
 
 - Group Blend uses a **separate Supabase project** from Listen Together. Apply `server/blend/supabase/migrations/0001_blend_schema.sql` and configure `KATMUSIC_BLEND_SUPABASE_URL` plus `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` in the local environment or GitHub Actions secrets before enabling cloud access. Never use a service-role key in the Android app.
 - Group Blend cloud flows require a configured Supabase project and have not yet been verified against a live project.
-- CI has produced successful debug and ARM64 APK builds for the startup/navigation work preceding the latest splash handoff refinement; the latest splash refinement's workflow result should be checked before release.
+- Verify the release workflow and APK artifacts before publishing this version.
 
 
 ### Added
@@ -177,6 +140,43 @@ All notable changes to KatMusic are documented here. The format follows
 - Crash reports now include the last log lines, and release builds keep a small
   warnings-and-errors log, so a crash on a shipped build is diagnosable from
   Settings → Data → Debug log
+
+## [2.1.0] - 2026-10-31
+
+### Added
+
+- Five alternate player styles: Poster, Timeline, Lyrics Stage, iPod and Full Video
+- Animated Canvas artwork support in Full Video mode
+- A dedicated `arm64-v8a` APK alongside the universal and Android 7–9 legacy packages
+
+### Changed
+
+- Lyrics Stage is connected to KatMusic's synced lyrics controls and lyric source options
+
+## [2.0.0] - 2026-10-30
+
+### Changed
+
+- **New base: the native audio engine and interface now live in KatMusic.** Playback runs
+  through the native audio engine with the parametric equaliser, crossfade/automix planner,
+  USB exclusive output and loudness processing; lyrics, downloads, discovery, genres,
+  artists, albums, playlists, podcasts, podcasts video, jam sessions and the YouTube
+  account stack are all on the new code paths
+- **Simpler chrome.** The full-bleed header that appeared to hang off the top of the screen
+  is gone: screens now open on a plain top bar painted in the background colour, with the
+  status bar padded out and no panel, rounding or glass. Search uses the same flat bar
+- Settings reordered around what people open it for: **Playback & UI** first (Audio, then
+  Appearance, then Library), then **Services** (YouTube, Spotify, then Last.fm), then
+  **System & About**
+- Typography moved to Figtree with weight-only axes, so the bold-font toggle keeps working
+  and heading tracking no longer silently falls back to body weight
+
+### Added
+
+- Native audio engine, parametric EQ and automix (crossfade, transition planner, WSOLA
+  time stretching) with unit tests under `app/src/main/cpp/tests`
+- Genre explorer, artist/album/playlist detail stacks, podcast and video surfaces, Spotify
+  Canvas and Jam sessions
 
 ## [1.8.0] – 2026-10-29
 

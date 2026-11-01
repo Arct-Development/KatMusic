@@ -73,6 +73,10 @@ class SettingsClearAllDataTest {
     private val discordPresencePreferences = mockk<com.itzfallenme.katmusic.data.presence.DiscordPresencePreferences>(relaxed = true)
     private val equalizerPreferences = mockk<com.itzfallenme.katmusic.data.local.EqualizerPreferences>(relaxed = true)
     private val loudnessPrefs = mockk<com.itzfallenme.katmusic.playback.LoudnessPrefs>(relaxed = true)
+    private val autoEqController = mockk<com.itzfallenme.katmusic.data.autoeq.AutoEqController>(relaxed = true)
+    private val searchHistoryRepository = mockk<com.itzfallenme.katmusic.data.search.SearchHistoryRepository>(relaxed = true)
+    private val localMusicLibrary = mockk<com.itzfallenme.katmusic.data.localmusic.LocalMusicLibrary>(relaxed = true)
+    private val appDatabase = mockk<com.itzfallenme.katmusic.data.local.db.AppDatabase>(relaxed = true)
     private val ytAuthManager = mockk<com.itzfallenme.katmusic.data.ytmusic.YtMusicAuthManager>(relaxed = true)
     private val ytMusicSyncManager = mockk<com.itzfallenme.katmusic.data.ytmusic.YtMusicSyncManager>(relaxed = true)
     private val ytMusicPreferences = mockk<com.itzfallenme.katmusic.data.ytmusic.YtMusicPreferences>(relaxed = true)
@@ -117,6 +121,13 @@ class SettingsClearAllDataTest {
         every { musicPlayer.state } returns playerState
         every { musicPlayer.stopAndClear(clearSession = true) } answers { order += "player" }
         coEvery { downloadManager.clearAllDownloads() } coAnswers { order += "downloads" }
+        coEvery { localMusicLibrary.clearAll() } coAnswers { order += "local-music" }
+        every { searchHistoryRepository.clear() } answers { order += "search-history" }
+        coEvery { appDatabase.clearListeningHistoryAndCaches() } coAnswers { order += "db-caches" }
+        coEvery { autoEqController.clearAll() } coAnswers { order += "autoeq" }
+        coEvery { loudnessPrefs.clearAll() } coAnswers { order += "loudness" }
+        coEvery { spotifyPreferences.clearConnection() } coAnswers { order += "spotify" }
+        coEvery { ytAuthManager.signOut() } coAnswers { order += "youtube" }
         coEvery { discoverRepository.clearRecommendationExclusions() } coAnswers { order += "exclusions" }
         coEvery { podcastProgressStore.clear() } coAnswers { order += "podcast-progress" }
         coEvery { playlistRepository.clearAll() } coAnswers { order += "playlists" }
@@ -140,6 +151,10 @@ class SettingsClearAllDataTest {
             discordPresencePreferences = discordPresencePreferences,
             equalizerPreferences = equalizerPreferences,
             loudnessPrefs = loudnessPrefs,
+            autoEqController = autoEqController,
+            searchHistoryRepository = searchHistoryRepository,
+            localMusicLibrary = localMusicLibrary,
+            appDatabase = appDatabase,
             ytAuthManager = ytAuthManager,
             ytMusicSyncManager = ytMusicSyncManager,
             ytMusicPreferences = ytMusicPreferences,
@@ -185,9 +200,16 @@ class SettingsClearAllDataTest {
             assertThat(order).containsExactly(
                 "player",
                 "downloads",
+                "local-music",
+                "search-history",
+                "db-caches",
+                "autoeq",
+                "loudness",
                 "exclusions",
                 "podcast-progress",
                 "playlists",
+                "spotify",
+                "youtube",
                 "session",
             ).inOrder()
             assertThat(completed).isEqualTo(1)
@@ -229,9 +251,16 @@ class SettingsClearAllDataTest {
             "player",
             "downloads-start",
             "downloads-end",
+            "local-music",
+            "search-history",
+            "db-caches",
+            "autoeq",
+            "loudness",
             "exclusions",
             "podcast-progress",
             "playlists",
+            "spotify",
+            "youtube",
             "session",
         ).inOrder()
         assertThat(completed).isEqualTo(1)
@@ -280,9 +309,16 @@ class SettingsClearAllDataTest {
         assertThat(order).containsExactly(
             "player",
             "downloads",
+            "local-music",
+            "search-history",
+            "db-caches",
+            "autoeq",
+            "loudness",
             "exclusions",
             "podcast-progress",
             "playlists",
+            "spotify",
+            "youtube",
             "session",
         ).inOrder()
         assertThat(completed).isEqualTo(1)
