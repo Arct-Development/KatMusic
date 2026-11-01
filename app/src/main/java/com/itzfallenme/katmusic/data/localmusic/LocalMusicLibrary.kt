@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -116,6 +117,34 @@ class LocalMusicLibrary @Inject constructor(
 
     fun acknowledgeReport() {
         if (_state.value is ImportState.Finished) _state.value = ImportState.Idle
+    }
+
+    /** Deletes imported local-audio copies and releases every remembered SAF folder grant. */
+    suspend fun clearAll() {
+        job?.cancel()
+        job?.join()
+        mutex.withLock {
+            val remembered = _folders.value
+            remembered.forEach { uri ->
+                runCatching {
+                    context.contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }.onFailure { Log.w(TAG, "Couldn't release local music folder grant", it) }
+            }
+            withContext(Dispatchers.IO) {
+                if (root.exists() && !root.deleteRecursively()) {
+                    throw java.io.IOException("Couldn't remove imported local music files")
+                }
+                prefs.edit().clear().commit().also { committed ->
+                    if (!committed) throw java.io.IOException("Couldn't clear local music folder preferences")
+                }
+            }
+            _folders.value = emptyList()
+            _state.value = ImportState.Idle
+            job = null
+        }
     }
 
     fun folderLabel(treeUri: Uri): String {
