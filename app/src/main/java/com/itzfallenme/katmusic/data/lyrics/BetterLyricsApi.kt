@@ -142,7 +142,7 @@ class BetterLyricsApi @Inject constructor(
         }
         val request = Request.Builder()
             .url(builder.build())
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .header("Accept", "application/json")
             .get()
             .build()
