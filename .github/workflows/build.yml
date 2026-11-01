@@ -28,6 +28,8 @@ jobs:
     env:
       SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
       RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
+      KATMUSIC_BLEND_SUPABASE_URL: ${{ secrets.KATMUSIC_BLEND_SUPABASE_URL }}
+      KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - name: Checkout code
