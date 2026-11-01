@@ -649,7 +649,7 @@ private fun FloatingNavBar(
         val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
         val clusterWidth = capsuleWidth + searchGap * searchVisibility + searchSize * searchVisibility
-        val clusterOffset = ((maxWidth - clusterWidth).coerceAtLeast(0.dp) / 2) * expansion
+        val clusterOffset = (maxWidth - clusterWidth).coerceAtLeast(0.dp) / 2
         Row(
             modifier = Modifier.offset(x = clusterOffset),
             verticalAlignment = Alignment.CenterVertically,
@@ -695,60 +695,59 @@ private fun FloatingNavBar(
                         )
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = expansion }
-                            .pointerInput(capsuleTabs, tabWidthPx, selectedIndex) {
-                                detectHorizontalDragGestures(
-                                    onDragStart = {
-                                        dragPosition = indicatorPosition
-                                    },
-                                    onHorizontalDrag = { change, amount ->
-                                        change.consume()
-                                        val next = ((dragPosition ?: indicatorPosition) + amount / tabWidthPx)
-                                            .coerceIn(0f, (capsuleTabs.lastIndex).toFloat())
-                                        dragPosition = next
-                                    },
-                                    onDragEnd = {
-                                        val target = (dragPosition ?: indicatorPosition)
-                                            .roundToInt()
-                                            .coerceIn(0, capsuleTabs.lastIndex)
-                                        onSelect(tabs.indexOf(capsuleTabs[target]))
-                                        dragPosition = null
-                                    },
-                                    onDragCancel = { dragPosition = null },
+                    if (isExpanded) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(capsuleTabs, tabWidthPx, selectedIndex) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = { dragPosition = indicatorPosition },
+                                        onHorizontalDrag = { change, amount ->
+                                            change.consume()
+                                            val next = ((dragPosition ?: indicatorPosition) + amount / tabWidthPx)
+                                                .coerceIn(0f, capsuleTabs.lastIndex.toFloat())
+                                            dragPosition = next
+                                        },
+                                        onDragEnd = {
+                                            val target = (dragPosition ?: indicatorPosition)
+                                                .roundToInt()
+                                                .coerceIn(0, capsuleTabs.lastIndex)
+                                            onSelect(tabs.indexOf(capsuleTabs[target]))
+                                            dragPosition = null
+                                        },
+                                        onDragCancel = { dragPosition = null },
+                                    )
+                                }
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            capsuleTabs.forEach { tab ->
+                                val index = tabs.indexOf(tab)
+                                FloatingNavItem(
+                                    label = androidx.compose.ui.res.stringResource(tab.labelRes),
+                                    icon = tab.icon(),
+                                    selected = selectedIndex == index,
+                                    width = tabWidth,
+                                    onClick = { onSelect(index) },
                                 )
                             }
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        capsuleTabs.forEachIndexed { position, tab ->
-                            val index = tabs.indexOf(tab)
-                            FloatingNavItem(
-                                label = androidx.compose.ui.res.stringResource(tab.labelRes),
-                                icon = tab.icon(),
-                                selected = selectedIndex == index,
-                                width = tabWidth,
-                                onClick = { onSelect(index) },
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .clickable { isExpanded = true },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = selectedTab.icon(),
+                                contentDescription = androidx.compose.ui.res.stringResource(selectedTab.labelRes),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp),
                             )
                         }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = foldedIconAlpha }
-                            .clickable(enabled = !isExpanded) { isExpanded = true },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = selectedTab.icon(),
-                            contentDescription = androidx.compose.ui.res.stringResource(selectedTab.labelRes),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp),
-                        )
                     }
                 }
             }
