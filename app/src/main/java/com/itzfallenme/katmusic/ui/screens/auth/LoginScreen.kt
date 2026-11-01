@@ -5,16 +5,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
@@ -29,7 +33,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +72,7 @@ fun LoginScreen(
     errorMessage: String? = null,
     isBusy: Boolean = false,
     onOpenDownloads: (() -> Unit)? = null,
+    onLegacyFriendlyModeChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     var restoreReadError by remember { mutableStateOf<String?>(null) }
@@ -101,30 +108,61 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Box(Modifier.padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
-                    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                        Icon(
-                            imageVector = Icons.Filled.MusicNote,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(16.dp).size(32.dp),
-                        )
-                    }
-                }
-                Text(stringResource(R.string.set_about_title), style = MaterialTheme.typography.headlineMedium)
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = "KatMusic",
+                    modifier = Modifier.size(112.dp).padding(bottom = 10.dp),
+                )
                 Text(
-                    stringResource(R.string.login_tagline),
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Welcome to KatMusic",
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Your music, your way.",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(22.dp))
+                Text(
+                    "CHOOSE YOUR EXPERIENCE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { onLegacyFriendlyModeChange(true) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Classic", style = MaterialTheme.typography.titleSmall)
+                            Text("Simpler visuals, less motion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { onLegacyFriendlyModeChange(false) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Modern", style = MaterialTheme.typography.titleSmall)
+                            Text("Glass styling and effects", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(22.dp))
                 Spacer(Modifier.height(32.dp))
 
                 // 1. Primary: YouTube Music login.
                 Button(
                     onClick = onLoginWithYouTube,
                     enabled = !isBusy,
-                    shape = ExpressivePillShape,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
                     Icon(
@@ -163,7 +201,7 @@ fun LoginScreen(
                     OutlinedButton(
                         onClick = { restoreBackupLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
                         enabled = !isBusy,
-                        shape = ExpressivePillShape,
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                     ) {
                         Icon(
