@@ -97,6 +97,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.SharedFlow
 import com.itzfallenme.katmusic.ui.navigation.FEED_TAP_DEBOUNCE_MS
 import com.itzfallenme.katmusic.ui.navigation.FeedTapAction
@@ -177,6 +178,7 @@ fun FeedScreen(
     onOpenFriends: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
     onOpenListenTogether: () -> Unit = {},
+    onScrollToTopChanged: (Boolean) -> Unit = {},
     onOpenFriendProfile: (username: String, displayName: String?, avatarUrl: String?) -> Unit = { _, _, _ -> },
     onOpenNewReleases: () -> Unit = {},
     onOpenPodcasts: () -> Unit = {},
@@ -227,6 +229,11 @@ fun FeedScreen(
     }
     val showSynthetic = !state.isChipActive
     val listState = rememberLazyListState()
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }.collect(onScrollToTopChanged)
+    }
     var lastFeedTapMillis by remember { mutableLongStateOf(0L) }
     var isFeedTapRefreshing by remember { mutableStateOf(false) }
 
