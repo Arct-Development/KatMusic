@@ -135,6 +135,7 @@ class LaunchGateViewModel @Inject constructor(
 @Composable
 fun KatMusicNavHost(
     navController: NavHostController = rememberNavController(),
+    forceStartupAnimation: Boolean = false,
 ) {
     val appRouteBridge: AppRouteNavBridge = hiltViewModel()
     val pendingAppRoute by appRouteBridge.routeNavigator.pendingRoute.collectAsStateWithLifecycle()
@@ -143,6 +144,18 @@ fun KatMusicNavHost(
     val updateBridge: AppUpdateNavBridge = hiltViewModel()
     val updateInfo by updateBridge.updateInfo.collectAsStateWithLifecycle()
     val updateContext = androidx.compose.ui.platform.LocalContext.current
+    var startupResetHandled by remember { mutableStateOf(false) }
+    LaunchedEffect(forceStartupAnimation, currentRoute) {
+        if (forceStartupAnimation && !startupResetHandled && currentRoute != null) {
+            startupResetHandled = true
+            if (currentRoute != Screen.Splash.route) {
+                navController.navigate(Screen.Splash.route) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
     LaunchedEffect(pendingAppRoute, currentRoute) {
         val route = pendingAppRoute
         if (route != null && currentRoute != null &&
