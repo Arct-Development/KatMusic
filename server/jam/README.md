@@ -127,8 +127,12 @@ The Android workflows pass these values to Gradle at build time. They are client
 
 The Blend project is independent from the Jam project. Its database size, storage, egress, auth usage and project limits are counted separately. Monitor usage in each Supabase dashboard. Splitting projects isolates quotas; it does not make either project's free tier unlimited.
 
-### Current implementation boundary
+### Android integration status
 
-This migration and environment wiring establish the dedicated Blend database and build configuration. The existing Android Group Blend screen still uses its local DataStore/manual share-code flow until the Supabase Auth, profile sync, room creation/join, and membership repository are connected. Running the SQL alone does not switch the app to cloud Blends. Do not advertise cloud sync as active until that client integration is implemented and tested.
+The Android app now includes a Supabase Auth client, session persistence/refresh, compact profile upsert, cloud Blend create/join, member/profile retrieval, and leave-group support. The Group Blend screen exposes account sign-in/create, online group creation/join, invitation-code sharing, member listing, refresh, and leave actions. Local profile-code import remains available as a fallback.
+
+Cloud operation requires the dedicated project migration to be applied and the two client configuration values to be supplied at build time. If those values are absent, the screen reports that cloud setup is unavailable and the offline fallback remains usable. Email confirmation behavior follows the Supabase project's Auth settings.
+
+**Build and live backend verification are still required.** A successful Android build does not prove that the SQL was applied or that the Supabase project has the expected Auth provider settings. Do not announce production cloud Blend availability until a real account/create/join/leave round trip has been tested against the configured project.
 
 For the current local scoring and profile format, see [Group Blend MVP](../../docs/group-blend-mvp.md).
