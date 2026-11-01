@@ -142,6 +142,7 @@ fun KatMusicNavHost(
     val currentRoute = currentBackStackEntry?.destination?.route
     val updateBridge: AppUpdateNavBridge = hiltViewModel()
     val updateInfo by updateBridge.updateInfo.collectAsStateWithLifecycle()
+    val updateContext = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(pendingAppRoute, currentRoute) {
         val route = pendingAppRoute
         if (route != null && currentRoute != null &&
@@ -741,7 +742,7 @@ fun KatMusicNavHost(
                 }
             },
             confirmButton = {
-                Button(onClick = { updateBridge.open(androidx.compose.ui.platform.LocalContext.current) }) {
+                Button(onClick = { updateBridge.open(updateContext) }) {
                     Text("View update")
                 }
             },
