@@ -98,11 +98,9 @@ import com.itzfallenme.katmusic.ui.components.TrackMenuCapabilities
 import com.itzfallenme.katmusic.ui.components.TrackMenuTarget
 import com.itzfallenme.katmusic.ui.components.TrackMiniTrayData
 import com.itzfallenme.katmusic.ui.components.TrackMiniTraySheet
-import com.itzfallenme.katmusic.ui.components.safeDrawingBottomPadding
 import com.itzfallenme.katmusic.ui.screens.shell.FloatingNavDefaults
 import com.itzfallenme.katmusic.ui.components.safeHorizontalContentPadding
 import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
-import com.itzfallenme.katmusic.ui.screens.player.LocalMiniPlayerScrollClearance
 
 import androidx.compose.foundation.background
 
