@@ -65,6 +65,8 @@ class ClearAllDownloadsTest {
         every { context.contentResolver } returns resolver
         every { context.cacheDir } returns temp.newFolder("cache")
         every { context.filesDir } returns temp.newFolder("files")
+        // clearAllDownloads removes its app-private restore marker from noBackupFilesDir.
+        every { context.noBackupFilesDir } returns temp.newFolder("no-backup")
         every { context.getSystemService(any<String>()) } returns null
         every { settings.settings } returns flowOf(MiscSettings())
         every { resolver.delete(any<Uri>(), isNull<String>(), isNull<Array<String>>()) } answers {
