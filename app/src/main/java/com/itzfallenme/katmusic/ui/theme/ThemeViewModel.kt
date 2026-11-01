@@ -35,4 +35,17 @@ class ThemeViewModel @Inject constructor(
     fun setKatMusicTheme(enabled: Boolean) = viewModelScope.launch {
         themeRepository.setKatMusicTheme(enabled)
     }
+
+    fun setLegacyFriendlyMode(enabled: Boolean) = viewModelScope.launch {
+        themeRepository.setLiquidGlass(!enabled)
+        themeRepository.setMd3NavBar(enabled)
+    }
+
+    fun setLiquidGlass(enabled: Boolean) = viewModelScope.launch {
+        themeRepository.setLiquidGlass(enabled)
+    }
+
+    fun setMd3NavBar(enabled: Boolean) = viewModelScope.launch {
+        themeRepository.setMd3NavBar(enabled)
+    }
 }
