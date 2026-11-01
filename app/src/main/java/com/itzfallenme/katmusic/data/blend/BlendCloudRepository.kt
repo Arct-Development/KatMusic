@@ -53,9 +53,9 @@ class BlendCloudRepository @Inject constructor(
             put("email", email.trim())
             put("password", password)
         }.toString(), authenticated = false)
-        val access = response["access_token"]?.jsonPrimitive?.content
-        val refresh = response["refresh_token"]?.jsonPrimitive?.content
-        val user = response["user"]?.jsonObject
+        val access = response.jsonObject["access_token"]?.jsonPrimitive?.content
+        val refresh = response.jsonObject["refresh_token"]?.jsonPrimitive?.content
+        val user = response.jsonObject["user"]?.jsonObject
         val id = user?.get("id")?.jsonPrimitive?.content
         if (access.isNullOrBlank() || refresh.isNullOrBlank() || id.isNullOrBlank()) {
             throw IllegalStateException("Account created. Check your email for confirmation, then sign in.")
