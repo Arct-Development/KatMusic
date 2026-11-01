@@ -52,6 +52,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ExpandLess
@@ -85,6 +87,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -100,6 +103,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.itzfallenme.katmusic.data.generate.GeneratedTrack
 import com.itzfallenme.katmusic.data.playlist.SavedPlaylist
 import com.itzfallenme.katmusic.data.playlist.LIKED_SONGS_MODE
+import com.itzfallenme.katmusic.data.playlist.LOCAL_SONGS_MODE
 import com.itzfallenme.katmusic.data.playlist.isYouTubeOnly
 import com.itzfallenme.katmusic.playback.toPlayableTrack
 import com.itzfallenme.katmusic.ui.components.ArtworkImage
@@ -129,9 +133,12 @@ fun PlaylistScreen(
     onOpenPlaylist: (Long) -> Unit = {},
     onOpenGenerator: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
+    onOpenStats: () -> Unit = {},
     viewModel: PlaylistViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val likedPlaylist = remember(state.playlists) { state.playlists.firstOrNull { it.mode == LIKED_SONGS_MODE } }
+    val localSongsPlaylist = remember(state.playlists) { state.playlists.firstOrNull { it.mode == LOCAL_SONGS_MODE } }
     val context = LocalContext.current
     val musicPlayer = com.itzfallenme.katmusic.ui.screens.player.LocalMusicPlayer.current
     val playbackState by musicPlayer.chromeState.collectAsStateWithLifecycle()
@@ -170,7 +177,7 @@ fun PlaylistScreen(
         ) {
             var sortMenuExpanded by remember { mutableStateOf(false) }
             ScreenHeader(
-                title = if (selectedPlaylists.isNotEmpty()) stringResource(R.string.pl_selected_count, selectedPlaylists.size) else stringResource(R.string.pl_title),
+                title = if (selectedPlaylists.isNotEmpty()) stringResource(R.string.pl_selected_count, selectedPlaylists.size) else "Your library",
                 subtitle = if (selectedPlaylists.isNotEmpty()) stringResource(R.string.pl_select_more_hint) else if (state.playlists.any { it.isYouTubeOnly && it.remoteTrackCount == null }) {
                     stringResource(R.string.pl_count_only, state.playlists.size)
                 } else {
@@ -324,11 +331,13 @@ fun PlaylistScreen(
             }
 
             val filteredPlaylists = remember(state.playlists, searchQuery) {
-                if (searchQuery.isBlank()) state.playlists
-                else state.playlists.filter {
+                val matching = if (searchQuery.isBlank()) state.playlists else state.playlists.filter {
                     it.title.contains(searchQuery, ignoreCase = true) ||
                         it.tracks.any { t -> t.name.contains(searchQuery, ignoreCase = true) || t.artist.contains(searchQuery, ignoreCase = true) }
                 }
+                if (searchQuery.isBlank()) matching.filterNot {
+                    it.mode == LIKED_SONGS_MODE || it.mode == LOCAL_SONGS_MODE
+                } else matching
             }
 
             Box(
@@ -338,12 +347,96 @@ fun PlaylistScreen(
             ) {
                 when {
                     state.isLoading && state.playlists.isEmpty() && !state.isGenerating -> LoadingState()
-                    filteredPlaylists.isEmpty() && !state.isGenerating -> EmptyState()
+                    filteredPlaylists.isEmpty() && searchQuery.isNotBlank() && !state.isGenerating -> EmptyState()
                     else -> LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = FloatingNavDefaults.contentBottomPadding()),
                         verticalArrangement = Arrangement.spacedBy(com.itzfallenme.katmusic.ui.components.GroupGap),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
+                        if (searchQuery.isBlank() && selectedPlaylists.isEmpty()) {
+                            item(key = "libraryCollections") {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        "Collections",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 2.dp),
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        if (likedPlaylist != null) {
+                                            LibraryCollectionTile(
+                                                title = "Liked songs",
+                                                subtitle = "${likedPlaylist.tracks.size} tracks",
+                                                icon = Icons.Filled.Favorite,
+                                                playlist = likedPlaylist,
+                                                onClick = { onOpenPlaylist(likedPlaylist.id) },
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                        if (localSongsPlaylist != null) {
+                                            LibraryCollectionTile(
+                                                title = "Local music",
+                                                subtitle = "${localSongsPlaylist.tracks.size} tracks",
+                                                icon = Icons.Filled.MusicNote,
+                                                playlist = localSongsPlaylist,
+                                                onClick = { onOpenPlaylist(localSongsPlaylist.id) },
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                        if (likedPlaylist == null && localSongsPlaylist == null) {
+                                            LibraryCollectionTile(
+                                                title = "Your music",
+                                                subtitle = "Build your collection",
+                                                icon = Icons.Filled.MusicNote,
+                                                onClick = viewModel::openCreateDialog,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        LibraryCollectionTile(
+                                            title = "Downloads",
+                                            subtitle = "Music saved offline",
+                                            icon = Icons.Filled.Download,
+                                            onClick = onOpenDownloads,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        LibraryCollectionTile(
+                                            title = "Listening stats",
+                                            subtitle = "Your habits and favourites",
+                                            icon = Icons.Filled.BarChart,
+                                            onClick = onOpenStats,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (filteredPlaylists.isNotEmpty()) {
+                            item(key = "libraryPlaylistsHeading") {
+                                Text(
+                                    "Playlists",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 8.dp, start = 2.dp, bottom = 2.dp),
+                                )
+                            }
+                        } else if (searchQuery.isBlank() && !state.isLoading && !state.isGenerating) {
+                            item(key = "libraryEmptyPlaylists") {
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        "Your playlists will appear here. Create one or generate a mix to get started.",
+                                        modifier = Modifier.padding(18.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
                         if (state.isGenerating) {
                             item(key = "generationProgress", contentType = "generationProgress") {
                                 com.itzfallenme.katmusic.ui.components.GenerationProgressCard(message = state.generatingMessage)
@@ -955,3 +1048,75 @@ private fun FormatOptionRow(title: String, description: String, selected: Boolea
 
 private fun formatDate(millis: Long): String =
     SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(millis))
+
+
+@Composable
+private fun LibraryCollectionTile(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    playlist: SavedPlaylist? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(104.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
+                if (playlist != null) {
+                    PlaylistCover(
+                        playlist = playlist,
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadius = 16.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Center).size(34.dp),
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(8.dp).size(18.dp),
+                    )
+                }
+            }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
