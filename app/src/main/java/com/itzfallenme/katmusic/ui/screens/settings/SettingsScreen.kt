@@ -943,7 +943,7 @@ fun SettingsScreen(
                         icon = Icons.Filled.Person,
                         iconContainer = MaterialTheme.colorScheme.primaryContainer,
                         iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        title = "By Arct Development",
+                        title = "Developed by Arct Development",
                         subtitle = "github.com/Arct-Development",
                         onClick = {
                             val intent = Intent(
@@ -2320,7 +2320,7 @@ fun SettingsScreen(
                                     icon = Icons.Filled.Person,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    title = "By Arct Development",
+                                    title = "Developed by Arct Development",
                                     subtitle = "github.com/Arct-Development",
                                     onClick = {
                                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Arct-Development"))
@@ -4705,7 +4705,7 @@ private fun AboutCard(versionName: String) {
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "By Arct Development",
+                "Developed by Arct Development",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
