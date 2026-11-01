@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.ui.screens.jam
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -173,6 +174,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                 Text(playback!!.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                 Text(playback!!.artist, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(if (playback!!.isPlaying) "Playing" else "Paused", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            if (!isHost) OutlinedButton(onClick = viewModel::suggestCurrentTrack, modifier = Modifier.fillMaxWidth()) { Text("Suggest my current track") }
                             }
                         }
                     }
