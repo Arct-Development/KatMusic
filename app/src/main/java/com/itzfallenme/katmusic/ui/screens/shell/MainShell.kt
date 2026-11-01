@@ -478,7 +478,10 @@ fun MainShell(
             } else {
                 bottomNavSlot.value = {}
             }
-            onDispose { bottomNavSlot.value = {} }
+            onDispose {
+                bottomNavSlot.value = {}
+                com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavCollapsed.current.value = false
+            }
         }
     }
 }
@@ -588,6 +591,7 @@ private fun FloatingNavBar(
 
     BoxWithConstraints(
         modifier = modifier
+            .fillMaxWidth()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             )
@@ -615,7 +619,10 @@ private fun FloatingNavBar(
         val indicatorOffset = 6.dp + (tabWidth * indicatorProgress)
         val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
+        val clusterWidth = capsuleWidth + searchGap * searchVisibility + searchSize * searchVisibility
+        val clusterOffset = ((maxWidth - clusterWidth).coerceAtLeast(0.dp) / 2) * expansion
         Row(
+            modifier = Modifier.offset(x = clusterOffset),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
