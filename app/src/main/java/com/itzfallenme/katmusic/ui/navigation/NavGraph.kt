@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -773,30 +774,48 @@ fun KatMusicNavHost(
 @Composable
 private fun LaunchGate(onAnimationFinished: () -> Unit) {
     var videoFinished by remember { mutableStateOf(false) }
-    var showName by remember { mutableStateOf(false) }
+
+    // Keep the brand lockup composed from the first frame. Its initial layout
+    // reserves the final wordmark width, then moves the mark from screen centre
+    // into its final left-hand position when the video reaches its own logo frame.
     val logoOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (showName) (-34).dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(560),
+        targetValue = if (videoFinished) 0.dp else 86.dp,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 620,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing,
+        ),
         label = "startupLogoSlide",
     )
+    val wordmarkAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (videoFinished) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 480,
+            delayMillis = 90,
+        ),
+        label = "startupWordmarkFade",
+    )
+    val wordmarkOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (videoFinished) 0.dp else 22.dp,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 520,
+            delayMillis = 70,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing,
+        ),
+        label = "startupWordmarkSlide",
+    )
 
-    // Never skip the animation because auth/session loading finishes early.
-    // The timeout is only a decoder-failure safety net; normal navigation is
-    // driven by the actual video completion callback.
+    // The clip is ~1.37 seconds. This is only a broken-decoder fallback;
+    // normal completion is driven by VideoView's completion callback.
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(18_000L)
-        if (!videoFinished) videoFinished = true
+        kotlinx.coroutines.delay(8_000L)
+        if (!videoFinished) {
+            android.util.Log.w("KatMusicSplash", "Logo animation timed out; showing static brand mark")
+            videoFinished = true
+        }
     }
     LaunchedEffect(videoFinished) {
         if (videoFinished) {
-            kotlinx.coroutines.delay(240L)
-            showName = true
-        }
-    }
-    LaunchedEffect(showName) {
-        if (showName) {
-            // Let the mark settle and the wordmark complete its entrance
-            // before removing the splash destination from the back stack.
+            // Logo and wordmark animations finish before navigation starts.
             kotlinx.coroutines.delay(760L)
             onAnimationFinished()
         }
@@ -817,11 +836,14 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
                                 "android.resource://${context.packageName}/${com.itzfallenme.katmusic.R.raw.startup_logo}",
                             ),
                         )
-                        setOnPreparedListener { player ->
-                            player.isLooping = false
+                        setOnPreparedListener { mediaPlayer ->
+                            mediaPlayer.isLooping = false
                             start()
                         }
                         setOnCompletionListener {
+                            // The final frame of the clip is the KatMusic emblem.
+                            // Swap to the matching static mark without any second
+                            // entrance animation, then animate that mark left.
                             videoFinished = true
                         }
                         setOnErrorListener { _, what, extra ->
@@ -837,34 +859,30 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
             )
         }
 
-        androidx.compose.animation.AnimatedVisibility(
-            visible = videoFinished,
-            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(360)),
+        // Fixed-width composition is essential here: the row does not grow
+        // when the app name appears, so the logo has one clean, predictable
+        // centre-to-left motion rather than jumping as the layout recentres.
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.alpha(if (videoFinished) 1f else 0f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
         ) {
-            androidx.compose.foundation.layout.Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-            ) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_logo),
-                    contentDescription = "KatMusic logo",
-                    modifier = Modifier.size(76.dp).offset(x = logoOffset),
-                )
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showName,
-                    enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(420)) +
-                        androidx.compose.animation.slideInHorizontally(
-                            initialOffsetX = { it / 2 },
-                            animationSpec = androidx.compose.animation.core.tween(520),
-                        ),
-                ) {
-                    Text(
-                        "Kat Music",
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.headlineLarge,
-                    )
-                }
-            }
+            androidx.compose.foundation.Image(
+                painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_logo),
+                contentDescription = "KatMusic logo",
+                modifier = Modifier
+                    .size(88.dp)
+                    .offset(x = logoOffset),
+            )
+            Text(
+                text = "Kat Music",
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.headlineLarge,
+                maxLines = 1,
+                modifier = Modifier
+                    .offset(x = wordmarkOffset)
+                    .alpha(wordmarkAlpha),
+            )
         }
     }
 }
