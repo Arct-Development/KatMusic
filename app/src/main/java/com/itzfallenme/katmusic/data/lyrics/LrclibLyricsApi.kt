@@ -102,7 +102,7 @@ class LrclibLyricsApi @Inject constructor(
 
         val request = Request.Builder()
             .url(urlBuilder.build())
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .build()
 
         return try {
@@ -129,7 +129,7 @@ class LrclibLyricsApi @Inject constructor(
 
         val request = Request.Builder()
             .url(urlBuilder.build())
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .build()
 
         return try {
