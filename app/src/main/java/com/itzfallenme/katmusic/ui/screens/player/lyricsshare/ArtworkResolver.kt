@@ -6,7 +6,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
+import androidx.core.graphics.drawable.toBitmap
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -54,13 +54,18 @@ object ArtworkResolver {
 
                     val result = context.imageLoader.execute(request)
                     if (result is SuccessResult) {
-                        (result.drawable as? BitmapDrawable)?.bitmap?.let { original ->
-                            // Ensure it's a software bitmap
-                            if (original.config == Bitmap.Config.HARDWARE) {
-                                original.copy(Bitmap.Config.ARGB_8888, false)
-                            } else {
-                                original
-                            }
+                        // Coil may return BitmapDrawable, ImageBitmapDrawable, or another
+                        // Drawable implementation. A BitmapDrawable-only cast silently
+                        // discarded valid album art on several providers.
+                        val original = result.drawable.toBitmap(
+                            width = 1080,
+                            height = 1080,
+                            config = Bitmap.Config.ARGB_8888,
+                        )
+                        if (original.config == Bitmap.Config.HARDWARE) {
+                            original.copy(Bitmap.Config.ARGB_8888, false)
+                        } else {
+                            original
                         }
                     } else null
                 }.getOrNull()
