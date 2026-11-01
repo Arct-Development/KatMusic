@@ -1,5 +1,6 @@
 package com.itzfallenme.katmusic.ui.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -187,23 +190,26 @@ fun KatMusicNavHost(
             val gateViewModel: LaunchGateViewModel = hiltViewModel()
             val gateTarget by gateViewModel.gateTarget.collectAsStateWithLifecycle()
 
-            LaunchedEffect(gateTarget) {
-                when (gateTarget) {
-                    LaunchGateViewModel.GateTarget.MainShell -> navController.navigate(Screen.MainShell.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+            var openingAnimationFinished by remember { mutableStateOf(false) }
+            LaunchedEffect(gateTarget, openingAnimationFinished) {
+                if (openingAnimationFinished) {
+                    when (gateTarget) {
+                        LaunchGateViewModel.GateTarget.MainShell -> navController.navigate(Screen.MainShell.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                        LaunchGateViewModel.GateTarget.Login -> navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                        LaunchGateViewModel.GateTarget.Loading -> Unit
                     }
-                    LaunchGateViewModel.GateTarget.Login -> navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                    LaunchGateViewModel.GateTarget.Loading -> Unit // keep waiting
                 }
             }
-
-            LaunchGate()
+            LaunchGate { openingAnimationFinished = true }
         }
 
         composable(Screen.Login.route) {
             val authViewModel: AuthViewModel = hiltViewModel()
+            val themeViewModel: com.itzfallenme.katmusic.ui.theme.ThemeViewModel = hiltViewModel()
             val gateViewModel: LaunchGateViewModel = hiltViewModel()
             val gateTarget by gateViewModel.gateTarget.collectAsStateWithLifecycle()
             val webAuthState by authViewModel.webAuthState.collectAsStateWithLifecycle()
@@ -235,6 +241,7 @@ fun KatMusicNavHost(
                 onDismissError = authViewModel::dismissError,
                 errorMessage = restoreError,
                 isBusy = restoring,
+                onLegacyFriendlyModeChange = themeViewModel::setLegacyFriendlyMode,
                 onOpenDownloads = {
                     navController.navigate(Screen.Downloads.route)
                 },
@@ -693,26 +700,55 @@ fun KatMusicNavHost(
 }
 
 @Composable
-private fun LaunchGate() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                tonalElevation = 6.dp,
-                shadowElevation = 10.dp,
-                modifier = Modifier.size(88.dp),
+private fun LaunchGate(onAnimationFinished: () -> Unit) {
+    var finished by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(3_500L)
+        if (!finished) {
+            finished = true
+            onAnimationFinished()
+        }
+    }
+    Box(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!finished) {
+            androidx.compose.ui.viewinterop.AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    android.widget.VideoView(context).apply {
+                        setVideoPath("file:///android_asset/startup-logo.mp4")
+                        setOnPreparedListener { it.isLooping = false; start() }
+                        setOnCompletionListener {
+                            finished = true
+                            onAnimationFinished()
+                        }
+                        setOnErrorListener { _, _, _ ->
+                            finished = true
+                            onAnimationFinished()
+                            true
+                        }
+                    }
+                },
+                update = { if (!it.isPlaying && !finished) it.start() },
+            )
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = finished,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(280)),
+        ) {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
             ) {
                 androidx.compose.foundation.Image(
                     painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    contentDescription = "KatMusic logo",
+                    modifier = Modifier.size(76.dp),
                 )
+                Text("Kat Music", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.headlineLarge)
             }
-            Spacer(Modifier.height(18.dp))
-            Text("KatMusic", style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(20.dp))
-            LoadingPulse(message = "Preparing your music")
         }
     }
 }
