@@ -24,4 +24,7 @@ interface ArtworkCacheDao {
 
     @Upsert
     suspend fun upsert(entity: ArtworkCacheEntity)
+
+    @Query("DELETE FROM artwork_cache")
+    suspend fun clearAll()
 }
