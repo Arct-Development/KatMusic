@@ -11,6 +11,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,6 +23,10 @@ import java.io.Closeable
 import java.util.concurrent.TimeUnit
 
 data class JamEvent(val type: String, val payload: JsonObject)
+
+data class JamRoomMember(val id: String, val displayName: String, val role: String)
+data class JamPlayback(val title: String, val artist: String, val videoId: String, val artworkUrl: String, val isPlaying: Boolean, val positionMs: Long, val durationMs: Long)
+data class JamTrackSuggestion(val from: String, val displayName: String, val title: String, val artist: String, val videoId: String, val artworkUrl: String)
 
 data class JamJoinRequest(
     val requestId: String,
@@ -50,6 +56,15 @@ class ListenTogetherWebSocketClient : Closeable {
     private val _isHost = MutableStateFlow(false)
     private val _memberId = MutableStateFlow("")
     val isHost: StateFlow<Boolean> = _isHost.asStateFlow()
+
+    private val _members = MutableStateFlow<List<JamRoomMember>>(emptyList())
+    val members: StateFlow<List<JamRoomMember>> = _members.asStateFlow()
+    private val _playback = MutableStateFlow<JamPlayback?>(null)
+    val playback: StateFlow<JamPlayback?> = _playback.asStateFlow()
+    private val _sharedQueue = MutableStateFlow<List<JamPlayback>>(emptyList())
+    val sharedQueue: StateFlow<List<JamPlayback>> = _sharedQueue.asStateFlow()
+    private val _suggestions = MutableStateFlow<List<JamTrackSuggestion>>(emptyList())
+    val suggestions: StateFlow<List<JamTrackSuggestion>> = _suggestions.asStateFlow()
 
     private val _pendingRequests = MutableStateFlow<List<JamJoinRequest>>(emptyList())
     val pendingRequests: StateFlow<List<JamJoinRequest>> = _pendingRequests.asStateFlow()
@@ -107,6 +122,9 @@ class ListenTogetherWebSocketClient : Closeable {
                 if (!code.isNullOrBlank()) _roomCode.value = code
                 val token = message["sessionToken"]?.jsonPrimitive?.contentOrNull
                 if (!token.isNullOrBlank()) _sessionToken.value = token
+                if (type == "room_created" || type == "room_joined" || type == "room_reconnected") {
+                    message["room"]?.jsonObject?.let(::applyRoomSnapshot)
+                }
                 when (type) {
                     "room_created", "room_joined", "room_reconnected" -> {
                         message["memberId"]?.jsonPrimitive?.contentOrNull?.let { _memberId.value = it }
@@ -128,12 +146,45 @@ class ListenTogetherWebSocketClient : Closeable {
                     "host_changed" -> {
                         val hostId = message["hostId"]?.jsonPrimitive?.contentOrNull
                         _isHost.value = !hostId.isNullOrBlank() && hostId == _memberId.value
+                        _members.value = _members.value.map { it.copy(role = if (it.id == hostId) "host" else "guest") }
+                    }
+                    "member_joined" -> {
+                        val member = message["member"]?.jsonObject
+                        if (member != null) {
+                            val id = member["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                            if (id.isNotBlank() && _members.value.none { it.id == id }) {
+                                _members.value = _members.value + JamRoomMember(id, member["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener", member["role"]?.jsonPrimitive?.contentOrNull ?: "guest")
+                            }
+                        }
+                    }
+                    "member_left" -> {
+                        val id = message["memberId"]?.jsonPrimitive?.contentOrNull
+                        _members.value = _members.value.filterNot { it.id == id }
+                    }
+                    "playback_state" -> message["payload"]?.jsonObject?.let { _playback.value = it.toJamPlayback() }
+                    "queue_update" -> message["payload"]?.jsonObject?.get("queue")?.jsonArray?.let { queue ->
+                        _sharedQueue.value = queue.mapNotNull { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }
+                    }
+                    "queue_suggestion" -> {
+                        val track = message["track"]?.jsonObject
+                        if (track != null) _suggestions.value = (_suggestions.value + JamTrackSuggestion(
+                            from = message["from"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
+                            title = track["title"]?.jsonPrimitive?.contentOrNull ?: "Unknown track",
+                            artist = track["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist",
+                            videoId = track["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            artworkUrl = track["artworkUrl"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        )).takeLast(30)
                     }
                     "room_left", "join_denied" -> {
                         _memberId.value = ""
                         _roomCode.value = ""
                         _sessionToken.value = ""
                         _isHost.value = false
+                        _members.value = emptyList()
+                        _playback.value = null
+                        _sharedQueue.value = emptyList()
+                        _suggestions.value = emptyList()
                     }
                     "error" -> {
                         val detail = message["message"]?.jsonPrimitive?.contentOrNull
@@ -159,6 +210,34 @@ class ListenTogetherWebSocketClient : Closeable {
                 _connectionState.value = t.message?.take(120) ?: "Connection failed"
             }
         })
+    }
+
+    private fun applyRoomSnapshot(room: JsonObject) {
+        _members.value = room["members"]?.jsonArray?.mapNotNull { item ->
+            runCatching {
+                val member = item.jsonObject
+                JamRoomMember(
+                    id = member["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    displayName = member["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
+                    role = member["role"]?.jsonPrimitive?.contentOrNull ?: "guest",
+                )
+            }.getOrNull()
+        }.orEmpty()
+        _playback.value = room["playback"]?.jsonObject?.let { runCatching { it.toJamPlayback() }.getOrNull() }
+        _sharedQueue.value = room["queue"]?.jsonArray?.mapNotNull { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }.orEmpty()
+    }
+
+    private fun JsonObject.toJamPlayback(): JamPlayback {
+        val track = this["track"]?.jsonObject ?: this
+        return JamPlayback(
+            title = track["title"]?.jsonPrimitive?.contentOrNull ?: "Unknown track",
+            artist = track["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist",
+            videoId = track["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            artworkUrl = track["artworkUrl"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            isPlaying = this["isPlaying"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false,
+            positionMs = this["positionMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L,
+            durationMs = this["durationMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L,
+        )
     }
 
     private fun send(message: JsonObject): Boolean =
@@ -269,6 +348,14 @@ class ListenTogetherWebSocketClient : Closeable {
         _sessionToken.value = ""
         _isHost.value = false
         _pendingRequests.value = emptyList()
+        _members.value = emptyList()
+        _playback.value = null
+        _sharedQueue.value = emptyList()
+        _suggestions.value = emptyList()
+    }
+
+    fun dismissSuggestion(videoId: String) {
+        _suggestions.value = _suggestions.value.filterNot { it.videoId == videoId }
     }
 
     override fun close() {
