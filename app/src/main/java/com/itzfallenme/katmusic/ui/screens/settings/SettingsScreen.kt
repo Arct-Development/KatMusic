@@ -3296,19 +3296,6 @@ private fun IconBadge(painter: Painter, container: Color, tint: Color, modifier:
     }
 }
 @Composable
-private fun IconBadge(painter: Painter, container: Color, tint: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(painter, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
 private fun ThemeModeSelectorCard(
     currentThemeMode: ThemeMode,
     onSelectThemeMode: (ThemeMode) -> Unit,
@@ -3441,7 +3428,8 @@ private fun SettingsToggleCard(
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )            }
+                )
+            }
             Spacer(Modifier.width(8.dp))
             Switch(
                 checked = checked,
@@ -3746,7 +3734,6 @@ private fun SettingsActionCard(
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = titleColor, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
             Icon(
                 Icons.Filled.ChevronRight,
