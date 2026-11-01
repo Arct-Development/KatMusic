@@ -591,7 +591,7 @@ private fun FloatingNavBar(
     onOpenGenerator: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val liquidGlass = true
+    val liquidGlass = LocalLiquidGlass.current
     val searchIndex = tabs.indexOf(MainTab.SEARCH)
     val isSearchSelected = selectedIndex == searchIndex
     val capsuleTabs = remember(tabs) { tabs.filterNot { it == MainTab.SEARCH } }
