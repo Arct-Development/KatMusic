@@ -185,6 +185,18 @@ class AutoEqController @Inject constructor(
         writeState(AutoEqState())
     }
 
+    /** Reset the dedicated AutoEQ store, including every saved device profile. */
+    suspend fun clearAll() {
+        store.edit { it.clear() }
+        runCatching {
+            ParametricEqNative.publish(
+                enabled = false,
+                preampDb = 0f,
+                filters = emptyList(),
+            )
+        }.onFailure { Log.w(TAG, "Couldn't reset the live native AutoEQ state", it) }
+    }
+
     /** Remove the enabled flag, custom curve and every saved per-device profile. */
     suspend fun clearAll() {
         store.edit { it.clear() }
