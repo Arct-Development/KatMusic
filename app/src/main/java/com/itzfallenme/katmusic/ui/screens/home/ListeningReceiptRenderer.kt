@@ -7,11 +7,11 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.TextPaint
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 
-/** Editorial, print-inspired Soundprint artwork using only measured listening data. */
+/**
+ * Soundprint is an editorial listening report, not a synthetic audio visualizer.
+ * Its hierarchy is built around the user's actual listening data.
+ */
 object SoundprintRenderer {
     private const val WIDTH = 1080
     private const val HEIGHT = 1600
@@ -19,97 +19,96 @@ object SoundprintRenderer {
     fun render(insights: ListeningInsights): Bitmap {
         val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paper = 0xFFF1F0EA.toInt()
-        val ink = 0xFF17191D.toInt()
-        val secondary = 0xFF62666D.toInt()
-        val rule = 0xFFD1D0C9.toInt()
-        val accent = 0xFF2858C8.toInt()
-        canvas.drawColor(paper)
+        val background = 0xFF101216.toInt()
+        val panel = 0xFF1A1E24.toInt()
+        val ink = 0xFFF4F3EF.toInt()
+        val muted = 0xFF9CA3AD.toInt()
+        val rule = 0xFF343A43.toInt()
+        val accent = 0xFFB9F36A.toInt()
+        canvas.drawColor(background)
 
-        fun paint(color: Int, width: Float = 1f, style: Paint.Style = Paint.Style.FILL) =
+        fun paint(color: Int, style: Paint.Style = Paint.Style.FILL, stroke: Float = 1f) =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 this.color = color
-                strokeWidth = width
                 this.style = style
-                strokeCap = Paint.Cap.SQUARE
+                strokeWidth = stroke
             }
+
         fun type(size: Float, color: Int, weight: Int = Typeface.NORMAL) =
             TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = size
                 this.color = color
                 typeface = Typeface.create("sans-serif", weight)
             }
-        fun fitted(value: String, p: TextPaint, maxWidth: Float): String {
-            var result = value.ifBlank { "—" }
+
+        fun fitted(text: String, p: TextPaint, maxWidth: Float): String {
+            var result = text.ifBlank { "—" }
             while (result.length > 2 && p.measureText(result) > maxWidth) {
                 result = result.dropLast(2).trimEnd() + "…"
             }
             return result
         }
-        fun label(value: String, x: Float, y: Float, color: Int = secondary) {
-            canvas.drawText(value.uppercase(Locale.ROOT), x, y, type(20f, color, Typeface.BOLD))
+
+        fun label(text: String, x: Float, y: Float, color: Int = muted) {
+            canvas.drawText(text.uppercase(Locale.ROOT), x, y, type(20f, color, Typeface.BOLD))
         }
-        fun value(value: String, x: Float, y: Float, size: Float, maxWidth: Float = 880f) {
+
+        fun headline(text: String, x: Float, y: Float, size: Float, maxWidth: Float = 900f) {
             val p = type(size, ink, Typeface.BOLD)
-            canvas.drawText(fitted(value, p, maxWidth), x, y, p)
+            canvas.drawText(fitted(text, p, maxWidth), x, y, p)
         }
 
         val margin = 84f
-        canvas.drawRect(margin, 70f, WIDTH - margin, 73f, paint(ink))
-        label("KATMUSIC  /  LISTENING ARCHIVE", margin, 120f, accent)
-        label("SOUNDPRINT     NO. 01", 770f, 120f)
-        value("A record of", margin, 270f, 104f)
-        value("what you return to.", margin, 378f, 88f)
-        canvas.drawText("Your listening, translated into a personal signal.", margin + 4f, 430f, type(27f, secondary))
+        canvas.drawRect(margin, 68f, WIDTH - margin, 72f, paint(accent))
+        label("KATMUSIC     /     LISTENING REPORT", margin, 126f, accent)
+        label("SOUNDPRINT  01", 790f, 126f)
+        headline("Your time, well spent.", margin, 285f, 82f)
+        canvas.drawText("A personal record of the music you came back to.", margin, 340f, type(27f, muted))
 
-        val seed = abs(
-            insights.completedPlays.coerceAtLeast(0).toLong() * 13L +
-                insights.uniqueTracks.coerceAtLeast(0).toLong() * 31L +
-                insights.skips.coerceAtLeast(0).toLong() * 7L +
-                insights.totalListeningMs.coerceAtLeast(0L) / 60_000L,
-        )
-        val centerY = 690f
-        val barCount = 88
-        val barWidth = 6f
-        val gap = 4.5f
-        val totalWidth = barCount * (barWidth + gap) - gap
-        val startX = (WIDTH - totalWidth) / 2f
-        canvas.drawLine(margin, centerY, WIDTH - margin, centerY, paint(rule, 2f))
-        for (i in 0 until barCount) {
-            val wave = abs(sin(i * 0.31) * cos(i * 0.087 + seed % 19))
-            val detail = ((seed + i * 47L) % 37L).toFloat() / 37f
-            val height = 24f + wave.toFloat() * 118f + detail * 32f
-            val x = startX + i * (barWidth + gap)
-            val color = if (i % 11 == 0 || i % 11 == 1) accent else ink
-            canvas.drawRoundRect(RectF(x, centerY - height, x + barWidth, centerY + height), 3f, 3f, paint(color))
-        }
-        label("LISTENING FREQUENCY", margin, 900f, accent)
-        canvas.drawText("A visual mark, not a score.", margin, 936f, type(22f, secondary))
-
-        canvas.drawLine(margin, 1000f, WIDTH - margin, 1000f, paint(ink, 2f))
         val totalMs = insights.totalListeningMs.coerceAtLeast(0L)
         val hours = totalMs / 3_600_000L
         val minutes = (totalMs % 3_600_000L) / 60_000L
-        val columns = listOf(
-            Triple("LISTENING TIME", "${hours}h ${minutes}m", margin),
-            Triple("COMPLETED PLAYS", String.format(Locale.ROOT, "%,d", insights.completedPlays.coerceAtLeast(0)), 420f),
-            Triple("UNIQUE TRACKS", String.format(Locale.ROOT, "%,d", insights.uniqueTracks.coerceAtLeast(0)), 755f),
+        val duration = if (hours >= 100L) String.format(Locale.ROOT, "%,d", hours) else hours.toString()
+
+        canvas.drawRoundRect(RectF(margin, 410f, WIDTH - margin, 830f), 24f, 24f, paint(panel))
+        label("TIME SPENT LISTENING", margin + 42f, 480f, accent)
+        val durationPaint = type(220f, ink, Typeface.BOLD)
+        val durationText = fitted(duration, durationPaint, 770f)
+        canvas.drawText(durationText, margin + 38f, 700f, durationPaint)
+        canvas.drawText("HOURS", margin + 46f, 766f, type(28f, muted, Typeface.BOLD))
+        canvas.drawText(String.format(Locale.ROOT, "%02d MINUTES", minutes), 690f, 766f, type(24f, muted, Typeface.BOLD))
+
+        canvas.drawLine(margin, 900f, WIDTH - margin, 900f, paint(rule, Paint.Style.STROKE, 2f))
+        val metricTop = 970f
+        val metricColumns = listOf(
+            Triple("COMPLETED PLAYS", String.format(Locale.ROOT, "%,d", insights.completedPlays.coerceAtLeast(0)), margin),
+            Triple("UNIQUE TRACKS", String.format(Locale.ROOT, "%,d", insights.uniqueTracks.coerceAtLeast(0)), 430f),
+            Triple("SKIPS", String.format(Locale.ROOT, "%,d", insights.skips.coerceAtLeast(0)), 755f),
         )
-        columns.forEach { (heading, metric, x) ->
-            label(heading, x, 1060f)
-            val p = type(49f, ink, Typeface.BOLD)
-            canvas.drawText(fitted(metric, p, 250f), x, 1132f, p)
+        metricColumns.forEach { (name, value, x) ->
+            label(name, x, metricTop)
+            val p = type(56f, ink, Typeface.BOLD)
+            canvas.drawText(fitted(value, p, 245f), x, metricTop + 82f, p)
         }
-        canvas.drawLine(margin, 1190f, WIDTH - margin, 1190f, paint(rule, 2f))
-        label("MOST PLAYED", margin, 1260f, accent)
-        value(insights.topTrackTitle?.takeIf(String::isNotBlank) ?: "The next favourite", margin, 1332f, 48f, 900f)
-        canvas.drawText(insights.topTrackArtist?.takeIf(String::isNotBlank) ?: "Keep listening", margin, 1378f, type(27f, secondary))
-        insights.topArtist?.takeIf(String::isNotBlank)?.let {
-            label("TOP ARTIST", margin, 1460f)
-            value(it, margin, 1512f, 34f, 900f)
+
+        canvas.drawLine(margin, 1110f, WIDTH - margin, 1110f, paint(rule, Paint.Style.STROKE, 2f))
+        label("ON REPEAT", margin, 1190f, accent)
+        headline(insights.topTrackTitle?.takeIf(String::isNotBlank) ?: "Your next favourite", margin, 1280f, 54f)
+        canvas.drawText(
+            insights.topTrackArtist?.takeIf(String::isNotBlank) ?: "Keep listening",
+            margin, 1330f, type(29f, muted),
+        )
+
+        val artist = insights.topArtist?.takeIf(String::isNotBlank)
+        if (artist != null) {
+            canvas.drawRoundRect(RectF(margin, 1390f, WIDTH - margin, 1490f), 16f, 16f, paint(panel))
+            label("TOP ARTIST", margin + 28f, 1430f)
+            headline(artist, margin + 28f, 1470f, 34f, 820f)
         }
-        canvas.drawLine(margin, 1540f, WIDTH - margin, 1540f, paint(ink, 2f))
-        canvas.drawText("A snapshot of your listening.   /   KATMUSIC", margin, 1572f, type(18f, secondary, Typeface.BOLD))
+
+        canvas.drawLine(margin, 1530f, WIDTH - margin, 1530f, paint(rule, Paint.Style.STROKE, 2f))
+        label("MADE OF YOUR LISTENING  /  KATMUSIC", margin, 1570f, muted)
+        canvas.drawRect(WIDTH - margin - 12f, 1558f, WIDTH - margin, 1570f, paint(accent))
         return bitmap
     }
 }
