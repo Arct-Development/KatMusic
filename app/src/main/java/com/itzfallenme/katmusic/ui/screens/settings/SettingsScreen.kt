@@ -1028,18 +1028,6 @@ fun SettingsScreen(
                         }
                         add { position ->
                             SettingsActionCard(
-                                icon = Icons.Filled.Group,
-                                iconContainer = MaterialTheme.colorScheme.secondaryContainer,
-                                iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                title = "Listen Together",
-                                subtitle = "Create or join an online listening room",
-                                onClick = onOpenListenTogether,
-                                position = position,
-                                isHighlighted = (highlightedSettingId == "audio.listen_together"),
-                            )
-                        }
-                        add { position ->
-                            SettingsActionCard(
                                 icon = Icons.Filled.AutoAwesome,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
