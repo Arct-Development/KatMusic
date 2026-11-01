@@ -897,7 +897,7 @@ fun SettingsScreen(
                                     )
                                 }
                                 Surface(
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.primary,
                                 ) {
                                     Text(
@@ -2473,7 +2473,7 @@ fun SettingsScreen(
         var selectedLanguage by remember(currentLanguage) { mutableStateOf(currentLanguage) }
         androidx.compose.ui.window.Dialog(onDismissRequest = { showLanguageDialog = false }) {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2501,7 +2501,7 @@ fun SettingsScreen(
                     Spacer(Modifier.height(18.dp))
 
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -2845,7 +2845,7 @@ fun SettingsScreen(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -2887,7 +2887,7 @@ fun SettingsScreen(
                                 viewModel.setLosslessQuality(qualityId)
                                 showQualityDialog = false
                             },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                             border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
                             shadowElevation = if (isSelected) 3.dp else 0.dp,
@@ -2996,7 +2996,7 @@ fun SettingsScreen(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.secondaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -3038,7 +3038,7 @@ fun SettingsScreen(
                                 viewModel.setDownloadQuality(qualityId)
                                 showDownloadQualityDialog = false
                             },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                             border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
                             shadowElevation = if (isSelected) 3.dp else 0.dp,
@@ -3157,7 +3157,7 @@ fun SettingsScreen(
                         ),
                 )
                 Card(
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ),
@@ -3799,7 +3799,7 @@ private fun SettingsSearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier.focusRequester(focusRequester),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -4330,7 +4330,7 @@ private fun LastFmIntegrationCard(
                         onValueChange = { keyInput = it.trim() },
                         label = { Text(stringResource(R.string.set_lfm_apikey)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     androidx.compose.material3.OutlinedTextField(
@@ -4338,7 +4338,7 @@ private fun LastFmIntegrationCard(
                         onValueChange = { secretInput = it.trim() },
                         label = { Text(stringResource(R.string.set_lfm_secret)) },
                         singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -4565,7 +4565,7 @@ private fun ColorTile(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "tileBorder",
     )
-    val tileShape = RoundedCornerShape(20.dp)
+    val tileShape = RoundedCornerShape(10.dp)
 
     Column(
         modifier = modifier.graphicsLayer {
@@ -4725,7 +4725,7 @@ private fun ColorWheelSheet(onDismiss: () -> Unit, onApply: (Color) -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(previewColor),
             )
             Spacer(Modifier.height(20.dp))
@@ -4774,7 +4774,7 @@ private fun EqualizerCurveGraph(
         modifier = modifier
             .fillMaxWidth()
             .height(130.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
@@ -4968,7 +4968,7 @@ private fun EqualizerSheet(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -5010,7 +5010,7 @@ private fun EqualizerSheet(
 
             // Mode Switcher: 15-Band Graphic vs AutoEQ / Parametric EQ
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -5081,7 +5081,7 @@ private fun EqualizerSheet(
 
             // Master On/Off Switch Card
             Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(10.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth(),
@@ -5139,7 +5139,7 @@ private fun EqualizerSheet(
 
             // Native Equalizer Fader Board
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 2.dp,
                 modifier = Modifier.fillMaxWidth(),
@@ -5540,7 +5540,7 @@ private fun YouTubeChannelSheet(
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                     if (!isSelected) onSelect(channel)
                                 },
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerLow,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
@@ -5662,7 +5662,7 @@ private fun YouTubeLibraryVisibilitySheet(
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 onSetVisible(playlist.id, !isShown)
                             },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = if (isShown) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -5802,7 +5802,7 @@ private fun SyncPlaylistsSheet(
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 onToggleSync(playlist.id, !isChecked)
                             },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = if (isChecked) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
