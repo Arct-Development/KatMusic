@@ -35,13 +35,45 @@ alter table public.blend_rooms enable row level security;
 alter table public.blend_members enable row level security;
 alter table public.blend_profiles enable row level security;
 
+-- SECURITY DEFINER helpers avoid recursive RLS evaluation on blend_members.
+create or replace function public.is_blend_member(p_blend_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+    select exists (
+        select 1 from public.blend_members
+        where blend_id = p_blend_id and user_id = (select auth.uid())
+    );
+$;
+
+create or replace function public.shares_blend_with(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+    select exists (
+        select 1
+        from public.blend_members mine
+        join public.blend_members theirs on theirs.blend_id = mine.blend_id
+        where mine.user_id = (select auth.uid())
+          and theirs.user_id = p_user_id
+    );
+$;
+
+revoke all on function public.is_blend_member(uuid) from public, anon;
+revoke all on function public.shares_blend_with(uuid) from public, anon;
+grant execute on function public.is_blend_member(uuid) to authenticated;
+grant execute on function public.shares_blend_with(uuid) to authenticated;
+
 drop policy if exists "members can read their blend rooms" on public.blend_rooms;
 create policy "members can read their blend rooms"
 on public.blend_rooms for select to authenticated
-using (exists (
-    select 1 from public.blend_members m
-    where m.blend_id = blend_rooms.id and m.user_id = (select auth.uid())
-));
+using (public.is_blend_member(id));
 
 drop policy if exists "owners can update their blend rooms" on public.blend_rooms;
 create policy "owners can update their blend rooms"
@@ -57,10 +89,7 @@ using (owner_id = (select auth.uid()));
 drop policy if exists "members can read blend membership" on public.blend_members;
 create policy "members can read blend membership"
 on public.blend_members for select to authenticated
-using (exists (
-    select 1 from public.blend_members mine
-    where mine.blend_id = blend_members.blend_id and mine.user_id = (select auth.uid())
-));
+using (public.is_blend_member(blend_id));
 
 drop policy if exists "users can read their own blend profile" on public.blend_profiles;
 create policy "users can read their own blend profile"
@@ -70,13 +99,7 @@ using (user_id = (select auth.uid()));
 drop policy if exists "users can read profiles of blend members" on public.blend_profiles;
 create policy "users can read profiles of blend members"
 on public.blend_profiles for select to authenticated
-using (exists (
-    select 1
-    from public.blend_members mine
-    join public.blend_members theirs on theirs.blend_id = mine.blend_id
-    where mine.user_id = (select auth.uid())
-      and theirs.user_id = blend_profiles.user_id
-));
+using (public.shares_blend_with(user_id));
 
 drop policy if exists "users can insert their own blend profile" on public.blend_profiles;
 create policy "users can insert their own blend profile"
