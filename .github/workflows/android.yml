@@ -29,7 +29,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Unit tests
         env:
@@ -106,7 +106,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # Optional: a repository owner can add RELEASE_KEYSTORE_BASE64 plus the
       # three password/alias secrets so tagged builds are signed with a stable
