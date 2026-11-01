@@ -58,6 +58,7 @@ data class GroupBlendUiState(
     val cloudConfigured: Boolean = false,
     val signedInEmail: String? = null,
     val activeBlendId: String? = null,
+    val inviteCode: String? = null,
     val cloudMembers: List<BlendMemberUi> = emptyList(),
 )
 
@@ -169,16 +170,16 @@ class GroupBlendViewModel @Inject constructor(
         if (cleanName.isBlank() || cleanDisplay.isBlank()) return setError("Enter a Blend name and display name.")
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val inviteCode = java.util.UUID.randomUUID().toString().replace("-", "").take(20)
             runCatching {
-                val code = java.util.UUID.randomUUID().toString().replace("-", "").take(20)
-                cloud.createBlend(cleanName, cleanDisplay, code).also {
+                cloud.createBlend(cleanName, cleanDisplay, inviteCode).also {
                     preferences.edit { prefs ->
                         prefs[activeBlendKey] = it
                         prefs[displayNameKey] = cleanDisplay
                     }
                 }
             }.onSuccess {
-                _uiState.value = _uiState.value.copy(isLoading = false, activeBlendId = it, message = "Blend created. Invite code: ${it.take(8)}")
+                _uiState.value = _uiState.value.copy(isLoading = false, activeBlendId = it, inviteCode = inviteCode, message = "Blend created. Share the invite code with your friends.")
                 refreshCloudBlend()
             }.onFailure { setError(it.message ?: "Couldn't create Blend.") }
         }
