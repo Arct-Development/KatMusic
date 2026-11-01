@@ -237,6 +237,16 @@ fun KatMusicNavHost(
                 onOpenDownloads = {
                     navController.navigate(Screen.Downloads.route)
                 },
+                onOpenListenTogether = { navController.navigate(Screen.ListenTogether.route) },
+                onOpenSearchResultArtist = { name, browseId ->
+                    navController.navigate(Screen.ArtistDetail.createRoute(name, browseId))
+                },
+                onOpenSearchResultAlbum = { title, artist, browseId ->
+                    navController.navigate(Screen.AlbumDetail.createRoute(title, artist, browseId))
+                },
+                onOpenSearchResultPlaylist = { playlistId ->
+                    navController.navigate(Screen.FeedPlaylistDetail.createRoute(playlistId))
+                },
             )
         }
 
@@ -251,7 +261,7 @@ fun KatMusicNavHost(
                 onOpenSettings = {
                     navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                 },
-                onOpenSearch = { navController.navigate(Screen.Search.route) },
+                onOpenSearch = { /* Search is part of the main navigation dock. */ },
                 onOpenDiscover = { navController.navigate(Screen.Discover.route) },
                 onOpenGenres = { navController.navigate(Screen.Genres.route) },
                 onOpenFriends = { navController.navigate(Screen.Friends.route) },
