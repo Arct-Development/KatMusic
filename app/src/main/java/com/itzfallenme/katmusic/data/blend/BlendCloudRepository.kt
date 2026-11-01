@@ -75,8 +75,9 @@ class BlendCloudRepository @Inject constructor(
     }
 
     suspend fun signOut() {
-        val token = accessToken() ?: return
-        runCatching { request("POST", "/auth/v1/logout", authenticated = true, explicitToken = token) }
+        accessToken()?.let { token ->
+            runCatching { request("POST", "/auth/v1/logout", authenticated = true, explicitToken = token) }
+        }
         preferences.edit { it.remove(accessKey); it.remove(refreshKey); it.remove(userKey) }
     }
 
@@ -151,22 +152,31 @@ class BlendCloudRepository @Inject constructor(
     ): kotlinx.serialization.json.JsonElement = withContext(Dispatchers.IO) {
         requireConfigured()
         val token = if (authenticated) explicitToken ?: accessToken() ?: error("Sign in to Group Blend first.") else key
-        val builder = Request.Builder().url(url + path)
-            .header("apikey", key)
-            .header("Accept", "application/json")
-            .header("Authorization", "Bearer $token")
-        if (prefer != null) builder.header("Prefer", prefer)
-        val requestBody = body?.toRequestBody(mediaType)
-        when (method) {
-            "GET" -> builder.get()
-            "POST" -> builder.post(requestBody ?: "{}".toRequestBody(mediaType))
-            "PATCH" -> builder.patch(requestBody ?: "{}".toRequestBody(mediaType))
-            "DELETE" -> builder.delete(requestBody)
-            else -> error("Unsupported request method")
+        fun buildRequest(bearer: String): Request {
+            val builder = Request.Builder().url(url + path)
+                .header("apikey", key)
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer $bearer")
+            if (prefer != null) builder.header("Prefer", prefer)
+            val requestBody = body?.toRequestBody(mediaType)
+            when (method) {
+                "GET" -> builder.get()
+                "POST" -> builder.post(requestBody ?: "{}".toRequestBody(mediaType))
+                "PATCH" -> builder.patch(requestBody ?: "{}".toRequestBody(mediaType))
+                "DELETE" -> builder.delete(requestBody)
+                else -> error("Unsupported request method")
+            }
+            return builder.build()
         }
-        client.newCall(builder.build()).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
+        var response = client.newCall(buildRequest(token)).execute()
+        if (response.code == 401 && authenticated && explicitToken == null) {
+            response.close()
+            val renewed = refreshAccessToken()
+            response = client.newCall(buildRequest(renewed)).execute()
+        }
+        response.use { result ->
+            val text = result.body?.string().orEmpty()
+            if (!result.isSuccessful) {
                 val message = runCatching {
                     val obj = json.parseToJsonElement(text).jsonObject
                     obj["message"]?.jsonPrimitive?.content
@@ -174,10 +184,30 @@ class BlendCloudRepository @Inject constructor(
                         ?: obj["error_description"]?.jsonPrimitive?.content
                         ?: obj["error"]?.jsonPrimitive?.content
                 }.getOrNull()
-                throw IllegalStateException(message ?: "Blend server error (${response.code}).")
+                throw IllegalStateException(message ?: "Blend server error (${result.code}).")
             }
             if (text.isBlank()) kotlinx.serialization.json.JsonNull else json.parseToJsonElement(text)
         }
+    }
+
+
+    private suspend fun refreshAccessToken(): String = withContext(Dispatchers.IO) {
+        val refresh = preferences.data.first()[refreshKey]
+            ?: error("Your Blend session expired. Please sign in again.")
+        val payload = buildJsonObject { put("refresh_token", refresh) }.toString()
+        val response = request("POST", "/auth/v1/token?grant_type=refresh_token", body = payload, authenticated = false)
+        val access = response["access_token"]?.jsonPrimitive?.content
+            ?: error("Your Blend session expired. Please sign in again.")
+        val newRefresh = response["refresh_token"]?.jsonPrimitive?.content ?: refresh
+        val id = response["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content
+            ?: preferences.data.first()[userKey]
+            ?: error("Your Blend session is invalid. Please sign in again.")
+        preferences.edit {
+            it[accessKey] = access
+            it[refreshKey] = newRefresh
+            it[userKey] = id
+        }
+        access
     }
 
     private fun requireConfigured() {
