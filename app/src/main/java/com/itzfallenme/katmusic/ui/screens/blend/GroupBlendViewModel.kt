@@ -314,7 +314,7 @@ class GroupBlendViewModel @Inject constructor(
     }
 
     private fun setError(message: String) {
-        _uiState.value = _uiState.value.copy(error = message, message = null)
+        _uiState.value = _uiState.value.copy(isLoading = false, error = message, message = null)
     }
 
     private fun BlendTasteProfile.fingerprint(): String =
