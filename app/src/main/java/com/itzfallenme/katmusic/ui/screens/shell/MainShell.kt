@@ -141,6 +141,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import kotlin.math.sign
+import kotlin.math.roundToInt
 import com.itzfallenme.katmusic.ui.theme.LocalIsDarkTheme
 import com.itzfallenme.katmusic.ui.theme.LocalLiquidGlass
 import com.itzfallenme.katmusic.ui.theme.LocalMd3NavBar
