@@ -41,6 +41,10 @@ object UsbExclusivePrefs {
         }
     }
 
+    suspend fun clearAll(context: Context) {
+        context.applicationContext.usbExclusiveDataStore.edit { it.clear() }
+    }
+
     /**
      * Synchronous-friendly read for threads that cannot collect a Flow
      * (e.g. the renderer factory thread). Returns `false` on timeout or error.
