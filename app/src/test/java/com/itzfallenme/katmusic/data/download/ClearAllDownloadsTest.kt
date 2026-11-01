@@ -2,6 +2,7 @@ package com.itzfallenme.katmusic.data.download
 
 import android.content.ContentResolver
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import com.google.common.truth.Truth.assertThat
 import com.itzfallenme.katmusic.data.local.MiscSettings
@@ -54,6 +55,8 @@ class ClearAllDownloadsTest {
     private val dao = mockk<DownloadedTrackDao>(relaxed = true)
     private val resolver = mockk<ContentResolver>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
+    private val scanPreferences = mockk<SharedPreferences>(relaxed = true)
+    private val scanPreferencesEditor = mockk<SharedPreferences.Editor>(relaxed = true)
     private val settings = mockk<SettingsPreferences>(relaxed = true)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private lateinit var manager: TrackDownloadManager
@@ -67,6 +70,10 @@ class ClearAllDownloadsTest {
         every { context.filesDir } returns temp.newFolder("files")
         // clearAllDownloads removes its app-private restore marker from noBackupFilesDir.
         every { context.noBackupFilesDir } returns temp.newFolder("no-backup")
+        every { context.getSharedPreferences(any(), any()) } returns scanPreferences
+        every { scanPreferences.edit() } returns scanPreferencesEditor
+        every { scanPreferencesEditor.clear() } returns scanPreferencesEditor
+        every { scanPreferencesEditor.commit() } returns true
         every { context.getSystemService(any<String>()) } returns null
         every { settings.settings } returns flowOf(MiscSettings())
         every { resolver.delete(any<Uri>(), isNull<String>(), isNull<Array<String>>()) } answers {
