@@ -234,6 +234,7 @@ fun MainShell(
     onOpenPodcasts: () -> Unit = {},
     onOpenPodcastShow: (String) -> Unit = {},
     onOpenListenTogether: () -> Unit = {},
+    onOpenStats: () -> Unit = {},
     onOpenSearchResultArtist: (String, String?) -> Unit = { _, _ -> },
     onOpenSearchResultAlbum: (String, String, String?) -> Unit = { _, _, _ -> },
     onOpenSearchResultPlaylist: (String) -> Unit = {},
@@ -393,6 +394,7 @@ fun MainShell(
                         onOpenPlaylist = onOpenPlaylist,
                         onOpenGenerator = onOpenGenerator,
                         onOpenDownloads = onOpenDownloads,
+                        onOpenStats = onOpenStats,
                     )
                 }
             }
