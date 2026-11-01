@@ -49,7 +49,7 @@ class SimpMusicLyricsApi @Inject constructor(
         if (videoId.isNullOrBlank()) return@withContext null
         val request = Request.Builder()
             .url("https://api-lyrics.simpmusic.org/v1/${videoId.trim()}")
-            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/clash-projects/katmusic)")
+            .header("User-Agent", "KatMusic-Android/1.0 (https://github.com/Arct-Development/KatMusic)")
             .header("Accept", "application/json")
             .get()
             .build()
