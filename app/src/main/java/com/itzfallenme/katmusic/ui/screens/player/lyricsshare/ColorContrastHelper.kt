@@ -244,6 +244,40 @@ object ColorContrastHelper {
      * Extracts palette colors from a software bitmap and combines them with theme tokens.
      * When [artBitmap] is present, prepends the Cover swatch as the FIRST item in the list.
      */
+
+    /**
+     * Restrained print-inspired palettes. The selected swatch is reserved
+     * for a small accent and never floods the background.
+     */
+    fun professionalLyricsColors(style: LyricCardStyle, accentColor: Int): DerivedCardColors =
+        when (style) {
+            LyricCardStyle.Minimal -> DerivedCardColors(
+                backgroundColor = 0xFFF5F5F2.toInt(),
+                lyricsTextColor = 0xFF17191C.toInt(),
+                secondaryTextColor = 0xFF62676D.toInt(),
+                brandTextColor = 0xFF34383D.toInt(),
+                dividerColor = 0xFFD9DAD6.toInt(),
+                isDarkBackground = false,
+            )
+            LyricCardStyle.Neon -> DerivedCardColors(
+                backgroundColor = 0xFF17191D.toInt(),
+                lyricsTextColor = 0xFFF4F3EF.toInt(),
+                secondaryTextColor = 0xFFA5A8AD.toInt(),
+                brandTextColor = 0xFFD8D9D5.toInt(),
+                dividerColor = 0xFF3B3F45.toInt(),
+                isDarkBackground = true,
+            )
+            LyricCardStyle.Paper -> DerivedCardColors(
+                backgroundColor = 0xFFF0EBDD.toInt(),
+                lyricsTextColor = 0xFF29251F.toInt(),
+                secondaryTextColor = 0xFF746B5F.toInt(),
+                brandTextColor = 0xFF484238.toInt(),
+                dividerColor = 0xFFCFC6B7.toInt(),
+                isDarkBackground = false,
+            )
+            LyricCardStyle.Cover -> deriveTextColors(accentColor, isCoverScrim = true)
+        }
+
     fun extractSwatches(
         artBitmap: Bitmap?,
         themeAccentColor: Int = 0xFF38BDF8.toInt(),
