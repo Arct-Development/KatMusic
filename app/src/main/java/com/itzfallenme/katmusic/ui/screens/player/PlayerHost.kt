@@ -5764,6 +5764,9 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                             )
                         }
                         if (!isQueueLocked) {
+                            val dragHandleTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = if (isDragging) 1f else 0.78f,
+                            )
                             Box(
                                 modifier = Modifier
                                     .padding(start = 6.dp)
@@ -5836,9 +5839,7 @@ private fun QueuePanel(state: MusicPlayerState, player: MusicPlayer, modifier: M
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Canvas(Modifier.size(22.dp)) {
-                                    val dotColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                        alpha = if (isDragging) 1f else 0.78f,
-                                    )
+                                    val dotColor = dragHandleTint
                                     val radius = 1.55.dp.toPx()
                                     val columnGap = 4.5.dp.toPx()
                                     val rowGap = 5.5.dp.toPx()
