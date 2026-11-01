@@ -649,7 +649,7 @@ private fun FloatingNavBar(
         val tabWidthPx = with(LocalDensity.current) { tabWidth.toPx() }
 
         val clusterWidth = capsuleWidth + searchGap * searchVisibility + searchSize * searchVisibility
-        val clusterOffset = (maxWidth - clusterWidth).coerceAtLeast(0.dp) / 2
+        val clusterOffset = 0.dp
         Row(
             modifier = Modifier.offset(x = clusterOffset),
             verticalAlignment = Alignment.CenterVertically,
