@@ -185,6 +185,30 @@ begin
 end;
 $$;
 
+create or replace function public.leave_blend(p_blend_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+    v_user_id uuid := auth.uid();
+    v_owner_id uuid;
+begin
+    if v_user_id is null then raise exception 'Authentication required'; end if;
+    select owner_id into v_owner_id from public.blend_rooms where id = p_blend_id for update;
+    if v_owner_id is null then return; end if;
+    if v_owner_id = v_user_id then
+        delete from public.blend_rooms where id = p_blend_id;
+    else
+        delete from public.blend_members where blend_id = p_blend_id and user_id = v_user_id;
+    end if;
+end;
+$;
+
+revoke all on function public.leave_blend(uuid) from public, anon;
+grant execute on function public.leave_blend(uuid) to authenticated;
+
 revoke all on function public.create_blend(text, text, text) from public, anon;
 revoke all on function public.join_blend(text, text) from public, anon;
 grant execute on function public.create_blend(text, text, text) to authenticated;
