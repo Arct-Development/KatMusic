@@ -196,10 +196,10 @@ class BlendCloudRepository @Inject constructor(
             ?: error("Your Blend session expired. Please sign in again.")
         val payload = buildJsonObject { put("refresh_token", refresh) }.toString()
         val response = request("POST", "/auth/v1/token?grant_type=refresh_token", body = payload, authenticated = false)
-        val access = response["access_token"]?.jsonPrimitive?.content
+        val access = response.jsonObject["access_token"]?.jsonPrimitive?.content
             ?: error("Your Blend session expired. Please sign in again.")
-        val newRefresh = response["refresh_token"]?.jsonPrimitive?.content ?: refresh
-        val id = response["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content
+        val newRefresh = response.jsonObject["refresh_token"]?.jsonPrimitive?.content ?: refresh
+        val id = response.jsonObject["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content
             ?: preferences.data.first()[userKey]
             ?: error("Your Blend session is invalid. Please sign in again.")
         preferences.edit {
