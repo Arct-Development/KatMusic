@@ -65,24 +65,70 @@ Join requests still require explicit host approval. Host-only actions are checke
 - Supabase persistence is not a distributed WebSocket broker. Keep one server instance until shared pub/sub and cross-instance membership coordination are implemented.
 
 
-## Group Blend and Supabase
+## Separate Group Blend Supabase project
 
-Group Blend is separate from Listen Together. **The current Group Blend implementation does not use Supabase**, so there are no Blend tables, environment variables, API keys, or extra SQL migrations to configure for the feature as it exists today.
+Group Blend uses a **separate Supabase project** from Listen Together. Do not point both features at the same project. Jam's server-side service-role key and database remain isolated from Blend's user-facing data.
 
-### How Blend works today
+### 1. Create the Blend project
 
-- KatMusic builds a compact taste profile from the listener's local `song_play_stats` data.
-- The app creates a `KATBLEND1:` share code containing up to 40 artist affinities and 100 track affinities/track records.
-- Friends exchange codes manually. Imported profiles are saved in Android DataStore on that device.
-- Full listening history stays on the device. No profile is uploaded to Supabase by Group Blend.
-- Group compatibility, shared artists/tracks, and group recommendations are calculated locally in the app.
+1. Create a new project in the Supabase dashboard, for example `KatMusic Blend`.
+2. Choose a region close to most of your users.
+3. Save the database password in your password manager. It is not needed in the Android app.
+4. Open **Project Settings → API** (or **API Keys**) and copy:
+   - Project URL
+   - Publishable key (preferred), or the legacy anon key if your project still uses it.
+5. Do **not** copy the secret key or service-role key into Android, Gradle, GitHub Actions build variables, or this repository.
 
-### Supabase configuration required for Blend
+### 2. Create the database schema
 
-None for the current offline/manual-sharing version. Follow the Supabase setup above only for the Listen Together server's room, member, and chat persistence. The existing `0001_jam_persistence.sql` migration creates Jam tables only; it does not create or enable cloud Blend sharing.
+1. Open the new Blend project → **SQL Editor**.
+2. Create a new query.
+3. Paste and run `server/blend/supabase/migrations/0001_blend_schema.sql`.
+4. In **Table Editor**, confirm these tables exist:
+   - `blend_rooms`: Blend name, owner, invite-code hash and timestamps.
+   - `blend_members`: user membership and display name.
+   - `blend_profiles`: compact taste profile and schema version.
+5. In **Authentication → Providers**, enable the sign-in method KatMusic will use. Blend membership is tied to an authenticated Supabase user; a display name or invite code is not an identity.
 
-### If cloud Blend sharing is added later
+The migration enables RLS, grants only the required client operations, and creates authenticated RPCs for creating and joining a Blend. Invite codes are stored as SHA-256 hashes. The profile payload is capped at 64 KiB. Membership is limited to 10 people per Blend.
 
-Cloud sharing would be a separate backend feature, not a switch in the current Android app. Before enabling it, implement and test authenticated Blend APIs plus a dedicated migration for profile/Blend membership storage. Use Supabase Auth or another verified identity provider, enforce per-user row-level security, validate profile schema/size limits server-side, and provide deletion/expiry controls. Never ship the Supabase service-role key in the Android app. Do not store raw full listening histories or treat a display name/share code as authentication.
+### 3. Configure local Android builds
 
-For the current feature's data format, privacy boundaries, scoring, and manual sharing flow, see [Group Blend MVP](../../docs/group-blend-mvp.md).
+The root Gradle build reads the root `.env` file (ignored by Git) and `local.properties`. Add these values to your local root `.env`:
+
+```dotenv
+KATMUSIC_BLEND_SUPABASE_URL=https://YOUR-BLEND-PROJECT.supabase.co
+KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+```
+
+Alternatively, add the same property names to root `local.properties`. Do not commit either file. The checked-in `.env.example` is a template only.
+
+### 4. Configure GitHub Actions
+
+In GitHub → **Settings → Secrets and variables → Actions → New repository secret**, add:
+
+| Secret name | Value |
+|---|---|
+| `KATMUSIC_BLEND_SUPABASE_URL` | Blend project's Project URL |
+| `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` | Blend project's publishable key (or legacy anon key) |
+
+The Android workflows pass these values to Gradle at build time. They are client configuration, not privileged credentials: because the Android app must connect directly to Supabase, the values can be extracted from an APK. RLS and authenticated access are the security boundary.
+
+### 5. Key handling and security
+
+- Never create a `KATMUSIC_BLEND_SUPABASE_SERVICE_ROLE_KEY` build variable. The service-role/secret key bypasses RLS and must stay server-side.
+- Never use a Supabase secret key in the Android app, `BuildConfig`, `.env.example`, or GitHub Actions jobs that build the APK.
+- Keep RLS enabled. Do not add broad `anon` or `authenticated` policies such as `using (true)`.
+- Do not upload raw `song_play_stats` or full listening history. Upload only the compact taste profile.
+- Users should be able to remove their own profile and leave Blends; deleting an auth user cascades their profile and memberships.
+- Rotate any privileged key immediately if it is exposed.
+
+### 6. Separation and free-tier usage
+
+The Blend project is independent from the Jam project. Its database size, storage, egress, auth usage and project limits are counted separately. Monitor usage in each Supabase dashboard. Splitting projects isolates quotas; it does not make either project's free tier unlimited.
+
+### Current implementation boundary
+
+This migration and environment wiring establish the dedicated Blend database and build configuration. The existing Android Group Blend screen still uses its local DataStore/manual share-code flow until the Supabase Auth, profile sync, room creation/join, and membership repository are connected. Running the SQL alone does not switch the app to cloud Blends. Do not advertise cloud sync as active until that client integration is implemented and tested.
+
+For the current local scoring and profile format, see [Group Blend MVP](../../docs/group-blend-mvp.md).
