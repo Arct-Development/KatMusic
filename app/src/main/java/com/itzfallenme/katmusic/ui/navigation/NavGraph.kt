@@ -825,7 +825,7 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
         }
 
         androidx.compose.animation.AnimatedVisibility(
-            visible = showName,
+            visible = videoFinished,
             enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(360)),
         ) {
             androidx.compose.foundation.layout.Row(
