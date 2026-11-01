@@ -271,8 +271,6 @@ fun MainShell(
             selectedTabIndex = pagerState.settledPage
         }
     }
-    val updateInfo by mainShellViewModel.updateInfo.collectAsStateWithLifecycle()
-    val showUpdateBanner = updateInfo.isUpdateAvailable && !updateInfo.isDismissed
     val ytConnection by mainShellViewModel.ytConnection.collectAsStateWithLifecycle()
     val settings by mainShellViewModel.settings.collectAsStateWithLifecycle(initialValue = com.itzfallenme.katmusic.data.local.MiscSettings())
     var promptDismissedThisSession by rememberSaveable { mutableStateOf(false) }
@@ -428,49 +426,6 @@ fun MainShell(
                     )
                 }
             }
-        }
-
-        // A version-scoped dialog appears after the release check discovers
-        // a newer organisation release. Dismissal is remembered per version.
-        if (showUpdateBanner) {
-            AlertDialog(
-                onDismissRequest = { mainShellViewModel.dismissUpdate(updateInfo.latestVersion) },
-                shape = RoundedCornerShape(14.dp),
-                title = {
-                    Text(
-                        "KatMusic update available",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "Version ${updateInfo.latestVersion} is ready.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        updateInfo.releaseNotes
-                            .takeIf { it.isNotBlank() }
-                            ?.let { notes ->
-                                Text(
-                                    notes.take(420).let { if (notes.length > 420) "${it}…" else it },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = { mainShellViewModel.openUpdate(context) }) {
-                        Text("View update")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { mainShellViewModel.dismissUpdate(updateInfo.latestVersion) }) {
-                        Text("Later")
-                    }
-                },
-            )
         }
 
         val bottomNavSlot = com.itzfallenme.katmusic.ui.screens.player.LocalBottomNavSlot.current
