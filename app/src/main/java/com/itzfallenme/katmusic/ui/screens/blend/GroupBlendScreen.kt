@@ -132,7 +132,7 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                                         }
                                     }
                                     Text("Members: ${state.cloudMembers.size}/10")
-                                    items(state.cloudMembers, key = { "cloud-${it.userId}" }) { member ->
+                                    state.cloudMembers.forEach { member ->
                                         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f)) {
                                                 Text(member.displayName, fontWeight = FontWeight.Medium)
