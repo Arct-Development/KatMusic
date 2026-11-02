@@ -1,10 +1,10 @@
 (() => {
   "use strict";
-  const REPO = "ItzFallenMe/KatMusic", API = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
+  const REPO = "Arct-Development/KatMusic", API = `https://api.github.com/repos/${REPO}/releases?per_page=100`;
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STYLES = [["Classic", "Full player, tabs, queue and controls."], ["Poster", "Large circular artwork and expressive track text."], ["Timeline", "Progress-led layout with oversized timestamps."], ["Lyrics Stage", "Lyrics-focused view with synced highlighting and source controls."], ["iPod", "A compact, tactile player inspired by classic music devices."], ["Full Video", "Immersive playback with animated Canvas artwork when available."]];
-  const TICKER = ["YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Open source"];
+  const TICKER = ["Listen Together", "Group Blend", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Open source"];
 
   /* ---------- static pieces ---------- */
   $("#yr").textContent = new Date().getFullYear();
@@ -63,6 +63,18 @@
   };
   addEventListener("scroll", () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true }); onScroll();
 
+  /* ---------- total-downloads counters (header pill + download card): count up from 0 ---------- */
+  const counters = $$("[data-count]").map((el) => ({ el, shown: 0, seen: !el.closest("#download"), raf: 0 }));
+  let cTarget = 0;
+  function cRun(c) {
+    cancelAnimationFrame(c.raf);
+    const from = c.shown, to = cTarget, t0 = performance.now(), dur = reduce ? 0 : Math.min(2800, 1000 + Math.log10(Math.abs(to - from) + 1) * 450);
+    const step = (t) => { const k = dur ? Math.min((t - t0) / dur, 1) : 1; c.shown = from + (to - from) * (1 - Math.pow(1 - k, 4)); c.el.textContent = Math.round(c.shown).toLocaleString(); if (k < 1) c.raf = requestAnimationFrame(step); };
+    c.raf = requestAnimationFrame(step);
+  }
+  const setCount = (n) => { cTarget = n; counters.forEach((c) => c.seen && cRun(c)); };
+  counters.filter((c) => !c.seen).forEach((c) => new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { c.seen = true; o.disconnect(); if (cTarget) cRun(c); } }, { threshold: 0.4 }).observe(c.el));
+
   /* ---------- live GitHub releases (always the newest stable) ---------- */
   const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
   const fmtDate = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
@@ -92,12 +104,14 @@
       if (!data) {
         const r = await fetch(API, { headers: { Accept: "application/vnd.github+json" } });
         if (!r.ok) throw new Error(r.status);
-        data = await r.json(); sessionStorage.setItem("kat-rel", JSON.stringify({ t: Date.now(), d: data }));
+        data = (await r.json()).map((x) => ({ tag_name: x.tag_name, draft: x.draft, prerelease: x.prerelease, published_at: x.published_at, html_url: x.html_url, assets: x.assets.map((a) => ({ name: a.name, size: a.size, download_count: a.download_count, browser_download_url: a.browser_download_url })) }));
+        try { sessionStorage.setItem("kat-rel", JSON.stringify({ t: Date.now(), d: data })); } catch {}
       }
       const ok = data.filter((r) => !r.draft && r.assets.some((a) => /\.apk$/i.test(a.name)));
       const rel = ok.find((r) => !r.prerelease) || ok[0];
       if (!rel) throw new Error("none");
       render(rel);
+      setCount(data.reduce((n, r) => n + (r.draft ? 0 : r.assets.reduce((m, a) => m + (/\.apk$/i.test(a.name) ? a.download_count || 0 : 0), 0)), 0)); // all APK downloads, every release
     } catch { $("#err").hidden = false; $("#fsize").textContent = "Use the GitHub releases page"; }
   }
   loadRelease();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KatMusic — Your music. Your style.</title>
-<meta name="description" content="A native Android player for YouTube Music with word-synced lyrics, shareable lyric cards, offline downloads, a native audio engine and Automix.">
+<meta name="description" content="A native Android player for YouTube Music with Listen Together, Group Blend, a Liquid Glass UI, word-synced lyrics and a native audio engine.">
 <meta name="theme-color" content="#03050a">
 <link rel="icon" href="assets/img/katmusic_logo.svg"><link rel="apple-touch-icon" href="assets/img/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,8 @@
 <i class="progress" aria-hidden="true"></i><i class="glow g1" aria-hidden="true"></i><i class="glow g2" aria-hidden="true"></i>
 <header class="nav glass" id="nav">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="30" height="30">KatMusic</a>
-  <nav class="links" id="links"><a href="#features">Features</a><a href="#share">Lyric sharing</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
+  <nav class="links" id="links"><a href="#features">Features</a><a href="#together">Together</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
+  <span class="dlpill" title="Total downloads"><i>↓</i><b data-count>0</b></span>
   <a class="btn mag" href="#download">Download</a>
   <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
 </header>
@@ -24,18 +25,18 @@
 <section class="hero"><div class="wrap">
   <span class="chip glass"><span class="dot"></span>Latest stable <b data-tag>…</b><span data-date></span></span>
   <h1 data-split>Your music. <em class="grad">Your style.</em></h1>
-  <p class="lead">An Android player for YouTube Music with word-synced lyrics, shareable lyric cards, a native audio engine and six ways to see what you play.</p>
-  <div class="cta"><a class="btn mag" href="#download">Download APK</a><a class="btn ghost mag" href="#share">Share your lyrics</a></div>
+  <p class="lead">An Android player for YouTube Music. Listen together with friends, blend your taste into one playlist of people, and enjoy a Liquid Glass UI built around your music.</p>
+  <div class="cta"><a class="btn mag" href="#download">Download APK</a><a class="btn ghost mag" href="#together">Listen together</a></div>
   <div class="stage" data-tilt>
     <div class="wave" id="wave" aria-hidden="true"></div>
     <div class="rig">
-      <div class="phone l"><img src="assets/img/home.jpg" alt="KatMusic home screen" width="1080" height="2340"></div>
-      <div class="phone c"><img src="assets/img/player.jpg" alt="KatMusic now playing screen" width="1080" height="2340"></div>
-      <div class="phone r"><img src="assets/img/lyrics.jpg" alt="KatMusic synced lyrics screen" width="1080" height="2340"></div>
+      <div class="phone l"><img src="assets/img/group-blend.jpg" alt="KatMusic Group Blend screen" width="722" height="1600"></div>
+      <div class="phone c"><img src="assets/img/listen-together.jpg" alt="KatMusic Listen Together screen" width="722" height="1600"></div>
+      <div class="phone r"><img src="assets/img/foryou.jpg" alt="KatMusic For you home screen" width="722" height="1600"></div>
     </div>
-    <span class="float glass chip" style="left:5%;top:20%">Word-synced lyrics</span>
-    <span class="float glass chip" style="right:5%;top:36%;animation-delay:-2s">Lyric cards</span>
-    <span class="float glass chip" style="left:9%;bottom:12%;animation-delay:-4s">Native C++ audio</span>
+    <span class="float glass chip" style="left:5%;top:20%">Listen Together</span>
+    <span class="float glass chip" style="right:5%;top:36%;animation-delay:-2s">Group Blend</span>
+    <span class="float glass chip" style="left:9%;bottom:12%;animation-delay:-4s">Liquid Glass UI</span>
   </div>
 </div></section>
 
@@ -46,36 +47,49 @@
   <div class="bento">
     <article class="card glass b1 rv"><h3>Follow every line.</h3><p>Line- and word-synced karaoke lyrics, multiple providers, translation, romanisation, text sizing and timing offset.</p><div class="crop"><img src="assets/img/lyrics.jpg" alt="KatMusic synced lyrics" loading="lazy" width="1080" height="2340"></div></article>
     <article class="card glass b2 rv"><h3>More control over sound.</h3><p>A native C++ engine built around Oboe, with parametric and graphic EQ, presets, AutoEQ profiles and supported direct-output paths.</p><div class="eq" id="eq" aria-hidden="true"></div></article>
-    <article class="card glass b3 rv"><h3>Lyrics, ready to share.</h3><p>Turn the words you love into a clean card with artwork, title and artist, then send it anywhere.</p><a class="more" href="#share">See lyric sharing →</a></article>
-    <article class="card glass b4 rv"><h3>A catalogue and a library.</h3><p>Songs, albums, artists, playlists, mixes, podcasts, local files and downloads.</p></article>
+    <article class="card glass b3 rv"><h3>Lyrics, ready to share.</h3><p>Turn the words you love into a clean card with artwork, title and artist, then send it anywhere.</p></article>
+    <article class="card glass b4 rv"><h3>Two looks. Your call.</h3><p>Pick Classic for simple surfaces, or Modern for Liquid Glass, floating glass navigation and richer motion.</p></article>
     <article class="card glass b5 rv"><h3>A queue you manage.</h3><p>Track progress, cancel or retry, and pause Wi-Fi-only downloads on mobile data.</p></article>
     <article class="card glass b6 rv"><h3>Intentional transitions.</h3><p>Crossfade planning, BPM and phase analysis, and WSOLA time stretching.</p></article>
   </div>
 </div></section>
 
-<section id="share"><div class="wrap split">
+<section id="together"><div class="wrap split">
   <div class="rv">
-    <span class="chip glass">New · Lyric sharing</span>
-    <h2>Your favourite line, <em class="grad">made shareable.</em></h2>
-    <p class="lead">Found a lyric that says it better than you can? KatMusic turns it into a clean, good-looking card you can send to anyone.</p>
+    <span class="chip glass">New in 2.5 · Listen Together &amp; Group Blend</span>
+    <h2>Music feels better <em class="grad">shared.</em></h2>
+    <p class="lead">Your library stops being a solo thing. Start a room with friends, or blend everyone's taste into one place.</p>
     <ul class="ticks">
-      <li><b>Artwork-led design.</b> The card picks up the colours of the album cover, so every song looks different.</li>
-      <li><b>Everything in one image.</b> Cover art, track title, artist and the lyric lines, with the KatMusic mark at the bottom.</li>
-      <li><b>Send it anywhere.</b> It's a regular image, so it works in any chat or social app.</li>
+      <li><b>Listen Together.</b> Online rooms with host approval, room chat and synchronized playback. Invite friends with a room code, or join one shared with you.</li>
+      <li><b>Group Blend.</b> A taste match built from your KatMusic listening history. No Spotify account needed.</li>
+      <li><b>Your taste profile.</b> See your track and artist counts, create a named Blend, or join one with an invitation code.</li>
     </ul>
   </div>
-  <div class="sharewrap rv" data-tilt><i class="halo"></i><img class="sharecard" src="assets/img/lyrics-share.png" alt="A KatMusic lyric card showing album artwork, the track title and artist, and lyric lines" width="1080" height="1831" loading="lazy"><span class="float glass chip" style="right:-4%;top:12%">Shareable card</span></div>
+  <div class="sharewrap rv" data-tilt><i class="halo"></i><div class="duo"><div class="frame"><img src="assets/img/listen-together.jpg" alt="KatMusic Listen Together room screen" width="722" height="1600" loading="lazy"></div><div class="frame"><img src="assets/img/group-blend.jpg" alt="KatMusic Group Blend screen" width="722" height="1600" loading="lazy"></div></div><span class="float glass chip" style="right:-2%;top:10%">New in 2.5</span></div>
+</div></section>
+
+<section id="looks"><div class="wrap split">
+  <div class="frame solo rv"><img src="assets/img/welcome.jpg" alt="KatMusic welcome screen to choose Classic or Modern experience" width="722" height="1600" loading="lazy"></div>
+  <div class="rv">
+    <h2>Two looks. <em class="grad">One app.</em></h2>
+    <p class="lead" style="margin-top:18px">Choose your experience the first time you open KatMusic, and change your mind whenever you like.</p>
+    <div class="pair"><article class="card glass"><h3>Classic</h3><p>Simple surfaces, lighter effects.</p></article><article class="card glass"><h3>Modern</h3><p>Liquid Glass and richer motion, with floating glass navigation.</p></article></div>
+    <ul class="ticks"><li><b>Guest mode.</b> Works fully offline with local recommendations. Connect Last.fm in Settings to sync scrobbles.</li><li><b>Restore backup.</b> Bring your setup back from the first screen.</li></ul>
+  </div>
 </div></section>
 
 <section id="screens" class="flush">
   <div class="wrap"><div class="head rv"><h2>Real screens. <em class="grad">Real app.</em></h2><p class="lead">Captured on Android. Swipe through the player, lyrics, library and settings.</p></div></div>
   <div class="rail" id="rail">
-    <figure><div class="frame"><img src="assets/img/player.jpg" alt="KatMusic expanded now playing interface" loading="lazy" width="1080" height="2340"></div><figcaption><b>Artwork takes the lead.</b>Player</figcaption></figure>
-    <figure><div class="frame"><img src="assets/img/lyrics.jpg" alt="KatMusic word-synchronised lyrics" loading="lazy" width="1080" height="2340"></div><figcaption><b>Word sync, in focus.</b>Lyrics</figcaption></figure>
-    <figure><div class="frame"><img src="assets/img/home.jpg" alt="KatMusic home and discovery feed" loading="lazy" width="1080" height="2340"></div><figcaption><b>A home for your listening.</b>Discover</figcaption></figure>
-    <figure><div class="frame"><img src="assets/img/library.jpg" alt="KatMusic playlist library" loading="lazy" width="1080" height="2340"></div><figcaption><b>Your collection, organised.</b>Library</figcaption></figure>
-    <figure><div class="frame"><img src="assets/img/settings.jpg" alt="KatMusic settings overview" loading="lazy" width="1080" height="2340"></div><figcaption><b>Make it feel like yours.</b>Settings</figcaption></figure>
-    <figure><div class="frame"><img src="assets/img/stats.jpg" alt="KatMusic listening statistics" loading="lazy" width="1080" height="2340"></div><figcaption><b>Your listening, reflected.</b>Stats</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/listen-together.jpg" alt="KatMusic Listen Together screen" loading="lazy" width="722" height="1600"></div><figcaption><b>Music feels better shared.</b>Listen Together</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/group-blend.jpg" alt="KatMusic Group Blend screen" loading="lazy" width="722" height="1600"></div><figcaption><b>Your music, mixed with your people.</b>Group Blend</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/welcome.jpg" alt="KatMusic Welcome screen" loading="lazy" width="722" height="1600"></div><figcaption><b>Choose Classic or Modern.</b>Welcome</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/foryou.jpg" alt="KatMusic For you screen" loading="lazy" width="722" height="1600"></div><figcaption><b>Your daily soundtrack.</b>For you</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/about.jpg" alt="KatMusic About screen" loading="lazy" width="722" height="1600"></div><figcaption><b>Version 2.5.0 and update checks.</b>About</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/player.jpg" alt="KatMusic Player screen" loading="lazy" width="1080" height="2340"></div><figcaption><b>Artwork takes the lead.</b>Player</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/lyrics.jpg" alt="KatMusic Lyrics screen" loading="lazy" width="1080" height="2340"></div><figcaption><b>Word sync, in focus.</b>Lyrics</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/library.jpg" alt="KatMusic Library screen" loading="lazy" width="1080" height="2340"></div><figcaption><b>Your collection, organised.</b>Library</figcaption></figure>
+    <figure><div class="frame"><img src="assets/img/stats.jpg" alt="KatMusic Stats screen" loading="lazy" width="1080" height="2340"></div><figcaption><b>Your listening, reflected.</b>Stats</figcaption></figure>
   </div>
 </section>
 
@@ -97,6 +111,7 @@
   <div><h2>Get the <em class="grad">latest build.</em></h2><p class="lead" style="margin-top:18px">Always the newest stable release, pulled live from the project's public GitHub. No third-party APK mirrors.</p><p class="chip">GPL-3.0 source</p></div>
   <div class="dl-card">
     <div class="rel"><span>Latest stable</span><b data-tag>…</b><small data-date></small></div>
+    <div class="count"><span>Total downloads</span><b data-count>0</b></div>
     <label for="apk">Install package</label>
     <select id="apk"><option>Loading…</option></select>
     <div class="file"><b id="fname">APK package</b><small id="fsize">Fetching release…</small></div>
@@ -122,7 +137,9 @@
     <details class="glass rv"><summary>Is KatMusic an official YouTube Music app?<i>+</i></summary><p>No. KatMusic is an independent, third-party Android project. It is not affiliated with, endorsed by or officially connected to Google or YouTube.</p></details>
     <details class="glass rv"><summary>Which Android versions are supported?<i>+</i></summary><p>The current release offers Android 10+ packages and a legacy package for Android 7–9. Some features and media controls use alternatives on older Android versions.</p></details>
     <details class="glass rv"><summary>Which APK should I install?<i>+</i></summary><p>The universal APK is the recommended option for most devices. The ARM64 package is for 64-bit ARM devices. Choose the legacy package only for Android 7–9.</p></details>
-    <details class="glass rv"><summary>How does lyric sharing work?<i>+</i></summary><p>KatMusic builds a card image from the track's artwork, title, artist and lyric lines. Because it is a normal image, you can send it from any app on your phone.</p></details>
+    <details class="glass rv"><summary>How does Listen Together work?<i>+</i></summary><p>Create a room and invite friends with its code. The host approves who joins, and rooms include chat and synchronized playback. You can also join a room someone shared with you.</p></details>
+    <details class="glass rv"><summary>What is Group Blend?<i>+</i></summary><p>Group Blend is a taste match built from your KatMusic listening history. You can create a Blend, or join a friend's with an invitation code. No Spotify account is needed.</p></details>
+    <details class="glass rv"><summary>Do I need an account?<i>+</i></summary><p>You can log in with YouTube Music or continue as a guest. Guest mode works fully offline with local recommendations, and you can connect Last.fm in Settings to sync scrobbles.</p></details>
     <details class="glass rv"><summary>Does every audio feature work on every phone?<i>+</i></summary><p>No. Output modes, supported codecs and bit-perfect behaviour depend on the Android device, DAC, audio route and operating-system limits.</p></details>
     <details class="glass rv"><summary>Does KatMusic collect analytics?<i>+</i></summary><p>The project README states that KatMusic does not bundle an analytics or advertising-tracking SDK. Network requests are made to services required by the features you use.</p></details>
     <details class="glass rv"><summary>Can I inspect or contribute to the source?<i>+</i></summary><p>Yes. KatMusic is GPL-3.0 licensed. The source, issue tracker, contribution guide and release history are public on GitHub.</p></details>
@@ -132,8 +149,8 @@
 
 <footer><div class="wrap">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="26" height="26">KatMusic</a>
-  <span>Independent Android music player · GPL-3.0 · © <span id="yr"></span> Arct Development</span>
-  <span>Made with 💗 by Arct Developments</span>
+  <span>Independent Android music player · GPL-3.0 · © <span id="yr"></span> <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">ArctDevelopments</a></span>
+  <span>Made with 💗 by <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">Arct Developments</a></span>
 </div></footer>
 </body>
 </html>
