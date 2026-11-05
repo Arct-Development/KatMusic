@@ -5282,6 +5282,28 @@ class StreamApi @Inject constructor(
     }
 }
 
+
+/** Match ExoPlayer's opening request, not a 0-1 byte HEAD-like probe.
+ * Some googlevideo client profiles accept tiny ranges but reject the first media
+ * chunk with 403, so validate the same bounded 1 MiB range the player opens. */
+internal fun playbackProbeRequest(url: String, headers: Map<String, String>): Request =
+    Request.Builder()
+        .url(url)
+        .header("Accept", "audio/*,*/*;q=0.8")
+        .header("Accept-Encoding", "identity")
+        .header("Range", "bytes=0-1048575")
+        .apply { headers.forEach { (name, value) -> header(name, value) } }
+        .build()
+
+internal fun acceptsPlaybackProbe(code: Int, contentType: String): Boolean {
+    if (code == 403 || code == 410) return false
+    val type = contentType.lowercase()
+    return (code == 200 || code == 206) &&
+        !type.contains("text/html") &&
+        !type.contains("application/json") &&
+        !type.contains("text/plain")
+}
+
 internal fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
 internal fun JsonObject.array(key: String): JsonArray? = this[key] as? JsonArray
 internal fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
