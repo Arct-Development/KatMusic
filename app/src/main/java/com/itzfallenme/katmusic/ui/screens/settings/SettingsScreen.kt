@@ -98,6 +98,7 @@ import androidx.compose.material.icons.filled.Colorize
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Public
@@ -1516,7 +1517,7 @@ fun SettingsScreen(
                         item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionLabel(stringResource(R.string.settings_section_experimental))
-                    SettingsGroup(rowCount = 11) { index, position ->
+                    SettingsGroup(rowCount = 12) { index, position ->
                         when (index) {
                             0 -> SettingsToggleCard(
                                 icon = Icons.Filled.Lyrics,
@@ -1685,6 +1686,21 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setButtonNowPlayingEnabled,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.button_now_playing"),
+                            )
+                            11 -> SettingsToggleCard(
+                                icon = Icons.Filled.FastForward,
+                                iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                title = "SponsorBlock",
+                                subtitle = if (misc.sponsorBlockEnabled) {
+                                    "Community-marked intros, outros and sponsor reads are skipped"
+                                } else {
+                                    "Play every section as uploaded"
+                                },
+                                checked = misc.sponsorBlockEnabled,
+                                onCheckedChange = viewModel::setSponsorBlockEnabled,
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "appearance.sponsorblock"),
                             )
                         }
                     }

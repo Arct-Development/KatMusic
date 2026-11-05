@@ -2955,11 +2955,16 @@ class StreamApi @Inject constructor(
     /**
      * Download-only NewPipe extraction preferring the Opus (WebM) rendition, which
      * the download pipeline remuxes losslessly into a fully tagged .opus file.
-     * No fallback to [resolveAudioStream]: the download path already tried it.
+     * Falls back to [resolveAudioStream] if NewPipe fails (e.g. age-restricted content).
      */
     suspend fun resolveDownloadStream(videoId: String): YouTubeAudioStream = withContext(Dispatchers.IO) {
         require(videoId.isNotBlank()) { "Missing YouTube Music video id" }
-        streamExtractor.resolveAudioStream(videoId, preferOpus = true)
+        try {
+            streamExtractor.resolveAudioStream(videoId, preferOpus = true)
+        } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            resolveAudioStream(videoId)
+        }
     }
 
     /**
@@ -2998,7 +3003,14 @@ class StreamApi @Inject constructor(
         val poToken = fastPoToken(videoId, visitorData)
         val nowMs = System.currentTimeMillis()
         val ordered = DIRECT_FAST_CLIENT_ORDER
-            .mapNotNull { name -> PLAYER_CLIENTS.firstOrNull { it.name == name } }
+            .mapNotNull { name ->
+                val client = PLAYER_CLIENTS.firstOrNull { it.name == name } ?: return@mapNotNull null
+                if (client.name == "WEB_REMIX" && webConfig != null) {
+                    client.copy(version = webConfig!!.clientVersion, apiKey = webConfig!!.apiKey)
+                } else {
+                    client
+                }
+            }
             .filter { nowMs >= (failedClientsUntil[clientFailureKey(videoId, it.key, authScope)] ?: 0L) }
             .sortedBy { playbackClientPriority(it.name, ytAuth.connection.value.isConnected, lastSuccessfulClientName) }
         if (ordered.isEmpty()) {
@@ -3240,6 +3252,18 @@ class StreamApi @Inject constructor(
                     put("androidSdkVersion", client.androidSdkVersion)
                 }
             })
+            // Age-restricted tracks return LOGIN_REQUIRED/UNPLAYABLE to a
+            // signed-in WEB_REMIX session unless safety mode is explicitly
+            // unlocked. Send that opt-out with the brand-channel delegate.
+            if (client.name == "WEB_REMIX" && ytAuth.connection.value.isConnected) {
+                put("user", buildJsonObject {
+                    put("lockedSafetyMode", false)
+                    val delegate = ytAuth.connection.value.onBehalfOfUser
+                    if (!delegate.isNullOrBlank()) {
+                        put("onBehalfOfUser", delegate)
+                    }
+                })
+            }
         }
         cipherContext?.requireMatches(videoId, ytAuth.connection.value)
         val body = playbackPlayerBody(videoId, playerContext, signatureTimestamp, playerPoToken)
@@ -3268,11 +3292,20 @@ class StreamApi @Inject constructor(
         val status = root.obj("playabilityStatus")
         val state = status?.string("status")
         if (state != "OK") {
-            val reason = status?.string("reason").orEmpty()
-            if (state == "UNPLAYABLE" && reason.isConfirmedUnavailableReason()) {
-                throw ConfirmedUnplayableMediaException(reason.ifBlank { state.orEmpty() })
+            // Age-gated responses can still carry playable formats even when
+            // the reported status is not OK. Only fail when nothing usable was
+            // returned.
+            val streaming = root.obj("streamingData")
+            val hasFormats = streaming?.let {
+                !it.array("formats").isNullOrEmpty() || !it.array("adaptiveFormats").isNullOrEmpty()
+            } ?: false
+            if (!hasFormats) {
+                val reason = status?.string("reason").orEmpty()
+                if (state == "UNPLAYABLE" && reason.isConfirmedUnavailableReason()) {
+                    throw ConfirmedUnplayableMediaException(reason.ifBlank { state.orEmpty() })
+                }
+                throw IOException(reason.ifBlank { "Player status ${state ?: "missing"}" })
             }
-            throw IOException(reason.ifBlank { "Player status ${state ?: "missing"}" })
         }
 
         val streaming = root.obj("streamingData")

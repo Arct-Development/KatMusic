@@ -267,6 +267,7 @@ class MusicPlayer @Inject constructor(
     private val lyricsRepository: dagger.Lazy<com.itzfallenme.katmusic.data.lyrics.LyricsRepository>,
     private val moduleDrmFactory: ModuleDrmFactory,
     private val losslessMusicApi: LosslessMusicApi,
+    private val sponsorBlock: com.itzfallenme.katmusic.data.sponsorblock.SponsorBlockRepository,
 ) {
 
     private val appContext = context.applicationContext
@@ -599,6 +600,13 @@ class MusicPlayer @Inject constructor(
     @Volatile private var pausingForAudioFocus = false
     /** Volume to re-apply when a duck ends; null when not ducked. */
     @Volatile private var unduckedVolume: Float? = null
+
+    /** SponsorBlock: fetched once per video, checked from the progress ticker. */
+    @Volatile private var sponsorBlockEnabled = true
+    private val sponsorSegmentsByVideo = java.util.concurrent.ConcurrentHashMap<
+        String, List<com.itzfallenme.katmusic.data.sponsorblock.SponsorSegment>>()
+    private val sponsorFetchStarted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val skippedSponsorSegments = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { change ->
         handleAudioFocusChange(change)
     }
@@ -926,7 +934,15 @@ class MusicPlayer @Inject constructor(
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, playWhenReadyChangeReason: Int) {
             // Hold focus exactly while playback is intended: requesting it
             // anywhere else just fights the other apps that own focus.
-            if (playWhenReady) requestMediaAudioFocus() else abandonMediaAudioFocus()
+            //
+            // A pause caused by a *focus change* must not abandon the request:
+            // the platform only delivers AUDIOFOCUS_GAIN back to the app that
+            // still owns the lost request, so abandoning here killed
+            // PauseTransiently's recovery path — the song paused for a call or
+            // a notification ding and never resumed. pause() drops the request
+            // itself on the user's own deliberate pause.
+            if (playWhenReady) requestMediaAudioFocus()
+            else if (!pausingForAudioFocus) abandonMediaAudioFocus()
         }
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
             _state.update { it.copy(speed = playbackParameters.speed, pitch = playbackParameters.pitch) }
@@ -1964,6 +1980,9 @@ class MusicPlayer @Inject constructor(
                             val buf = livePlayer.bufferedPosition.coerceAtLeast(0)
                             val sleepRemaining = remaining?.coerceAtLeast(0)
 
+                            if (sponsorBlockEnabled && !isCasting && outgoingPlayer == null && !isOverlapMixActive) {
+                                maybeSkipSponsorSegment(pos)
+                            }
                             checkAndTriggerDualDeckTransition(livePlayer, pos, dur)
                             if (updateCrossfade(pos)) {
                                 cadenceMs = 60L
@@ -2160,6 +2179,7 @@ class MusicPlayer @Inject constructor(
                 crossfadeDurationMs = settings.crossfadeSeconds.coerceIn(1, 12) * 1000L
                 automixBars = settings.automixBars
                 automixOnSkip = settings.automixOnSkip
+                sponsorBlockEnabled = settings.sponsorBlockEnabled
                 sequentialAlbumBypass = settings.sequentialAlbumBypass
                 if (nativeAutoMixEngine.get().isAvailable) {
                     val effectiveAutomix = automixEnabled && !bitPerfectEnabled && !usbExclusiveSinkActive
@@ -2290,6 +2310,7 @@ class MusicPlayer @Inject constructor(
         sourceLabel: String = "KatMusic",
         startRadio: Boolean = true,
         startPositionMs: Long = 0L,
+        playWhenReady: Boolean = true,
     ) {
         pendingRestoredSession = null
         disableDiscoverQueue()
@@ -2310,6 +2331,7 @@ class MusicPlayer @Inject constructor(
             startPositionMs = startPositionMs,
             sourceLabel = sourceLabel,
             endlessDiscover = false,
+            playWhenReady = playWhenReady,
         )
         if (radioAllowed) {
             _state.update { it.copy(isEndlessQueue = true) }
@@ -2420,6 +2442,7 @@ class MusicPlayer @Inject constructor(
         sourceLabel: String,
         endlessDiscover: Boolean,
         startShuffled: Boolean = false,
+        playWhenReady: Boolean = true,
     ) {
         val selectedTrack = tracks[selectedIndex].withYoutubeArtwork()
         PlaybackStartupLog.begin(
@@ -2467,7 +2490,7 @@ class MusicPlayer @Inject constructor(
                 sourceLabel = sourceLabel,
                 isEndlessQueue = endlessDiscover || radioQueueActive,
                 isBuffering = true,
-                isPlaying = true,
+                isPlaying = playWhenReady,
                 positionMs = startPositionMs.coerceAtLeast(0L),
                 // Seed duration so the main-player seek bar has a denominator
                 // from t=0 when one is known (repeat plays, enriched metadata,
@@ -2537,7 +2560,7 @@ class MusicPlayer @Inject constructor(
                     PlaybackStartupLog.prepareStart()
                     resetRenderWatchdog()
                     player.prepare()
-                    player.play()
+                    if (playWhenReady) player.play() else player.pause()
                     enrichUpcomingQueue(selectedIndex)
                     resolved?.let { stream ->
                         if (!stream.isLossless && stream.audioCodec != "DOLBY ATMOS") {
@@ -2593,7 +2616,7 @@ class MusicPlayer @Inject constructor(
                             }
                             player.repeatMode = _state.value.repeatMode
                             player.prepare()
-                            player.play()
+                            if (playWhenReady) player.play() else player.pause()
                             enrichUpcomingQueue(selectedIndex)
                             if (endlessDiscover) {
                                 appendMissingDiscoverTracks(discoverRepository.getCachedFeed().map(GeneratedTrack::toPlayableTrack))
@@ -2861,20 +2884,37 @@ class MusicPlayer @Inject constructor(
         player.play()
     }
 
-    fun pause() {
+    fun pause() = pauseInternal(focusInitiated = false)
+
+    /**
+     * @param focusInitiated true when this pause answers an audio-focus loss.
+     *   Such a pause must leave the focus request in place: the platform only
+     *   delivers AUDIOFOCUS_GAIN back to the app that still owns the lost
+     *   request, so abandoning it here would strand [pauseForAudioFocus]'s
+     *   recovery and a brief interruption would never resume.
+     */
+    private fun pauseInternal(focusInitiated: Boolean) {
         // A deliberate pause supersedes a focus-induced one, so a later
         // AUDIOFOCUS_GAIN must not resurrect playback the user stopped.
-        if (!pausingForAudioFocus) focusPauseAwaitingRecovery = false
+        if (!focusInitiated) focusPauseAwaitingRecovery = false
         cancelPendingPlaybackResolution()
         onMain {
             exclusiveUsbOutput.setPaused(true)
             if (isCasting) castPlayback?.pause()
-            outgoingPlayer?.pause()
-            if (isOverlapMixActive) {
-                standbyDeck?.pause()
+            // Set for the duration of the player pauses so the
+            // onPlayWhenReadyChanged listener sees it no matter which thread
+            // this ran on, and clear it before the state bookkeeping below.
+            pausingForAudioFocus = focusInitiated
+            try {
+                outgoingPlayer?.pause()
+                if (isOverlapMixActive) {
+                    standbyDeck?.pause()
+                }
+                activeDeck?.pause()
+                if (playerDelegate.isInitialized()) player.pause()
+            } finally {
+                pausingForAudioFocus = false
             }
-            activeDeck?.pause()
-            if (playerDelegate.isInitialized()) player.pause()
             if (nativeAutoMixEngine.get().isAvailable) {
                 nativeAutoMixEngine.get().setPaused(true)
             }
@@ -2941,10 +2981,10 @@ class MusicPlayer @Inject constructor(
         if (isCasting) return
         val playing = _state.value.isPlaying ||
             (playerDelegate.isInitialized() && player.playWhenReady)
-        pausingForAudioFocus = true
+        // A permanent loss must also clear any intent left by an earlier
+        // transient one, so this assignment is unconditional.
         focusPauseAwaitingRecovery = autoRestore && playing
-        if (playing) pause()
-        pausingForAudioFocus = false
+        if (playing) pauseInternal(focusInitiated = true)
     }
 
     private fun restoreAfterAudioFocus() {
@@ -3031,6 +3071,35 @@ class MusicPlayer @Inject constructor(
         }
         return _state.value.positionMs
     }
+    /**
+     * SponsorBlock: seek past a community-marked non-music section. Segments
+     * are fetched off the ticker thread on first sight of a video; the ticker
+     * itself only scans the cached list, so playback never waits on the API.
+     */
+    private fun maybeSkipSponsorSegment(positionMs: Long) {
+        if (!sponsorBlockEnabled) return
+        val videoId = _state.value.current?.videoId?.takeIf { it.isNotBlank() } ?: return
+        val segments = sponsorSegmentsByVideo[videoId]
+        if (segments == null) {
+            if (sponsorFetchStarted.add(videoId)) {
+                applicationScope.launch {
+                    sponsorSegmentsByVideo[videoId] = runCatching { sponsorBlock.segments(videoId) }
+                        .getOrDefault(emptyList())
+                }
+            }
+            return
+        }
+        if (segments.isEmpty()) return
+        val segment = segments.firstOrNull { candidate ->
+            positionMs >= candidate.startMs &&
+                positionMs < candidate.endMs - 250L &&
+                skippedSponsorSegments.add(
+                    "$videoId|${candidate.uuid.ifBlank { "${candidate.startMs}-${candidate.endMs}" }}",
+                )
+        } ?: return
+        seekTo(segment.endMs + 100L)
+    }
+
     fun seekTo(positionMs: Long) = onMain {
         if (isCasting) {
             castPlayback?.seek(positionMs.coerceAtLeast(0))
@@ -5491,6 +5560,10 @@ class MusicPlayer @Inject constructor(
         sleepTimerStep = 0
         // Save the podcast resume position before the queue is torn down.
         checkpointPodcastProgress()
+        // stop() keeps playWhenReady unchanged, so no listener callback would
+        // ever abandon the focus we still hold — do it explicitly, or every
+        // other media app keeps ducking to a stopped player.
+        abandonMediaAudioFocus()
         player.stop()
         player.clearMediaItems()
         // Shuffle is engine state that survives stop()/clearMediaItems(): without

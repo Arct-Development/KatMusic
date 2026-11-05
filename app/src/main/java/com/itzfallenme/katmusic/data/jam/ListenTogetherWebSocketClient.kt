@@ -2,9 +2,18 @@ package com.itzfallenme.katmusic.data.jam
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -24,7 +33,12 @@ import java.util.concurrent.TimeUnit
 
 data class JamEvent(val type: String, val payload: JsonObject)
 
-data class JamRoomMember(val id: String, val displayName: String, val role: String)
+data class JamRoomMember(
+    val id: String,
+    val displayName: String,
+    val role: String,
+    val connected: Boolean = true,
+)
 data class JamPlayback(val title: String, val artist: String, val videoId: String, val artworkUrl: String, val isPlaying: Boolean, val positionMs: Long, val durationMs: Long)
 data class JamTrackSuggestion(val from: String, val displayName: String, val title: String, val artist: String, val videoId: String, val artworkUrl: String)
 
@@ -34,21 +48,41 @@ data class JamJoinRequest(
     val displayName: String,
 )
 
-class ListenTogetherWebSocketClient : Closeable {
+/**
+ * One long-lived relay connection for Listen Together.
+ *
+ * It deliberately outlives the screen: a [ViewModel] that owned this client
+ * used to close the socket whenever the user navigated away, dropping them out
+ * of the room and losing the host role. The client keeps the joined room and
+ * reconnects with the session token after a network drop.
+ */
+@Singleton
+class ListenTogetherWebSocketClient @Inject constructor() : Closeable {
     private val json = Json { ignoreUnknownKeys = true }
     private val http = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private var socket: WebSocket? = null
+    @Volatile private var socket: WebSocket? = null
+    @Volatile private var generation = 0
+    @Volatile private var roomRestoredGeneration = -1
+    @Volatile private var activeEndpoint = ""
+    @Volatile private var activeDisplayName = ""
+    @Volatile private var manualLeave = true
+    @Volatile private var reconnectAttempt = 0
+    private var reconnectJob: Job? = null
 
     private val _connectionState = MutableStateFlow("Disconnected")
     val connectionState: StateFlow<String> = _connectionState.asStateFlow()
 
     private val _roomCode = MutableStateFlow("")
     val roomCode: StateFlow<String> = _roomCode.asStateFlow()
+
+    private val _pendingRoomCode = MutableStateFlow("")
+    val pendingRoomCode: StateFlow<String> = _pendingRoomCode.asStateFlow()
 
     private val _sessionToken = MutableStateFlow("")
     val sessionToken: StateFlow<String> = _sessionToken.asStateFlow()
@@ -73,39 +107,294 @@ class ListenTogetherWebSocketClient : Closeable {
     val events: StateFlow<List<JamEvent>> = _events.asStateFlow()
 
     fun createRoom(endpoint: String, displayName: String) {
-        connect(endpoint, buildJsonObject {
-            put("type", "create_room")
-            put("displayName", displayName.trim().take(32))
-        })
+        activeEndpoint = endpoint.trim()
+        activeDisplayName = displayName.trim().take(32)
+        manualLeave = false
+        reconnectAttempt = 0
+        cancelReconnect()
+        clearRoomState(clearToken = true)
+        connect(
+            endpoint = activeEndpoint,
+            firstMessage = buildJsonObject {
+                put("type", "create_room")
+                put("displayName", activeDisplayName)
+            },
+            preserveRoom = false,
+            isReconnect = false,
+        )
     }
 
     fun joinRoom(endpoint: String, code: String, displayName: String) {
-        connect(endpoint, buildJsonObject {
-            put("type", "join_room")
-            put("roomCode", code.trim().uppercase().take(8))
-            put("displayName", displayName.trim().take(32))
-        })
+        activeEndpoint = endpoint.trim()
+        activeDisplayName = displayName.trim().take(32)
+        manualLeave = false
+        reconnectAttempt = 0
+        cancelReconnect()
+        clearRoomState(clearToken = true)
+        _pendingRoomCode.value = code.trim().uppercase().take(8)
+        connect(
+            endpoint = activeEndpoint,
+            firstMessage = buildJsonObject {
+                put("type", "join_room")
+                put("roomCode", code.trim().uppercase().take(8))
+                put("displayName", activeDisplayName)
+            },
+            preserveRoom = false,
+            isReconnect = false,
+        )
     }
 
-    fun reconnect(endpoint: String, code: String, token: String, displayName: String) {
-        connect(endpoint, buildJsonObject {
-            put("type", "reconnect")
-            put("roomCode", code)
-            put("sessionToken", token)
-            put("displayName", displayName.trim().take(32))
-        })
+    private fun reconnectNow() {
+        val code = _roomCode.value
+        val token = _sessionToken.value
+        if (manualLeave || code.isBlank() || token.isBlank()) return
+        if (reconnectJob?.isActive == true) return
+        reconnectJob = scope.launch {
+            reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
+            val delayMs = (1_000L shl (reconnectAttempt - 1).coerceIn(0, 4)).coerceAtMost(15_000L)
+            _connectionState.value = "Reconnecting…"
+            delay(delayMs)
+            if (!isActive || manualLeave) return@launch
+            if (_roomCode.value != code || _sessionToken.value != token) return@launch
+            connect(
+                endpoint = activeEndpoint,
+                firstMessage = buildJsonObject {
+                    put("type", "reconnect")
+                    put("roomCode", code)
+                    put("sessionToken", token)
+                    put("displayName", activeDisplayName)
+                },
+                preserveRoom = true,
+                isReconnect = true,
+            )
+        }
     }
 
-    private fun connect(endpoint: String, firstMessage: JsonObject) {
+    private fun connect(
+        endpoint: String,
+        firstMessage: JsonObject,
+        preserveRoom: Boolean,
+        isReconnect: Boolean,
+    ) {
         val normalized = endpoint.trim()
         if (!normalized.startsWith("wss://") && !normalized.startsWith("ws://")) {
             _connectionState.value = "Server URL must start with wss:// or ws://"
             return
         }
+        val request = runCatching { Request.Builder().url(normalized).build() }.getOrElse {
+            _connectionState.value = "Invalid server URL"
+            return
+        }
+        val thisGeneration = ++generation
         socket?.close(1000, "reconnecting")
-        _connectionState.value = "Connecting…"
+        _connectionState.value = if (isReconnect) "Reconnecting…" else "Connecting…"
+        if (!preserveRoom) {
+            _members.value = emptyList()
+            _playback.value = null
+            _sharedQueue.value = emptyList()
+            _suggestions.value = emptyList()
+            _pendingRequests.value = emptyList()
+            _events.value = emptyList()
+        }
+        val newSocket = http.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (thisGeneration != generation) return
+                _connectionState.value = if (isReconnect) "Restoring room…" else "Connected"
+                webSocket.send(json.encodeToString(JsonObject.serializer(), firstMessage))
+                if (isReconnect) {
+                    // A half-open socket would otherwise sit in "Reconnecting…"
+                    // forever; cancel it so the backoff loop gets another turn.
+                    scope.launch {
+                        delay(15_000L)
+                        if (thisGeneration == generation && roomRestoredGeneration != thisGeneration && !manualLeave) {
+                            webSocket.cancel()
+                        }
+                    }
+                }
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (thisGeneration != generation) return
+                handleMessage(text)
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                if (thisGeneration != generation) return
+                _connectionState.value = "Closing"
+                webSocket.close(code, reason)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (thisGeneration != generation) return
+                _connectionState.value = "Disconnected"
+                reconnectNow()
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (thisGeneration != generation) return
+                _connectionState.value = t.message?.take(120) ?: "Connection failed"
+                reconnectNow()
+            }
+        })
+        if (thisGeneration == generation) socket = newSocket
+    }
+
+    private fun handleMessage(text: String) {
+        val message = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return
+        val type = message["type"]?.jsonPrimitive?.contentOrNull ?: "message"
+        val code = message["roomCode"]?.jsonPrimitive?.contentOrNull
+        val token = message["sessionToken"]?.jsonPrimitive?.contentOrNull
+        if (!token.isNullOrBlank()) _sessionToken.value = token
+
+        when (type) {
+            "room_created", "room_joined", "room_reconnected" -> {
+                roomRestoredGeneration = generation
+                reconnectAttempt = 0
+                manualLeave = false
+                if (!code.isNullOrBlank()) _roomCode.value = code
+                _pendingRoomCode.value = ""
+                message["memberId"]?.jsonPrimitive?.contentOrNull?.let { _memberId.value = it }
+                message["room"]?.jsonObject?.let(::applyRoomSnapshot)
+                _isHost.value = message["role"]?.jsonPrimitive?.contentOrNull == "host" ||
+                    type == "room_created"
+                _connectionState.value = "Connected"
+                applyChatHistory(message)
+                _pendingRequests.value = emptyList()
+            }
+            "join_pending" -> {
+                if (!code.isNullOrBlank()) _pendingRoomCode.value = code
+                _connectionState.value = "Waiting for host approval"
+            }
+            "join_request" -> {
+                val request = JamJoinRequest(
+                    requestId = message["requestId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    memberId = message["memberId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
+                )
+                if (_pendingRequests.value.none { it.requestId == request.requestId }) {
+                    _pendingRequests.value = _pendingRequests.value + request
+                }
+            }
+            "host_changed" -> {
+                val hostId = message["hostId"]?.jsonPrimitive?.contentOrNull
+                _isHost.value = !hostId.isNullOrBlank() && hostId == _memberId.value
+                _members.value = _members.value.map { it.copy(role = if (it.id == hostId) "host" else "guest") }
+            }
+            "member_joined" -> {
+                val member = message["member"]?.jsonObject
+                if (member != null) {
+                    val id = member["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    if (id.isNotBlank() && _members.value.none { it.id == id }) {
+                        _members.value = _members.value + JamRoomMember(
+                            id = id,
+                            displayName = member["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
+                            role = member["role"]?.jsonPrimitive?.contentOrNull ?: "guest",
+                        )
+                    }
+                }
+            }
+            "member_left" -> {
+                val id = message["memberId"]?.jsonPrimitive?.contentOrNull
+                _members.value = _members.value.filterNot { it.id == id }
+            }
+            "member_disconnected" -> {
+                val id = message["memberId"]?.jsonPrimitive?.contentOrNull
+                _members.value = _members.value.map {
+                    if (it.id == id) it.copy(connected = false) else it
+                }
+            }
+            "member_reconnected" -> {
+                val id = message["memberId"]?.jsonPrimitive?.contentOrNull
+                _members.value = _members.value.map {
+                    if (it.id == id) {
+                        it.copy(connected = true, displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: it.displayName)
+                    } else {
+                        it
+                    }
+                }
+            }
+            "playback_state" -> message["payload"]?.jsonObject?.let { _playback.value = it.toJamPlayback() }
+            "queue_update" -> message["payload"]?.jsonObject?.get("queue")?.jsonArray?.let { queue ->
+                _sharedQueue.value = queue.mapNotNull { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }
+            }
+            "queue_suggestion" -> {
+                val track = message["track"]?.jsonObject
+                if (track != null) _suggestions.value = (_suggestions.value + JamTrackSuggestion(
+                    from = message["from"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
+                    title = track["title"]?.jsonPrimitive?.contentOrNull ?: "Unknown track",
+                    artist = track["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist",
+                    videoId = track["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    artworkUrl = track["artworkUrl"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                )).takeLast(30)
+            }
+            "chat" -> Unit // already appended below
+            "room_left", "join_denied" -> {
+                manualLeave = true
+                cancelReconnect()
+                clearRoomState(clearToken = true)
+                _connectionState.value = when (message["reason"]?.jsonPrimitive?.contentOrNull) {
+                    "removed_by_host" -> "Removed from the room"
+                    "session_expired" -> "Room session expired"
+                    else -> "Disconnected"
+                }
+            }
+            "join_request_expired" -> {
+                _pendingRoomCode.value = ""
+                _connectionState.value = "Join request expired"
+            }
+            "error" -> {
+                val detail = message["message"]?.jsonPrimitive?.contentOrNull
+                val errorCode = message["code"]?.jsonPrimitive?.contentOrNull
+                if (errorCode == "session_expired") {
+                    manualLeave = true
+                    cancelReconnect()
+                    clearRoomState(clearToken = true)
+                    _connectionState.value = detail ?: "Room session expired"
+                } else if (_roomCode.value.isBlank() &&
+                    errorCode in setOf(
+                        "already_in_room", "room_not_found", "room_full",
+                        "storage_unavailable", "rate_limited",
+                    )
+                ) {
+                    _pendingRoomCode.value = ""
+                    _connectionState.value = detail ?: "Could not join the room"
+                }
+            }
+        }
+        if (type != "chat") {
+            appendEvent(JamEvent(type, message))
+        }
+        // Chat events are part of the activity feed too.
+        if (type == "chat") appendEvent(JamEvent(type, message))
+    }
+
+    private fun applyChatHistory(message: JsonObject) {
+        val history = message["chatHistory"]?.jsonArray ?: return
+        history.forEach { element ->
+            val payload = runCatching { element.jsonObject }.getOrNull() ?: return@forEach
+            val key = payload["sentAt"]?.jsonPrimitive?.contentOrNull.orEmpty() + "|" +
+                payload["memberId"]?.jsonPrimitive?.contentOrNull.orEmpty() + "|" +
+                payload["text"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val duplicate = _events.value.any { event ->
+                if (event.type != "chat") return@any false
+                val existingKey = event.payload["sentAt"]?.jsonPrimitive?.contentOrNull.orEmpty() + "|" +
+                    event.payload["memberId"]?.jsonPrimitive?.contentOrNull.orEmpty() + "|" +
+                    event.payload["text"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                existingKey == key
+            }
+            if (!duplicate) appendEvent(JamEvent("chat", payload))
+        }
+    }
+
+    private fun appendEvent(event: JamEvent) {
+        _events.value = (_events.value + event).takeLast(100)
+    }
+
+    private fun clearRoomState(clearToken: Boolean) {
         _roomCode.value = ""
-        _sessionToken.value = ""
+        _pendingRoomCode.value = ""
+        if (clearToken) _sessionToken.value = ""
         _memberId.value = ""
         _isHost.value = false
         _members.value = emptyList()
@@ -113,112 +402,11 @@ class ListenTogetherWebSocketClient : Closeable {
         _sharedQueue.value = emptyList()
         _suggestions.value = emptyList()
         _pendingRequests.value = emptyList()
-        _events.value = emptyList()
-        val request = runCatching { Request.Builder().url(normalized).build() }.getOrElse {
-            _connectionState.value = "Invalid server URL"
-            return
-        }
-        socket = http.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                _connectionState.value = "Connected"
-                webSocket.send(json.encodeToString(JsonObject.serializer(), firstMessage))
-            }
+    }
 
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                val message = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return
-                val type = message["type"]?.jsonPrimitive?.contentOrNull ?: "message"
-                val code = message["roomCode"]?.jsonPrimitive?.contentOrNull
-                if (!code.isNullOrBlank()) _roomCode.value = code
-                val token = message["sessionToken"]?.jsonPrimitive?.contentOrNull
-                if (!token.isNullOrBlank()) _sessionToken.value = token
-                if (type == "room_created" || type == "room_joined" || type == "room_reconnected") {
-                    message["room"]?.jsonObject?.let(::applyRoomSnapshot)
-                }
-                when (type) {
-                    "room_created", "room_joined", "room_reconnected" -> {
-                        message["memberId"]?.jsonPrimitive?.contentOrNull?.let { _memberId.value = it }
-                    }
-                }
-                when (type) {
-                    "room_created", "room_reconnected" -> _isHost.value =
-                        message["role"]?.jsonPrimitive?.contentOrNull == "host" ||
-                            (type == "room_created")
-                    "room_joined" -> _isHost.value = false
-                    "join_request" -> {
-                        val request = JamJoinRequest(
-                            requestId = message["requestId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                            memberId = message["memberId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                            displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
-                        )
-                        _pendingRequests.value = _pendingRequests.value + request
-                    }
-                    "host_changed" -> {
-                        val hostId = message["hostId"]?.jsonPrimitive?.contentOrNull
-                        _isHost.value = !hostId.isNullOrBlank() && hostId == _memberId.value
-                        _members.value = _members.value.map { it.copy(role = if (it.id == hostId) "host" else "guest") }
-                    }
-                    "member_joined" -> {
-                        val member = message["member"]?.jsonObject
-                        if (member != null) {
-                            val id = member["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                            if (id.isNotBlank() && _members.value.none { it.id == id }) {
-                                _members.value = _members.value + JamRoomMember(id, member["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener", member["role"]?.jsonPrimitive?.contentOrNull ?: "guest")
-                            }
-                        }
-                    }
-                    "member_left" -> {
-                        val id = message["memberId"]?.jsonPrimitive?.contentOrNull
-                        _members.value = _members.value.filterNot { it.id == id }
-                    }
-                    "playback_state" -> message["payload"]?.jsonObject?.let { _playback.value = it.toJamPlayback() }
-                    "queue_update" -> message["payload"]?.jsonObject?.get("queue")?.jsonArray?.let { queue ->
-                        _sharedQueue.value = queue.mapNotNull { runCatching { it.jsonObject.toJamPlayback() }.getOrNull() }
-                    }
-                    "queue_suggestion" -> {
-                        val track = message["track"]?.jsonObject
-                        if (track != null) _suggestions.value = (_suggestions.value + JamTrackSuggestion(
-                            from = message["from"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                            displayName = message["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
-                            title = track["title"]?.jsonPrimitive?.contentOrNull ?: "Unknown track",
-                            artist = track["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist",
-                            videoId = track["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                            artworkUrl = track["artworkUrl"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        )).takeLast(30)
-                    }
-                    "room_left", "join_denied" -> {
-                        _memberId.value = ""
-                        _roomCode.value = ""
-                        _sessionToken.value = ""
-                        _isHost.value = false
-                        _members.value = emptyList()
-                        _playback.value = null
-                        _sharedQueue.value = emptyList()
-                        _suggestions.value = emptyList()
-                    }
-                    "error" -> {
-                        val detail = message["message"]?.jsonPrimitive?.contentOrNull
-                        if (!detail.isNullOrBlank()) _connectionState.value = detail
-                    }
-                }
-                if (type == "member_joined" || type == "member_left" || type == "host_changed") {
-                    // Keep the event stream bounded; a long-running room must not grow memory forever.
-                }
-                _events.value = (_events.value + JamEvent(type, message)).takeLast(100)
-            }
-
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                _connectionState.value = "Closing"
-                webSocket.close(code, reason)
-            }
-
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                _connectionState.value = "Disconnected"
-            }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                _connectionState.value = t.message?.take(120) ?: "Connection failed"
-            }
-        })
+    private fun cancelReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
     }
 
     private fun applyRoomSnapshot(room: JsonObject) {
@@ -229,6 +417,7 @@ class ListenTogetherWebSocketClient : Closeable {
                     id = member["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                     displayName = member["displayName"]?.jsonPrimitive?.contentOrNull ?: "Listener",
                     role = member["role"]?.jsonPrimitive?.contentOrNull ?: "guest",
+                    connected = member["connected"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: true,
                 )
             }.getOrNull()
         }.orEmpty()
@@ -243,7 +432,9 @@ class ListenTogetherWebSocketClient : Closeable {
             artist = track["artist"]?.jsonPrimitive?.contentOrNull ?: "Unknown artist",
             videoId = track["videoId"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             artworkUrl = track["artworkUrl"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-            isPlaying = this["isPlaying"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false,
+            isPlaying = this["isPlaying"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                ?: (this["isPlaying"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBooleanStrictOrNull()
+                ?: false,
             positionMs = this["positionMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L,
             durationMs = this["durationMs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L,
         )
@@ -265,7 +456,8 @@ class ListenTogetherWebSocketClient : Closeable {
 
     fun sendChat(text: String) {
         val safe = text.trim().take(500)
-        if (safe.isNotEmpty()) send(buildJsonObject {
+        if (safe.isEmpty() || _roomCode.value.isBlank()) return
+        send(buildJsonObject {
             put("type", "chat")
             put("roomCode", _roomCode.value)
             put("text", safe)
@@ -281,6 +473,7 @@ class ListenTogetherWebSocketClient : Closeable {
         positionMs: Long,
         durationMs: Long,
     ) {
+        if (_roomCode.value.isBlank() || !_isHost.value) return
         send(buildJsonObject {
             put("type", "playback_state")
             put("roomCode", _roomCode.value)
@@ -299,6 +492,7 @@ class ListenTogetherWebSocketClient : Closeable {
     }
 
     fun suggestTrack(title: String, artist: String, videoId: String, artworkUrl: String) {
+        if (_roomCode.value.isBlank()) return
         send(buildJsonObject {
             put("type", "queue_suggestion")
             put("roomCode", _roomCode.value)
@@ -330,6 +524,7 @@ class ListenTogetherWebSocketClient : Closeable {
     }
 
     fun publishQueue(tracks: List<com.itzfallenme.katmusic.playback.PlayableTrack>) {
+        if (_roomCode.value.isBlank() || !_isHost.value) return
         send(buildJsonObject {
             put("type", "queue_update")
             put("roomCode", _roomCode.value)
@@ -349,18 +544,18 @@ class ListenTogetherWebSocketClient : Closeable {
     }
 
     fun leaveRoom() {
-        send(buildJsonObject {
-            put("type", "leave_room")
-            put("roomCode", _roomCode.value)
-        })
-        _roomCode.value = ""
-        _sessionToken.value = ""
-        _isHost.value = false
-        _pendingRequests.value = emptyList()
-        _members.value = emptyList()
-        _playback.value = null
-        _sharedQueue.value = emptyList()
-        _suggestions.value = emptyList()
+        if (_roomCode.value.isNotBlank()) {
+            send(buildJsonObject {
+                put("type", "leave_room")
+                put("roomCode", _roomCode.value)
+            })
+        }
+        manualLeave = true
+        cancelReconnect()
+        _connectionState.value = "Disconnected"
+        clearRoomState(clearToken = true)
+        // Keep the WebSocket open so the same connection can create or join
+        // another room; the relay resets its per-socket room state on leave.
     }
 
     fun dismissSuggestion(videoId: String) {
@@ -368,7 +563,10 @@ class ListenTogetherWebSocketClient : Closeable {
     }
 
     override fun close() {
-        socket?.close(1000, "screen closed")
+        manualLeave = true
+        cancelReconnect()
+        generation++
+        socket?.close(1000, "client closed")
         socket = null
         http.dispatcher.executorService.shutdown()
         http.connectionPool.evictAll()

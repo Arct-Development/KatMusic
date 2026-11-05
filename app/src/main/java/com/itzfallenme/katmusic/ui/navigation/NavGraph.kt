@@ -838,6 +838,8 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
                         )
                         setOnPreparedListener { mediaPlayer ->
                             mediaPlayer.isLooping = false
+                            // The clip is a brand sting, not a soundtrack.
+                            mediaPlayer.setVolume(0f, 0f)
                             start()
                         }
                         setOnCompletionListener {

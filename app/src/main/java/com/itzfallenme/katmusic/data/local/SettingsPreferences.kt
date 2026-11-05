@@ -137,6 +137,8 @@ data class MiscSettings(
     val automixBars: Int = 8,
     /** Fast 4-bar blend when skipping track while Automix is on. */
     val automixOnSkip: Boolean = true,
+    /** When true, seek past community-marked non-music sections (SponsorBlock). */
+    val sponsorBlockEnabled: Boolean = true,
     /** When playing consecutive tracks from same album sequentially, bypass Automix DSP for gapless. */
     val sequentialAlbumBypass: Boolean = true,
     /** When true (default), uses the multi-layer dynamic wavy seekbar.
@@ -308,6 +310,7 @@ class SettingsPreferences @Inject constructor(
         val AUTOMIX_ENABLED = booleanPreferencesKey("lw_automix_enabled")
         val AUTOMIX_BARS = intPreferencesKey("lw_automix_bars")
         val AUTOMIX_ON_SKIP = booleanPreferencesKey("lw_automix_on_skip")
+        val SPONSOR_BLOCK_ENABLED = booleanPreferencesKey("lw_sponsor_block_enabled")
         val SEQUENTIAL_ALBUM_BYPASS = booleanPreferencesKey("lw_sequential_album_bypass")
         val WAVY_SEEKBAR_ENABLED = booleanPreferencesKey("lw_wavy_seekbar_enabled")
         val ROTATING_BACKGROUND_ENABLED = booleanPreferencesKey("lw_rotating_background_enabled")
@@ -401,6 +404,7 @@ class SettingsPreferences @Inject constructor(
                 automixEnabled = p.readSafely(Keys.AUTOMIX_ENABLED) ?: false,
                 automixBars = (p.readSafely(Keys.AUTOMIX_BARS) ?: 8).let { if (it >= 16) 16 else if (it == 0) 0 else 8 },
                 automixOnSkip = p.readSafely(Keys.AUTOMIX_ON_SKIP) ?: true,
+                sponsorBlockEnabled = p.readSafely(Keys.SPONSOR_BLOCK_ENABLED) ?: true,
                 sequentialAlbumBypass = p.readSafely(Keys.SEQUENTIAL_ALBUM_BYPASS) ?: true,
                 wavySeekbarEnabled = p.readSafely(Keys.WAVY_SEEKBAR_ENABLED) ?: true,
                 rotatingBackgroundEnabled = p.readSafely(Keys.ROTATING_BACKGROUND_ENABLED) ?: true,
@@ -703,6 +707,10 @@ class SettingsPreferences @Inject constructor(
 
     suspend fun setAutomixOnSkip(enabled: Boolean) {
         dataStore.edit { it[Keys.AUTOMIX_ON_SKIP] = enabled }
+    }
+
+    suspend fun setSponsorBlockEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.SPONSOR_BLOCK_ENABLED] = enabled }
     }
 
     suspend fun setSequentialAlbumBypass(enabled: Boolean) {

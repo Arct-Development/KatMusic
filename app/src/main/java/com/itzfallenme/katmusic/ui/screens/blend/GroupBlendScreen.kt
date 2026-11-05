@@ -121,15 +121,22 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                                 } else {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Your online Blend", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                                        IconButton(onClick = viewModel::refreshCloudBlend) { Icon(Icons.Default.Refresh, contentDescription = "Refresh online Blend") }
-                                        TextButton(onClick = viewModel::leaveCloudBlend) { Text("Leave") }
+                                        IconButton(onClick = viewModel::refreshCloudBlend, enabled = !state.isLoading) { Icon(Icons.Default.Refresh, contentDescription = "Refresh online Blend") }
+                                        TextButton(onClick = viewModel::leaveCloudBlend, enabled = !state.isLoading) { Text("Leave") }
                                     }
-                                    state.inviteCode?.let { code ->
-                                        Text("Invitation code: $code", fontWeight = FontWeight.SemiBold)
-                                        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(code)) }, modifier = Modifier.fillMaxWidth()) {
+                                    val invite = state.inviteCode
+                                    if (invite != null) {
+                                        Text("Invitation code: $invite", fontWeight = FontWeight.SemiBold)
+                                        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(invite)) }, modifier = Modifier.fillMaxWidth()) {
                                             Icon(Icons.Default.ContentCopy, contentDescription = null)
                                             Text("  Copy invitation code")
                                         }
+                                    } else {
+                                        Text(
+                                            "The invitation code is stored on the device that created this Blend. Ask the creator to share it again.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                     Text("Members: ${state.cloudMembers.size}/10")
                                     state.cloudMembers.forEach { member ->

@@ -35,6 +35,7 @@ class BlendCloudRepository @Inject constructor(
     private val accessKey = stringPreferencesKey("blend_cloud_access_token")
     private val refreshKey = stringPreferencesKey("blend_cloud_refresh_token")
     private val userKey = stringPreferencesKey("blend_cloud_user_id")
+    private val emailKey = stringPreferencesKey("blend_cloud_email")
     private val mediaType = "application/json; charset=utf-8".toMediaType()
 
     val isConfigured: Boolean get() = url.startsWith("https://") && key.isNotBlank()
@@ -60,25 +61,29 @@ class BlendCloudRepository @Inject constructor(
         if (access.isNullOrBlank() || refresh.isNullOrBlank() || id.isNullOrBlank()) {
             throw IllegalStateException("Account created. Check your email for confirmation, then sign in.")
         }
+        val accountEmail = user?.get("email")?.jsonPrimitive?.content ?: email.trim()
         preferences.edit {
             it[accessKey] = access
             it[refreshKey] = refresh
             it[userKey] = id
+            it[emailKey] = accountEmail
         }
-        user?.get("email")?.jsonPrimitive?.content ?: email
+        accountEmail
     }
 
     suspend fun account(): Account? {
         val p = preferences.data.first()
         val id = p[userKey] ?: return null
-        return Account(id, "")
+        return Account(id, p[emailKey].orEmpty())
     }
 
     suspend fun signOut() {
         accessToken()?.let { token ->
             runCatching { request("POST", "/auth/v1/logout", authenticated = true, explicitToken = token) }
         }
-        preferences.edit { it.remove(accessKey); it.remove(refreshKey); it.remove(userKey) }
+        preferences.edit {
+            it.remove(accessKey); it.remove(refreshKey); it.remove(userKey); it.remove(emailKey)
+        }
     }
 
     suspend fun syncProfile(profile: BlendTasteProfile) {
@@ -120,17 +125,28 @@ class BlendCloudRepository @Inject constructor(
             "GET",
             "/rest/v1/blend_members?select=user_id,display_name&blend_id=eq.$blendId&order=joined_at.asc",
         ).jsonArray
+        val userIds = rows.mapNotNull { it.jsonObject["user_id"]?.jsonPrimitive?.content }
+        // One profiles request for the whole Blend instead of one per member:
+        // a full room used to need eleven round trips, and one slow or failed
+        // request blanked every profile in the result.
+        val profiles: Map<String, BlendTasteProfile> = if (userIds.isEmpty()) {
+            emptyMap()
+        } else {
+            request(
+                "GET",
+                "/rest/v1/blend_profiles?select=user_id,profile&user_id=in.(${userIds.joinToString(",")})",
+            ).jsonArray.mapNotNull { row ->
+                val userId = row.jsonObject["user_id"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val profile = row.jsonObject["profile"]
+                    ?.let { json.decodeFromJsonElement(BlendTasteProfile.serializer(), it) }
+                    ?: BlendTasteProfile()
+                userId to profile
+            }.toMap()
+        }
         rows.mapNotNull { row ->
             val userId = row.jsonObject["user_id"]?.jsonPrimitive?.content ?: return@mapNotNull null
             val display = row.jsonObject["display_name"]?.jsonPrimitive?.content ?: "Listener"
-            val profileRows = request(
-                "GET",
-                "/rest/v1/blend_profiles?select=profile&user_id=eq.$userId",
-            ).jsonArray
-            val profile = profileRows.firstOrNull()?.jsonObject?.get("profile")
-                ?.let { json.decodeFromJsonElement(BlendTasteProfile.serializer(), it) }
-                ?: BlendTasteProfile()
-            CloudMember(userId, display, profile)
+            CloudMember(userId, display, profiles[userId] ?: BlendTasteProfile())
         }
     }
 

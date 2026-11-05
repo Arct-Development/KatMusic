@@ -557,6 +557,11 @@ class SettingsViewModel @Inject constructor(
         settingsPreferences.setSystemEffectsMode(enabled)
     }
 
+    /** SponsorBlock auto-skip (Settings -> Experimental, default ON). */
+    fun setSponsorBlockEnabled(enabled: Boolean) = launchSettingsAction("update SponsorBlock setting") {
+        settingsPreferences.setSponsorBlockEnabled(enabled)
+    }
+
     /** Synced Music Video (Settings -> Experimental, default OFF). */
     fun setMusicVideoEnabled(enabled: Boolean) = launchSettingsAction("update music video setting") {
         settingsPreferences.setMusicVideoEnabled(enabled)

@@ -42,12 +42,12 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
     select exists (
         select 1 from public.blend_members
         where blend_id = p_blend_id and user_id = (select auth.uid())
     );
-$;
+$$;
 
 create or replace function public.shares_blend_with(p_user_id uuid)
 returns boolean
@@ -55,7 +55,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
     select exists (
         select 1
         from public.blend_members mine
@@ -63,7 +63,7 @@ as $
         where mine.user_id = (select auth.uid())
           and theirs.user_id = p_user_id
     );
-$;
+$$;
 
 revoke all on function public.is_blend_member(uuid) from public, anon;
 revoke all on function public.shares_blend_with(uuid) from public, anon;
@@ -190,7 +190,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
     v_user_id uuid := auth.uid();
     v_owner_id uuid;
@@ -204,7 +204,7 @@ begin
         delete from public.blend_members where blend_id = p_blend_id and user_id = v_user_id;
     end if;
 end;
-$;
+$$;
 
 revoke all on function public.leave_blend(uuid) from public, anon;
 grant execute on function public.leave_blend(uuid) to authenticated;

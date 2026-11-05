@@ -79,7 +79,8 @@ function roomSnapshot(room) {
     roomCode: room.code,
     hostId: room.hostId,
     members: [...room.members.values()].map(m => ({
-      id: m.id, displayName: m.displayName, role: m.id === room.hostId ? "host" : "guest"
+      id: m.id, displayName: m.displayName, role: m.id === room.hostId ? "host" : "guest",
+      connected: Boolean(m.ws)
     })),
     playback: room.playback,
     queue: room.queue
@@ -192,7 +193,19 @@ async function removeMember(room, memberId, reason = "left") {
   if (!member) return;
   room.members.delete(memberId);
   room.sessions.delete(member.sessionHash);
-  if (member.ws) clients.delete(member.ws);
+  // Reset the socket's room state instead of dropping the connection state,
+  // so the same WebSocket can create or join another room afterwards. Deleting
+  // the clients entry left the socket open but permanently ignored: every
+  // later message had no state, which made "leave then create" silently fail.
+  if (member.ws) {
+    const leavingState = clients.get(member.ws);
+    if (leavingState) {
+      leavingState.roomCode = null;
+      leavingState.memberId = null;
+      leavingState.pendingRoomCode = null;
+      leavingState.pendingRequestId = null;
+    }
+  }
   send(member.ws, "room_left", { roomCode: room.code, reason });
   await deleteMember(memberId);
   if (!room.members.size) {
@@ -331,7 +344,7 @@ async function handleMessage(ws, raw) {
       const queue = Array.isArray(message.payload?.queue) ? message.payload.queue.slice(0, 100).map(safeTrack).filter(track => track?.videoId) : [];
       ctx.room.queue = queue;
       try { await persistRoom(ctx.room, true); } catch (error) { return send(ws, "error", { code: "storage_unavailable", message: "Queue could not be saved." }); }
-      broadcast(ctx.room, "queue_update", { payload: { queue } }, ws);
+      broadcast(ctx.room, "queue_update", { payload: { queue } });
       break;
     }
     case "chat": {
@@ -364,6 +377,10 @@ async function handleMessage(ws, raw) {
     case "leave_room": {
       const ctx = getContext(ws, message);
       if (ctx) await removeMember(ctx.room, ctx.member.id, "left");
+      // Also covers a leave whose member had already been removed (expired
+      // disconnect), so a subsequent create/join is never rejected.
+      state.roomCode = null; state.memberId = null;
+      state.pendingRoomCode = null; state.pendingRequestId = null;
       break;
     }
     case "ping": send(ws, "pong", { at: Date.now() }); break;

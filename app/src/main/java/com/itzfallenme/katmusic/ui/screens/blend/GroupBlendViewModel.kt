@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itzfallenme.katmusic.data.blend.BlendMemberProfile
@@ -73,11 +72,13 @@ class GroupBlendViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(GroupBlendUiState())
     val uiState: StateFlow<GroupBlendUiState> = _uiState.asStateFlow()
     private var myProfile = BlendTasteProfile()
+    @Volatile private var profileLoaded = false
     private val importedMembers = linkedMapOf<String, BlendMemberProfile>()
 
     private val savedMembersKey = stringPreferencesKey("group_blend_saved_members")
     private val activeBlendKey = stringPreferencesKey("group_blend_active_cloud_id")
     private val displayNameKey = stringPreferencesKey("group_blend_display_name")
+    private val inviteCodeKey = stringPreferencesKey("group_blend_invite_code")
 
     init {
         refreshMyProfile()
@@ -86,7 +87,9 @@ class GroupBlendViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { cloud.account() }.getOrNull()?.let { account ->
                 _uiState.value = _uiState.value.copy(signedInEmail = account.email.ifBlank { "Signed in" })
-                syncCloudProfile()
+                // Don't upload before the on-device profile is read: the empty
+                // default would overwrite the real cloud profile on launch.
+                if (profileLoaded) syncCloudProfile()
                 refreshCloudBlend()
             }
         }
@@ -126,6 +129,7 @@ class GroupBlendViewModel @Inject constructor(
             runCatching { withContext(Dispatchers.IO) { statsRepository.allStats() } }
                 .onSuccess { stats ->
                     myProfile = BlendTasteProfileBuilder.build(stats)
+                    profileLoaded = true
                     publishState()
                     if (cloud.isConfigured && cloud.account() != null) syncCloudProfile()
                 }
@@ -155,11 +159,25 @@ class GroupBlendViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             runCatching { cloud.signOut() }
-            _uiState.value = _uiState.value.copy(signedInEmail = null, activeBlendId = null, cloudMembers = emptyList(), message = "Signed out.")
+            runCatching {
+                preferences.edit {
+                    it.remove(activeBlendKey)
+                    it.remove(inviteCodeKey)
+                    it.remove(displayNameKey)
+                }
+            }
+            _uiState.value = _uiState.value.copy(
+                signedInEmail = null,
+                activeBlendId = null,
+                inviteCode = null,
+                cloudMembers = emptyList(),
+                message = "Signed out.",
+            )
         }
     }
 
     private suspend fun syncCloudProfile() {
+        if (!profileLoaded) return
         runCatching { cloud.syncProfile(myProfile) }
             .onFailure { _uiState.value = _uiState.value.copy(error = it.message ?: "Profile sync failed.") }
     }
@@ -176,6 +194,7 @@ class GroupBlendViewModel @Inject constructor(
                     preferences.edit { prefs ->
                         prefs[activeBlendKey] = it
                         prefs[displayNameKey] = cleanDisplay
+                        prefs[inviteCodeKey] = inviteCode
                     }
                 }
             }.onSuccess {
@@ -196,10 +215,11 @@ class GroupBlendViewModel @Inject constructor(
                     preferences.edit { prefs ->
                         prefs[activeBlendKey] = it
                         prefs[displayNameKey] = cleanDisplay
+                        prefs[inviteCodeKey] = code
                     }
                 }
             }.onSuccess {
-                _uiState.value = _uiState.value.copy(isLoading = false, activeBlendId = it, message = "Joined Blend.")
+                _uiState.value = _uiState.value.copy(isLoading = false, activeBlendId = it, inviteCode = code, message = "Joined Blend.")
                 refreshCloudBlend()
             }.onFailure { setError(it.message ?: "Couldn't join Blend.") }
         }
@@ -207,9 +227,13 @@ class GroupBlendViewModel @Inject constructor(
 
     fun refreshCloudBlend() {
         viewModelScope.launch {
-            val blendId = preferences.data.first()[activeBlendKey] ?: return@launch
+            val prefs = preferences.data.first()
+            val blendId = prefs[activeBlendKey] ?: return@launch
+            val myUserId = runCatching { cloud.account()?.userId }.getOrNull()
+            _uiState.value = _uiState.value.copy(isLoading = true)
             runCatching {
-                syncCloudProfile()
+                // Profile sync is best-effort and must not block member loading.
+                if (profileLoaded) syncCloudProfile()
                 cloud.members(blendId)
             }.onSuccess { members ->
                 val cloudProfiles = members.map { BlendMemberProfile(it.userId, it.displayName, it.profile) }
@@ -217,7 +241,8 @@ class GroupBlendViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     activeBlendId = blendId,
-                    cloudMembers = members.map { BlendMemberUi(it.userId, it.displayName, it.userId == cloud.account()?.userId, it.profile.tracks.size, it.profile.artistAffinity.size) },
+                    inviteCode = prefs[inviteCodeKey] ?: _uiState.value.inviteCode,
+                    cloudMembers = members.map { BlendMemberUi(it.userId, it.displayName, it.userId == myUserId, it.profile.tracks.size, it.profile.artistAffinity.size) },
                     members = listOf(BlendMemberUi("you", "You", true, myProfile.tracks.size, myProfile.artistAffinity.size)),
                     result = result,
                 )
@@ -230,8 +255,17 @@ class GroupBlendViewModel @Inject constructor(
             val blendId = preferences.data.first()[activeBlendKey] ?: return@launch
             runCatching { cloud.leaveBlend(blendId) }
                 .onSuccess {
-                    preferences.edit { it.remove(activeBlendKey) }
-                    _uiState.value = _uiState.value.copy(activeBlendId = null, cloudMembers = emptyList(), message = "You left the Blend.")
+                    preferences.edit {
+                        it.remove(activeBlendKey)
+                        it.remove(inviteCodeKey)
+                        it.remove(displayNameKey)
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        activeBlendId = null,
+                        inviteCode = null,
+                        cloudMembers = emptyList(),
+                        message = "You left the Blend.",
+                    )
                 }
                 .onFailure { setError(it.message ?: "Couldn't leave Blend.") }
         }

@@ -162,6 +162,9 @@ class TrackDownloadManager @Inject constructor(
         // Up to 5 tracks download at once; per-download buffers stay small
         // (128 KB x 4 ranges) so this remains safe on low-RAM devices.
         private const val MAX_CONCURRENT_DOWNLOADS = 5
+        private const val MAX_CONCURRENT_YOUTUBE_RESOLVES = 2
+        private const val RESOLVE_RETRY_DELAY_MS = 3_000L
+        private const val RESOLVE_RETRY_NETWORK_WAIT_MS = 15_000L
         /** Reconnectable transfer failures tolerated before the attempt is abandoned. */
         private const val MAX_TRANSFER_RETRIES = 6
         /** Bound on each YouTube stream-resolve step so one candidate can't wedge a slot. */
@@ -261,6 +264,7 @@ class TrackDownloadManager @Inject constructor(
     private val activeFiles = ConcurrentHashMap<String, File>()
     private val reconnectGenerations = ConcurrentHashMap<String, AtomicLong>()
     private val downloadSlots = Semaphore(MAX_CONCURRENT_DOWNLOADS)
+    private val youtubeResolveGate = Semaphore(MAX_CONCURRENT_YOUTUBE_RESOLVES)
     private val restoreMutex = Mutex()
 
     private val _downloads = MutableStateFlow<Map<String, DownloadProgress>>(emptyMap())
@@ -1125,7 +1129,6 @@ class TrackDownloadManager @Inject constructor(
                         // Never single-shot strict match — search more, try each.
                         // Budgeted so one wedged track cannot hold a
                         // download slot and stall the batch queue.
-                        val ytFallbackStartMs = android.os.SystemClock.elapsedRealtime()
                         val ytResolveBudgetMs = 60_000L
                         val candidateTracks = linkedMapOf<String, YouTubeMusicTrack>()
                         val isPlausibleTrack: (YouTubeMusicTrack) -> Boolean = { track ->
@@ -1158,46 +1161,75 @@ class TrackDownloadManager @Inject constructor(
                         var actualVideoId: String? = null
                         var chosenTrack: YouTubeMusicTrack? = null
                         var lastResolveError: Throwable? = null
-                        for ((candidateId, candidateTrack) in candidateTracks) {
-                            if (android.os.SystemClock.elapsedRealtime() - ytFallbackStartMs > ytResolveBudgetMs) {
-                                android.util.Log.w(
-                                    "TrackDownloadManager",
-                                    "YouTube resolve budget exhausted for $finalTitle by $finalArtist; skipping remaining candidates",
-                                )
-                                break
-                            }
-                            // 1. Same waterfall playback uses (cache + multi-client direct URLs).
-                            val playbackStream = try {
-                                kotlinx.coroutines.withTimeoutOrNull(YT_STREAM_RESOLVE_TIMEOUT_MS) {
-                                    innerTube.peekCachedStream(candidateId)
-                                        ?: innerTube.resolveAudioStream(candidateId)
+                        // Parallel resolves queue on one local cipher until their budgets
+                        // expire, and bursts of player requests invite the bot check.
+                        // Only resolving is limited here; transfers still run in parallel.
+                        youtubeResolveGate.acquire()
+                        try {
+                            val ytFallbackStartMs = android.os.SystemClock.elapsedRealtime()
+                            for (resolveRound in 0..1) {
+                                for ((candidateId, candidateTrack) in candidateTracks) {
+                                    if (android.os.SystemClock.elapsedRealtime() - ytFallbackStartMs > ytResolveBudgetMs) {
+                                        android.util.Log.w(
+                                            "TrackDownloadManager",
+                                            "YouTube resolve budget exhausted for $finalTitle by $finalArtist; skipping remaining candidates",
+                                        )
+                                        break
+                                    }
+                                    // 1. Same waterfall playback uses (cache + multi-client direct URLs).
+                                    val playbackStream = try {
+                                        kotlinx.coroutines.withTimeoutOrNull(YT_STREAM_RESOLVE_TIMEOUT_MS) {
+                                            innerTube.peekCachedStream(candidateId)
+                                                ?: innerTube.resolveAudioStream(candidateId)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (error: Exception) {
+                                        lastResolveError = error
+                                        null
+                                    }
+                                    // 2. Opus preference: if playback picked AAC (or failed),
+                                    // ask NewPipe for the WebM/Opus rendition, which is
+                                    // remuxed below into a fully tagged .opus file.
+                                    val opusStream = playbackStream?.takeIf { it.isOpusStream() } ?: try {
+                                        kotlinx.coroutines.withTimeoutOrNull(YT_STREAM_RESOLVE_TIMEOUT_MS) {
+                                            innerTube.resolveDownloadStream(candidateId)
+                                        }
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (error: Exception) {
+                                        lastResolveError = error
+                                        null
+                                    }
+                                    pickedStream = opusStream?.takeIf { it.isOpusStream() } ?: playbackStream ?: opusStream
+                                    if (pickedStream != null && !isDownloadStreamUsable(pickedStream)) {
+                                        // A NewPipe-only URL can be cipher-less or bot-gated even
+                                        // though the playback waterfall already had a playable
+                                        // format. Drop it, invalidate the cached entry, and let the
+                                        // next round resolve a fresh URL instead of surfacing 403.
+                                        val rejected = pickedStream
+                                        innerTube.invalidateCache(candidateId)
+                                        lastResolveError = DownloadHttpException(403)
+                                        pickedStream = listOfNotNull(playbackStream, opusStream)
+                                            .firstOrNull { it !== rejected && isDownloadStreamUsable(it) }
+                                    }
+                                    if (pickedStream != null) {
+                                        actualVideoId = candidateId
+                                        resolvedYtVideoId = candidateId
+                                        chosenTrack = candidateTrack
+                                        break
+                                    }
                                 }
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (error: Exception) {
-                                lastResolveError = error
-                                null
-                            }
-                            // 2. Opus preference: if playback picked AAC (or failed),
-                            // ask NewPipe for the WebM/Opus rendition, which is
-                            // remuxed below into a fully tagged .opus file.
-                            val opusStream = playbackStream?.takeIf { it.isOpusStream() } ?: try {
-                                kotlinx.coroutines.withTimeoutOrNull(YT_STREAM_RESOLVE_TIMEOUT_MS) {
-                                    innerTube.resolveDownloadStream(candidateId)
+                                if (pickedStream != null ||
+                                    android.os.SystemClock.elapsedRealtime() - ytFallbackStartMs > ytResolveBudgetMs
+                                ) {
+                                    break
                                 }
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (error: Exception) {
-                                lastResolveError = error
-                                null
+                                // One more pass for a dropped connection or a brief failure.
+                                if (resolveRound == 0) awaitNetworkForResolveRetry()
                             }
-                            pickedStream = opusStream?.takeIf { it.isOpusStream() } ?: playbackStream ?: opusStream
-                            if (pickedStream != null) {
-                                actualVideoId = candidateId
-                                resolvedYtVideoId = candidateId
-                                chosenTrack = candidateTrack
-                                break
-                            }
+                        } finally {
+                            youtubeResolveGate.release()
                         }
                         val resolvedStream = pickedStream
                             ?: throw (lastResolveError ?: IOException("No playable YouTube stream for $finalTitle by $finalArtist"))
@@ -2305,6 +2337,38 @@ class TrackDownloadManager @Inject constructor(
             delay(RECONNECT_POLL_INTERVAL_MS)
             elapsedMs += RECONNECT_POLL_INTERVAL_MS
         }
+    }
+
+    private suspend fun awaitNetworkForResolveRetry() {
+        delay(RESOLVE_RETRY_DELAY_MS)
+        val waitStartMs = android.os.SystemClock.elapsedRealtime()
+        while (!hasUsableNetwork() &&
+            android.os.SystemClock.elapsedRealtime() - waitStartMs < RESOLVE_RETRY_NETWORK_WAIT_MS
+        ) {
+            delay(RECONNECT_POLL_INTERVAL_MS)
+        }
+    }
+
+    /**
+     * Cheap range read that mirrors the first thing the transfer will do.
+     * googlevideo answers an expired or bot-gated URL with 403/410 here, so the
+     * download can pick another rendition instead of failing after the user
+     * already waited for the resolve. Other failures are left to the transfer's
+     * reconnect logic.
+     */
+    private suspend fun isDownloadStreamUsable(
+        stream: com.itzfallenme.katmusic.data.music.YouTubeAudioStream,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val request = buildDownloadRequest(
+            url = stream.url,
+            requestHeaders = stream.requestHeaders,
+            range = DownloadRange(0L, 0L),
+        )
+        runCatching {
+            downloadClient.newCall(request).execute().use { response ->
+                response.code != 401 && response.code != 403 && response.code != 410
+            }
+        }.getOrDefault(true)
     }
 
     private fun hasUsableNetwork(): Boolean = runCatching {

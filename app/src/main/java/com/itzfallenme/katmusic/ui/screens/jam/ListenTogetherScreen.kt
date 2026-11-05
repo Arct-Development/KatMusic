@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -52,6 +53,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
     val client = viewModel.client
     val connection by client.connectionState.collectAsState()
     val roomCode by client.roomCode.collectAsState()
+    val pendingRoomCode by client.pendingRoomCode.collectAsState()
     val isHost by client.isHost.collectAsState()
     val pendingRequests by client.pendingRequests.collectAsState()
     val events by client.events.collectAsState()
@@ -92,6 +94,20 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                     }
                 }
             }
+            if (pendingRoomCode.isNotBlank()) {
+                item {
+                    androidx.compose.material3.Card(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Waiting for the host", style = MaterialTheme.typography.titleLarge)
+                            Text("Room $pendingRoomCode will open as soon as the host lets you in.", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                            OutlinedButton(onClick = { viewModel.leaveRoom() }) { Text("Cancel request") }
+                        }
+                    }
+                }
+            }
             item {
                 androidx.compose.material3.Card(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
@@ -103,7 +119,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                         Text("Create a room", style = MaterialTheme.typography.titleLarge)
                         Button(
                             onClick = { viewModel.createRoom(endpoint, displayName) },
-                            enabled = displayName.isNotBlank() && connection != "Connecting…" && roomCode.isBlank(),
+                            enabled = displayName.isNotBlank() && connection != "Connecting…" && roomCode.isBlank() && pendingRoomCode.isBlank(),
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Create room") }
                     }
@@ -119,7 +135,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                         OutlinedTextField(joinCode, { joinCode = it.uppercase().filter(Char::isLetterOrDigit).take(8) }, Modifier.fillMaxWidth(), label = { Text("Room code") }, singleLine = true)
                         OutlinedButton(
                             onClick = { viewModel.joinRoom(endpoint, joinCode, displayName) },
-                            enabled = displayName.isNotBlank() && joinCode.length >= 4 && connection != "Connecting…" && roomCode.isBlank(),
+                            enabled = displayName.isNotBlank() && joinCode.length >= 4 && connection != "Connecting…" && roomCode.isBlank() && pendingRoomCode.isBlank(),
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Join room") }
                     }
@@ -156,9 +172,22 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                     Spacer(Modifier.width(10.dp))
                                     Column(Modifier.weight(1f)) {
                                         Text(member.displayName, fontWeight = FontWeight.Medium)
-                                        Text(if (member.role == "host") "Host" else "Listener", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            when {
+                                                !member.connected -> "Reconnecting…"
+                                                member.role == "host" -> "Host"
+                                                else -> "Listener"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
-                                    if (member.role == "host") Text("HOST", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    if (isHost && member.role != "host") {
+                                        TextButton(onClick = { client.transferHost(member.id) }) { Text("Make host") }
+                                        TextButton(onClick = { client.kickMember(member.id) }) { Text("Remove") }
+                                    } else if (member.role == "host") {
+                                        Text("HOST", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    }
                                 }
                             }
                         }

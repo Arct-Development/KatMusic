@@ -100,7 +100,7 @@
   async function loadRelease() {
     try {
       let data; const c = sessionStorage.getItem("kat-rel");
-      if (c) { const p = JSON.parse(c); if (Date.now() - p.t < 120000) data = p.d; }   // 2-minute cache keeps GitHub rate limits happy
+      if (c) { const p = JSON.parse(c); if (Date.now() - p.t < 30000) data = p.d; }   // short cache keeps the download total fresh
       if (!data) {
         const r = await fetch(API, { headers: { Accept: "application/vnd.github+json" } });
         if (!r.ok) throw new Error(r.status);
@@ -115,6 +115,18 @@
     } catch { $("#err").hidden = false; $("#fsize").textContent = "Use the GitHub releases page"; }
   }
   loadRelease();
+  // The APK is served from GitHub, so its asset download_count is the
+  // authoritative total and already includes clicks from this page. GitHub's
+  // API lags a few seconds, so refresh just after a click (bypassing the
+  // cache) instead of waiting for the 3-minute poll.
+  const refreshAfterDownload = (delay) => setTimeout(() => {
+    sessionStorage.removeItem("kat-rel");
+    loadRelease();
+  }, delay);
+  $("#dlbtn").addEventListener("click", () => {
+    refreshAfterDownload(10_000);
+    refreshAfterDownload(30_000);
+  });
   setInterval(loadRelease, 180000);                                  // re-check every 3 minutes while the page is open
   document.addEventListener("visibilitychange", () => { if (!document.hidden) loadRelease(); });
 })();
