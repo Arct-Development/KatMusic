@@ -289,7 +289,7 @@ class JamSnapshot {
   );
 }
 
-/// WebSocket client for the Clash Projects Jam server.
+/// WebSocket client for the KatMusic Jam server.
 ///
 /// A failed connection sets [JamPhase.error] and does not touch playback.
 bool _isDefaultName(String name) => const {

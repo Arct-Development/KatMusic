@@ -27,7 +27,7 @@ import (
 var logoPNG []byte
 
 const (
-	defaultBaseURL = "https://jam.clashprojects.qd.je"
+	defaultBaseURL = "https://katmusic.onrender.com"
 	ogWidth        = 1200
 	ogHeight       = 630
 	maxOGCache     = 128

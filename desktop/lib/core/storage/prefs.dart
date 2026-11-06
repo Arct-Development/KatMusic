@@ -569,7 +569,7 @@ class Prefs {
   // -- Jam --------------------------------------------------------------------
   String get jamServerUrl {
     final raw = _sp.getString('jamServerUrl')?.trim() ?? '';
-    if (raw.isEmpty) return 'wss://jam.clashprojects.qd.je/ws';
+    if (raw.isEmpty) return 'wss://katmusic.onrender.com/ws';
     return raw;
   }
 
