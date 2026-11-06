@@ -3,6 +3,7 @@ package com.itzfallenme.katmusic.ui.screens.settings
 import android.os.Build
 import android.util.Base64
 import com.itzfallenme.katmusic.data.ytmusic.YtDesktopPairingClient
+import com.itzfallenme.katmusic.data.ytmusic.YtDesktopPairingInvite
 import com.itzfallenme.katmusic.data.ytmusic.YtDesktopPairingConnection
 import com.itzfallenme.katmusic.data.ytmusic.YtDesktopPairingStatus
 import com.itzfallenme.katmusic.data.ytmusic.YtMusicAuthManager
