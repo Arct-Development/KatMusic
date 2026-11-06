@@ -28,6 +28,7 @@ class LinkPlaybackResolver @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val json = Json { ignoreUnknownKeys = true }
+    private val videoIdPattern = Regex("^[A-Za-z0-9_-]{6,24}$")
 
     fun handleIntent(intent: Intent?): Boolean {
         if (intent == null) return false
@@ -87,13 +88,19 @@ class LinkPlaybackResolver @Inject constructor(
 
     private fun isKatMusicTrackUrl(url: String): Boolean {
         val parsed = runCatching { Uri.parse(url) }.getOrNull() ?: return false
-        return parsed.scheme == "katmusic" && parsed.host == "track" &&
-            !parsed.getQueryParameter("v").isNullOrBlank()
+        val scheme = parsed.scheme.orEmpty().lowercase()
+        val host = parsed.host.orEmpty().lowercase()
+        val customTrack = scheme == "katmusic" &&
+            (host == "track" || host == "song" || host == "play")
+        val webShare = (scheme == "http" || scheme == "https") &&
+            (host == "katmusic.pages.dev" || host.endsWith(".katmusic.pages.dev"))
+        val videoId = parsed.getQueryParameter("v").orEmpty().trim()
+        return (customTrack || webShare) && videoIdPattern.matches(videoId)
     }
 
     private suspend fun resolveKatMusicTrack(url: String) {
         val videoId = Uri.parse(url).getQueryParameter("v").orEmpty().trim()
-        if (videoId.isBlank()) return
+        if (!videoIdPattern.matches(videoId)) return
         resolveYouTube("https://music.youtube.com/watch?v=$videoId")
     }
 

@@ -89,11 +89,12 @@ class _KatSideRailState extends State<KatSideRail> {
         child: KatEntranceGroup(
           child: Column(
             children: [
-              const SizedBox(height: 6),
+              _RailBrand(expanded: expanded),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   children: [
+                    _RailSeparator(expanded: expanded, label: 'Listen'),
                     // One-shot startup cascade — standalone entrances run once
                     // on mount; in-place rebuilds (selection/hover) never replay.
                     for (var i = 0; i < katListenDestinations.length; i++)
@@ -101,7 +102,10 @@ class _KatSideRailState extends State<KatSideRail> {
                     KatEntrance(
                       index: katListenDestinations.length,
                       rise: 4,
-                      child: _RailSeparator(expanded: expanded),
+                      child: _RailSeparator(
+                        expanded: expanded,
+                        label: 'Your library',
+                      ),
                     ),
                     for (var i = 0; i < katCollectionDestinations.length; i++)
                       _row(
@@ -113,7 +117,7 @@ class _KatSideRailState extends State<KatSideRail> {
                           katListenDestinations.length +
                           katCollectionDestinations.length,
                       rise: 4,
-                      child: _RailSeparator(expanded: expanded),
+                      child: _RailSeparator(expanded: expanded, label: 'Offline'),
                     ),
                     for (var i = 0; i < katOfflineDestinations.length; i++)
                       _row(
@@ -150,11 +154,79 @@ class _KatSideRailState extends State<KatSideRail> {
   }
 }
 
-class _RailSeparator extends StatelessWidget {
+/// Small identity lockup for the rail. The mark stays visible in compact mode
+/// so the collapsed rail still reads as KatMusic rather than an unexplained
+/// column of icons. The wordmark fades in only after the rail has room for it.
+class _RailBrand extends StatelessWidget {
   final bool expanded;
-  const _RailSeparator({required this.expanded});
+  const _RailBrand({required this.expanded});
+
   @override
   Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: katMotion(context, KatMotion.normal),
+      curve: KatMotion.standard,
+      height: 54,
+      padding: EdgeInsets.symmetric(horizontal: expanded ? 14 : 0),
+      child: Center(
+        child: Row(
+          mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/brand/katmusic-logo.png',
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+              ),
+            ),
+            if (expanded) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: katMotion(context, KatMotion.fast),
+                  opacity: expanded ? 1 : 0,
+                  child: Text(
+                    'KATMUSIC',
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: KatType.overline.copyWith(
+                      color: katTextPrimary(context),
+                      letterSpacing: 1.35,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RailSeparator extends StatelessWidget {
+  final bool expanded;
+  final String? label;
+  const _RailSeparator({required this.expanded, this.label});
+  @override
+  Widget build(BuildContext context) {
+    if (expanded && label != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 5),
+        child: Text(
+          label!.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+          style: KatType.overline.copyWith(
+            fontSize: 9,
+            letterSpacing: 1.1,
+            color: katTextTertiary(context),
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Center(

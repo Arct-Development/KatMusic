@@ -1,6 +1,7 @@
 package com.itzfallenme.katmusic.util
 
 import android.content.Context
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 
@@ -33,18 +34,24 @@ object ShareLinks {
         title.trim().takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("title", it) }
         artist.trim().takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("artist", it) }
         album?.trim()?.takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("album", it) }
-        artworkUrl?.trim()?.takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("art", it) }
+        // artworkUrl is intentionally omitted to keep share links short, clean and fast.
+        // Both the app and web landing page automatically derive artwork from videoId.
         return builder.build().toString()
     }
 
     /** Opens the system share sheet with [url] as plain text. */
     fun send(context: Context, url: String, subject: String? = null) {
+        val shareTitle = subject?.trim().takeUnless { it.isNullOrEmpty() } ?: "KatMusic track"
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, url)
-            subject?.takeIf { it.isNotBlank() }?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+            putExtra(Intent.EXTRA_TITLE, shareTitle)
+            putExtra(Intent.EXTRA_SUBJECT, shareTitle)
+            // ClipData gives Android 13+ sharesheets and desktop bridges a
+            // stable preview payload without changing the plain-text fallback.
+            clipData = ClipData.newPlainText(shareTitle, url)
         }
-        val chooser = Intent.createChooser(intent, null)
+        val chooser = Intent.createChooser(intent, shareTitle)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     }

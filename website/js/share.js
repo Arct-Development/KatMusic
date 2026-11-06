@@ -69,14 +69,6 @@
       status.textContent = "KatMusic runs on Android, Windows, macOS and Linux — there is no iPhone or iPad build yet.";
       return;
     }
-    let seen = false;
-    try { seen = sessionStorage.getItem(`kat-share-${data.v}`) === "1"; } catch { seen = false; }
-    if (seen) {
-      status.textContent = "Tap “Open in KatMusic” to play it again on this device.";
-      return;
-    }
-    try { sessionStorage.setItem(`kat-share-${data.v}`, "1"); } catch {}
-
     status.textContent = "Opening KatMusic…";
     launch(data);
     const started = Date.now();

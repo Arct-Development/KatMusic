@@ -62,6 +62,10 @@ class KatIcons {
 
   // Actions
   static const IconData more = FluentIcons.more;
+  static const IconData share = FluentIcons.share;
+  static const IconData link = FluentIcons.link;
+  static const IconData externalLink = FluentIcons.open_in_new_window;
+  static const IconData copy = FluentIcons.copy;
   static const IconData add = FluentIcons.add;
   static const IconData addTo = FluentIcons.add_to;
   static const IconData playNext = FluentIcons.add;

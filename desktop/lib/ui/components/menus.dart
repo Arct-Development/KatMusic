@@ -19,6 +19,7 @@ import '../../features/sharing/share_links.dart';
 import '../app_shell/kat_hotkeys.dart';
 import '../collections/playlist_dialogs.dart';
 import '../navigation/kat_nav.dart';
+import '../sharing/share_track_dialog.dart';
 import '../theme/tokens.dart';
 import 'buttons.dart' show KatTooltip, KatButton, KatFilledButton;
 import '../theme/kat_icons.dart';
@@ -228,7 +229,23 @@ List<KatMenuEntry> katTrackMenuItems({
   final link = trackShareLink(track);
   items.add(
     KatMenuAction(
-      leading: const Icon(FluentIcons.link, size: 15),
+      leading: const Icon(KatIcons.share, size: 15),
+      label: 'Share track…',
+      onPressed: link == null
+          ? null
+          : () => showKatTrackShareDialog(
+              context,
+              videoId: track.videoId,
+              title: track.title,
+              artist: track.artist,
+              album: track.album,
+              artworkUrl: track.artworkUrl,
+            ),
+    ),
+  );
+  items.add(
+    KatMenuAction(
+      leading: const Icon(KatIcons.link, size: 15),
       label: 'Copy share link',
       onPressed: link == null
           ? null

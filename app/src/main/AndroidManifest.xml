@@ -107,7 +107,7 @@
                 <data android:scheme="katmusic" android:host="auth-callback" />
             </intent-filter>
 
-            <!-- KatMusic Jam deep links (katmusic://jam?code=... and katmusic://sync?code=...) -->
+            <!-- KatMusic deep links (rooms and shared tracks). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -115,6 +115,21 @@
                 <data android:scheme="katmusic" android:host="jam" />
                 <data android:scheme="katmusic" android:host="sync" />
                 <data android:scheme="katmusic" android:host="track" />
+                <data android:scheme="katmusic" android:host="song" />
+                <data android:scheme="katmusic" android:host="play" />
+            </intent-filter>
+
+            <!-- The canonical share page can also be selected directly from
+                 Android's link resolver. The page remains the browser
+                 fallback when KatMusic is not installed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="katmusic.pages.dev"
+                    android:pathPrefix="/share.html" />
             </intent-filter>
 
             <!-- YouTube & YouTube Music deep links / Open With -->

@@ -32,16 +32,23 @@ class SharedTrackLink {
 
 SharedTrackLink? trackFromLink(String link) {
   final uri = Uri.tryParse(link.trim());
-  if (uri == null || uri.scheme.toLowerCase() != 'katmusic') return null;
-  if (uri.host.toLowerCase() != 'track') return null;
+  if (uri == null) return null;
+  final scheme = uri.scheme.toLowerCase();
+  final host = uri.host.toLowerCase();
+  final isCustomScheme = scheme == 'katmusic' &&
+      (host == 'track' || host == 'song' || host == 'play');
+  final isWebShare = (scheme == 'http' || scheme == 'https') &&
+      (host == 'katmusic.pages.dev' || host.endsWith('.katmusic.pages.dev'));
+  if (!isCustomScheme && !isWebShare) return null;
   final videoId = (uri.queryParameters['v'] ?? '').trim();
   if (!RegExp(r'^[A-Za-z0-9_-]{6,24}$').hasMatch(videoId)) return null;
+  final art = (uri.queryParameters['art'] ?? '').trim();
   return SharedTrackLink(
     videoId: videoId,
     title: (uri.queryParameters['title'] ?? '').trim(),
     artist: (uri.queryParameters['artist'] ?? '').trim(),
     album: (uri.queryParameters['album'] ?? '').trim(),
-    artworkUrl: (uri.queryParameters['art'] ?? '').trim(),
+    artworkUrl: art.isNotEmpty ? art : 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
   );
 }
 
@@ -85,6 +92,11 @@ class DeepLinks {
         _controller.add(call.arguments as String);
       }
     });
+    if (Platform.isMacOS) {
+      // Cold-launch NSOpen events can arrive before Dart installs its handler.
+      // The macOS runner holds them until this ready handshake.
+      unawaited(_channel.invokeMethod<void>('ready').catchError((_) {}));
+    }
     if (Platform.isWindows) _registerWindowsScheme();
   }
 

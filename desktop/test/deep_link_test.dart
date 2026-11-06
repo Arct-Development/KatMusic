@@ -21,6 +21,17 @@ void main() {
     );
   });
 
+  test('accepts app-link aliases and the canonical web share link', () {
+    expect(trackFromLink('katmusic://song?v=abc123')?.videoId, 'abc123');
+    expect(trackFromLink('katmusic://play?v=abc123')?.videoId, 'abc123');
+    expect(
+      routeForLink(
+        'https://katmusic.pages.dev/share.html?v=abc123&title=Cold%2FMess',
+      ),
+      contains('/shared-track?'),
+    );
+  });
+
   test('rejects anything else', () {
     expect(jamCodeFromLink('katmusic://jam'), isNull);
     expect(jamCodeFromLink('katmusic://jam?code='), isNull);
