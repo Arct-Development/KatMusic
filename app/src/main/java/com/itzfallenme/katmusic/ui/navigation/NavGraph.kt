@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -774,12 +775,31 @@ fun KatMusicNavHost(
 @Composable
 private fun LaunchGate(onAnimationFinished: () -> Unit) {
     var videoFinished by remember { mutableStateOf(false) }
+    var lockupStarted by remember { mutableStateOf(false) }
 
-    // Keep the brand lockup composed from the first frame. Its initial layout
-    // reserves the final wordmark width, then moves the mark from screen centre
-    // into its final left-hand position when the video reaches its own logo frame.
+    // The video's last frame is the centred emblem. Keep the static mark there
+    // for a beat, then resolve it into the wordmark lockup instead of fading
+    // the logo up from black.
+    val haloAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (videoFinished) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 850,
+            delayMillis = 40,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing,
+        ),
+        label = "startupHaloFade",
+    )
+    val underlineProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (lockupStarted) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 420,
+            delayMillis = 220,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing,
+        ),
+        label = "startupUnderline",
+    )
     val logoOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (videoFinished) 0.dp else 86.dp,
+        targetValue = if (lockupStarted) 0.dp else 86.dp,
         animationSpec = androidx.compose.animation.core.tween(
             durationMillis = 620,
             easing = androidx.compose.animation.core.FastOutSlowInEasing,
@@ -787,7 +807,7 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
         label = "startupLogoSlide",
     )
     val wordmarkAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (videoFinished) 1f else 0f,
+        targetValue = if (lockupStarted) 1f else 0f,
         animationSpec = androidx.compose.animation.core.tween(
             durationMillis = 480,
             delayMillis = 90,
@@ -795,7 +815,7 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
         label = "startupWordmarkFade",
     )
     val wordmarkOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (videoFinished) 0.dp else 22.dp,
+        targetValue = if (lockupStarted) 0.dp else 22.dp,
         animationSpec = androidx.compose.animation.core.tween(
             durationMillis = 520,
             delayMillis = 70,
@@ -807,7 +827,7 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
     // The clip is ~1.37 seconds. This is only a broken-decoder fallback;
     // normal completion is driven by VideoView's completion callback.
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(8_000L)
+        kotlinx.coroutines.delay(4_000L)
         if (!videoFinished) {
             android.util.Log.w("KatMusicSplash", "Logo animation timed out; showing static brand mark")
             videoFinished = true
@@ -815,8 +835,11 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
     }
     LaunchedEffect(videoFinished) {
         if (videoFinished) {
-            // Logo and wordmark animations finish before navigation starts.
-            kotlinx.coroutines.delay(760L)
+            // Hold the held emblem long enough to read, then resolve the lockup
+            // before navigation starts.
+            kotlinx.coroutines.delay(180L)
+            lockupStarted = true
+            kotlinx.coroutines.delay(640L)
             onAnimationFinished()
         }
     }
@@ -861,30 +884,74 @@ private fun LaunchGate(onAnimationFinished: () -> Unit) {
             )
         }
 
+        // A quiet blue bloom bridges the held frame and the static lockup.
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .graphicsLayer {
+                    alpha = haloAlpha
+                    val scale = 0.84f + haloAlpha * 0.16f
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            androidx.compose.ui.graphics.Color(0x40168BFFL),
+                            androidx.compose.ui.graphics.Color(0x00168BFFL),
+                        ),
+                    ),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                ),
+        )
+
         // Fixed-width composition is essential here: the row does not grow
         // when the app name appears, so the logo has one clean, predictable
         // centre-to-left motion rather than jumping as the layout recentres.
-        androidx.compose.foundation.layout.Row(
+        Column(
             modifier = Modifier.alpha(if (videoFinished) 1f else 0f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            androidx.compose.foundation.Image(
-                painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_logo),
-                contentDescription = "KatMusic logo",
-                modifier = Modifier
-                    .size(88.dp)
-                    .offset(x = logoOffset),
-            )
-            Text(
-                text = "Kat Music",
-                color = androidx.compose.ui.graphics.Color.White,
-                style = MaterialTheme.typography.headlineLarge,
-                maxLines = 1,
-                modifier = Modifier
-                    .offset(x = wordmarkOffset)
-                    .alpha(wordmarkAlpha),
-            )
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+            ) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(com.itzfallenme.katmusic.R.drawable.ic_launcher_logo),
+                    contentDescription = "KatMusic logo",
+                    modifier = Modifier
+                        .size(88.dp)
+                        .offset(x = logoOffset),
+                )
+                Column(
+                    modifier = Modifier
+                        .offset(x = wordmarkOffset)
+                        .alpha(wordmarkAlpha),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    Text(
+                        text = "Kat Music",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.headlineLarge,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 48.dp * underlineProgress, height = 2.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color.Transparent,
+                                        androidx.compose.ui.graphics.Color(0xFF2F8CFF),
+                                        androidx.compose.ui.graphics.Color.Transparent,
+                                    ),
+                                ),
+                                shape = RoundedCornerShape(1.dp),
+                            ),
+                    )
+                }
+            }
         }
     }
 }

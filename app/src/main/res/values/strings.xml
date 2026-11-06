@@ -5,6 +5,8 @@
     <string name="widget_description">Artwork, track details and playback controls for every media app</string>
     <string name="widget_obsidian_name">KatMusic Obsidian Glass</string>
     <string name="widget_obsidian_description">Frosted obsidian glass player with translucent depth and crystal rim</string>
+    <string name="widget_cover_name">KatMusic Cover</string>
+    <string name="widget_cover_description">Artwork-first cover tile with track details and one-tap play</string>
 
     <!-- Bottom navigation -->
     <string name="nav_feed">Home</string>

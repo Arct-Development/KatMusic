@@ -108,29 +108,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Optional: a repository owner can add RELEASE_KEYSTORE_BASE64 plus the
-      # three password/alias secrets so tagged builds are signed with a stable
-      # release key. Forks without them still build, signed with the debug key.
-      - name: Decode release keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
-            {
-              echo "storeFile=release.keystore"
-              echo "storePassword=$KEYSTORE_PASSWORD"
-              echo "keyAlias=$KEY_ALIAS"
-              echo "keyPassword=$KEY_PASSWORD"
-            } > keystore.properties
-          else
-            echo "No release keystore secret; the release APK will be debug-signed."
-          fi
-
+      # Tagged builds use the same signing contract as the manual release
+      # workflow. The Gradle release-config reads SIGNING_KEY and the three
+      # password/alias environment variables directly; it refuses to fall back
+      # to a debug key, so a missing secret is a clear failure instead of an
+      # APK that cannot install over an existing KatMusic build.
       - name: Build release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ALIAS || secrets.RELEASE_KEY_ALIAS || 'release_key' }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --stacktrace
 
       - name: Rename APK for the release

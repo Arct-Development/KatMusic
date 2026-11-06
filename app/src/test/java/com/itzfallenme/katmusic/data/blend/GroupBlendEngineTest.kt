@@ -64,6 +64,25 @@ class GroupBlendEngineTest {
     }
 
     @Test
+    fun disjointTastesAreInterleavedInsteadOfOneMemberDominating() {
+        val a = BlendTrack("a|one", "A", "One")
+        val b = BlendTrack("b|two", "B", "Two")
+        val c = BlendTrack("c|three", "C", "Three")
+        val members = listOf(
+            BlendMemberProfile("a", "A", BlendTasteProfile(trackAffinity = mapOf(a.key to 1.0), tracks = listOf(a))),
+            BlendMemberProfile("b", "B", BlendTasteProfile(trackAffinity = mapOf(b.key to 1.0), tracks = listOf(b))),
+            BlendMemberProfile("c", "C", BlendTasteProfile(trackAffinity = mapOf(c.key to 1.0), tracks = listOf(c))),
+        )
+
+        val result = GroupBlendEngine.calculate(members)
+
+        assertEquals(
+            setOf(a.key, b.key, c.key),
+            result.recommendations.take(3).map { it.track.key }.toSet(),
+        )
+    }
+
+    @Test
     fun emptyGroupReturnsEmptyResult() {
         val result = GroupBlendEngine.calculate(emptyList())
 

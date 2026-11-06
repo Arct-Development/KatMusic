@@ -8,8 +8,10 @@
 
 A native Android music player built around YouTube Music, with synced lyrics, offline downloads, a powerful audio engine and a highly customisable player.
 
+<p><strong>Hi, I'm <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.</strong> I build Android apps, web projects and practical tools — KatMusic is my home for the music-player ideas I want to use every day.</p>
+
 <p>
-  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.5.0"><strong>Download v2.5.0</strong></a>
+  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.0"><strong>Download v2.6.0</strong></a>
   &nbsp;·&nbsp;
   <a href="https://katmusic.pages.dev">Project website</a>
   &nbsp;·&nbsp;
@@ -40,6 +42,7 @@ Some integrations require you to sign in or provide your own service credentials
 - [Features](#features)
 - [Player styles](#player-styles)
 - [Screenshots](#screenshots)
+- [Desktop](#desktop)
 - [Download and install](#download-and-install)
 - [Build from source](#build-from-source)
 - [Project structure](#project-structure)
@@ -57,7 +60,7 @@ Some integrations require you to sign in or provide your own service credentials
 - Background playback with media notifications, lock-screen controls, queue management, shuffle, repeat and autoplay.
 - Browse and control your library through Android Auto.
 - Playback speed, sleep timer, loudness processing and audio-quality options.
-- Listen Together lets people on the same local Wi-Fi follow a host's playback using a room code.
+- Listen Together creates an online room with a code, co-hosts, collaborative playback, shared queue and chat; playback stays in sync across devices.
 
 ### Audio engine
 
@@ -123,35 +126,82 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 ## Screenshots
 <div align="center">
   <img src="website/assets/img/home.jpg" width="31%" alt="Home screen" style="border-radius: 14px; margin: 4px;" />
-
+  <img src="website/assets/img/player.jpg" width="31%" alt="Full player" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/lyrics.jpg" width="31%" alt="Synced lyrics" style="border-radius: 14px; margin: 4px;" />
+  <br/>
+  <img src="website/assets/img/group-blend.jpg" width="31%" alt="Group Blend compatibility" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/listen-together.jpg" width="31%" alt="Listen Together room" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/library.jpg" width="31%" alt="Library screen" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/assets/img/player.jpg" width="31%" alt="Player screen" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/assets/img/lyrics.jpg" width="31%" alt="Lyrics screen" style="border-radius: 14px; margin: 4px;" />
   <br/>
-  <br/>
+  <img src="website/assets/img/foryou.jpg" width="31%" alt="For You recommendations" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/settings.jpg" width="31%" alt="Settings screen" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/assets/img/stats.jpg" width="31%" alt="Listening statistics screen" style="border-radius: 14px; margin: 4px;" />
-  <img src="website/assets/img/screen-5.jpg" width="31%" alt="Additional player screen" style="border-radius: 14px; margin: 4px;" />
+  <img src="website/assets/img/stats.jpg" width="31%" alt="Listening statistics" style="border-radius: 14px; margin: 4px;" />
 </div>
+
+## Desktop
+
+KatMusic Desktop is a Flutter app for **Windows, Linux and macOS**. It is not a
+web wrapper: it uses the same YouTube Music and lossless streaming sources,
+Last.fm taste and scrobbling, synced lyrics, downloads, group Jam rooms and
+local playback as the Android app, with native desktop window, tray and media
+controls.
+
+The desktop UI is its own interpretation of KatMusic: midnight-navy surfaces,
+KatMusic blue, Figtree type, and shader-backed Liquid Glass navigation chrome.
+It is built with Flutter 3.47+ and the
+[liquid_glass_widgets](https://github.com/sdegenaar/liquid_glass_widgets)
+package; turn the effect off in **Settings → Surface & motion** if you prefer
+an opaque shell.
+
+### Run it
+
+Install [Flutter](https://docs.flutter.dev/get-started/install) 3.47 or newer,
+then:
+
+```bash
+cd desktop
+flutter pub get
+dart tool/obfuscate_secrets.dart   # creates the gitignored secrets file
+flutter run -d windows              # or: linux, macos
+```
+
+Create `desktop/.env` from `desktop/.env.example` before the secrets step if you
+have an addon key. The app runs without one; keyed addon calls fail closed.
+
+### Build installers
+
+```bash
+cd desktop
+flutter build windows --release    # build/windows/x64/runner/Release
+flutter build linux --release      # build/linux/x64/release/bundle
+flutter build macos --release      # build/macos/Build/Products/Release
+```
+
+Linux deb/rpm packaging uses `desktop/linux/packaging/nfpm.yaml`; Windows
+installer source is `desktop/windows/installer.iss`. Tagged `v*` builds and
+manual runs are produced by `.github/workflows/desktop.yml`.
+
+See [desktop/README.md](desktop/README.md) for platform dependencies,
+architecture and troubleshooting.
 
 ## Download and install
 
-**Latest stable release: [KatMusic 2.5.0](https://github.com/Arct-Development/KatMusic/releases/tag/2.5.0)**
+**Latest stable release: [KatMusic 2.6.0](https://github.com/Arct-Development/KatMusic/releases/tag/2.6.0)**
 
 Choose the package that matches your device:
 
 | Package | Android version | Recommended for |
 | --- | --- | --- |
-| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.5.0/KatMusic-v2.5.0-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
-| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.5.0/KatMusic-v2.5.0-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
-| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.5.0/KatMusic-v2.5.0-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
-| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.5.0/KatMusic-v2.5.0-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
+| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
+| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
+| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
+| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
 
 1. Download the APK that matches your device.
 2. Open the downloaded file and approve installation when Android asks.
 3. Launch KatMusic and configure account access or optional integrations from Settings.
 
-You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.5.0/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
+You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
 
 ## Build from source
 
@@ -270,7 +320,7 @@ KatMusic is an independent, third-party project. It is not affiliated with, endo
 
 <div align="center">
 
-**Made by [Arct Development](https://github.com/Arct-Development)**
+**Built by [ItzFallenMe](https://github.com/ItzFallenMe) · [Arct Development](https://github.com/Arct-Development)**
 
 [Website](https://katmusic.pages.dev) · [Releases](https://github.com/Arct-Development/KatMusic/releases) · [Issues](https://github.com/Arct-Development/KatMusic/issues)
 

@@ -1,0 +1,79 @@
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            build: flutter build windows --release
+            artifact: desktop/build/windows/x64/runner/Release
+            package: katmusic-desktop-windows
+          - name: Linux
+            os: ubuntu-22.04
+            build: flutter build linux --release
+            artifact: desktop/build/linux/x64/release/bundle
+            package: katmusic-desktop-linux
+          - name: macOS
+            os: macos-latest
+            build: flutter build macos --release --no-codesign
+            artifact: desktop/build/macos/Build/Products/Release
+            package: katmusic-desktop-macos
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libayatana-appindicator3-dev libasound2-dev \
+            libmpv-dev libkeybinder-3.0-dev libwebkit2gtk-4.1-dev \
+            libsecret-1-dev libjsoncpp-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: stable
+          cache: true
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Generate secret module
+        run: dart tool/obfuscate_secrets.dart
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --exclude-tags golden
+
+      - name: Build
+        run: ${{ matrix.build }}
+
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error

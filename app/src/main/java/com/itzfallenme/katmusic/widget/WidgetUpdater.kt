@@ -147,7 +147,12 @@ object WidgetUpdater {
                 val views = ObsidianWidgetViews.build(context, appWidgetId, eqFrame, progressOverride, memoryArtBitmap)
                 runCatching { manager.updateAppWidget(appWidgetId, views) }
             }
-            ids.isNotEmpty() || obsidianIds.isNotEmpty()
+            val coverIds = manager.getAppWidgetIds(ComponentName(context, CoverWidgetReceiver::class.java))
+            for (appWidgetId in coverIds) {
+                val views = CoverWidgetViews.build(context, appWidgetId, memoryArtBitmap)
+                runCatching { manager.updateAppWidget(appWidgetId, views) }
+            }
+            ids.isNotEmpty() || obsidianIds.isNotEmpty() || coverIds.isNotEmpty()
         }.onFailure { Log.w(TAG, "widget push failed", it) }.getOrDefault(false)
 
     /** Live position 0..1 off the MediaController, extrapolated while playing. */

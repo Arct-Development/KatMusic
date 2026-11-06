@@ -49,7 +49,8 @@ Thumbs.db
 *.exe
 *.raw
 *.obj
-
+jam-ref
+ref
 # Credentials & Environment
 Screenshot/release.jks
 keystore_credentials.txt
@@ -106,3 +107,12 @@ keystore.properties
 website/node_modules/
 website/.next/
 website/.env.local
+
+# Desktop Flutter outputs and local secrets
+desktop/.dart_tool/
+desktop/.flutter-plugins-dependencies
+desktop/.flutter-sdk/
+desktop/.pub/
+desktop/AppDir/
+desktop/*.AppImage
+desktop/lib/core/env/secrets.g.dart

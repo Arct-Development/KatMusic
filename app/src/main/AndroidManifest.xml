@@ -203,6 +203,19 @@
                 android:resource="@xml/obsidian_glass_widget_info" />
         </receiver>
 
+        <!-- Art-first cover tile -->
+        <receiver
+            android:name=".widget.CoverWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_cover_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/cover_widget_info" />
+        </receiver>
+
         <!-- Receiver for cancel/reconnect actions on background-download notifications -->
         <receiver
             android:name=".data.download.DownloadCancelReceiver"

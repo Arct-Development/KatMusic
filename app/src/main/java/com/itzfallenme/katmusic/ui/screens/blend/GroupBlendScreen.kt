@@ -1,6 +1,9 @@
 package com.itzfallenme.katmusic.ui.screens.blend
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +60,12 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
     var displayName by rememberSaveable { mutableStateOf("") }
     var blendName by rememberSaveable { mutableStateOf("Our Blend") }
     var inviteCode by rememberSaveable { mutableStateOf("") }
+    val matchPercent = state.result.compatibilityPercent
+    val matchProgress by animateFloatAsState(
+        targetValue = matchPercent / 100f,
+        animationSpec = tween(durationMillis = 700),
+        label = "blend match gauge",
+    )
 
     Scaffold(topBar = {
         TopAppBar(
@@ -248,19 +258,60 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     ) {
-                        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text("Taste compatibility", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "${state.result.compatibilityPercent}%",
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Text(
-                                "Average taste similarity across every pair in this group, weighted toward artists (75%) and tracks (25%). This is a KatMusic score, not a popularity ranking.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(112.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        progress = { matchProgress },
+                                        modifier = Modifier.fillMaxSize(),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.16f),
+                                        strokeWidth = 9.dp,
+                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            "$matchPercent%",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                        Text(
+                                            "match",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                                        )
+                                    }
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        when {
+                                            matchPercent >= 85 -> "Super blend"
+                                            matchPercent >= 70 -> "Strong match"
+                                            matchPercent >= 50 -> "Good overlap"
+                                            matchPercent >= 30 -> "Some common ground"
+                                            else -> "Different lanes"
+                                        },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    Text(
+                                        "Average taste similarity across every pair, weighted toward artists (75%) and tracks (25%). This is a KatMusic score, not a popularity ranking.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -299,7 +350,7 @@ fun GroupBlendScreen(onBack: () -> Unit, viewModel: GroupBlendViewModel = hiltVi
                 }
                 if (state.result.recommendations.isNotEmpty()) {
                     item { Text("Made for this group", style = MaterialTheme.typography.titleMedium) }
-                    item { Text("Recommendations balance how strongly people like a track with how many members have it in their profile.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text("Recommendations balance group overlap with each member's strongest picks, interleaved so one person's taste does not fill the list.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     items(state.result.recommendations, key = { it.track.key }) { recommendation ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 5.dp),

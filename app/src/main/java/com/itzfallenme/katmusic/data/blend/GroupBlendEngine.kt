@@ -73,11 +73,23 @@ object GroupBlendEngine {
             .map { it.track }
             .take(20)
 
+        val limit = recommendationLimit.coerceIn(1, 100)
+        // Anchor with tracks everyone shares, then alternate picks from each
+        // member. This keeps one person's heavy rotation from filling the
+        // whole mix, which is the useful part of a group Blend.
+        val anchors = sharedTracks.map { BlendTrackRecommendation(it, profiles.size, 1.0) }
+        val memberPicks = interleaveMemberPicks(
+            profiles = profiles,
+            tracks = trackScores,
+            excluded = sharedTracks.mapTo(mutableSetOf()) { it.key },
+            limit = limit,
+        )
+
         return GroupBlendResult(
             compatibilityPercent = compatibility,
             sharedArtists = sharedArtists,
             sharedTracks = sharedTracks,
-            recommendations = diversify(trackScores, recommendationLimit.coerceIn(1, 100)),
+            recommendations = diversify(anchors + memberPicks, limit),
         )
     }
 
@@ -96,6 +108,42 @@ object GroupBlendEngine {
         }
         val denominator = sqrt(leftMagnitude) * sqrt(rightMagnitude)
         return if (denominator <= 0.0) 0.0 else (dot / denominator).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * Round-robin the strongest unused track from every member, so the first
+     * rows of a Blend visibly contain more than one person's taste. Tracks
+     * already chosen as group anchors are skipped.
+     */
+    private fun interleaveMemberPicks(
+        profiles: List<BlendTasteProfile>,
+        tracks: List<BlendTrackRecommendation>,
+        excluded: MutableSet<String>,
+        limit: Int,
+    ): List<BlendTrackRecommendation> {
+        val queues = profiles.map { profile ->
+            tracks
+                .filter { it.track.key !in excluded && profile.trackAffinity.containsKey(it.track.key) }
+                .sortedByDescending { profile.trackAffinity[it.track.key] ?: 0.0 }
+                .toMutableList()
+        }
+        val used = excluded
+        val result = mutableListOf<BlendTrackRecommendation>()
+        var added = true
+        while (result.size < limit && added) {
+            added = false
+            for (queue in queues) {
+                while (queue.isNotEmpty() && !used.add(queue.first().track.key)) {
+                    queue.removeAt(0)
+                }
+                if (queue.isNotEmpty()) {
+                    result += queue.removeAt(0)
+                    added = true
+                    if (result.size >= limit) break
+                }
+            }
+        }
+        return result
     }
 
     /** Avoid letting one artist dominate the first page of the group mix. */

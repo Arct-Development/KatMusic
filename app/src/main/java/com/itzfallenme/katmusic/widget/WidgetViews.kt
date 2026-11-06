@@ -295,7 +295,7 @@ internal object WidgetViews {
     /**
      * Pre-decodes and rounds artwork once per push to minimize memory and IPC payload.
      */
-    private fun resolveArtBitmap(path: String?): Bitmap? = runCatching {
+    internal fun resolveArtBitmap(path: String?): Bitmap? = runCatching {
         if (path.isNullOrBlank()) return null
         val file = File(path)
         if (!file.exists()) return null

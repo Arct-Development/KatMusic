@@ -6,29 +6,29 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.5.0'
+        default: '2.6.0'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.5.0'
+        default: 'KatMusic 2.6.0'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.5.0
+          ## KatMusic 2.6.0
 
           ### Added
-          - Online Listen Together rooms with host approval, room chat, reconnect tokens, shared queue metadata and synchronized playback through the production WebSocket relay.
-          - Production server endpoint prefilled in the Listen Together screen.
-          - Responsive website screenshot gallery and static Cloudflare Pages deployment.
+          - KatMusic Cover: an artwork-first 1×1 and 2×1 home-screen widget with one-tap play/pause.
+          - Animated Group Blend match gauge and corrected cloud member scoring.
+          - A more cinematic alternate-player motion system with ambient colour, breathing/rotating covers, lyric crossfades and a pulsing timeline.
+          - Polished startup handoff from the final logo-video frame into the wordmark lockup.
 
           ### Changed
-          - Arct Development branding and repository links across project documentation and website.
-          - Refined navigation, masthead, home feed, shapes, stats and search; restored the floating glass-pill dock.
+          - Refined Group Blend cloud flows, release documentation and current app screenshots.
 
           ### Fixed
-          - Discovery ViewModel JUnit test initialization and asynchronous result handling.
-          - Stability fixes for duplicate list keys, share intents and service initialization.
+          - Cloud Blend members now populate the compatibility list; leaving a Blend restores the local group.
+          - Tagged release signing now uses the same key contract as the manual release workflow.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.
@@ -58,7 +58,8 @@ jobs:
           REQUESTED_TAG: ${{ inputs.tag_name }}
         run: |
           APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
-          if [ "$APP_VERSION" != "$REQUESTED_TAG" ]; then
+          REQUESTED_VERSION="${REQUESTED_TAG#v}"
+          if [ "$APP_VERSION" != "$REQUESTED_VERSION" ]; then
             echo "::error::Requested tag $REQUESTED_TAG does not match app version $APP_VERSION"
             exit 1
           fi

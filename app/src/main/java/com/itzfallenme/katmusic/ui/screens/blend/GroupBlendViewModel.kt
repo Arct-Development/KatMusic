@@ -238,12 +238,21 @@ class GroupBlendViewModel @Inject constructor(
             }.onSuccess { members ->
                 val cloudProfiles = members.map { BlendMemberProfile(it.userId, it.displayName, it.profile) }
                 val result = GroupBlendEngine.calculate(cloudProfiles)
+                val cloudMemberUi = members.map {
+                    BlendMemberUi(
+                        userId = it.userId,
+                        displayName = it.displayName,
+                        isYou = it.userId == myUserId,
+                        trackCount = it.profile.tracks.size,
+                        artistCount = it.profile.artistAffinity.size,
+                    )
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     activeBlendId = blendId,
                     inviteCode = prefs[inviteCodeKey] ?: _uiState.value.inviteCode,
-                    cloudMembers = members.map { BlendMemberUi(it.userId, it.displayName, it.userId == myUserId, it.profile.tracks.size, it.profile.artistAffinity.size) },
-                    members = listOf(BlendMemberUi("you", "You", true, myProfile.tracks.size, myProfile.artistAffinity.size)),
+                    cloudMembers = cloudMemberUi,
+                    members = cloudMemberUi,
                     result = result,
                 )
             }.onFailure { setError(it.message ?: "Couldn't refresh this Blend.") }
@@ -266,6 +275,10 @@ class GroupBlendViewModel @Inject constructor(
                         cloudMembers = emptyList(),
                         message = "You left the Blend.",
                     )
+                    // Restore the on-device group so the score and member list
+                    // do not keep showing the cloud room that was just left.
+                    publishState()
+                    _uiState.value = _uiState.value.copy(message = "You left the Blend.")
                 }
                 .onFailure { setError(it.message ?: "Couldn't leave Blend.") }
         }

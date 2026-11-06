@@ -1,138 +1,104 @@
-# KatMusic Listen Together server
+# KatMusic Jam server
 
-Node.js WebSocket room relay with Supabase persistence. It relays playback metadata and position only; every listener resolves audio independently through their own authorized provider. It does not relay audio or stream URLs.
+Go WebSocket service for **Listen Together**. It synchronizes playback position, queue, host roles and chat. Audio is never relayed: every listener resolves the track through their own authorized provider.
+
+## Layout
+
+```
+server/jam
+├── cmd/jam              # process entrypoint
+├── internal/wire        # envelopes, payloads, validation
+├── internal/rooms       # rooms, connections, playback clock, chat, stations
+└── internal/api         # HTTP/WebSocket routes, admin panel, share images
+```
+
+## Endpoints
+
+| Path | Purpose |
+|---|---|
+| `GET /ws` | WebSocket session used by the Android app |
+| `GET /healthz` | Liveness/readiness probe |
+| `GET /stats` | Active room and listener counts |
+| `GET /rooms` | Always-on rooms with live listener counts |
+| `GET /og/{code}.png` | Share preview image |
+| `GET /admin` | Password-protected room and chat history panel |
 
 ## Deploy on Render
 
-- Root Directory: \`server/jam\`
+- Root Directory: `server/jam`
 - Runtime: Docker
-- Dockerfile: \`Dockerfile\`
-- Health Check Path: \`/healthz\`
-- Add the environment variables below before deploying.
-- Keep exactly one Render instance for now. Supabase persists data, but this server's live WebSocket connections and broadcasts are process-local. Multiple instances need a shared pub/sub layer (for example, Supabase Realtime or Redis) before they can safely host the same rooms.
+- Health Check Path: `/healthz`
+- Environment:
+  - `PORT` (Render sets this automatically)
+  - `SUPABASE_URL` — the dedicated **Jam** Supabase project URL
+  - `SUPABASE_SERVICE_ROLE_KEY` — service-role key for that Jam project (server only)
+  - `RADIO_SOURCE_URL` — optional station feed base URL; set to `off` to disable the always-on radio loops
+  - `ADMIN_PASSWORD` — enables `/admin` when set
+- Run `supabase/migrations/0001_jam_persistence.sql` in the Jam project before deploying.
+- Run **one instance**. Rooms and chat are snapshotted to Supabase every 15 seconds and on shutdown, then restored when the service wakes. Live sockets cannot be restored, so the first listener to rejoin becomes host and playback resumes paused at the saved position.
 
-## Supabase setup
-
-1. Create a Supabase project.
-2. Open **SQL Editor** and run \`supabase/migrations/0001_jam_persistence.sql\`.
-3. In Render, set:
-   - \`SUPABASE_URL\`: Project URL from Supabase project settings.
-   - \`SUPABASE_SERVICE_ROLE_KEY\`: service-role key from Supabase API settings. Treat it as a secret.
-   - \`REQUIRE_SUPABASE=true\`: makes the server refuse to start if Supabase is not configured.
-   - \`MAX_ROOM_MEMBERS=20\`: optional, maximum 50.
-   - \`ALLOWED_ORIGINS\`: optional comma-separated browser origins. Native Android clients normally send no Origin header; leave empty unless you know the app's browser origin.
-4. Never put the service-role key in the Android app, source control, build config, or public client settings. Rotate it immediately if exposed.
-
-The server uses the service-role key only on Render. RLS is enabled and there are no anon/authenticated table policies.
-
-## Storage model
-
-- \`jam_rooms\`: room code, host, last playback snapshot, queue, expiry.
-- \`jam_members\`: member identity, display name, SHA-256 hash of reconnect token, timestamps.
-- \`jam_chat\`: recent chat messages (server retains the latest 50 per room).
-
-Room codes and membership survive a Render restart. On reconnect, the client receives the restored room snapshot and recent chat history in the existing \`room_reconnected\` / \`room_joined\` message as an additional \`chatHistory\` field. Older clients can ignore that field.
-
-Playback updates are broadcast immediately and persisted as a recovery snapshot. For high-frequency playback events, database writes are best-effort and do not block the live broadcast. Queue and chat writes are persisted before the server confirms/broadcasts them.
-
-Disconnected member sessions are retained for up to six hours. Rooms expire after 24 hours without activity. A server restart restores rooms and members, but clients must reconnect using their session token.
+Without a station feed the server still creates the `INDIA` and `WORLD` rooms, but they stay idle until someone joins. With `RADIO_SOURCE_URL` pointing at a compatible station API, those rooms play continuously and cannot be controlled by listeners.
 
 ## Local development
 
-    cd server/jam
-    npm install
-    SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm start
-
-Without Supabase credentials, local development uses temporary in-memory storage. The health endpoint reports this as \`persistence: "memory"\`. In production, set \`REQUIRE_SUPABASE=true\`.
-
-- Health: \`http://localhost:8787/healthz\`
-- WebSocket: \`ws://localhost:8787/ws\`
-
-## Existing protocol
-
-- \`create_room\`, \`join_room\`, \`approve_member\`, \`reconnect\`
-- \`playback_state\`, \`queue_suggestion\`, \`queue_update\`
-- \`chat\`, \`transfer_host\`, \`kick_member\`, \`leave_room\`, \`ping\`
-
-Join requests still require explicit host approval. Host-only actions are checked server-side. Reconnect tokens are random, room-scoped, and stored only as SHA-256 hashes.
-
-## Operational notes
-
-- Render terminates public TLS; use \`wss://YOUR-SERVICE.onrender.com/ws\` from the app.
-- Configure UptimeRobot to check \`https://YOUR-SERVICE.onrender.com/healthz\`.
-- A successful HTTP health check does not test a complete WebSocket session.
-- Supabase Free has project and usage limits; monitor database size and egress.
-- Supabase persistence is not a distributed WebSocket broker. Keep one server instance until shared pub/sub and cross-instance membership coordination are implemented.
-
-
-## Separate Group Blend Supabase project
-
-Group Blend uses a **separate Supabase project** from Listen Together. Do not point both features at the same project. Jam's server-side service-role key and database remain isolated from Blend's user-facing data.
-
-### 1. Create the Blend project
-
-1. Create a new project in the Supabase dashboard, for example `KatMusic Blend`.
-2. Choose a region close to most of your users.
-3. Save the database password in your password manager. It is not needed in the Android app.
-4. Open **Project Settings → API** (or **API Keys**) and copy:
-   - Project URL
-   - Publishable key (preferred), or the legacy anon key if your project still uses it.
-5. Do **not** copy the secret key or service-role key into Android, Gradle, GitHub Actions build variables, or this repository.
-
-### 2. Create the database schema
-
-1. Open the new Blend project → **SQL Editor**.
-2. Create a new query.
-3. Paste and run `server/blend/supabase/migrations/0001_blend_schema.sql`.
-4. In **Table Editor**, confirm these tables exist:
-   - `blend_rooms`: Blend name, owner, invite-code hash and timestamps.
-   - `blend_members`: user membership and display name.
-   - `blend_profiles`: compact taste profile and schema version.
-5. In **Authentication → Providers**, enable the sign-in method KatMusic will use. Blend membership is tied to an authenticated Supabase user; a display name or invite code is not an identity.
-
-The migration enables RLS, grants only the required client operations, and creates authenticated RPCs for creating and joining a Blend. Invite codes are stored as SHA-256 hashes. The profile payload is capped at 64 KiB. Membership is limited to 10 people per Blend.
-
-### 3. Configure local Android builds
-
-The root Gradle build reads the root `.env` file (ignored by Git) and `local.properties`. Add these values to your local root `.env`:
-
-```dotenv
-KATMUSIC_BLEND_SUPABASE_URL=https://YOUR-BLEND-PROJECT.supabase.co
-KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_OR_ANON_KEY
+```bash
+cd server/jam
+go run ./cmd/jam
 ```
 
-Alternatively, add the same property names to root `local.properties`. Do not commit either file. The checked-in `.env.example` is a template only.
+Use `ws://localhost:8080/ws` in the app. Run the tests with:
 
-### 4. Configure GitHub Actions
+```bash
+go test ./...
+```
 
-In GitHub → **Settings → Secrets and variables → Actions → New repository secret**, add:
+## Protocol
 
-| Secret name | Value |
+Every frame is an envelope:
+
+```json
+{ "type": "join_room", "payload": { "room_code": "ABC123", "name": "Alex" } }
+```
+
+Client to server:
+
+| Type | Payload |
 |---|---|
-| `KATMUSIC_BLEND_SUPABASE_URL` | Blend project's Project URL |
-| `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` | Blend project's publishable key (or legacy anon key) |
+| `create_room` | `name`, optional `room_mode` (`host_only` / `collaborative`) |
+| `join_room` | `room_code`, `name` |
+| `leave_room` | — |
+| `send_chat` | `text`, optional `reply_to_id` |
+| `playback_action` | `action` (`play`, `pause`, `seek`, `change_track`, `skip_next`, `skip_prev`, `queue_add`, `queue_remove`, `queue_clear`), `track`, `position_ms`, `client_time_ms`, `is_playing` |
+| `suggest_track` | `track` |
+| `approve_suggestion` / `reject_suggestion` | `suggestion_id` |
+| `change_room_mode` | `room_mode` |
+| `grant_host` / `revoke_host` | `user_id` (co-host management) |
+| `transfer_host` | `user_id` (live-station admin transfer) |
+| `queue_update` | `queue` (main host only, at most five upcoming tracks) |
+| `ping` | client timestamp |
 
-The Android workflows pass these values to Gradle at build time. They are client configuration, not privileged credentials: because the Android app must connect directly to Supabase, the values can be extracted from an APK. RLS and authenticated access are the security boundary.
+Server to client:
 
-### 5. Key handling and security
+| Type | Purpose |
+|---|---|
+| `room_created` | Room code, user id and host flag for a new room |
+| `sync_state` | Full snapshot: room mode, participants, playback, chat history |
+| `sync_playback` | Authoritative playback action and timeline |
+| `queue_updated` | Shared upcoming queue |
+| `user_joined`, `user_left` | Membership changes |
+| `host_changed`, `cohost_changed` | Role changes |
+| `suggestion_received` | A guest proposed a track to the main host |
+| `chat_message` | Chat entry (24-hour room buffer, latest 50 sent to joiners) |
+| `room_mode_changed`, `station_mode`, `cooldown` | Room policy changes |
+| `pong`, `error` | Health and error responses |
 
-- Never create a `KATMUSIC_BLEND_SUPABASE_SERVICE_ROLE_KEY` build variable. The service-role/secret key bypasses RLS and must stay server-side.
-- Never use a Supabase secret key in the Android app, `BuildConfig`, `.env.example`, or GitHub Actions jobs that build the APK.
-- Keep RLS enabled. Do not add broad `anon` or `authenticated` policies such as `using (true)`.
-- Do not upload raw `song_play_stats` or full listening history. Upload only the compact taste profile.
-- Users should be able to remove their own profile and leave Blends; deleting an auth user cascades their profile and memberships.
-- Rotate any privileged key immediately if it is exposed.
+Rooms support one main host plus one co-host. In `collaborative` mode any participant may drive playback; in `host_only` mode only the two hosts may. Host-only rooms promote the longest-tenured listener when the host leaves. Live stations have no co-hosts and return to automatic playback when their admin leaves.
 
-### 6. Separation and free-tier usage
+## Operational limits
 
-The Blend project is independent from the Jam project. Its database size, storage, egress, auth usage and project limits are counted separately. Monitor usage in each Supabase dashboard. Splitting projects isolates quotas; it does not make either project's free tier unlimited.
-
-### Android integration status
-
-The Android app now includes a Supabase Auth client, session persistence/refresh, compact profile upsert, cloud Blend create/join, member/profile retrieval, and leave-group support. The Group Blend screen exposes account sign-in/create, online group creation/join, invitation-code sharing, member listing, refresh, and leave actions. Local profile-code import remains available as a fallback.
-
-Cloud operation requires the dedicated project migration to be applied and the two client configuration values to be supplied at build time. If those values are absent, the screen reports that cloud setup is unavailable and the offline fallback remains usable. Email confirmation behavior follows the Supabase project's Auth settings.
-
-**Build and live backend verification are still required.** A successful Android build does not prove that the SQL was applied or that the Supabase project has the expected Auth provider settings. Do not announce production cloud Blend availability until a real account/create/join/leave round trip has been tested against the configured project.
-
-For the current local scoring and profile format, see [Group Blend MVP](../../docs/group-blend-mvp.md).
+- Maximum 1,000 participants per room.
+- Chat is retained for 24 hours, capped at 5,000 messages per room.
+- Ended rooms are kept in memory for 24 hours for the admin panel.
+- Room state survives a restart through Supabase. Live connections and host roles do not; the first listener to rejoin takes over.
+- Persistence is optional. Without `SUPABASE_URL` and the service-role key the server runs memory-only, which is fine for local development.
+- Inbound frames are rate-limited per connection; oversized or malformed frames are rejected.

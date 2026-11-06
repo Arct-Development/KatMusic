@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--KAT_META-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KatMusic Jam</title>
+<style>
+  :root { color-scheme: dark; --bg:#0a0a0c; --card:#17171c; --line:#2a2a33; --text:#f4f4f6; --muted:#a0a0ac; --accent:#c7f56b; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 20% 0%,#1d2430 0,var(--bg) 55%); color:var(--text); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { width:min(520px,100%); background:var(--card); border:1px solid var(--line); border-radius:24px; padding:32px; }
+  .brand { font-size:28px; font-weight:800; letter-spacing:-.02em; }
+  .brand span { color:var(--accent); }
+  p { color:var(--muted); margin:10px 0 0; }
+  .code { margin:24px 0; padding:20px; border:1px dashed var(--line); border-radius:16px; text-align:center; font:700 34px/1.1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.16em; color:var(--accent); }
+  label { display:block; font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:8px; }
+  input { width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--line); background:#101015; color:var(--text); font:600 18px/1 ui-monospace,monospace; text-transform:uppercase; letter-spacing:.12em; }
+  .hint { margin-top:20px; font-size:14px; }
+  footer { margin-top:26px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+  a { color:var(--accent); text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">KatMusic <span>Jam</span></div>
+  <p>Listen to the same track with friends, in sync, wherever they are.</p>
+  <div class="code" id="room-code">JAM</div>
+  <label for="code">Room code</label>
+  <input id="code" maxlength="8" autocomplete="off" placeholder="Enter a code">
+  <p class="hint">Open <strong>KatMusic → Listen Together</strong> and enter this code to join. Audio plays on each listener's own device; the room only shares playback position, queue and chat.</p>
+  <footer>Always-on rooms: <a href="?code=INDIA">India</a> · <a href="?code=WORLD">International</a></footer>
+</main>
+<script>
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('code') || params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  const input = document.getElementById('code');
+  if (code) {
+    document.getElementById('room-code').textContent = code;
+    input.value = code;
+  }
+  input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); });
+</script>
+</body>
+</html>

@@ -4,6 +4,31 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.0] - 2026-11-06
+
+### Added
+
+- **Go-based Jam server** with co-hosts, collaborative rooms, suggestions, chat and permanent radio stations, replacing the Node relay.
+- Optional **Supabase persistence** for Jam rooms and recent chat. Snapshots survive Render restarts; the first listener back becomes host.
+- A separate **Group Blend Supabase project** guide so Blend and Jam keep independent free-tier quotas.
+- **KatMusic Cover**, an artwork-first home-screen widget with a 1×1 tile and a 2×1 wide layout, one-tap play/pause and the same live session/artwork pipeline as the existing widgets.
+- A circular **match-percentage gauge** with animated fill and a plain-language match label on the Group Blend compatibility card.
+- A more cinematic alternate-player motion system: drifting ambient colour, breathing and rotating cover art, animated glow rings, lyric-line crossfades, a pulsing timeline playhead and an animated play/pause glyph.
+- A polished startup handoff from the final video emblem into the centred logo, wordmark and gradient underline.
+
+### Changed
+
+- The Android Jam client now uses the native envelope protocol, reconnects with the saved room code and only publishes real playback changes.
+- Group Blend interleaves each member's strongest picks instead of letting one person's taste dominate.
+- README screenshots now include Group Blend, Listen Together, For You, player, lyrics, library, settings and stats, with v2.6.0 download links.
+
+### Fixed
+
+- Online Group Blend now populates the member list used by the compatibility score with the actual cloud members instead of only the local “You” row.
+- Leaving an online Blend now restores and recalculates the on-device group instead of leaving the departed cloud room visible.
+- Tagged release builds now use the same `SIGNING_KEY` contract as the manual release workflow, avoiding an unsigned/debug-key fallback.
+- The 1×1 Cover widget advertises a 1×1 default instead of opening at 2×2.
+
 ## [2.5.0] - 2026-11-01
 
 ### Added
@@ -67,7 +92,7 @@ All notable changes to KatMusic are documented here. The format follows
 ### Setup and verification notes
 
 - Group Blend uses a **separate Supabase project** from Listen Together. Apply `server/blend/supabase/migrations/0001_blend_schema.sql` and configure `KATMUSIC_BLEND_SUPABASE_URL` plus `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` in the local environment or GitHub Actions secrets before enabling cloud access. Never use a service-role key in the Android app.
-- Group Blend cloud flows require a configured Supabase project and have not yet been verified against a live project.
+- Group Blend cloud flows are implemented in Android; they require a configured Supabase project and still need a live project verification before being treated as production-proven.
 - Verify the release workflow and APK artifacts before publishing this version.
 
 

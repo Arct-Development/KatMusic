@@ -10,12 +10,22 @@
 package com.itzfallenme.katmusic.ui.screens.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
@@ -44,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
@@ -113,7 +124,12 @@ internal fun AlternateKatPlayerScreen(
     val progress = (state.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
     val dark = Color(0xFF090A0E)
 
-    Box(Modifier.fillMaxSize().background(dark)) {
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = MaterialTheme.colorScheme.primary,
+            secondary = MaterialTheme.colorScheme.tertiary,
+            isPlaying = state.isPlaying,
+        )
         if (style == KatPlayerStyle.VIDEO) {
             if (canvasEnabled && canvas != null) {
                 CanvasArtworkPlayer(
@@ -202,7 +218,10 @@ internal fun AlternateKatPlayerScreen(
             }
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                IconButton(onClick = player::previous, modifier = Modifier.size(52.dp)) {
+                IconButton(
+                    onClick = player::previous,
+                    modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.06f), CircleShape),
+                ) {
                     Icon(Icons.Filled.SkipPrevious, "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
                 val playControlScale by animateFloatAsState(
@@ -210,25 +229,127 @@ internal fun AlternateKatPlayerScreen(
                     animationSpec = spring(dampingRatio = 0.58f, stiffness = 420f),
                     label = "play-control-scale",
                 )
-                Surface(
-                    onClick = player::togglePlayPause,
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(70.dp).graphicsLayer {
-                        scaleX = playControlScale
-                        scaleY = playControlScale
-                    },
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, if (state.isPlaying) "Pause" else "Play", tint = Color.Black, modifier = Modifier.size(38.dp))
+                val playElevation by animateDpAsState(
+                    targetValue = if (state.isPlaying) 18.dp else 7.dp,
+                    animationSpec = tween(320),
+                    label = "play-control-elevation",
+                )
+                val controlMotion = rememberInfiniteTransition(label = "transport-glow")
+                val controlGlow by controlMotion.animateFloat(
+                    initialValue = 0.35f,
+                    targetValue = 0.85f,
+                    animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                    label = "transport-glow-pulse",
+                )
+                Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .size(84.dp * (0.92f + controlGlow * 0.08f))
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f * controlGlow),
+                                        Color.Transparent,
+                                    ),
+                                ),
+                                CircleShape,
+                            ),
+                    )
+                    Surface(
+                        onClick = player::togglePlayPause,
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        shadowElevation = playElevation,
+                        modifier = Modifier.size(70.dp).graphicsLayer {
+                            scaleX = playControlScale
+                            scaleY = playControlScale
+                        },
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AnimatedContent(
+                                targetState = state.isPlaying,
+                                transitionSpec = {
+                                    (fadeIn(tween(140)) + scaleIn(tween(180), initialScale = 0.62f)) togetherWith
+                                        (fadeOut(tween(120)) + scaleOut(tween(160), targetScale = 0.62f))
+                                },
+                                label = "play-pause-glyph",
+                            ) { playing ->
+                                Icon(
+                                    if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                    if (playing) "Pause" else "Play",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(38.dp),
+                                )
+                            }
+                        }
                     }
                 }
-                IconButton(onClick = player::next, modifier = Modifier.size(52.dp)) {
+                IconButton(
+                    onClick = player::next,
+                    modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.06f), CircleShape),
+                ) {
                     Icon(Icons.Filled.SkipNext, "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
             }
             Spacer(Modifier.height(28.dp))
         }
+    }
+}
+
+@Composable
+private fun AmbientBackdrop(
+    accent: Color,
+    secondary: Color,
+    isPlaying: Boolean,
+) {
+    val motion = rememberInfiniteTransition(label = "player-ambient")
+    val sway by motion.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "ambient-sway",
+    )
+    val pulse by motion.animateFloat(
+        initialValue = 0.88f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(tween(6200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ambient-pulse",
+    )
+    Canvas(Modifier.fillMaxSize()) {
+        drawRect(Color(0xFF07080C))
+        val radius = size.maxDimension * 0.72f
+        val strength = if (isPlaying) 0.34f else 0.20f
+        val warm = Offset(
+            x = size.width * (0.08f + 0.22f * sway),
+            y = size.height * (0.10f + 0.12f * sway),
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(accent.copy(alpha = strength), Color.Transparent),
+                center = warm,
+                radius = radius * pulse,
+            ),
+            radius = radius * pulse,
+            center = warm,
+        )
+        val cool = Offset(
+            x = size.width * (0.92f - 0.18f * sway),
+            y = size.height * (0.70f + 0.08f * sway),
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(secondary.copy(alpha = strength * 0.55f), Color.Transparent),
+                center = cool,
+                radius = radius * 0.92f,
+            ),
+            radius = radius * 0.92f,
+            center = cool,
+        )
+        drawRect(
+            brush = Brush.verticalGradient(
+                listOf(Color.Transparent, Color(0xFF07080C).copy(alpha = 0.72f)),
+            ),
+        )
     }
 }
 
@@ -304,34 +425,48 @@ private fun LyricsStagePresentation(
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (active == null) {
-                    ExpressiveTitle(
-                        text = title,
-                        baseSize = (playerWidth.value * 0.115f).coerceIn(34f, 54f).sp,
-                        color = Color.White,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        if (lyricsState is LyricsUiState.Loading) "Finding synced lyrics…" else "No synced lyrics available for this track",
-                        color = Color.White.copy(alpha = 0.62f),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                } else {
-                    ExpressiveLyricLine(
-                        line = active,
-                        positionMs = lyricPosition,
-                        baseSize = (playerWidth.value * 0.105f).coerceIn(32f, 52f).sp,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                AnimatedContent(
+                    targetState = activeIndex,
+                    transitionSpec = {
+                        (fadeIn(tween(360)) + slideInVertically(tween(420)) { it / 5 }) togetherWith
+                            (fadeOut(tween(220)) + slideOutVertically(tween(280)) { -it / 7 })
+                    },
+                    label = "lyrics-line",
+                ) { index ->
+                    val line = lines.getOrNull(index)
+                    if (line == null) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ExpressiveTitle(
+                                text = title,
+                                baseSize = (playerWidth.value * 0.115f).coerceIn(34f, 54f).sp,
+                                color = Color.White,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Text(
+                                if (lyricsState is LyricsUiState.Loading) "Finding synced lyrics…" else "No synced lyrics available for this track",
+                                color = Color.White.copy(alpha = 0.62f),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    } else {
+                        ExpressiveLyricLine(
+                            line = line,
+                            positionMs = lyricPosition,
+                            baseSize = (playerWidth.value * 0.105f).coerceIn(32f, 52f).sp,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
-                if (!next?.text.isNullOrBlank()) {
-                    Text(
-                        next!!.text,
-                        color = Color.White.copy(alpha = 0.42f),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                AnimatedVisibility(visible = !next?.text.isNullOrBlank()) {
+                    next?.text?.let { nextText ->
+                        Text(
+                            nextText,
+                            color = Color.White.copy(alpha = 0.42f),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
             Row(
@@ -441,6 +576,18 @@ private fun PosterPresentation(
             animationSpec = spring(dampingRatio = 0.82f, stiffness = 90f),
             label = "poster-cover-breathe",
         )
+        val coverSpin by animateFloatAsState(
+            targetValue = if (isPlaying) 360f else 0f,
+            animationSpec = tween(durationMillis = 52000, easing = LinearEasing),
+            label = "poster-cover-spin",
+        )
+        val glowMotion = rememberInfiniteTransition(label = "poster-glow")
+        val ringGlow by glowMotion.animateFloat(
+            initialValue = 0.24f,
+            targetValue = 0.72f,
+            animationSpec = infiniteRepeatable(tween(4200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "poster-ring-glow",
+        )
         AsyncImage(
             model = artwork,
             contentDescription = "Album artwork",
@@ -448,7 +595,11 @@ private fun PosterPresentation(
             modifier = Modifier
                 .size(coverSize)
                 .offset(x = -(width * 1.01f), y = -(width * 1.08f))
-                .graphicsLayer { scaleX = coverScale; scaleY = coverScale }
+                .graphicsLayer {
+                    scaleX = coverScale
+                    scaleY = coverScale
+                    rotationZ = coverSpin
+                }
                 .clip(CircleShape),
         )
         Box(
@@ -474,6 +625,15 @@ private fun PosterPresentation(
                 topLeft = topLeft,
                 size = arcSize,
                 style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+            )
+            drawArc(
+                color = accent.copy(alpha = ringGlow * 0.42f),
+                startAngle = -90f,
+                sweepAngle = 360f * progress.coerceIn(0f, 1f),
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
             )
             drawArc(
                 color = accent.copy(alpha = 0.92f),
@@ -538,6 +698,13 @@ private fun TimelinePresentation(
         animationSpec = androidx.compose.animation.core.tween(240),
         label = "timeline-progress",
     )
+    val timelineMotion = rememberInfiniteTransition(label = "timeline-motion")
+    val playheadPulse by timelineMotion.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "timeline-playhead-pulse",
+    )
     BoxWithConstraints(
         Modifier.fillMaxWidth().height(470.dp).clip(RoundedCornerShape(28.dp)),
     ) {
@@ -557,6 +724,27 @@ private fun TimelinePresentation(
                 end = Offset(size.width, boundary),
                 strokeWidth = 2.dp.toPx(),
             )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.18f),
+                radius = 10.dp.toPx() * playheadPulse,
+                center = Offset(size.width - 3.dp.toPx(), boundary),
+            )
+            drawCircle(
+                color = accent,
+                radius = 4.dp.toPx() * playheadPulse,
+                center = Offset(size.width - 3.dp.toPx(), boundary),
+            )
+            val tickCount = 36
+            repeat(tickCount) { index ->
+                val x = size.width * (index + 0.5f) / tickCount
+                val elapsed = (index + 0.5f) / tickCount <= animatedProgress
+                drawLine(
+                    color = Color.White.copy(alpha = if (elapsed) 0.30f else 0.10f),
+                    start = Offset(x, size.height * 0.72f),
+                    end = Offset(x, size.height * 0.72f + (if (index % 4 == 0) 15.dp else 8.dp).toPx()),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
         }
         Column(
             Modifier.fillMaxSize().padding(22.dp),
@@ -633,25 +821,77 @@ private fun ExpressiveTitle(
 
 @Composable
 private fun ArtworkPresentation(artwork: String?) {
+    val motion = rememberInfiniteTransition(label = "artwork-float")
+    val float by motion.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(5400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "artwork-breathe",
+    )
+    val glow by motion.animateFloat(
+        initialValue = 0.22f,
+        targetValue = 0.58f,
+        animationSpec = infiniteRepeatable(tween(5400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "artwork-glow",
+    )
+    val accent = MaterialTheme.colorScheme.primary
     Column(
         Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(
-            shape = RoundedCornerShape(30.dp),
-            color = Color.White.copy(alpha = 0.06f),
-            shadowElevation = 22.dp,
-            modifier = Modifier.fillMaxWidth().widthIn(max = 360.dp).padding(horizontal = 8.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 372.dp)
+                .aspectRatio(1f)
+                .graphicsLayer {
+                    val lift = 1f + float * 0.018f
+                    scaleX = lift
+                    scaleY = lift
+                },
+            contentAlignment = Alignment.Center,
         ) {
-            Artwork(artwork, Modifier.fillMaxWidth().aspectRatio(1f), true)
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accent.copy(alpha = glow * 0.55f), Color.Transparent),
+                    ),
+                    radius = size.minDimension * 0.57f,
+                )
+                drawRoundRect(
+                    brush = Brush.sweepGradient(
+                        listOf(Color.Transparent, accent.copy(alpha = glow), Color.Transparent),
+                    ),
+                    cornerRadius = CornerRadius(36.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx()),
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(30.dp),
+                color = Color.White.copy(alpha = 0.06f),
+                shadowElevation = 26.dp,
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+            ) {
+                Artwork(artwork, Modifier.fillMaxSize(), true)
+            }
         }
         Spacer(Modifier.height(16.dp))
-        Text(
-            "NOW PLAYING",
-            color = Color.White.copy(.62f),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 3.sp,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .background(accent.copy(alpha = 0.55f + glow * 0.45f), CircleShape),
+            )
+            Text(
+                "NOW PLAYING",
+                color = Color.White.copy(.62f),
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 3.sp,
+            )
+        }
     }
 }
 
