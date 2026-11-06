@@ -74,6 +74,7 @@ void main() {
       'playback',
       'audio',
       'downloads',
+      'library',
       'lyrics',
       'appearance',
       'lastfm',

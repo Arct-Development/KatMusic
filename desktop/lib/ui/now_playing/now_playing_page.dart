@@ -59,13 +59,12 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
   // the toggle on must re-arm for the current track.
   String _prefetchedMotionKey = '';
   // Captured up front: `ref` is not safe to read while the element unmounts.
-  late final StateController<bool> _idleMirror = ref.read(
-    nowPlayingControlsIdleProvider.notifier,
-  );
+  late final StateController<bool> _idleMirror;
 
   @override
   void initState() {
     super.initState();
+    _idleMirror = ref.read(nowPlayingControlsIdleProvider.notifier);
     _resetIdleTimer();
   }
 
@@ -75,7 +74,11 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     // Not while the tree is finalizing: a hidden-dock state must not
     // outlive the page.
     final mirror = _idleMirror;
-    Future.microtask(() => mirror.state = false);
+    Future.microtask(() {
+      // The provider scope can be torn down with the page (tests, app exit);
+      // setting a disposed controller would throw out of the microtask.
+      if (mirror.mounted) mirror.state = false;
+    });
     super.dispose();
   }
 

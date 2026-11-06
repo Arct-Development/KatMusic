@@ -308,7 +308,7 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Test
-        run: flutter test --exclude-tags golden
+        run: flutter test --exclude-tags golden,live
 
       - name: Build
         run: ${{ matrix.build }}
