@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/storage/prefs.dart';
 
-const jamDefaultServer = 'wss://jam.clashprojects.qd.je/ws';
+const jamDefaultServer = 'wss://katmusic.onrender.com/ws';
 
 /// "3:42:10 PM" for a wall-clock millisecond timestamp.
 String jamClock(int ms) {
