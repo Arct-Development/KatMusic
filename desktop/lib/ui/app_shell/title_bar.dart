@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/track_actions.dart' show playGenerated;
@@ -21,6 +22,7 @@ import '../components/menus.dart'
 import '../navigation/kat_nav.dart';
 import '../search/search_page.dart';
 import '../theme/haze.dart';
+import '../theme/brand_icons.dart';
 import '../theme/tokens.dart';
 import '../theme/kat_icons.dart';
 
@@ -545,7 +547,7 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
           ),
         ),
       ),
-    );
+      ),
     );
   }
 
