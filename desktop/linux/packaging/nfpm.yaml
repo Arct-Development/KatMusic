@@ -37,7 +37,7 @@ overrides:
       - libwebkit2gtk-4.1-0
       - libayatana-appindicator3-1 | libappindicator3-1
       - libasound2
-      - libmpv2
+      - libmpv2 | libmpv1
       # hotkey_manager links libkeybinder-3.0 at runtime: without this,
       # global shortcuts are dead on distros that don't ship it.
       - libkeybinder-3.0-0

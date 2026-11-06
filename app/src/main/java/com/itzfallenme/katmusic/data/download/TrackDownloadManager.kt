@@ -1285,32 +1285,7 @@ class TrackDownloadManager @Inject constructor(
                         var lastNotifTime = 0L
                         var lastUnknownProgressBytes = 0L
                         val progressLock = Any()
-                        val transfer = downloadToTempFile(
-                            downloadKey = key,
-                            url = checkNotNull(resolvedUrl),
-                            target = rawFile,
-                            requestHeaders = downloadHeaders,
-                            expectedContentLength = expectedContentLength,
-                            useParallelRanges = useParallelDownload,
-                            onConnectionStateChanged = { isWaiting ->
-                                _downloads.value[key]?.let { current ->
-                                    val updated = current.copy(isWaitingForConnection = isWaiting)
-                                    updateProgress(updated)
-                                    runCatching {
-                                        showDownloadNotification(
-                                            notificationId = notifId,
-                                            downloadKey = key,
-                                            title = title,
-                                            artist = artist,
-                                            progress = updated.progressPercent,
-                                            isIndeterminate = updated.totalBytes <= 0L,
-                                            badgeText = updated.formatBadge,
-                                            isWaitingForConnection = isWaiting,
-                                        )
-                                    }
-                                }
-                            },
-                        ) { downloadedBytes, totalBytes ->
+                        val onProgressCallback: (Long, Long) -> Unit = { downloadedBytes, totalBytes ->
                             synchronized(progressLock) {
                                 val now = android.os.SystemClock.uptimeMillis()
                                 if (totalBytes > 0) {
@@ -1352,6 +1327,77 @@ class TrackDownloadManager @Inject constructor(
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        val onConnectionStateChangedCallback: (Boolean) -> Unit = { isWaiting ->
+                            _downloads.value[key]?.let { current ->
+                                val updated = current.copy(isWaitingForConnection = isWaiting)
+                                updateProgress(updated)
+                                runCatching {
+                                    showDownloadNotification(
+                                        notificationId = notifId,
+                                        downloadKey = key,
+                                        title = title,
+                                        artist = artist,
+                                        progress = updated.progressPercent,
+                                        isIndeterminate = updated.totalBytes <= 0L,
+                                        badgeText = updated.formatBadge,
+                                        isWaitingForConnection = isWaiting,
+                                    )
+                                }
+                            }
+                        }
+
+                        val transfer = try {
+                            downloadToTempFile(
+                                downloadKey = key,
+                                url = checkNotNull(resolvedUrl),
+                                target = rawFile,
+                                requestHeaders = downloadHeaders,
+                                expectedContentLength = expectedContentLength,
+                                useParallelRanges = useParallelDownload,
+                                onConnectionStateChanged = onConnectionStateChangedCallback,
+                                onProgress = onProgressCallback,
+                            )
+                        } catch (transferError: Throwable) {
+                            if (transferError is DownloadHttpException &&
+                                (transferError.statusCode == 401 || transferError.statusCode == 403 || transferError.statusCode == 410) &&
+                                actualVideoId != null
+                            ) {
+                                android.util.Log.w(
+                                    "TrackDownloadManager",
+                                    "YouTube download received HTTP ${transferError.statusCode} for $actualVideoId; evicting cache and retrying with fresh stream",
+                                )
+                                innerTube.invalidateCache(actualVideoId)
+                                val freshStream = try {
+                                    kotlinx.coroutines.withTimeoutOrNull(YT_STREAM_RESOLVE_TIMEOUT_MS) {
+                                        innerTube.resolveAudioStream(actualVideoId)
+                                            ?: innerTube.resolveDownloadStream(actualVideoId)
+                                    }
+                                } catch (_: Exception) { null }
+
+                                if (freshStream != null && isDownloadStreamUsable(freshStream)) {
+                                    resolvedUrl = freshStream.url
+                                    downloadHeaders = freshStream.requestHeaders
+                                    expectedContentLength = freshStream.contentLength
+                                        ?: runCatching { Uri.parse(freshStream.url).getQueryParameter("clen")?.toLongOrNull() }.getOrNull()
+                                    truncateFile(rawFile)
+                                    downloadToTempFile(
+                                        downloadKey = key,
+                                        url = checkNotNull(resolvedUrl),
+                                        target = rawFile,
+                                        requestHeaders = downloadHeaders,
+                                        expectedContentLength = expectedContentLength,
+                                        useParallelRanges = useParallelDownload,
+                                        onConnectionStateChanged = onConnectionStateChangedCallback,
+                                        onProgress = onProgressCallback,
+                                    )
+                                } else {
+                                    throw transferError
+                                }
+                            } else {
+                                throw transferError
                             }
                         }
                         val contentType = transfer.contentType.lowercase()
@@ -1781,6 +1827,9 @@ class TrackDownloadManager @Inject constructor(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
+                if (error is DownloadHttpException && (error.statusCode == 401 || error.statusCode == 403 || error.statusCode == 410)) {
+                    throw error
+                }
                 android.util.Log.w(
                     "TrackDownloadManager",
                     "Validated range download unavailable; using one stream",

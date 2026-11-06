@@ -51,6 +51,7 @@ Thumbs.db
 *.obj
 jam-ref
 ref
+katmusic-diag*
 # Credentials & Environment
 Screenshot/release.jks
 keystore_credentials.txt

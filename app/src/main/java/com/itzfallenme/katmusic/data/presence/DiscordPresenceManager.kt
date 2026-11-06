@@ -151,8 +151,14 @@ class DiscordPresenceManager @Inject constructor(
                     state
                 }
             val key = DiscordPresence.signature(effectiveState)
-            if (key == lastKey && now - lastPushMs < DiscordPresence.PUSH_INTERVAL_MS) {
-                return // Position ticks must not become frames.
+            // Position ticks must not become frames; nor should identical cards be
+            // re-pushed on the heartbeat interval when nothing changed and the
+            // transport is still alive. The heartbeat exists to recover from missed
+            // transitions (transport died, Discord restarted while paused) — it
+            // should only push when the card actually changed OR the transport is dead.
+            val transportAlive = transport?.isOpen == true
+            if (key == lastKey && (now - lastPushMs < DiscordPresence.PUSH_INTERVAL_MS || transportAlive)) {
+                return
             }
             val active = ensureConnected(now)
             if (active == null) {

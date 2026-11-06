@@ -94,6 +94,18 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# Multi-distro compatibility wrapper: wraps katmusic.bin to auto-detect and link
+# host libmpv (libmpv.so.1 vs libmpv.so.2) across diverse distributions (Ubuntu, Fedora, Arch, openSUSE, Debian).
+install(CODE "
+  if(EXISTS \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}\" AND NOT EXISTS \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}.bin\")
+    file(RENAME \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}\" \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}.bin\")
+    file(COPY \"${CMAKE_CURRENT_SOURCE_DIR}/runner/katmusic_launcher.sh\"
+         DESTINATION \"${CMAKE_INSTALL_PREFIX}\"
+         FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    file(RENAME \"${CMAKE_INSTALL_PREFIX}/katmusic_launcher.sh\" \"${CMAKE_INSTALL_PREFIX}/${BINARY_NAME}\")
+  endif()
+" COMPONENT Runtime)
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 

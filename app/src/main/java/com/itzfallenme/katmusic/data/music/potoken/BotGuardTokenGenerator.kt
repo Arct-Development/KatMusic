@@ -67,8 +67,8 @@ object BotGuardTokenGenerator {
     private const val BOOTSTRAP_FAILURE_THRESHOLD = 3
     private const val BOOTSTRAP_COOLDOWN_MS = 15 * 60 * 1000L
     @Volatile private var bootstrapCooldownUntilMs = 0L
-    private var consecutiveBootstrapFailures = 0
-    private var cooldownNotified = false
+    private val consecutiveBootstrapFailures = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile private var cooldownNotified = false
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -191,7 +191,7 @@ object BotGuardTokenGenerator {
                 engineSessionId = sessionId
                 cachedSessionToken = newSessionToken
                 engineReady = true
-                consecutiveBootstrapFailures = 0
+                consecutiveBootstrapFailures.set(0)
                 bootstrapCooldownUntilMs = 0L
                 cooldownNotified = false
             } catch (cancellation: CancellationException) {
@@ -207,8 +207,8 @@ object BotGuardTokenGenerator {
 
     /** Mutex-guarded: only called from [getOrCreateEngine]'s locked section. */
     private fun recordBootstrapFailure() {
-        consecutiveBootstrapFailures++
-        if (consecutiveBootstrapFailures >= BOOTSTRAP_FAILURE_THRESHOLD &&
+        val failures = consecutiveBootstrapFailures.incrementAndGet()
+        if (failures >= BOOTSTRAP_FAILURE_THRESHOLD &&
             System.currentTimeMillis() >= bootstrapCooldownUntilMs
         ) {
             bootstrapCooldownUntilMs = System.currentTimeMillis() + BOOTSTRAP_COOLDOWN_MS
@@ -216,7 +216,7 @@ object BotGuardTokenGenerator {
                 cooldownNotified = true
                 Log.w(
                     TAG,
-                    "BotGuard bootstrap failed ${consecutiveBootstrapFailures}x in a row; " +
+                    "BotGuard bootstrap failed ${failures}x in a row; " +
                         "pausing PO-token minting for ${BOOTSTRAP_COOLDOWN_MS / 60_000} min " +
                         "(playback continues via fallback resolvers)",
                 )

@@ -5,7 +5,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/track_actions.dart' show playGenerated;
@@ -23,7 +22,6 @@ import '../navigation/kat_nav.dart';
 import '../search/search_page.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import '../theme/brand_icons.dart';
 import '../theme/kat_icons.dart';
 
 /// Compact 44px title / nav / search bar.
@@ -133,9 +131,6 @@ class KatTitleBar extends ConsumerWidget {
                     ),
                   ),
                 ),
-                // Community shortcuts — tiny, before the profile.
-                const _CommunityBtns(),
-                const SizedBox(width: 6),
                 // Profile / account — tiny, no giant buttons.
                 KatA11yButton(
                   label: auth.status == AuthStatus.signedIn
@@ -487,25 +482,21 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
         child: SizedBox(
           width: width < 320 ? 320 : width,
           child: _PanelIn(
-            child: Container(
-              key: _panelKey,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: dark
-                    ? katSurfaceRaised(overlayContext)
-                    : katSurfaceOverlay(overlayContext),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: katDivider(overlayContext)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+            child: KatLiquidGlass(
+              borderRadius: BorderRadius.circular(12),
+              base: dark
+                  ? katSurfaceRaised(overlayContext).withValues(alpha: 0.85)
+                  : katSurfaceOverlay(overlayContext).withValues(alpha: 0.88),
+              border: Border.all(
+                color: (dark ? Colors.white : Colors.black).withValues(
+                  alpha: dark ? 0.12 : 0.08,
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Container(
+                key: _panelKey,
+                padding: const EdgeInsets.all(4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                 children: [
                   for (var i = 0; i < hits.length; i++)
                     ListTile.selectable(
@@ -554,6 +545,7 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
           ),
         ),
       ),
+    );
     );
   }
 
