@@ -75,7 +75,7 @@ object SoundprintRenderer {
         // Masthead
         hairline(96f)
         label("KATMUSIC", margin, 142f, accent, 18f)
-        label("SOUNDPRINT  /  NO. 01", WIDTH - margin - 260f, 142f, 18f)
+        label("SOUNDPRINT  /  NO. 01", WIDTH - margin - 260f, 142f, size = 18f)
 
         // Editorial headline
         heading("The music you", margin, 300f, 78f, contentWidth)

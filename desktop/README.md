@@ -62,7 +62,8 @@ flutter build macos --release     # build/macos/Build/Products/Release
 
 Linux packages use `linux/packaging/nfpm.yaml`; the Windows installer source is
 `windows/installer.iss`. `.github/workflows/desktop.yml` builds all three on
-version tags.
+pushes to `main`, pull requests and version tags; tagged builds attach the
+packages to the matching GitHub release.
 
 ## Architecture
 

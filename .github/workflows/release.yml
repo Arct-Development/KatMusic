@@ -320,7 +320,7 @@ jobs:
           cp -R "${{ matrix.artifact }}/." stage/KatMusic/
           OUT="dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.package }}"
           case "${{ runner.os }}" in
-            Windows) 7z a -tzip "$OUT" ./stage/KatMusic > /dev/null ;;
+            Windows) (cd stage && 7z a -tzip "../${OUT}" KatMusic > /dev/null) ;;
             macOS) ditto -c -k --sequesterRsrc --keepParent stage/KatMusic "$OUT" ;;
             *) tar -czf "$OUT" -C stage KatMusic ;;
           esac
