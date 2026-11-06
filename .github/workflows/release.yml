@@ -270,7 +270,7 @@ jobs:
             package: linux-x64.tar.gz
           - name: macOS
             os: macos-latest
-            build: flutter build macos --release --no-codesign
+            build: flutter build macos --release
             artifact: build/macos/Build/Products/Release
             package: macos.zip
     defaults:
