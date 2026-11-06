@@ -241,6 +241,10 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.palette)
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
+    implementation("com.google.zxing:core:3.5.3")
 
     // Home-screen "Now Playing" widget (Glance — Compose-style APIs over
     // RemoteViews), driven by the same MediaController access the local
@@ -374,4 +378,3 @@ val generateNativeSecrets by tasks.registering(Exec::class) {
 tasks.named("preBuild").configure {
     dependsOn(generateNativeSecrets)
 }
-

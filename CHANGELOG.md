@@ -12,6 +12,7 @@ All notable changes to KatMusic are documented here. The format follows
 - Optional **Supabase persistence** for Jam rooms and recent chat. Snapshots survive Render restarts; the first listener back becomes host.
 - A separate **Group Blend Supabase project** guide so Blend and Jam keep independent free-tier quotas.
 - **KatMusic Cover**, an artwork-first home-screen widget with a 1×1 tile and a 2×1 wide layout, one-tap play/pause and the same live session/artwork pipeline as the existing widgets.
+- **Android-to-desktop YouTube Music login** using a five-minute, one-use LAN QR code, desktop approval and AES-GCM encrypted session transfer.
 - A circular **match-percentage gauge** with animated fill and a plain-language match label on the Group Blend compatibility card.
 - A more cinematic alternate-player motion system: drifting ambient colour, breathing and rotating cover art, animated glow rings, lyric-line crossfades, a pulsing timeline playhead and an animated play/pause glyph.
 - A polished startup handoff from the final video emblem into the centred logo, wordmark and gradient underline.
@@ -19,6 +20,8 @@ All notable changes to KatMusic are documented here. The format follows
 ### Changed
 
 - The Android Jam client now uses the native envelope protocol, reconnects with the saved room code and only publishes real playback changes.
+- Android home-screen player widgets now use size-specific RemoteViews layouts with clearer artwork hierarchy, responsive controls, progress rails and reliable empty states.
+- Removed the desktop Addon sources settings screen and its settings-search entry; existing playback fallback behavior remains unchanged.
 - Group Blend interleaves each member's strongest picks instead of letting one person's taste dominate.
 - README screenshots now include Group Blend, Listen Together, For You, player, lyrics, library, settings and stats, with v2.6.0 download links.
 
@@ -28,6 +31,7 @@ All notable changes to KatMusic are documented here. The format follows
 - Leaving an online Blend now restores and recalculates the on-device group instead of leaving the departed cloud room visible.
 - Tagged release builds now use the same `SIGNING_KEY` contract as the manual release workflow, avoiding an unsigned/debug-key fallback.
 - The 1×1 Cover widget advertises a 1×1 default instead of opening at 2×2.
+- macOS desktop builds now compile against newer Xcode SDKs whose Flutter delegate URL handlers require explicit `override` declarations.
 
 ## [2.5.0] - 2026-11-01
 

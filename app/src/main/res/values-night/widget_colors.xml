@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_surface">#FF9C3645</color>
-    <color name="widget_surface_top">#FF9C3645</color>
-    <color name="widget_surface_variant">#FF9C3645</color>
-    <color name="widget_on_surface">#FFFFFFFF</color>
-    <color name="widget_on_surface_variant">#FFE0B8BC</color>
-    <color name="widget_icon_tint">#FF3C1117</color>
-    <color name="widget_primary">#FF9C3645</color>
-    <color name="widget_primary_deep">#FF9C3645</color>
-    <color name="widget_primary_top">#FF9C3645</color>
-    <color name="widget_on_primary">#FF3C1117</color>
-    <color name="widget_accent">#FFF1C295</color>
-    <color name="widget_hairline">#00000000</color>
-    <color name="widget_track">#33000000</color>
-    <color name="widget_eq_bar">#FFFFFFFF</color>
+    <color name="widget_surface">#FF100E13</color>
+    <color name="widget_surface_top">#FF2B1C27</color>
+    <color name="widget_surface_variant">#FF251D27</color>
+    <color name="widget_obsidian_surface">#FF0B0A0F</color>
+    <color name="widget_obsidian_surface_top">#FF211A27</color>
+    <color name="widget_on_surface">#FFFFF7F8</color>
+    <color name="widget_on_surface_variant">#FFC3ACB7</color>
+    <color name="widget_icon_tint">#FFFFF8F5</color>
+    <color name="widget_primary">#FFFFA99D</color>
+    <color name="widget_primary_deep">#FFE67E7E</color>
+    <color name="widget_primary_top">#FFFFC5B2</color>
+    <color name="widget_on_primary">#FF32151C</color>
+    <color name="widget_accent">#FFFFD09F</color>
+    <color name="widget_control_surface">#332B3038</color>
+    <color name="widget_control_stroke">#42FFFFFF</color>
+    <color name="widget_hairline">#33FFFFFF</color>
+    <color name="widget_track">#42FFFFFF</color>
+    <color name="widget_eq_bar">#FFFFD4C7</color>
 </resources>

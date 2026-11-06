@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -65,6 +66,7 @@ import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
 fun YouTubeLoginScreen(
     onBack: () -> Unit,
     onConnected: () -> Unit,
+    onOpenDesktopPairing: () -> Unit,
     viewModel: YouTubeLoginViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -114,19 +116,32 @@ fun YouTubeLoginScreen(
             title = "Connect YouTube Music",
             subtitle = "Sign in with your Google account",
             onBack = onBack,
-            actions = {
-                FilledTonalIconButton(
-                    onClick = { showCookieDialog = true },
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
-                ) {
-                    Icon(
-                        Icons.Filled.Key,
-                        contentDescription = stringResource(R.string.settings_cookie_login),
-                    )
-                }
-            },
+             actions = {
+                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                     FilledTonalIconButton(
+                         onClick = onOpenDesktopPairing,
+                         colors = IconButtonDefaults.filledTonalIconButtonColors(
+                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                         ),
+                     ) {
+                         Icon(
+                             Icons.Filled.Computer,
+                             contentDescription = "Sign in desktop from Android",
+                         )
+                     }
+                     FilledTonalIconButton(
+                         onClick = { showCookieDialog = true },
+                         colors = IconButtonDefaults.filledTonalIconButtonColors(
+                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                         ),
+                     ) {
+                         Icon(
+                             Icons.Filled.Key,
+                             contentDescription = stringResource(R.string.settings_cookie_login),
+                         )
+                     }
+                 }
+             },
         )
 
         Box(Modifier.weight(1f)) {

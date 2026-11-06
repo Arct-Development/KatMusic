@@ -210,13 +210,6 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     keywords: 'discord rich presence status activity',
   ),
   SettingsSearchEntry(
-    id: 'sources.addons',
-    section: 'sources',
-    title: 'Addon sources',
-    subtitle: 'Lossless catalog addons',
-    keywords: 'addon url source lossless catalog provider server',
-  ),
-  SettingsSearchEntry(
     id: 'experimental.main',
     section: 'experimental',
     title: 'Experimental',

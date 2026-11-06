@@ -30,6 +30,7 @@ sealed class Screen(val route: String) {
     data object ExcludedSongs : Screen("excluded_songs")
     data object YouTubeImport : Screen("youtube_import")
     data object YouTubeLogin : Screen("youtube_login")
+    data object YouTubeDesktopPairing : Screen("youtube_desktop_pairing")
     data object SpotifyLogin : Screen("spotify_login")
 
     /** The session cookie pasted in by hand, without the browser sign-in. */
@@ -87,4 +88,3 @@ sealed class Screen(val route: String) {
                 .orEmpty()
     }
 }
-

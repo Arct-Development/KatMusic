@@ -537,6 +537,18 @@ fun KatMusicNavHost(
                 com.itzfallenme.katmusic.ui.screens.settings.YouTubeLoginScreen(
                     onBack = { navController.popBackStack() },
                     onConnected = { navController.popBackStack() },
+                    onOpenDesktopPairing = {
+                        navController.navigate(Screen.YouTubeDesktopPairing.route)
+                    },
+                )
+            }
+        }
+
+        composable(Screen.YouTubeDesktopPairing.route) {
+            BackAwareScreen(onBack = { navController.popBackStack() }) {
+                com.itzfallenme.katmusic.ui.screens.settings.YouTubeDesktopPairingScreen(
+                    onBack = { navController.popBackStack() },
+                    onFinished = { navController.popBackStack() },
                 )
             }
         }

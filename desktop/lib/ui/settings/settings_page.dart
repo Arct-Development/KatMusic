@@ -16,17 +16,17 @@ import '../../app/auth_gate.dart';
 import '../../core/app_info.dart';
 import '../../core/audio/stream_models.dart';
 import '../../core/diagnostics/diagnostics_log.dart';
-import '../../core/env/app_env.dart';
 import '../../core/storage/prefs.dart';
-import '../../features/addons/addon_api.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_library_providers.dart';
 import '../../features/innertube/yt_session_keeper.dart';
+import '../../features/innertube/yt_phone_pairing.dart';
 import '../../features/innertube/yt_web_login.dart';
 import '../components/ambient.dart' show AmbientStyle, ambientStyleProvider;
 import '../components/artwork.dart';
 import '../components/select.dart';
 import 'yt_profile_chooser.dart';
+import 'yt_phone_pairing_dialog.dart';
 import 'spotify_connect.dart';
 import '../../features/spotify/spotify_api.dart';
 import '../../features/spotify/spotify_auth.dart';
@@ -65,7 +65,6 @@ const _waveSettingsSections = [
   ('appearance', 'Appearance', FluentIcons.brush),
   ('lastfm', 'Last.fm', KatIcons.liked),
   ('integrations', 'Integrations', FluentIcons.link),
-  ('sources', 'Sources', FluentIcons.cloud),
   ('experimental', 'Experimental', FluentIcons.bug),
   ('about', 'About', FluentIcons.info),
 ];
@@ -317,8 +316,6 @@ class _SectionBody extends ConsumerWidget {
         return _LastFm(onUpdate: onUpdate);
       case 'integrations':
         return _Ytm(onUpdate: onUpdate);
-      case 'sources':
-        return _Sources(onUpdate: onUpdate);
       case 'experimental':
         return _Experimental(onUpdate: onUpdate);
       default:
@@ -1558,6 +1555,11 @@ class _Ytm extends ConsumerWidget {
                       child: Text('Not connected', style: KatType.trackTitle),
                     ),
                     KatButton(
+                      onPressed: () => _ytConnectFromPhone(context, ref),
+                      child: const Text('Android'),
+                    ),
+                    const SizedBox(width: 8),
+                    KatButton(
                       onPressed: () => _ytConnectWithCookies(context, ref),
                       child: const Text('Use cookies'),
                     ),
@@ -1799,7 +1801,42 @@ class _Ytm extends ConsumerWidget {
       pageId: YtWebLogin.lastCapturedPageId ?? '',
     );
     await _refocusMain();
+}
+}
+
+/// Receives the already-authenticated YouTube session from KatMusic on an
+/// Android phone. The pairing server is local, expires after five minutes,
+/// and asks the desktop user to approve the requesting phone before the
+/// encrypted cookie payload can be accepted.
+Future<void> _ytConnectFromPhone(BuildContext context, WidgetRef ref) async {
+  YtPhonePairing pairing;
+  try {
+    pairing = await YtPhonePairing.create();
+  } catch (error) {
+    if (context.mounted) await _showYtFail(context, error);
+    return;
   }
+
+  YtPhoneTransfer? transfer;
+  try {
+    if (!context.mounted) return;
+    transfer = await showDialog<YtPhoneTransfer>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => YtPhonePairingDialog(pairing: pairing),
+    );
+  } finally {
+    await pairing.close();
+  }
+
+  if (transfer == null || !context.mounted) return;
+  await _ytConnectCaptured(
+    context,
+    ref,
+    header: transfer.cookies,
+    pageId: transfer.pageId,
+  );
+  await _refocusMain();
 }
 
 /// Shown when YouTube definitively rejected the stored jar.
@@ -1917,6 +1954,13 @@ class _CardActions extends ConsumerWidget {
           child: KatButton(
             onPressed: () => _ytAddMenu(context, ref),
             child: const Text('Add'),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: KatButton(
+            onPressed: () => _ytConnectFromPhone(context, ref),
+            child: const Text('Android'),
           ),
         ),
         KatButton(
@@ -2756,205 +2800,6 @@ Future<void> _refocusMain() async {
   } catch (_) {}
 }
 
-/// Addon sources: personal addon URLs replace the built-in lossless
-/// backend as the lossless tier (see [AddonApi]). Quota meters fill
-/// in after playback; unknown until the first stream attempt.
-class _Sources extends ConsumerWidget {
-  final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
-  const _Sources({required this.onUpdate});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final urls = ref.watch(prefsProvider).addonUrls;
-    final src = ref.watch(losslessApiProvider);
-    final quotas = src is AddonApi
-        ? src.quotaByBase
-        : const <String, AddonQuota>{};
-    return _Group(
-      id: 'sources.addons',
-      title: 'Addon sources',
-      subtitle: urls.isEmpty
-          ? 'No addon configured — using the built-in lossless backend'
-          : 'Addons serve the lossless tier instead of the built-in backend',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (AppEnv.addonClientSecret.isEmpty &&
-              urls.any((u) => AddonApi.tokenOfRoot(u).isNotEmpty))
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text(
-                'This build has no addon app key — official addons may fail. '
-                'Rebuild with ADDON_CLIENT_SECRET set.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ),
-          for (final u in urls)
-            _AddonRow(
-              url: u,
-              quota: quotas[u],
-              onRemove: () async {
-                await onUpdate(
-                  (p) => p.setAddonUrls(urls.where((e) => e != u).toList()),
-                );
-                ref.invalidate(losslessApiProvider);
-              },
-            ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: KatFilledButton(
-              onPressed: () => _addAddonDialog(context, ref, urls, onUpdate),
-              child: const Text('Add addon'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Paste the full addon URL from your dashboard. Anyone holding '
-            'it plays on your quota — keep the dashboard backup safe.',
-            style: TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _addAddonDialog(
-    BuildContext context,
-    WidgetRef ref,
-    List<String> urls,
-    Future<void> Function(Future<void> Function(Prefs)) onUpdate,
-  ) async {
-    final controller = TextEditingController();
-    final pasted = await showDialog<String>(
-      context: context,
-      builder: (context) => ContentDialog(
-        title: const Text('Add addon'),
-        content: TextBox(
-          decoration: katInputDecoration(),
-          controller: controller,
-          placeholder: 'https://…/a/<token>/ or https://…',
-          maxLines: 2,
-        ),
-        actions: [
-          KatButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          KatFilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    final raw = pasted ?? '';
-    controller.dispose();
-    if (raw.isEmpty || !context.mounted) return;
-    final parsed = AddonApi.parseAddonUrl(raw);
-    if (parsed == null) {
-      if (context.mounted) {
-        await showDialog(
-          context: context,
-          builder: (dialogContext) => ContentDialog(
-            title: const Text('Not an addon URL'),
-            content: const Text(
-              'Expected something like https://host/a/<token>/ or https://host/.',
-            ),
-            actions: [
-              KatFilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-    AddonManifest? manifest;
-    try {
-      manifest = await AddonApi([parsed.root]).manifestFor(parsed.root);
-    } catch (_) {
-      manifest = null;
-    }
-    if (!context.mounted) return;
-    if (manifest == null) {
-      await showDialog(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: const Text('Addon unreachable'),
-          content: const Text(
-            'No usable addon answered there — revoked, offline, '
-            'or wrong URL. Nothing was saved.',
-          ),
-          actions: [
-            KatFilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-    final root = parsed.root;
-    final next = [...urls.where((e) => e != root), root];
-    await onUpdate((p) => p.setAddonUrls(next));
-    ref.invalidate(losslessApiProvider);
-    ref.invalidate(addonManifestProvider);
-  }
-}
-
-class _AddonRow extends ConsumerWidget {
-  final String url;
-  final AddonQuota? quota;
-  final Future<void> Function() onRemove;
-  const _AddonRow({
-    required this.url,
-    required this.quota,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final manifest = ref.watch(addonManifestProvider(url)).valueOrNull;
-    final host = Uri.tryParse(url)?.host ?? url;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          const Icon(FluentIcons.cloud, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  manifest?.name ?? host,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.trackTitle,
-                ),
-                Text(
-                  manifest == null ? '$host · unreachable' : host,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.meta.copyWith(
-                    color: katTextSecondary(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          KatButton(onPressed: () => onRemove(), child: const Text('Remove')),
-        ],
-      ),
-    );
-  }
-}
-
 class _About extends ConsumerStatefulWidget {
   const _About();
 
@@ -3123,28 +2968,6 @@ class _AboutState extends ConsumerState<_About> {
                     Icon(FluentIcons.favorite_star, size: 14),
                     SizedBox(width: 6),
                     Text('Star / support the project'),
-                  ],
-                ),
-              ),
-              KatButton(
-                onPressed: () => _open('https://t.me/clashprojects'),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TelegramIcon(size: 14),
-                    SizedBox(width: 6),
-                    Text('Telegram community'),
-                  ],
-                ),
-              ),
-              KatButton(
-                onPressed: () => _open('https://discord.com/invite/TMCEPSUNk2'),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DiscordIcon(size: 14),
-                    SizedBox(width: 6),
-                    Text('Discord server'),
                   ],
                 ),
               ),

@@ -48,13 +48,13 @@ final class DeepLinkBridge {
 
 @main
 class AppDelegate: FlutterAppDelegate {
-  func application(_ application: NSApplication, open urls: [URL]) {
+  override func application(_ application: NSApplication, open urls: [URL]) {
     for url in urls {
       DeepLinkBridge.receive(url)
     }
   }
 
-  func application(_ application: NSApplication, openFiles filenames: [String]) {
+  override func application(_ application: NSApplication, openFiles filenames: [String]) {
     for filename in filenames {
       if let url = URL(string: filename) {
         DeepLinkBridge.receive(url)

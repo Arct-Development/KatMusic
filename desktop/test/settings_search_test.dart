@@ -79,7 +79,6 @@ void main() {
       'appearance',
       'lastfm',
       'integrations',
-      'sources',
       'experimental',
       'about',
     };
