@@ -14,23 +14,23 @@ import '../components/buttons.dart';
 import '../components/hero.dart';
 import '../components/menus.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Downloads: Offline hero + 40px-artwork rows
 /// (art · title/artist · progress or quality chip · play · delete).
-class WaveDownloadsPage extends ConsumerStatefulWidget {
-  const WaveDownloadsPage({super.key});
+class KatDownloadsPage extends ConsumerStatefulWidget {
+  const KatDownloadsPage({super.key});
 
   @override
-  ConsumerState<WaveDownloadsPage> createState() => _WaveDownloadsPageState();
+  ConsumerState<KatDownloadsPage> createState() => _KatDownloadsPageState();
 }
 
 enum _DownloadSort { recent, title, artist }
 
-class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
+class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
   String _query = '';
   _DownloadSort _sort = _DownloadSort.recent;
 
@@ -88,7 +88,7 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
         break;
       }
     }
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -96,14 +96,14 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    WaveEntrance(
+                    KatEntrance(
                       rise: 10,
-                      child: WaveCollectionHero(
+                      child: KatCollectionHero(
                         overline: 'Offline',
                         title: 'Downloads',
                         meta:
@@ -123,7 +123,7 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
                             placeholder: 'Search downloads',
                             prefix: const Padding(
                               padding: EdgeInsets.only(left: 10),
-                              child: Icon(WaveIcons.search, size: 14),
+                              child: Icon(KatIcons.search, size: 14),
                             ),
                             onChanged: (v) => setState(() => _query = v),
                           ),
@@ -164,7 +164,7 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
                           content: Text(
                             failed.first.error ?? 'Check connection and retry.',
                           ),
-                          action: WaveButton(
+                          action: KatButton(
                             onPressed: () {
                               final m = ref.read(
                                 downloadManagerProvider.notifier,
@@ -187,7 +187,7 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
           ),
           if (all.isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
+              child: KatEmpty(
                 icon: FluentIcons.download,
                 title: 'No downloads yet',
                 subtitle:
@@ -196,8 +196,8 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
             )
           else if (entries.isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
-                icon: WaveIcons.search,
+              child: KatEmpty(
+                icon: KatIcons.search,
                 title: 'No matches',
                 subtitle: 'No downloads match your search.',
               ),
@@ -208,7 +208,7 @@ class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
               itemBuilder: (context, i) {
                 final e = entries[i];
                 final art = _artworkFor(ref, e);
-                return WaveEntrance(
+                return KatEntrance(
                   index: i,
                   rise: 10,
                   child: Padding(
@@ -265,13 +265,13 @@ class _LocationRowState extends ConsumerState<_LocationRow> {
             custom.isEmpty ? 'Saving to default location' : custom,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
         ),
-        WaveButton(onPressed: _pick, child: const Text('Change folder')),
+        KatButton(onPressed: _pick, child: const Text('Change folder')),
         if (custom.isNotEmpty) ...[
           const SizedBox(width: 8),
-          WaveButton(onPressed: _reset, child: const Text('Reset')),
+          KatButton(onPressed: _reset, child: const Text('Reset')),
         ],
       ],
     );
@@ -316,22 +316,22 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
     final manager = ref.read(downloadManagerProvider.notifier);
     final downloading = e.status == DownloadStatus.downloading;
     final queued = e.status == DownloadStatus.queued;
-    return WaveContextMenu(
+    return KatContextMenu(
       items: () => [
         if (e.status == DownloadStatus.done)
-          WaveMenuAction(
+          KatMenuAction(
             leading: const Icon(FluentIcons.play, size: 13),
             label: 'Play offline file',
             onPressed: _play,
           ),
-        WaveMenuAction(
+        KatMenuAction(
           leading: const Icon(FluentIcons.contact, size: 13),
           label: 'Go to artist',
           onPressed: () =>
-              waveOpen(context, '/artist/${Uri.encodeComponent(e.artist)}'),
+              katOpen(context, '/artist/${Uri.encodeComponent(e.artist)}'),
         ),
-        const WaveMenuSeparator(),
-        WaveMenuAction(
+        const KatMenuSeparator(),
+        KatMenuAction(
           leading: const Icon(FluentIcons.delete, size: 13),
           label: 'Delete download',
           onPressed: () => manager.delete(e.key),
@@ -346,7 +346,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
         child: GestureDetector(
           onDoubleTap: _play,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.fast),
+            duration: katMotion(context, KatMotion.fast),
             curve: Curves.easeOutCubic,
             height: 54,
             // Inset the content, not the fill: the 6px hover plate keeps its
@@ -354,17 +354,17 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
             // 8px row inset as the track rows).
             padding: const EdgeInsetsDirectional.only(start: 8),
             decoration: BoxDecoration(
-              color: _hover ? waveHoverWash(context) : Colors.transparent,
-              borderRadius: BorderRadius.circular(WaveRadius.tiny),
+              color: _hover ? katHoverWash(context) : Colors.transparent,
+              borderRadius: BorderRadius.circular(KatRadius.tiny),
             ),
             child: Row(
               children: [
                 Stack(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: art,
                       size: 40,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       label: e.title,
                       title: e.title,
                       artist: e.artist,
@@ -374,7 +374,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.45),
-                            borderRadius: WaveRadius.artworkRadius,
+                            borderRadius: KatRadius.artworkRadius,
                           ),
                           child: const Center(
                             child: SizedBox(
@@ -397,7 +397,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                         e.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.trackTitle,
+                        style: KatType.trackTitle,
                       ),
                       if (downloading)
                         Padding(
@@ -418,22 +418,22 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                               : e.artist,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.meta.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                     ],
                   ),
                 ),
                 if (!downloading && e.badge.isNotEmpty) ...[
-                  WaveChip(label: e.badge),
+                  KatChip(label: e.badge),
                   const SizedBox(width: 6),
                 ],
                 // Untagged fallback files stay visible (never silent).
                 if (!downloading &&
                     e.status == DownloadStatus.done &&
                     e.tagNote.startsWith('raw')) ...[
-                  const WaveChip(label: 'NO TAGS', highlight: true),
+                  const KatChip(label: 'NO TAGS', highlight: true),
                   const SizedBox(width: 6),
                 ],
                 // Status text: progress % / size / status — tabular.
@@ -442,9 +442,9 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                     e.progress > 0
                         ? '${(e.progress * 100).round()}%'
                         : 'Starting…',
-                    style: WaveType.meta.copyWith(
+                    style: KatType.meta.copyWith(
                       fontFeatures: const [FontFeature.tabularFigures()],
-                      color: waveTextTertiary(context),
+                      color: katTextTertiary(context),
                     ),
                   )
                 else if (e.status == DownloadStatus.error)
@@ -454,20 +454,20 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                     color: Color(0xFFE0506A),
                   ),
                 if (e.status == DownloadStatus.done)
-                  WaveIconButton(
+                  KatIconButton(
                     tooltip: 'Play offline file',
                     icon: const Icon(FluentIcons.play, size: 14),
                     onPressed: _play,
                   ),
                 if (e.status == DownloadStatus.error)
-                  WaveIconButton(
+                  KatIconButton(
                     tooltip: 'Retry download',
                     icon: const Icon(FluentIcons.refresh, size: 14),
                     onPressed: () =>
                         manager.downloadTrack(title: e.title, artist: e.artist),
                   ),
                 if (e.status == DownloadStatus.done && e.filePath != null)
-                  WaveIconButton(
+                  KatIconButton(
                     tooltip: 'Open file location',
                     icon: const Icon(
                       FluentIcons.open_folder_horizontal,
@@ -475,7 +475,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                     ),
                     onPressed: () => _openLocation(context, e.filePath!),
                   ),
-                WaveIconButton(
+                KatIconButton(
                   tooltip: 'Delete download',
                   icon: const Icon(FluentIcons.delete, size: 14),
                   onPressed: () => manager.delete(e.key),

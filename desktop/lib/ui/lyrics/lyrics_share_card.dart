@@ -10,43 +10,56 @@ import 'package:palette_generator/palette_generator.dart';
 
 import '../../core/audio/stream_models.dart';
 
-/// Logical card size. [pixelRatio] 2 writes a 1080×1080 PNG.
-const double _kCardLogical = 540;
+/// Logical card size. [pixelRatio] 2 writes a 1080×1350 PNG.
+const double _kCardWidth = 540;
+const double _kCardHeight = 675;
 const double _kCardPixelRatio = 2;
 
-/// Background and text colors of a card.
+/// Background, ink and one quiet accent. No decorative gradients: the
+/// artwork and the words are the only colour the card needs.
 class _CardStyle {
   final String label;
-  final Color top;
-  final Color bottom;
+  final Color background;
   final Color text;
   final Color subtext;
+  final Color rule;
+  final Color accent;
+
   const _CardStyle(
     this.label,
-    this.top,
-    this.bottom, {
-    this.text = const Color(0xFFFFFFFF),
-    this.subtext = const Color(0xCCFFFFFF),
+    this.background, {
+    this.text = const Color(0xFFF5F2EA),
+    this.subtext = const Color(0xFFB8B6AE),
+    this.rule = const Color(0x33FFFFFF),
+    this.accent = const Color(0xFFB7C9BE),
   });
 }
 
 const _presetStyles = <_CardStyle>[
-  _CardStyle('Sunset', Color(0xFFFF7A59), Color(0xFF9B1D5A)),
-  _CardStyle('Ocean', Color(0xFF2B7DE9), Color(0xFF0B2F6B)),
-  _CardStyle('Forest', Color(0xFF2E9E6B), Color(0xFF0C3B2E)),
-  _CardStyle('Violet', Color(0xFF8E5CF0), Color(0xFF2E1A6B)),
+  _CardStyle('Ink', Color(0xFF15171B)),
   _CardStyle(
     'Paper',
-    Color(0xFFFAF6EE),
-    Color(0xFFE6DFD0),
-    text: Color(0xFF1C1B19),
-    subtext: Color(0xB31C1B19),
+    Color(0xFFF2EDE2),
+    text: Color(0xFF17191C),
+    subtext: Color(0xFF62615C),
+    rule: Color(0xFFD3CABB),
+    accent: Color(0xFF1F4B3B),
   ),
-  _CardStyle('Black', Color(0xFF1E1E1E), Color(0xFF000000)),
+  _CardStyle('Forest', Color(0xFF1D332B), accent: Color(0xFFB9D2C2)),
+  _CardStyle('Wine', Color(0xFF321E24), accent: Color(0xFFD9B8BC)),
+  _CardStyle('Slate', Color(0xFF232B34), accent: Color(0xFFB7C9D8)),
+  _CardStyle(
+    'Sand',
+    Color(0xFFD8C9B2),
+    text: Color(0xFF1B1A17),
+    subtext: Color(0xFF5E594F),
+    rule: Color(0xFFB9AB95),
+    accent: Color(0xFF3E4A3B),
+  ),
 ];
 
-/// Renders artwork, title, artist, and [lines] to a 1080px PNG. A dialog
-/// shows the card first so the colors can be picked, then the PNG goes
+/// Renders artwork, title, artist, and [lines] to a 1080×1350 PNG. A dialog
+/// shows the card first so the palette can be picked, then the PNG goes
 /// through the same [FilePicker.saveFile] call playlists use.
 Future<void> exportLyricsShareCard(
   BuildContext context, {
@@ -72,7 +85,7 @@ Future<void> exportLyricsShareCard(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(4),
                 child: FittedBox(
                   child: _LyricsShareCard(
                     track: track,
@@ -97,11 +110,7 @@ Future<void> exportLyricsShareCard(
                           height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [s.top, s.bottom],
-                            ),
+                            color: s.background,
                             border: Border.all(
                               color: identical(s, selected)
                                   ? FluentTheme.of(context).accentColor
@@ -191,7 +200,8 @@ Future<ImageProvider<Object>?> _loadArtwork(
   }
 }
 
-/// A gradient pulled from the cover, dark enough for white text.
+/// A muted print tone pulled from the cover. Text stays white, and the
+/// accent is used only for the small masthead rule.
 Future<_CardStyle?> _artworkStyle(ImageProvider<Object>? art) async {
   if (art == null) return null;
   try {
@@ -201,19 +211,24 @@ Future<_CardStyle?> _artworkStyle(ImageProvider<Object>? art) async {
       maximumColorCount: 12,
     );
     final base =
-        (palette.vibrantColor ?? palette.dominantColor ?? palette.mutedColor)
+        (palette.darkMutedColor ?? palette.mutedColor ?? palette.dominantColor)
             ?.color;
     if (base == null) return null;
     final hsl = HSLColor.fromColor(base);
-    final top = hsl
-        .withLightness(hsl.lightness.clamp(0.28, 0.42))
-        .withSaturation(hsl.saturation.clamp(0.3, 0.85))
+    final background = hsl
+        .withLightness(hsl.lightness.clamp(0.12, 0.22))
+        .withSaturation(hsl.saturation.clamp(0.12, 0.42))
         .toColor();
-    final bottom = hsl
-        .withLightness((hsl.lightness * 0.35).clamp(0.08, 0.18))
-        .withSaturation(hsl.saturation.clamp(0.25, 0.7))
+    final accent = hsl
+        .withLightness(0.68)
+        .withSaturation(hsl.saturation.clamp(0.25, 0.55))
         .toColor();
-    return _CardStyle('Artwork', top, bottom);
+    return _CardStyle(
+      'Cover',
+      background,
+      accent: accent,
+      rule: accent.withValues(alpha: 0.22),
+    );
   } catch (_) {
     return null;
   }
@@ -284,107 +299,156 @@ class _LyricsShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shown = lines.where((l) => l.trim().isNotEmpty).take(10).toList();
+    final shown = lines.where((l) => l.trim().isNotEmpty).take(7).toList();
     return SizedBox(
-      width: _kCardLogical,
-      height: _kCardLogical,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [style.top, style.bottom],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 112,
-                      height: 112,
-                      child: artwork == null
-                          ? const ColoredBox(
-                              color: Color(0x33000000),
-                              child: Icon(
-                                FluentIcons.music_note,
-                                color: Color(0xFFBDBDBD),
-                                size: 28,
-                              ),
-                            )
-                          : Image(
-                              image: artwork!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) =>
-                                  const ColoredBox(color: Color(0x33000000)),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      width: _kCardWidth,
+      height: _kCardHeight,
+      child: ColoredBox(
+        color: style.background,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 26, 24, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
                         Text(
-                          track.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          'KATMUSIC',
                           style: TextStyle(
-                            color: style.text,
-                            fontSize: 22,
+                            color: style.accent,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w700,
-                            height: 1.15,
+                            letterSpacing: 2.1,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const Spacer(),
                         Text(
-                          track.artist,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          'LYRICS',
                           style: TextStyle(
                             color: style.subtext,
-                            fontSize: 15,
-                            height: 1.2,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              Expanded(
-                child: shown.isEmpty
-                    ? const SizedBox.shrink()
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final line in shown)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                line,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: style.text,
-                                  fontSize: 18,
-                                  height: 1.25,
-                                  fontWeight: FontWeight.w600,
+                    const SizedBox(height: 22),
+                    Text(
+                      track.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: style.text,
+                        fontSize: 27,
+                        fontWeight: FontWeight.w700,
+                        height: 1.08,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      track.artist.toUpperCase(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: style.subtext,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                        letterSpacing: 0.9,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(height: 1, color: style.rule),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ClipRect(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final line in shown)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  line,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: style.text,
+                                    fontSize: 16.5,
+                                    height: 1.28,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.1,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(height: 1, color: style.rule),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Text(
+                          'KATMUSIC.PAGES.DEV',
+                          style: TextStyle(
+                            color: style.subtext,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.3,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'SHARED CARD',
+                          style: TextStyle(
+                            color: style.accent,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 186,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(left: BorderSide(color: style.rule)),
+                  color: style.rule,
+                ),
+                child: artwork == null
+                    ? Center(
+                        child: Icon(
+                          FluentIcons.music_note,
+                          color: style.subtext,
+                          size: 34,
+                        ),
+                      )
+                    : Image(
+                        image: artwork!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Center(
+                          child: Icon(
+                            FluentIcons.music_note,
+                            color: style.subtext,
+                            size: 34,
+                          ),
+                        ),
                       ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

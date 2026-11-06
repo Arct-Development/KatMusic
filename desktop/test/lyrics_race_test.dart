@@ -55,7 +55,7 @@ class _StubRepo extends LyricsRepository {
         const Duration(milliseconds: 200),
         const Duration(seconds: 2),
       ) {
-    waveGap = Duration.zero;
+    katGap = Duration.zero;
   }
 
   @override

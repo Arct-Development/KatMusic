@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.ThumbDown
@@ -660,6 +661,27 @@ fun TrackContextMenuSheet(
                     }
                     if (capabilities.showCopyActions) {
                         add { pos -> MenuActionRow(Icons.Filled.ContentCopy, stringResource(R.string.menu_copy_song), position = pos) { clipboard.setText(AnnotatedString("${t.name} \u2014 ${t.artist}")); onDismiss() } }
+                    }
+                    // Canonical page link: it opens KatMusic on whatever device
+                    // receives it, and still shows the track when the app is
+                    // missing. Local-only files have no stable id, so no row.
+                    com.itzfallenme.katmusic.util.ShareLinks.trackUrl(
+                        videoId = playable.videoId,
+                        title = t.name,
+                        artist = t.artist,
+                        album = playable.album,
+                        artworkUrl = playable.artworkUrl,
+                    )?.let { shareUrl ->
+                        add { pos ->
+                            MenuActionRow(Icons.Filled.Share, stringResource(R.string.menu_share_link), position = pos) {
+                                com.itzfallenme.katmusic.util.ShareLinks.send(
+                                    context,
+                                    shareUrl,
+                                    "${t.name} \u2014 ${t.artist}",
+                                )
+                                onDismiss()
+                            }
+                        }
                     }
                     add { pos ->
                         MenuActionRow(Icons.Filled.Info, stringResource(R.string.menu_details_specs), position = pos) {

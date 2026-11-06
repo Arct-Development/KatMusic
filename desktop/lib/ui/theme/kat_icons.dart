@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 /// Canonical KatMusic icon set.
 ///
-/// All presentation code must use [WaveIcons] instead of importing
+/// All presentation code must use [KatIcons] instead of importing
 /// `lucide_icons_flutter`, Material or Cupertino icons directly.
 ///
 /// Two Microsoft glyph fonts ship with fluent_ui and both are used here:
@@ -18,8 +18,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 ///
 /// The Now Playing visualizer toggle uses sound bars rather than music
 /// notes, so it can't be confused with the lyrics toggle next to it.
-class WaveIcons {
-  WaveIcons._();
+class KatIcons {
+  KatIcons._();
 
   // Navigation
   static const IconData home = WindowsIcons.home;

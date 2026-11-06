@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../components/inputs.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// One jump target in Settings search.
 ///
@@ -323,12 +323,12 @@ class _SettingsTargetState extends State<SettingsTarget> {
   @override
   Widget build(BuildContext context) {
     final active = SettingsSpotlight.of(context) == widget.id;
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     return AnimatedContainer(
       key: _key,
       duration: const Duration(milliseconds: 180),
       foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(WaveRadius.floating),
+        borderRadius: BorderRadius.circular(KatRadius.floating),
         border: Border.all(
           color: active ? accent : const Color(0x00000000),
           width: 1.5,
@@ -376,9 +376,9 @@ class _SettingsSearchBoxState extends State<SettingsSearchBox> {
           placeholder: 'Search settings',
           prefix: const Padding(
             padding: EdgeInsets.only(left: 10),
-            child: Icon(WaveIcons.search, size: 13),
+            child: Icon(KatIcons.search, size: 13),
           ),
-          decoration: waveInputDecoration(),
+          decoration: katInputDecoration(),
           onChanged: (value) => setState(() => _query = value),
           // Enter opens the best match.
           onSubmitted: (_) {
@@ -392,9 +392,7 @@ class _SettingsSearchBoxState extends State<SettingsSearchBox> {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Text(
                 'No settings match "${_query.trim()}".',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
             )
           else

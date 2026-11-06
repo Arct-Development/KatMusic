@@ -21,7 +21,7 @@ void main() {
               'musicTwoRowItemRenderer': {
                 'title': {
                   'runs': [
-                    {'text': 'Wave Weekly'},
+                    {'text': 'Kat Weekly'},
                   ],
                 },
                 'subtitle': {
@@ -48,7 +48,7 @@ void main() {
     expect(shelves, hasLength(1));
     expect(shelves.single.title, 'New episodes');
     expect(shelves.single.shows.single.showId, 'MPSPPLexample');
-    expect(shelves.single.shows.single.title, 'Wave Weekly');
+    expect(shelves.single.shows.single.title, 'Kat Weekly');
     expect(shelves.single.shows.single.publisher, 'KatMusic');
 
     final card = PodcastParser.parseShowCard({

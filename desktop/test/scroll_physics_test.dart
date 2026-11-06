@@ -2,20 +2,20 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:katmusic_desktop/design_system/fluent/lw_scrollbar.dart';
+import 'package:katmusic_desktop/design_system/fluent/kat_scrollbar.dart';
 
 void main() {
-  test('WaveScrollBehavior includes mouse and trackpad in dragDevices', () {
-    const behavior = WaveScrollBehavior();
+  test('KatScrollBehavior includes mouse and trackpad in dragDevices', () {
+    const behavior = KatScrollBehavior();
     expect(behavior.dragDevices, contains(PointerDeviceKind.mouse));
     expect(behavior.dragDevices, contains(PointerDeviceKind.trackpad));
     expect(behavior.dragDevices, contains(PointerDeviceKind.touch));
   });
 
   testWidgets(
-    'WaveScrollBehavior returns smooth bouncy/always scrollable physics',
+    'KatScrollBehavior returns smooth bouncy/always scrollable physics',
     (tester) async {
-      const behavior = WaveScrollBehavior();
+      const behavior = KatScrollBehavior();
       await tester.pumpWidget(
         Builder(
           builder: (context) {
@@ -30,9 +30,9 @@ void main() {
   );
 
   testWidgets(
-    'WaveScrollBehavior buildScrollbar wraps scroll view in WaveSmoothScroll',
+    'KatScrollBehavior buildScrollbar wraps scroll view in KatSmoothScroll',
     (tester) async {
-      const behavior = WaveScrollBehavior();
+      const behavior = KatScrollBehavior();
       final controller = ScrollController();
       await tester.pumpWidget(
         MaterialApp(
@@ -46,7 +46,7 @@ void main() {
                   controller: controller,
                 ),
               );
-              expect(widget, isA<WaveSmoothScroll>());
+              expect(widget, isA<KatSmoothScroll>());
               return widget;
             },
           ),

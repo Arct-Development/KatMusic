@@ -9,7 +9,7 @@ import '../../../ui/theme/tokens.dart';
 /// availableContentHeight = windowHeight - titleBar - playerDock
 /// ```
 ///
-/// The shell (`WaveShell`) already reserves title (44px) + dock (80px) via
+/// The shell (`KatShell`) already reserves title (44px) + dock (80px) via
 /// `Column[Title, Expanded(content), Dock]` so content NEVER renders behind
 /// the player. These helpers let panes size artwork/rows from the ACTUAL
 /// constraints instead of hardcoding one size for every resolution.
@@ -18,7 +18,7 @@ class LwViewport {
 
   static double availableHeight(BuildContext context) {
     final window = MediaQuery.sizeOf(context).height;
-    return (window - WaveDensity.titleBar - WaveDensity.dock).clamp(
+    return (window - KatDensity.titleBar - KatDensity.dock).clamp(
       320,
       double.infinity,
     );

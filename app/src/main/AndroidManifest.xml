@@ -114,6 +114,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="katmusic" android:host="jam" />
                 <data android:scheme="katmusic" android:host="sync" />
+                <data android:scheme="katmusic" android:host="track" />
             </intent-filter>
 
             <!-- YouTube & YouTube Music deep links / Open With -->

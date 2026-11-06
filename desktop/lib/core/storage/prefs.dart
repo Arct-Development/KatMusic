@@ -6,21 +6,50 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Settings + session persistence.
 ///
 /// Key names mirror KatMusic-native `SettingsPreferences` /
-/// `SessionPreferences` (`lw_*`) so behaviour stays comparable.
+/// `SessionPreferences` (`kat_*`) so behaviour stays comparable.
 class Prefs {
   final SharedPreferences _sp;
   Prefs(this._sp);
 
-  static Future<Prefs> load() async =>
-      Prefs(await SharedPreferences.getInstance());
+  static Future<Prefs> load() async {
+    final sp = await SharedPreferences.getInstance();
+    await _migrateLegacyKeys(sp);
+    return Prefs(sp);
+  }
+
+  /// One-time upgrade from the old `lw_` storage prefix. Values are copied
+  /// to their `km_` names and the old entries are removed; if a `km_` value
+  /// already exists, the old duplicate is dropped rather than overwritten.
+  static Future<void> _migrateLegacyKeys(SharedPreferences sp) async {
+    const oldPrefix = 'lw_';
+    for (final key
+        in sp.getKeys().where((k) => k.startsWith(oldPrefix)).toList()) {
+      final target = 'km_${key.substring(oldPrefix.length)}';
+      if (!sp.containsKey(target)) {
+        final value = sp.get(key);
+        if (value is String) {
+          await sp.setString(target, value);
+        } else if (value is bool) {
+          await sp.setBool(target, value);
+        } else if (value is int) {
+          await sp.setInt(target, value);
+        } else if (value is double) {
+          await sp.setDouble(target, value);
+        } else if (value is List<String>) {
+          await sp.setStringList(target, value);
+        }
+      }
+      await sp.remove(key);
+    }
+  }
 
   // -- Last.fm BYOK (bring your own keys) ---------------------------------
   // No bundled API keys ship with the app: the user enters their own
   // Last.fm API key + shared secret (from last.fm/api/account/create),
   // stored here in SharedPreferences. All Last.fm features stay
   // disabled until both are set.
-  String get lastFmApiKey => _sp.getString('lw_lastfm_api_key') ?? '';
-  String get lastFmApiSecret => _sp.getString('lw_lastfm_api_secret') ?? '';
+  String get lastFmApiKey => _sp.getString('kat_lastfm_api_key') ?? '';
+  String get lastFmApiSecret => _sp.getString('kat_lastfm_api_secret') ?? '';
   bool get isLastFmConfigured =>
       lastFmApiKey.isNotEmpty && lastFmApiSecret.isNotEmpty;
 
@@ -28,13 +57,13 @@ class Prefs {
     required String apiKey,
     required String apiSecret,
   }) async {
-    await _sp.setString('lw_lastfm_api_key', apiKey);
-    await _sp.setString('lw_lastfm_api_secret', apiSecret);
+    await _sp.setString('kat_lastfm_api_key', apiKey);
+    await _sp.setString('kat_lastfm_api_secret', apiSecret);
   }
 
   Future<void> clearLastFmKeys() async {
-    await _sp.remove('lw_lastfm_api_key');
-    await _sp.remove('lw_lastfm_api_secret');
+    await _sp.remove('kat_lastfm_api_key');
+    await _sp.remove('kat_lastfm_api_secret');
   }
 
   // -- Guest mode (keyless entry) -------------------------------------------
@@ -42,8 +71,8 @@ class Prefs {
   // Last.fm keys or session. Everything except Last.fm features works;
   // reconnect happens in Settings only. Sticky across restarts; cleared
   // by full sign-out and by saving a real session.
-  bool get isGuest => _sp.getBool('lw_guest_mode') ?? false;
-  Future<void> setGuestMode(bool v) => _sp.setBool('lw_guest_mode', v);
+  bool get isGuest => _sp.getBool('kat_guest_mode') ?? false;
+  Future<void> setGuestMode(bool v) => _sp.setBool('kat_guest_mode', v);
 
   // -- Last.fm session (web auth under the user's own API key) ------------
   // Authentication is compulsory: there is no guest or anonymous mode.
@@ -51,24 +80,24 @@ class Prefs {
   // are stored. Session keys are bound to the API key that minted them,
   // so saving different API keys signs the session out (see
   // AuthRepository.saveCustomKeys).
-  String get sessionKey => _sp.getString('lw_sessionkey') ?? '';
-  String get username => _sp.getString('lw_username') ?? '';
+  String get sessionKey => _sp.getString('kat_sessionkey') ?? '';
+  String get username => _sp.getString('kat_username') ?? '';
   bool get isAuthenticated => username.isNotEmpty && sessionKey.isNotEmpty;
 
   Future<void> saveSession({
     required String sessionKey,
     required String username,
   }) async {
-    await _sp.setString('lw_sessionkey', sessionKey);
-    await _sp.setString('lw_username', username);
+    await _sp.setString('kat_sessionkey', sessionKey);
+    await _sp.setString('kat_username', username);
     // Drop any legacy guest flag from older builds.
-    await _sp.remove('lw_guest_mode');
+    await _sp.remove('kat_guest_mode');
   }
 
   Future<void> signOut() async {
-    await _sp.remove('lw_sessionkey');
-    await _sp.remove('lw_username');
-    await _sp.remove('lw_guest_mode');
+    await _sp.remove('kat_sessionkey');
+    await _sp.remove('kat_username');
+    await _sp.remove('kat_guest_mode');
   }
 
   // -- Audio quality (mirrors Android quality tiers) ---------------------
@@ -78,77 +107,77 @@ class Prefs {
   static const allowedQualities = [-1, 4, 5, 6, 7, 27, 28];
 
   bool get preferLossless =>
-      _sp.getBool('lw_prefer_lossless_streaming') ?? true;
+      _sp.getBool('kat_prefer_lossless_streaming') ?? true;
   int get losslessQuality =>
-      _clampQuality(_sp.getInt('lw_lossless_quality') ?? 27);
+      _clampQuality(_sp.getInt('kat_lossless_quality') ?? 27);
   int get downloadQuality =>
-      _clampQuality(_sp.getInt('lw_download_quality') ?? 27);
+      _clampQuality(_sp.getInt('kat_download_quality') ?? 27);
 
   static int _clampQuality(int q) => allowedQualities.contains(q) ? q : 27;
 
   Future<void> setPreferLossless(bool v) =>
-      _sp.setBool('lw_prefer_lossless_streaming', v);
+      _sp.setBool('kat_prefer_lossless_streaming', v);
   Future<void> setLosslessQuality(int q) =>
-      _sp.setInt('lw_lossless_quality', _clampQuality(q));
+      _sp.setInt('kat_lossless_quality', _clampQuality(q));
   Future<void> setDownloadQuality(int q) =>
-      _sp.setInt('lw_download_quality', _clampQuality(q));
+      _sp.setInt('kat_download_quality', _clampQuality(q));
   // -- Window behaviour ---------------------------------------------------
   /// Close button / Alt+F4 hides to the tray instead of quitting.
   /// Real quit stays in tray → Quit (ordered player teardown first).
   /// Default off (clicking X closes the application and stops audio).
-  bool get closeToTray => _sp.getBool('lw_close_to_tray') ?? false;
-  Future<void> setCloseToTray(bool v) => _sp.setBool('lw_close_to_tray', v);
+  bool get closeToTray => _sp.getBool('kat_close_to_tray') ?? false;
+  Future<void> setCloseToTray(bool v) => _sp.setBool('kat_close_to_tray', v);
 
   // -- Playback behaviour -------------------------------------------------
   /// Keep playing similar tracks (endless radio) after a queue runs
   /// out. Default on — matches Spotify/YTM autoplay behaviour.
-  bool get autoplaySimilar => _sp.getBool('lw_autoplay_similar') ?? true;
+  bool get autoplaySimilar => _sp.getBool('kat_autoplay_similar') ?? true;
   Future<void> setAutoplaySimilar(bool v) =>
-      _sp.setBool('lw_autoplay_similar', v);
+      _sp.setBool('kat_autoplay_similar', v);
 
-  bool get crossfadeEnabled => _sp.getBool('lw_crossfade_enabled') ?? false;
+  bool get crossfadeEnabled => _sp.getBool('kat_crossfade_enabled') ?? false;
   int get crossfadeSeconds {
-    final v = _sp.getInt('lw_crossfade_seconds') ?? 5;
+    final v = _sp.getInt('kat_crossfade_seconds') ?? 5;
     return v.clamp(3, 12);
   }
 
   Future<void> setCrossfade(bool enabled, [int? seconds]) async {
-    await _sp.setBool('lw_crossfade_enabled', enabled);
+    await _sp.setBool('kat_crossfade_enabled', enabled);
     if (enabled) {
-      await _sp.setBool('lw_automix_enabled', false);
+      await _sp.setBool('kat_automix_enabled', false);
     }
     if (seconds != null) {
-      await _sp.setInt('lw_crossfade_seconds', seconds.clamp(3, 12));
+      await _sp.setInt('kat_crossfade_seconds', seconds.clamp(3, 12));
     }
   }
 
   Future<void> setCrossfadeSeconds(int seconds) async {
-    await _sp.setInt('lw_crossfade_seconds', seconds.clamp(3, 12));
+    await _sp.setInt('kat_crossfade_seconds', seconds.clamp(3, 12));
   }
 
-  bool get bitPerfect => _sp.getBool('lw_bit_perfect') ?? false;
-  Future<void> setBitPerfect(bool v) => _sp.setBool('lw_bit_perfect', v);
+  bool get bitPerfect => _sp.getBool('kat_bit_perfect') ?? false;
+  Future<void> setBitPerfect(bool v) => _sp.setBool('kat_bit_perfect', v);
 
   /// Empty = Windows default render endpoint.
-  String get audioDeviceId => _sp.getString('lw_audio_device_id') ?? '';
+  String get audioDeviceId => _sp.getString('kat_audio_device_id') ?? '';
   Future<void> setAudioDeviceId(String v) =>
-      _sp.setString('lw_audio_device_id', v);
+      _sp.setString('kat_audio_device_id', v);
 
   /// Each playlist's last track sort, as `<sort>:<asc|desc>` (like the
   /// phone app), kept until the user picks another one.
   String playlistSort(int id) =>
-      _sp.getString('lw_playlist_sort_$id') ?? 'default:asc';
+      _sp.getString('kat_playlist_sort_$id') ?? 'default:asc';
   Future<void> setPlaylistSort(int id, String v) =>
-      _sp.setString('lw_playlist_sort_$id', v);
+      _sp.setString('kat_playlist_sort_$id', v);
 
-  bool get wasapiExclusive => _sp.getBool('lw_wasapi_exclusive') ?? false;
+  bool get wasapiExclusive => _sp.getBool('kat_wasapi_exclusive') ?? false;
   Future<void> setWasapiExclusive(bool v) =>
-      _sp.setBool('lw_wasapi_exclusive', v);
+      _sp.setBool('kat_wasapi_exclusive', v);
 
   // -- Loudness (ReplayGain, not a file scan) ------------------------------
   /// `off`, `track`, or `album`.
   String get loudnessMode {
-    final raw = (_sp.getString('lw_loudness_mode') ?? 'off').toLowerCase();
+    final raw = (_sp.getString('kat_loudness_mode') ?? 'off').toLowerCase();
     if (raw == 'track' || raw == 'album') return raw;
     return 'off';
   }
@@ -156,66 +185,67 @@ class Prefs {
   Future<void> setLoudnessMode(String mode) {
     final raw = mode.toLowerCase();
     final stored = (raw == 'track' || raw == 'album') ? raw : 'off';
-    return _sp.setString('lw_loudness_mode', stored);
+    return _sp.setString('kat_loudness_mode', stored);
   }
 
   /// Headphone correction id. `off` or a built-in profile id.
-  String get headphoneProfile => _sp.getString('lw_headphone_profile') ?? 'off';
+  String get headphoneProfile =>
+      _sp.getString('kat_headphone_profile') ?? 'off';
 
   Future<void> setHeadphoneProfile(String id) =>
-      _sp.setString('lw_headphone_profile', id.trim());
+      _sp.setString('kat_headphone_profile', id.trim());
 
   // -- Timed AutoMix (not beat-matched). Mutually exclusive with crossfade.
-  bool get autoMixEnabled => _sp.getBool('lw_automix_enabled') ?? false;
+  bool get autoMixEnabled => _sp.getBool('kat_automix_enabled') ?? false;
 
   int get autoMixSeconds {
     // 12–18 s. Older builds allowed up to 30 s, which ate the end of
     // short songs; stored values above 18 are read as 18.
-    final v = _sp.getInt('lw_automix_seconds') ?? 14;
+    final v = _sp.getInt('kat_automix_seconds') ?? 14;
     return v.clamp(12, 18);
   }
 
-  bool get autoMixSpectral => _sp.getBool('lw_automix_spectral') ?? true;
+  bool get autoMixSpectral => _sp.getBool('kat_automix_spectral') ?? true;
 
   Future<void> setAutoMixEnabled(bool enabled) async {
-    await _sp.setBool('lw_automix_enabled', enabled);
+    await _sp.setBool('kat_automix_enabled', enabled);
     if (enabled) {
-      await _sp.setBool('lw_crossfade_enabled', false);
+      await _sp.setBool('kat_crossfade_enabled', false);
     }
   }
 
   Future<void> setAutoMixSeconds(int seconds) =>
-      _sp.setInt('lw_automix_seconds', seconds.clamp(12, 18));
+      _sp.setInt('kat_automix_seconds', seconds.clamp(12, 18));
 
   Future<void> setAutoMixSpectral(bool enabled) =>
-      _sp.setBool('lw_automix_spectral', enabled);
+      _sp.setBool('kat_automix_spectral', enabled);
 
-  bool get downloadLyrics => _sp.getBool('lw_download_lyrics') ?? true;
+  bool get downloadLyrics => _sp.getBool('kat_download_lyrics') ?? true;
   Future<void> setDownloadLyrics(bool v) =>
-      _sp.setBool('lw_download_lyrics', v);
+      _sp.setBool('kat_download_lyrics', v);
 
   /// Custom download folder. Empty = default (`Music/KatMusic`, else
   /// app documents). Set via Settings → Downloads or the Downloads
   /// page; changeable at any time, applies to new downloads.
-  String get downloadDir => _sp.getString('lw_download_dir') ?? '';
+  String get downloadDir => _sp.getString('kat_download_dir') ?? '';
   Future<void> setDownloadDir(String v) =>
-      _sp.setString('lw_download_dir', v.trim());
-  Future<void> resetDownloadDir() => _sp.remove('lw_download_dir');
+      _sp.setString('kat_download_dir', v.trim());
+  Future<void> resetDownloadDir() => _sp.remove('kat_download_dir');
 
   // -- Lyrics --------------------------------------------------------------
-  bool get wordByWord => _sp.getBool('lw_word_by_word') ?? true;
-  Future<void> setWordByWord(bool v) => _sp.setBool('lw_word_by_word', v);
+  bool get wordByWord => _sp.getBool('kat_word_by_word') ?? true;
+  Future<void> setWordByWord(bool v) => _sp.setBool('kat_word_by_word', v);
 
   /// Primary lyrics provider id (`auto` default). Explicit picks get a
   /// head start; the rest of the chain stays as automatic fallback.
-  String get lyricsProviderId => _sp.getString('lw_lyrics_provider') ?? 'auto';
+  String get lyricsProviderId => _sp.getString('kat_lyrics_provider') ?? 'auto';
   Future<void> setLyricsProviderId(String v) =>
-      _sp.setString('lw_lyrics_provider', v);
+      _sp.setString('kat_lyrics_provider', v);
 
   String get lyricsAnimation =>
-      _sp.getString('lw_lyrics_animation') ?? 'apple_fluid';
+      _sp.getString('kat_lyrics_animation') ?? 'apple_fluid';
   Future<void> setLyricsAnimation(String v) =>
-      _sp.setString('lw_lyrics_animation', v);
+      _sp.setString('kat_lyrics_animation', v);
 
   /// Multiplier on the lyrics type size. Snapped to the steps the
   /// lyrics view and Settings both offer.
@@ -228,12 +258,12 @@ class Prefs {
   ];
 
   double get lyricsTextScale => _nearestDouble(
-    _sp.getDouble('lw_lyrics_text_scale') ?? 1.0,
+    _sp.getDouble('kat_lyrics_text_scale') ?? 1.0,
     [for (final step in lyricsTextScales) step.$1],
   );
 
   Future<void> setLyricsTextScale(double v) => _sp.setDouble(
-    'lw_lyrics_text_scale',
+    'kat_lyrics_text_scale',
     _nearestDouble(v, [for (final step in lyricsTextScales) step.$1]),
   );
 
@@ -252,12 +282,12 @@ class Prefs {
   };
 
   String get lyricsTranslationLang {
-    final v = _sp.getString('lw_lyrics_translation') ?? 'off';
+    final v = _sp.getString('kat_lyrics_translation') ?? 'off';
     return lyricsTranslationOptions.containsKey(v) ? v : 'off';
   }
 
   Future<void> setLyricsTranslationLang(String v) => _sp.setString(
-    'lw_lyrics_translation',
+    'kat_lyrics_translation',
     lyricsTranslationOptions.containsKey(v) ? v : 'off',
   );
 
@@ -273,14 +303,14 @@ class Prefs {
   };
 
   int get lyricsAutoHideSeconds {
-    final v = _sp.getInt('lw_lyrics_autohide_seconds') ?? 0;
+    final v = _sp.getInt('kat_lyrics_autohide_seconds') ?? 0;
     if (v <= 0) return 0;
     return _nearestInt(v, const [2, 4, 6, 8, 10]);
   }
 
   Future<void> setLyricsAutoHideSeconds(int seconds) {
     final v = seconds <= 0 ? 0 : _nearestInt(seconds, const [2, 4, 6, 8, 10]);
-    return _sp.setInt('lw_lyrics_autohide_seconds', v);
+    return _sp.setInt('kat_lyrics_autohide_seconds', v);
   }
 
   static double _nearestDouble(double value, Iterable<double> steps) {
@@ -310,43 +340,43 @@ class Prefs {
   }
 
   // -- Appearance ------------------------------------------------------------
-  bool get amoled => _sp.getBool('lw_amoled') ?? false;
-  Future<void> setAmoled(bool v) => _sp.setBool('lw_amoled', v);
+  bool get amoled => _sp.getBool('kat_amoled') ?? false;
+  Future<void> setAmoled(bool v) => _sp.setBool('kat_amoled', v);
 
   /// 'dark' (midnight observatory), 'light' (pearl white) or 'custom'
   /// (surfaces generated from [customThemeBase]).
-  String get themeMode => _sp.getString('lw_theme_mode') ?? 'dark';
-  Future<void> setThemeMode(String v) => _sp.setString('lw_theme_mode', v);
+  String get themeMode => _sp.getString('kat_theme_mode') ?? 'dark';
+  Future<void> setThemeMode(String v) => _sp.setString('kat_theme_mode', v);
   bool get isLight => themeMode == 'light';
   bool get isCustomTheme => themeMode == 'custom';
 
   /// Base colour (ARGB) of the Custom theme. Default: the Ocean preset.
-  int get customThemeBase => _sp.getInt('lw_custom_theme_base') ?? 0xFF1A2A44;
+  int get customThemeBase => _sp.getInt('kat_custom_theme_base') ?? 0xFF1A2A44;
   Future<void> setCustomThemeBase(int v) =>
-      _sp.setInt('lw_custom_theme_base', v);
+      _sp.setInt('kat_custom_theme_base', v);
 
-  String get accentMode => _sp.getString('lw_accent_mode') ?? 'manual';
-  Future<void> setAccentMode(String v) => _sp.setString('lw_accent_mode', v);
+  String get accentMode => _sp.getString('kat_accent_mode') ?? 'manual';
+  Future<void> setAccentMode(String v) => _sp.setString('kat_accent_mode', v);
 
-  int get accentColor => _sp.getInt('lw_accent') ?? 0xFF3D91FF;
-  Future<void> setAccentColor(int v) => _sp.setInt('lw_accent', v);
+  int get accentColor => _sp.getInt('kat_accent') ?? 0xFF3D91FF;
+  Future<void> setAccentColor(int v) => _sp.setInt('kat_accent', v);
 
-  bool get dynamicNowPlaying => _sp.getBool('lw_dynamic_now_playing') ?? false;
+  bool get dynamicNowPlaying => _sp.getBool('kat_dynamic_now_playing') ?? false;
   Future<void> setDynamicNowPlaying(bool v) =>
-      _sp.setBool('lw_dynamic_now_playing', v);
+      _sp.setBool('kat_dynamic_now_playing', v);
 
   // -- Haze / material (spec §42 — only settings that actually work) ------
   /// 'automatic' | 'haze' | 'solid'. Solid disables BackdropFilter
   /// everywhere (static tonal fallback); automatic uses Haze L1–L3 as
   /// designed, honouring reduce-transparency.
-  String get hazeMaterial => _sp.getString('lw_haze_material') ?? 'automatic';
+  String get hazeMaterial => _sp.getString('kat_haze_material') ?? 'automatic';
   Future<void> setHazeMaterial(String v) =>
-      _sp.setString('lw_haze_material', v);
+      _sp.setString('kat_haze_material', v);
 
   /// 'low' | 'medium' | 'high'. Scales L1–L3 blur sigma.
-  String get hazeIntensity => _sp.getString('lw_haze_intensity') ?? 'medium';
+  String get hazeIntensity => _sp.getString('kat_haze_intensity') ?? 'medium';
   Future<void> setHazeIntensity(String v) =>
-      _sp.setString('lw_haze_intensity', v);
+      _sp.setString('kat_haze_intensity', v);
 
   /// Accent source: 'system' | 'katmusic' | 'artwork' | 'custom'.
   /// 'manual' (legacy) is treated as 'custom'; the old 'lastwave' id is
@@ -355,8 +385,8 @@ class Prefs {
   /// where available, otherwise falls back to custom.
   String get accentSource {
     final v =
-        _sp.getString('lw_accent_source') ??
-        _sp.getString('lw_accent_mode') ??
+        _sp.getString('kat_accent_source') ??
+        _sp.getString('kat_accent_mode') ??
         'katmusic';
     if (v == 'manual') return 'custom';
     if (v == 'lastwave') return 'katmusic';
@@ -364,21 +394,21 @@ class Prefs {
   }
 
   Future<void> setAccentSource(String v) async {
-    await _sp.setString('lw_accent_source', v);
-    await _sp.setString('lw_accent_mode', v);
+    await _sp.setString('kat_accent_source', v);
+    await _sp.setString('kat_accent_mode', v);
   }
 
-  bool get liquidGlass => _sp.getBool('lw_liquid_glass') ?? true;
-  Future<void> setLiquidGlass(bool v) => _sp.setBool('lw_liquid_glass', v);
+  bool get liquidGlass => _sp.getBool('kat_liquid_glass') ?? true;
+  Future<void> setLiquidGlass(bool v) => _sp.setBool('kat_liquid_glass', v);
 
-  bool get wavySeekbar => _sp.getBool('lw_wavy_seekbar') ?? false;
-  Future<void> setWavySeekbar(bool v) => _sp.setBool('lw_wavy_seekbar', v);
+  bool get wavySeekbar => _sp.getBool('kat_wavy_seekbar') ?? false;
+  Future<void> setWavySeekbar(bool v) => _sp.setBool('kat_wavy_seekbar', v);
 
   // -- Scrobbler --------------------------------------------------------------
-  bool get scrobblerEnabled => _sp.getBool('lw_scrobbler_enabled') ?? false;
-  bool get scrobbleNowPlaying => _sp.getBool('lw_submit_now_playing') ?? true;
+  bool get scrobblerEnabled => _sp.getBool('kat_scrobbler_enabled') ?? false;
+  bool get scrobbleNowPlaying => _sp.getBool('kat_submit_now_playing') ?? true;
   int get scrobblePercent {
-    final v = _sp.getInt('lw_scrobble_percent') ?? 50;
+    final v = _sp.getInt('kat_scrobble_percent') ?? 50;
     return v.clamp(25, 90);
   }
 
@@ -388,90 +418,92 @@ class Prefs {
     int? percent,
   }) async {
     if (enabled != null) {
-      await _sp.setBool('lw_scrobbler_enabled', enabled);
+      await _sp.setBool('kat_scrobbler_enabled', enabled);
     }
     if (nowPlaying != null) {
-      await _sp.setBool('lw_submit_now_playing', nowPlaying);
+      await _sp.setBool('kat_submit_now_playing', nowPlaying);
     }
     if (percent != null) {
-      await _sp.setInt('lw_scrobble_percent', percent.clamp(25, 90));
+      await _sp.setInt('kat_scrobble_percent', percent.clamp(25, 90));
     }
   }
 
   // -- YouTube Music --------------------------------------------------------
   /// Push played tracks into the account's YT Music watch history.
   /// Default off: writing to the Google account is opt-in.
-  bool get syncYtHistory => _sp.getBool('lw_sync_yt_history') ?? true;
+  bool get syncYtHistory => _sp.getBool('kat_sync_yt_history') ?? true;
 
   /// Two-way YouTube Music sync of Liked Songs and playlists.
-  bool get syncYtLibrary => _sp.getBool('lw_sync_yt_library') ?? true;
+  bool get syncYtLibrary => _sp.getBool('kat_sync_yt_library') ?? true;
 
-  Future<void> setSyncYtLibrary(bool v) => _sp.setBool('lw_sync_yt_library', v);
+  Future<void> setSyncYtLibrary(bool v) =>
+      _sp.setBool('kat_sync_yt_library', v);
 
-  Future<void> setSyncYtHistory(bool v) => _sp.setBool('lw_sync_yt_history', v);
+  Future<void> setSyncYtHistory(bool v) =>
+      _sp.setBool('kat_sync_yt_history', v);
 
   /// Skip BotGuard poToken minting entirely (direct-URL clients only).
   /// Default off (poTokens enabled). Escape hatch for machines where the
   /// hidden `KatMusic BotGuard` WebView misbehaves: playback then never
   /// opens a WebView and fails open to direct streams; some
   /// ciphered-only tracks may not resolve.
-  bool get disablePoToken => _sp.getBool('lw_disable_potoken') ?? false;
+  bool get disablePoToken => _sp.getBool('kat_disable_potoken') ?? false;
 
   Future<void> setDisablePoToken(bool v) =>
-      _sp.setBool('lw_disable_potoken', v);
+      _sp.setBool('kat_disable_potoken', v);
 
   // -- Desktop-app Parity (Karaoke Lyrics & Visualizer & CD Mode) ------------
   int getLyricsOffset(String trackKey) =>
-      _sp.getInt('lw_lyrics_offset_$trackKey') ?? 0;
+      _sp.getInt('kat_lyrics_offset_$trackKey') ?? 0;
 
   Future<void> setLyricsOffset(String trackKey, int offsetMs) =>
-      _sp.setInt('lw_lyrics_offset_$trackKey', offsetMs);
+      _sp.setInt('kat_lyrics_offset_$trackKey', offsetMs);
 
   Future<void> resetLyricsOffset(String trackKey) =>
-      _sp.remove('lw_lyrics_offset_$trackKey');
+      _sp.remove('kat_lyrics_offset_$trackKey');
 
   bool get lyricsTransliteration =>
-      _sp.getBool('lw_lyrics_transliteration') ?? true;
+      _sp.getBool('kat_lyrics_transliteration') ?? true;
 
   Future<void> setLyricsTransliteration(bool v) =>
-      _sp.setBool('lw_lyrics_transliteration', v);
+      _sp.setBool('kat_lyrics_transliteration', v);
 
-  bool get visualizerEnabled => _sp.getBool('lw_visualizer_enabled') ?? true;
+  bool get visualizerEnabled => _sp.getBool('kat_visualizer_enabled') ?? true;
 
   Future<void> setVisualizerEnabled(bool v) =>
-      _sp.setBool('lw_visualizer_enabled', v);
+      _sp.setBool('kat_visualizer_enabled', v);
 
   /// Now Playing ambient style: 'apple' (vivid artwork colours, always on
   /// a dark stage with white text, the same in every theme) or 'winui'
   /// (the calm tonal stage that follows the app theme).
-  String get ambientStyle => _sp.getString('lw_ambient_style') ?? 'apple';
+  String get ambientStyle => _sp.getString('kat_ambient_style') ?? 'apple';
   Future<void> setAmbientStyle(String v) =>
-      _sp.setString('lw_ambient_style', v);
+      _sp.setString('kat_ambient_style', v);
 
-  bool get cdMode => _sp.getBool('lw_cd_mode') ?? false;
+  bool get cdMode => _sp.getBool('kat_cd_mode') ?? false;
 
-  Future<void> setCdMode(bool v) => _sp.setBool('lw_cd_mode', v);
+  Future<void> setCdMode(bool v) => _sp.setBool('kat_cd_mode', v);
 
   // -- Discord Rich Presence --------------------------------------------------
   /// Show the current track in Discord status. Default on (Spotify parity).
   bool get discordRichPresence =>
-      _sp.getBool('lw_discord_rich_presence') ?? true;
+      _sp.getBool('kat_discord_rich_presence') ?? true;
 
   Future<void> setDiscordRichPresence(bool v) =>
-      _sp.setBool('lw_discord_rich_presence', v);
+      _sp.setBool('kat_discord_rich_presence', v);
 
   // -- Diagnostics -----------------------------------------------------------
   /// Per-request detail in the session log (stream clients, audio probes).
   /// Off by default: the always-on lines already name every stage, and
   /// verbose adds a few lines per player request.
-  bool get verboseLogs => _sp.getBool('lw_verbose_logs') ?? false;
+  bool get verboseLogs => _sp.getBool('kat_verbose_logs') ?? false;
 
-  Future<void> setVerboseLogs(bool v) => _sp.setBool('lw_verbose_logs', v);
+  Future<void> setVerboseLogs(bool v) => _sp.setBool('kat_verbose_logs', v);
 
   // -- Addon sources (personal addon URLs) ----------------------------------
   /// User-pasted addon roots (`{base}/a/<token>/`), JSON-encoded.
   List<String> get addonUrls {
-    final raw = _sp.getString('lw_addon_urls') ?? '';
+    final raw = _sp.getString('kat_addon_urls') ?? '';
     if (raw.isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw);
@@ -486,46 +518,47 @@ class Prefs {
   }
 
   Future<void> setAddonUrls(List<String> urls) => _sp.setString(
-    'lw_addon_urls',
+    'kat_addon_urls',
     jsonEncode(urls.map((e) => e.trim()).where((e) => e.isNotEmpty).toList()),
   );
 
   // -- Equalizer & Studio Master Clarity ------------------------------------
-  bool get equalizerEnabled => _sp.getBool('lw_eq_enabled') ?? false;
-  Future<void> setEqualizerEnabled(bool v) => _sp.setBool('lw_eq_enabled', v);
+  bool get equalizerEnabled => _sp.getBool('kat_eq_enabled') ?? false;
+  Future<void> setEqualizerEnabled(bool v) => _sp.setBool('kat_eq_enabled', v);
 
-  String get equalizerPreset => _sp.getString('lw_eq_preset') ?? 'Default';
-  Future<void> setEqualizerPreset(String v) => _sp.setString('lw_eq_preset', v);
+  String get equalizerPreset => _sp.getString('kat_eq_preset') ?? 'Default';
+  Future<void> setEqualizerPreset(String v) =>
+      _sp.setString('kat_eq_preset', v);
 
-  String get equalizerGains => _sp.getString('lw_eq_gains') ?? '';
-  Future<void> setEqualizerGains(String v) => _sp.setString('lw_eq_gains', v);
+  String get equalizerGains => _sp.getString('kat_eq_gains') ?? '';
+  Future<void> setEqualizerGains(String v) => _sp.setString('kat_eq_gains', v);
 
   bool get studioClarityEnabled =>
-      _sp.getBool('lw_studio_clarity_enabled') ?? false;
+      _sp.getBool('kat_studio_clarity_enabled') ?? false;
   Future<void> setStudioClarityEnabled(bool v) =>
-      _sp.setBool('lw_studio_clarity_enabled', v);
+      _sp.setBool('kat_studio_clarity_enabled', v);
 
   String get studioClarityPreset =>
-      _sp.getString('lw_studio_clarity_preset') ?? 'reference';
+      _sp.getString('kat_studio_clarity_preset') ?? 'reference';
   Future<void> setStudioClarityPreset(String v) =>
-      _sp.setString('lw_studio_clarity_preset', v);
+      _sp.setString('kat_studio_clarity_preset', v);
 
   // -- App Updates ------------------------------------------------------------
   /// GitHub release version the user opted to suppress automatic startup popups for.
   String get ignoredUpdateVersion =>
-      _sp.getString('lw_ignored_update_version') ?? '';
+      _sp.getString('kat_ignored_update_version') ?? '';
 
   Future<void> setIgnoredUpdateVersion(String v) =>
-      _sp.setString('lw_ignored_update_version', v);
+      _sp.setString('kat_ignored_update_version', v);
 
   Future<void> clearIgnoredUpdateVersion() =>
-      _sp.remove('lw_ignored_update_version');
+      _sp.remove('kat_ignored_update_version');
 
   /// YouTube Music podcast shelves. Off hides them without deleting resume
   /// positions.
-  bool get podcastsEnabled => _sp.getBool('lw_podcasts_enabled') ?? true;
+  bool get podcastsEnabled => _sp.getBool('kat_podcasts_enabled') ?? true;
   Future<void> setPodcastsEnabled(bool v) =>
-      _sp.setBool('lw_podcasts_enabled', v);
+      _sp.setBool('kat_podcasts_enabled', v);
 
   // -- Language (Android AppLanguage.SYNC_KEY) ------------------------------
   /// BCP-47 tag or `system`. See [AppLanguage] in lib/l10n.
@@ -543,9 +576,9 @@ class Prefs {
   Future<void> setJamServerUrl(String url) =>
       _sp.setString('jamServerUrl', url.trim());
 
-  String get jamDisplayName => _sp.getString('lw_jam_display_name') ?? '';
+  String get jamDisplayName => _sp.getString('kat_jam_display_name') ?? '';
   Future<void> setJamDisplayName(String name) =>
-      _sp.setString('lw_jam_display_name', name.trim());
+      _sp.setString('kat_jam_display_name', name.trim());
 
   // -- Spotify canvas (cookie itself lives in secure storage) ---------------
   bool get spotifyCanvasEnabled =>
@@ -560,7 +593,7 @@ class Prefs {
 
   // -- Download folder layout (Android DownloadFolderStructure ids) ---------
   String get downloadStructure {
-    final raw = _sp.getString('lw_download_structure') ?? 'flat';
+    final raw = _sp.getString('kat_download_structure') ?? 'flat';
     const known = {
       'flat',
       'artist_album',
@@ -572,19 +605,19 @@ class Prefs {
   }
 
   Future<void> setDownloadStructure(String id) =>
-      _sp.setString('lw_download_structure', id);
+      _sp.setString('kat_download_structure', id);
 
   // -- Portable backup (non-secret prefs only) ------------------------------
   static bool isSecretPref(String key) {
     final k = key.toLowerCase();
     const exact = {
-      'lw_sessionkey',
-      'lw_lastfm_api_key',
-      'lw_lastfm_api_secret',
-      'lw_apikey',
-      'lw_apisecret',
-      'lw_addon_url',
-      'lw_addon_urls',
+      'kat_sessionkey',
+      'kat_lastfm_api_key',
+      'kat_lastfm_api_secret',
+      'kat_apikey',
+      'kat_apisecret',
+      'kat_addon_url',
+      'kat_addon_urls',
       'ytm_cookies',
       'spotify_sp_dc',
       'spotify_personal_token',
@@ -603,9 +636,9 @@ class Prefs {
   /// Settings that only make sense on the machine they were set on (a
   /// folder path, an audio device id, the signed-in name).
   static bool isDeviceBoundPref(String key) => const {
-    'lw_download_dir',
-    'lw_audio_device_id',
-    'lw_username',
+    'kat_download_dir',
+    'kat_audio_device_id',
+    'kat_username',
   }.contains(key.toLowerCase());
 
   static bool _isPortable(String key) =>

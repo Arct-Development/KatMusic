@@ -29,9 +29,9 @@ Future<void> setupWindow() async {
       center: true,
       title: 'KatMusic',
       titleBarStyle: TitleBarStyle.hidden,
-      // Neutral graphite — the Wave token, so first frame never flashes
+      // Neutral graphite — the Kat token, so first frame never flashes
       // a different base in either theme.
-      backgroundColor: WaveColors.background,
+      backgroundColor: KatColors.background,
     );
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
@@ -70,8 +70,8 @@ Future<void> applyWindowMaterial({
     await windowManager.setBackgroundColor(
       background ??
           (isLight
-              ? WaveColors.lightBackground
-              : (amoled ? WaveColors.amoledBackground : WaveColors.background)),
+              ? KatColors.lightBackground
+              : (amoled ? KatColors.amoledBackground : KatColors.background)),
     );
   } catch (_) {}
 }
@@ -117,7 +117,7 @@ Future<void> _setupHotkeys() async {
   // Global transport: Ctrl+Alt+P play/pause, Ctrl+Alt+N next,
   // Ctrl+Alt+B previous. Handlers are wired in the shell via
   // hotKeyManager.keyDownHandler forwarding to PlaybackService —
-  // see WaveShell initState. Registration here stays best-effort so
+  // see KatShell initState. Registration here stays best-effort so
   // a missing backend never blocks startup.
   // Wayland has no global-hotkey backend: skip registration so the
   // native plugin never logs `Binding '<Primary><Alt>…' failed!`.

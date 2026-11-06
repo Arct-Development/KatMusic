@@ -32,7 +32,7 @@ on:
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.
-          
+          - Windows, Linux and macOS desktop packages.
 jobs:
   release:
     name: Build & Publish Release
@@ -210,6 +210,9 @@ jobs:
           | **`KatMusic-v__TAG__-arm64-v8a.apk`** | **Android 10+ (64-bit ARM)** | **ARM64 build.** Smaller ABI-specific package for arm64-v8a phones and tablets. |
           | **`KatMusic-v__TAG__-universal-uncompressed.apk`** (~89 MB) | **Android 10+ (Android 10 – 16+)** | **Raw Release.** Unminified debuggable variant with uncompressed native libraries. |
           | **`KatMusic-v__TAG__-android7.apk`** (~17 MB) | **Android 7.0 – 9.0 (Legacy)** | **Legacy Android 7.0+ Variant.** Built with compressed native libraries for older package managers. |
+          | `KatMusic-v__TAG__-windows-x64.zip` | Windows 10 / 11 (64-bit) | Portable desktop build — extract and run `KatMusic.exe`. |
+          | `KatMusic-v__TAG__-linux-x64.tar.gz` | Linux (64-bit) | Portable desktop bundle — extract and run the KatMusic binary. |
+          | `KatMusic-v__TAG__-macos.zip` | macOS 12+ | Unsigned `.app` bundle — right-click → Open on first launch. |
 
           > [!WARNING]
           > **Notice for Android 7.0 – 9.0 Users (`KatMusic-v__TAG__-android7.apk`):**
@@ -242,3 +245,113 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Desktop packages ship with the same release. They build after the release
+  # exists so each platform's asset lands on the same tag the website reads.
+  desktop:
+    name: Build desktop (${{ matrix.name }})
+    needs: release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            build: flutter build windows --release
+            artifact: build/windows/x64/runner/Release
+            package: windows-x64.zip
+          - name: Linux
+            os: ubuntu-22.04
+            build: flutter build linux --release
+            artifact: build/linux/x64/release/bundle
+            package: linux-x64.tar.gz
+          - name: macOS
+            os: macos-latest
+            build: flutter build macos --release --no-codesign
+            artifact: build/macos/Build/Products/Release
+            package: macos.zip
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libayatana-appindicator3-dev libasound2-dev \
+            libmpv-dev libkeybinder-3.0-dev libwebkit2gtk-4.1-dev \
+            libsecret-1-dev libjsoncpp-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.9"
+          channel: stable
+          cache: true
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Generate secret module
+        run: dart tool/obfuscate_secrets.dart
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --exclude-tags golden
+
+      - name: Build
+        run: ${{ matrix.build }}
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist stage/KatMusic
+          cp -R "${{ matrix.artifact }}/." stage/KatMusic/
+          OUT="dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.package }}"
+          case "${{ runner.os }}" in
+            Windows) 7z a -tzip "$OUT" ./stage/KatMusic > /dev/null ;;
+            macOS) ditto -c -k --sequesterRsrc --keepParent stage/KatMusic "$OUT" ;;
+            *) tar -czf "$OUT" -C stage KatMusic ;;
+          esac
+          ls -lh dist
+
+      - name: Upload desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: desktop/dist/*
+          if-no-files-found: error
+
+  attach-desktop:
+    name: Attach desktop packages to release
+    needs: desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download desktop packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List packages
+        run: ls -lh dist
+
+      - name: Upload to the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          files: dist/*
+          fail_on_unmatched_files: true

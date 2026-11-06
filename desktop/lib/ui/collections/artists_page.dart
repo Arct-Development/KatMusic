@@ -8,10 +8,10 @@ import '../../features/search/shared_providers.dart';
 import '../components/artwork.dart';
 import '../components/menus.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 final _waveArtistsProvider =
     FutureProvider<List<({String name, String artwork})>>((ref) async {
@@ -66,46 +66,46 @@ String _img(Object? images) {
 
 /// Artists — 120px circle portraits with rank pill, initials fallback.
 /// Tap opens the dedicated artist layout.
-class WaveArtistsPage extends ConsumerWidget {
-  const WaveArtistsPage({super.key});
+class KatArtistsPage extends ConsumerWidget {
+  const KatArtistsPage({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artists = ref.watch(_waveArtistsProvider);
     return artists.when(
-      loading: () => const WaveLoading(label: 'Loading artists…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading artists…'),
+      error: (e, _) => KatError(
         title: 'Could not load artists',
         message: '$e',
         onRetry: () => ref.invalidate(_waveArtistsProvider),
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const WaveEmpty(
+          return const KatEmpty(
             icon: FluentIcons.contact,
             title: 'No artists yet',
             subtitle:
                 'Your most-played voices will appear here once you scrobble.',
           );
         }
-        return WaveEntranceGroup(
+        return KatEntranceGroup(
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(28, 22, 28, 12),
-                  child: WaveEntrance(
+                  child: KatEntrance(
                     rise: 10,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Artists',
-                          style: WaveType.pageTitle.copyWith(fontSize: 24),
+                          style: KatType.pageTitle.copyWith(fontSize: 24),
                         ),
                         Text(
                           '${list.length} voices',
-                          style: WaveType.meta.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                       ],
@@ -124,7 +124,7 @@ class WaveArtistsPage extends ConsumerWidget {
                   ),
                   delegate: SliverChildBuilderDelegate((context, i) {
                     final a = list[i];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: i,
                       rise: 10,
                       child: _ArtistCell(
@@ -164,17 +164,17 @@ class _ArtistCellState extends State<_ArtistCell> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    return WaveContextMenu(
+    final dark = katIsDark(context);
+    return KatContextMenu(
       items: () => [
-        WaveMenuAction(
+        KatMenuAction(
           leading: const Icon(FluentIcons.contact, size: 13),
           label: 'Open artist',
           onPressed: () =>
-              waveOpen(context, '/artist/${Uri.encodeComponent(widget.name)}'),
+              katOpen(context, '/artist/${Uri.encodeComponent(widget.name)}'),
         ),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.search, size: 13),
+        KatMenuAction(
+          leading: const Icon(KatIcons.search, size: 13),
           label: 'Search for artist',
           onPressed: () =>
               context.go('/search?q=${Uri.encodeComponent(widget.name)}'),
@@ -186,14 +186,14 @@ class _ArtistCellState extends State<_ArtistCell> {
         onExit: (_) => setState(() => _hover = false),
         child: GestureDetector(
           onTap: () =>
-              waveOpen(context, '/artist/${Uri.encodeComponent(widget.name)}'),
+              katOpen(context, '/artist/${Uri.encodeComponent(widget.name)}'),
           child: AnimatedContainer(
-            duration: waveMotion(context, const Duration(milliseconds: 110)),
+            duration: katMotion(context, const Duration(milliseconds: 110)),
             decoration: BoxDecoration(
               color: _hover
                   ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)
                   : Colors.transparent,
-              borderRadius: WaveRadius.artworkRadius,
+              borderRadius: KatRadius.artworkRadius,
             ),
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Column(
@@ -209,18 +209,18 @@ class _ArtistCellState extends State<_ArtistCell> {
                       // relaxing to a rounded square on hover. The clip is
                       // what animates, so the artwork renders square.
                       child: AnimatedContainer(
-                        duration: waveMotion(context, WaveMotion.normal),
+                        duration: katMotion(context, KatMotion.normal),
                         curve: Curves.easeOutCubic,
                         clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(
-                            _hover ? WaveRadius.floating : _artSize / 2,
+                            _hover ? KatRadius.floating : _artSize / 2,
                           ),
                         ),
-                        child: WaveArtwork(
+                        child: KatArtwork(
                           url: widget.artwork,
                           size: _artSize,
-                          radius: WaveRadius.structural,
+                          radius: KatRadius.structural,
                           kind: ArtworkKind.artist,
                           label: widget.name,
                           title: widget.name,
@@ -238,14 +238,14 @@ class _ArtistCellState extends State<_ArtistCell> {
                         ),
                         decoration: BoxDecoration(
                           color: dark
-                              ? waveSurfaceRaised(context)
-                              : waveSurface(context),
+                              ? katSurfaceRaised(context)
+                              : katSurface(context),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: waveOutline(context)),
+                          border: Border.all(color: katOutline(context)),
                         ),
                         child: Text(
                           '${widget.rank}',
-                          style: WaveType.meta.copyWith(
+                          style: KatType.meta.copyWith(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                           ),
@@ -260,9 +260,9 @@ class _ArtistCellState extends State<_ArtistCell> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: WaveType.trackTitle.copyWith(
+                  style: KatType.trackTitle.copyWith(
                     fontSize: 12.5,
-                    color: _hover ? waveAccent(context) : null,
+                    color: _hover ? katAccent(context) : null,
                   ),
                 ),
               ],

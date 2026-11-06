@@ -21,12 +21,12 @@ import '../components/animated_artwork_video.dart';
 import '../components/artist_line.dart';
 import '../components/artwork.dart';
 import '../components/image_aspect.dart';
-import '../components/buttons.dart' show LWTooltip;
+import '../components/buttons.dart' show KatTooltip;
 import '../components/states.dart';
 import '../theme/fluent_theme.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Centerpiece Fullscreen Player — Apple Music Split View & Cinematic Centering.
 ///
@@ -38,14 +38,14 @@ import '../theme/wave_icons.dart';
 ///   when lyrics are toggled off.
 /// - Top Actions: Lyrics toggle, Visualizer toggle, Close button.
 /// - Inactivity Auto-Hide: Fades controls and hides cursor after 3.5s of idle mouse.
-class WaveNowPlayingPage extends ConsumerStatefulWidget {
-  const WaveNowPlayingPage({super.key});
+class KatNowPlayingPage extends ConsumerStatefulWidget {
+  const KatNowPlayingPage({super.key});
 
   @override
-  ConsumerState<WaveNowPlayingPage> createState() => _WaveNowPlayingPageState();
+  ConsumerState<KatNowPlayingPage> createState() => _KatNowPlayingPageState();
 }
 
-class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
+class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
   bool _lyricsVisible = true;
   // Focus mode: lyrics only, artwork column collapsed, lyrics centered.
   bool _focusMode = false;
@@ -137,7 +137,7 @@ class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
     ref.listen<int>(nowPlayingActivityProvider, (_, _) => _resetIdleTimer());
     final apple = ref.watch(ambientStyleProvider) == AmbientStyle.apple;
     if (!apple) return _buildPage(context);
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     if (_stageTheme == null || _stageAccent != accent) {
       _stageAccent = accent;
       _stageTheme = buildWaveFluentTheme(accent: accent, isLight: false);
@@ -157,12 +157,12 @@ class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
       // Same stage as the playing page, for the same reason: this route must
       // not depend on whatever happens to be behind it.
       return ColoredBox(
-        color: waveBackground(context),
+        color: katBackground(context),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: WaveEmpty(
-              icon: WaveIcons.music,
+            child: KatEmpty(
+              icon: KatIcons.music,
               title: 'Nothing playing',
               subtitle: 'Pick something from Home, Discover or Search and it will take centre stage here.',
               actionLabel: 'Browse music',
@@ -253,7 +253,7 @@ class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
             // fade with it — and then the backdrop vanished the instant the
             // route did. Painting it here keeps the whole screen, backdrop
             // included, inside the page's own transition.
-            Positioned.fill(child: ColoredBox(color: waveBackground(context))),
+            Positioned.fill(child: ColoredBox(color: katBackground(context))),
 
             // Background Visualizer
             Positioned.fill(
@@ -264,7 +264,7 @@ class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
 
             // Main Layout Content
             AnimatedPositioned(
-              duration: waveMotion(context, WaveMotion.normal),
+              duration: katMotion(context, KatMotion.normal),
               curve: Curves.easeOutCubic,
               left: 0,
               top: 0,
@@ -303,7 +303,7 @@ class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
                         right: 0,
                         child: // Top Actions Bar (Fadeable on idle)
                         AnimatedOpacity(
-                          duration: waveMotion(
+                          duration: katMotion(
                             context,
                             const Duration(milliseconds: 350),
                           ),
@@ -400,10 +400,10 @@ class _TopActionsBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          WaveGlass(
+          KatGlass(
             blur: false,
-            borderRadius: WaveRadius.menuRadius,
-            child: LWTooltip(
+            borderRadius: KatRadius.menuRadius,
+            child: KatTooltip(
               message: 'Back',
               child: _FsIconButton(
                 icon: FluentIcons.chevron_left,
@@ -412,45 +412,45 @@ class _TopActionsBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          WaveGlass(
+          KatGlass(
             blur: false,
-            borderRadius: WaveRadius.menuRadius,
+            borderRadius: KatRadius.menuRadius,
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             child: Row(
               spacing: 5,
               mainAxisSize: MainAxisSize.min,
               children: [
-                LWTooltip(
+                KatTooltip(
                   message: lyricsVisible ? 'Hide lyrics' : 'Show lyrics',
                   child: _FsIconButton(
-                    icon: WaveIcons.lyrics,
+                    icon: KatIcons.lyrics,
                     active: lyricsVisible,
                     onTap: onToggleLyrics,
                   ),
                 ),
-                LWTooltip(
+                KatTooltip(
                   message: focusMode ? 'Exit focus mode' : 'Focus on lyrics',
                   child: _FsIconButton(
                     icon: focusMode
                         ? FluentIcons.mini_contract
-                        : WaveIcons.expand,
+                        : KatIcons.expand,
                     active: focusMode,
                     onTap: onToggleFocus,
                   ),
                 ),
-                LWTooltip(
+                KatTooltip(
                   message: visualizerEnabled
                       ? 'Disable visualizer'
                       : 'Enable visualizer',
                   child: _FsIconButton(
-                    icon: WaveIcons.visualizer,
+                    icon: KatIcons.visualizer,
                     active: visualizerEnabled,
                     onTap: onToggleVisualizer,
                   ),
                 ),
-                LWTooltip(
+                KatTooltip(
                   message: 'Close (Esc)',
-                  child: _FsIconButton(icon: WaveIcons.close, onTap: onClose),
+                  child: _FsIconButton(icon: KatIcons.close, onTap: onClose),
                 ),
               ],
             ),
@@ -481,11 +481,11 @@ class _FsIconButtonState extends State<_FsIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final color = widget.active
         ? accent
-        : (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
+        : (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
               .withValues(alpha: _hover ? 1.0 : 0.92);
 
     return MouseRegion(
@@ -496,7 +496,7 @@ class _FsIconButtonState extends State<_FsIconButton> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           width: 36,
           height: 36,
           decoration: BoxDecoration(
@@ -505,7 +505,7 @@ class _FsIconButtonState extends State<_FsIconButton> {
                 : _hover
                 ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.10)
                 : Colors.transparent,
-            borderRadius: WaveRadius.controlsRadius,
+            borderRadius: KatRadius.controlsRadius,
             border: Border.all(
               color: widget.active
                   ? accent.withValues(alpha: 0.35)
@@ -659,7 +659,7 @@ class _DesktopDualPane extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.only(top: topInset),
                     child: AnimatedContainer(
-                      duration: waveMotion(
+                      duration: katMotion(
                         context,
                         const Duration(milliseconds: 500),
                       ),
@@ -729,7 +729,7 @@ class _DesktopDualPane extends StatelessWidget {
 
                   // Gap
                   AnimatedContainer(
-                    duration: waveMotion(
+                    duration: katMotion(
                       context,
                       const Duration(milliseconds: 500),
                     ),
@@ -739,7 +739,7 @@ class _DesktopDualPane extends StatelessWidget {
 
                   // Right Column (Apple Music Karaoke Lyrics Pane)
                   AnimatedContainer(
-                    duration: waveMotion(
+                    duration: katMotion(
                       context,
                       const Duration(milliseconds: 500),
                     ),
@@ -748,7 +748,7 @@ class _DesktopDualPane extends StatelessWidget {
                     height: fullHeight,
                     child: ClipRect(
                       child: AnimatedOpacity(
-                        duration: waveMotion(
+                        duration: katMotion(
                           context,
                           const Duration(milliseconds: 350),
                         ),
@@ -766,7 +766,7 @@ class _DesktopDualPane extends StatelessWidget {
                                 child: _VisibleTicker(
                                   enabled: lyricsVisible,
                                   child: RepaintBoundary(
-                                    child: WaveKaraokeLyricsView(
+                                    child: KatKaraokeLyricsView(
                                       track: track,
                                       compact: false,
                                       showHeaderControls: true,
@@ -849,7 +849,7 @@ class _NarrowCenteredPane extends StatelessWidget {
       child: _VisibleTicker(
         enabled: lyricsVisible,
         child: RepaintBoundary(
-          child: WaveKaraokeLyricsView(
+          child: KatKaraokeLyricsView(
             track: track,
             compact: true,
             showHeaderControls: true,
@@ -931,7 +931,7 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
     final ref = this.ref;
     final track = widget.track;
     final size = widget.size;
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     // Podcasts keep their native shape: 16:9 art stays 16:9, square art
     // falls through to the normal 1:1 cover below.
     if (track.artworkUrl.isNotEmpty && _podcast(track)) {
@@ -1022,7 +1022,7 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
     // build's output, so no extra frame is scheduled.
     if (!motionReady) _sleeveGone = false;
     final showSleeve = !motionReady || !_sleeveGone;
-    WaveArtwork stillCover() => WaveArtwork(
+    KatArtwork stillCover() => KatArtwork(
       url: track.artworkUrl,
       videoId: track.videoId,
       size: size,
@@ -1081,7 +1081,7 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
                       // 0ms snap back to opaque when switching tracks so a
                       // mid-fade track change never exposes a black frame.
                       duration: motionReady
-                          ? waveMotion(
+                          ? katMotion(
                               context,
                               const Duration(milliseconds: 480),
                             )
@@ -1119,7 +1119,7 @@ class _TrackSwap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: waveMotion(context, WaveMotion.normal),
+      duration: katMotion(context, KatMotion.normal),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) => FadeTransition(
@@ -1191,7 +1191,7 @@ class _TrackMetadataSection extends ConsumerWidget {
         track.album.isNotEmpty &&
         track.album.toLowerCase().trim() != track.title.toLowerCase().trim();
 
-    final artistStyle = WaveType.meta.copyWith(
+    final artistStyle = KatType.meta.copyWith(
       fontSize: 14,
       height: 1.45,
       fontWeight: FontWeight.w500,
@@ -1210,7 +1210,7 @@ class _TrackMetadataSection extends ConsumerWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: alignCenter ? TextAlign.center : TextAlign.start,
-          style: WaveType.pageTitle.copyWith(
+          style: KatType.pageTitle.copyWith(
             fontSize: 25,
             height: 1.12,
             fontWeight: FontWeight.w700,
@@ -1220,7 +1220,7 @@ class _TrackMetadataSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 5),
-        WaveArtistLine(
+        KatArtistLine(
           artist: track.artist,
           textAlign: alignCenter ? TextAlign.center : TextAlign.start,
           style: artistStyle.copyWith(
@@ -1270,14 +1270,14 @@ class _QualitySpecLine extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            WaveIcons.equalizer,
+            KatIcons.equalizer,
             size: 11,
-            color: waveAccent(context).withValues(alpha: 0.62),
+            color: katAccent(context).withValues(alpha: 0.62),
           ),
           const SizedBox(width: 6),
           Text(
             quality.tier,
-            style: WaveType.overline.copyWith(
+            style: KatType.overline.copyWith(
               fontSize: 9.5,
               letterSpacing: 1.05,
               fontWeight: FontWeight.w700,
@@ -1289,7 +1289,7 @@ class _QualitySpecLine extends StatelessWidget {
             const SizedBox(width: 7),
             Text(
               '·',
-              style: WaveType.label.copyWith(
+              style: KatType.label.copyWith(
                 fontSize: 10.5,
                 color: Colors.white.withValues(alpha: 0.32),
                 shadows: _metadataShadow,
@@ -1298,7 +1298,7 @@ class _QualitySpecLine extends StatelessWidget {
             const SizedBox(width: 7),
             Text(
               quality.detail,
-              style: WaveType.label.copyWith(
+              style: KatType.label.copyWith(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.1,
@@ -1336,7 +1336,7 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
     if (!hasNext) return const SizedBox.shrink();
 
     final nextTrack = queue[index + 1];
-    final nextStyle = WaveType.meta.copyWith(
+    final nextStyle = KatType.meta.copyWith(
       fontSize: 11.5,
       color: Colors.white.withValues(alpha: 0.62),
       shadows: _metadataShadow,
@@ -1347,7 +1347,7 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
         children: [
           TextSpan(
             text: nextTrack.title,
-            style: WaveType.trackTitle.copyWith(
+            style: KatType.trackTitle.copyWith(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: Colors.white.withValues(alpha: 0.92),
@@ -1372,11 +1372,11 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
       children: [
         Text(
           'UP NEXT',
-          style: WaveType.overline.copyWith(
+          style: KatType.overline.copyWith(
             fontSize: 8.5,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w700,
-            color: waveAccent(context).withValues(alpha: 0.82),
+            color: katAccent(context).withValues(alpha: 0.82),
             shadows: _metadataShadow,
           ),
         ),
@@ -1390,14 +1390,14 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
           Expanded(child: nextLabel),
         const SizedBox(width: 8),
         AnimatedSlide(
-          duration: WaveMotion.fast,
-          curve: WaveMotion.standard,
+          duration: KatMotion.fast,
+          curve: KatMotion.standard,
           offset: _hovered ? const Offset(0.18, 0) : Offset.zero,
           child: Icon(
             FluentIcons.chevron_right,
             size: 11,
             color: _hovered
-                ? waveAccent(context)
+                ? katAccent(context)
                 : Colors.white.withValues(alpha: 0.42),
           ),
         ),
@@ -1426,8 +1426,8 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
               onTap: () => ref.read(playbackServiceProvider.notifier).next(),
               child: AnimatedContainer(
                 key: const ValueKey('now-playing-up-next'),
-                duration: WaveMotion.fast,
-                curve: WaveMotion.standard,
+                duration: KatMotion.fast,
+                curve: KatMotion.standard,
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: _hovered ? 0.06 : 0.0),
@@ -1462,7 +1462,7 @@ class _NowAmbient extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (artworkUrl.isEmpty) return const SizedBox.shrink();
-    return WaveAmbientMesh(
+    return KatAmbientMesh(
       artworkUrl: artworkUrl,
       isFullBleed: true,
       cinematic: true,

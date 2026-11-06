@@ -23,11 +23,11 @@ class DownloadLayoutSettings extends ConsumerWidget {
           'This does not run on its own.',
         ),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Reorganize'),
           ),
@@ -45,7 +45,7 @@ class DownloadLayoutSettings extends ConsumerWidget {
         title: const Text('Reorganize downloads'),
         content: Text('Moved ${result.moved}. Skipped ${result.skipped}.'),
         actions: [
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
           ),
@@ -62,20 +62,20 @@ class DownloadLayoutSettings extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Folder layout', style: WaveType.trackTitle),
+        Text('Folder layout', style: KatType.trackTitle),
         const SizedBox(height: 4),
         Text(
           'Applies to new downloads. Existing files stay where they are '
           'until you reorganize.',
-          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+          style: KatType.meta.copyWith(color: katTextSecondary(context)),
         ),
         const SizedBox(height: 8),
-        WaveSelect<DownloadFolderLayout>(
+        KatSelect<DownloadFolderLayout>(
           expanded: true,
           value: current,
           options: [
             for (final layout in DownloadFolderLayout.values)
-              WaveSelectOption(
+              KatSelectOption(
                 value: layout,
                 label: layout.label,
                 hint: layout.example,
@@ -87,7 +87,7 @@ class DownloadLayoutSettings extends ConsumerWidget {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: WaveButton(
+          child: KatButton(
             onPressed: () => _reorganize(context, ref),
             child: const Text('Reorganize existing downloads'),
           ),

@@ -6,35 +6,35 @@ import '../../app/track_actions.dart'
 import '../../features/feed/feed_repository.dart' show GeneratedTrack;
 import '../../features/player/playback_service.dart';
 import '../../features/feed/genre_browse.dart';
-import '../components/buttons.dart' show WaveGhostButton, WavePrimaryButton;
+import '../components/buttons.dart' show KatGhostButton, KatPrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// A Browse Categories genre: songs from YouTube Music for that genre,
 /// with Play all / Shuffle and a playable track table.
-class WaveGenreDetailPage extends ConsumerWidget {
+class KatGenreDetailPage extends ConsumerWidget {
   final String query;
   final String title;
-  const WaveGenreDetailPage({super.key, required this.query, this.title = ''});
+  const KatGenreDetailPage({super.key, required this.query, this.title = ''});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(genreTracksProvider(query));
     return async.when(
-      loading: () => const WaveLoading(label: 'Loading songs…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading songs…'),
+      error: (e, _) => KatError(
         title: 'Could not load this genre',
         message: '$e',
         onRetry: () => ref.invalidate(genreTracksProvider(query)),
       ),
       data: (tracks) {
         if (tracks.isEmpty) {
-          return WaveEmpty(
-            icon: WaveIcons.music,
+          return KatEmpty(
+            icon: KatIcons.music,
             title: 'Nothing found',
             subtitle: 'No songs came back for this genre. Try again later.',
             actionLabel: 'Retry',
@@ -76,7 +76,7 @@ class _BodyState extends ConsumerState<_Body> {
         break;
       }
     }
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -84,20 +84,20 @@ class _BodyState extends ConsumerState<_Body> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
-                child: WaveEntrance(
+                child: KatEntrance(
                   rise: 10,
-                  child: WaveCollectionHero(
+                  child: KatCollectionHero(
                     flightKind: 'genre',
                     flightId: widget.query,
                     overline: 'Genre',
                     title: title,
                     meta: '${tracks.length} songs',
                     artworkUrl: cover,
-                    fallbackIcon: WaveIcons.music,
+                    fallbackIcon: KatIcons.music,
                     primaryActions: [
-                      WavePrimaryButton(
+                      KatPrimaryButton(
                         label: 'Play all',
                         icon: FluentIcons.play,
                         onPressed: () => playGenerated(
@@ -108,9 +108,9 @@ class _BodyState extends ConsumerState<_Body> {
                           queueAll: tracks,
                         ),
                       ),
-                      WaveGhostButton(
+                      KatGhostButton(
                         label: 'Shuffle',
-                        icon: WaveIcons.shuffle,
+                        icon: KatIcons.shuffle,
                         onPressed: () {
                           final shuffled = [...tracks]..shuffle();
                           playGenerated(
@@ -131,7 +131,7 @@ class _BodyState extends ConsumerState<_Body> {
           const SliverToBoxAdapter(child: SizedBox(height: 12)),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: WaveDesktopTable<GeneratedTrack>(
+            sliver: KatDesktopTable<GeneratedTrack>(
               items: tracks,
               keyOf: (t) => t.key,
               titleOf: (t) => t.name,

@@ -18,7 +18,7 @@ final lyricsProviderOverrideProvider = StateProvider.autoDispose
 final lyricsExcludedProvidersProvider = StateProvider.autoDispose
     .family<Set<String>, String>((_, _) => <String>{});
 
-final waveLyricsProvider = StreamProvider.autoDispose
+final katLyricsProvider = StreamProvider.autoDispose
     .family<LyricsResult, PlayableTrack>((ref, track) {
       final repo = ref.watch(lyricsRepositoryProvider);
       final wordByWord = ref.watch(prefsProvider.select((p) => p.wordByWord));
@@ -158,16 +158,16 @@ final waveLyricsProvider = StreamProvider.autoDispose
 
 /// Premium Apple Music Karaoke lyrics reading experience.
 ///
-/// Backed by [WaveKaraokeLyricsView] with word-level progressive syllable wipe,
+/// Backed by [KatKaraokeLyricsView] with word-level progressive syllable wipe,
 /// blur falloff, active line pop, timing offset controls, and autoscroll.
-class WaveLyricsPanel extends StatelessWidget {
+class KatLyricsPanel extends StatelessWidget {
   final PlayableTrack track;
   final bool compact;
   final bool showHeaderControls;
   final VoidCallback? onClose;
   final bool isActive;
 
-  const WaveLyricsPanel({
+  const KatLyricsPanel({
     super.key,
     required this.track,
     this.compact = false,
@@ -178,7 +178,7 @@ class WaveLyricsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WaveKaraokeLyricsView(
+    return KatKaraokeLyricsView(
       track: track,
       compact: compact,
       showHeaderControls: showHeaderControls,

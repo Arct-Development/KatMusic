@@ -14,7 +14,7 @@ import '../components/states.dart';
 import '../components/track_row.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 final _waveHistoryProvider = FutureProvider<List<HomeTrack>>((ref) {
   final viewing = ref.watch(viewingProfileProvider);
@@ -46,8 +46,8 @@ String _dayGroup(DateTime? dt) {
 
 /// History: LAST.FM overline + count header + date groups
 /// (Today / Yesterday / Earlier) with relative timestamps.
-class WaveHistoryPage extends ConsumerWidget {
-  const WaveHistoryPage({super.key});
+class KatHistoryPage extends ConsumerWidget {
+  const KatHistoryPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,8 +55,8 @@ class WaveHistoryPage extends ConsumerWidget {
     // Signed-in YouTube Music watch history (own section below).
     final ytTracks = ref.watch(ytHistoryProvider).value ?? const [];
     return history.when(
-      loading: () => const WaveLoading(label: 'Loading history…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading history…'),
+      error: (e, _) => KatError(
         title: 'Could not load history',
         message: '$e',
         onRetry: () => ref.invalidate(_waveHistoryProvider),
@@ -80,33 +80,33 @@ class WaveHistoryPage extends ConsumerWidget {
           if (groups.containsKey('Yesterday')) 'Yesterday',
           if (groups.containsKey('Earlier')) 'Earlier',
         ];
-        return WaveEntranceGroup(
+        return KatEntranceGroup(
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-                  child: WaveEntrance(
+                  child: KatEntrance(
                     rise: 10,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'LAST.FM',
-                          style: WaveType.overline.copyWith(
-                            color: waveAccent(context),
+                          style: KatType.overline.copyWith(
+                            color: katAccent(context),
                           ),
                         ),
-                        const Text('History', style: WaveType.pageTitle),
+                        const Text('History', style: KatType.pageTitle),
                         const SizedBox(height: 2),
                         Text(
                           '${tracks.length} scrobbles · most recent first',
-                          style: WaveType.body.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.body.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const WaveTrackTableHeader(showAlbum: false),
+                        const KatTrackTableHeader(showAlbum: false),
                       ],
                     ),
                   ),
@@ -114,8 +114,8 @@ class WaveHistoryPage extends ConsumerWidget {
               ),
               if (tracks.isEmpty)
                 const SliverToBoxAdapter(
-                  child: WaveEmpty(
-                    icon: WaveIcons.history,
+                  child: KatEmpty(
+                    icon: KatIcons.history,
                     title: 'No history yet',
                     subtitle: 'Scrobbled tracks will appear here once you connect Last.fm.',
                   ),
@@ -125,12 +125,12 @@ class WaveHistoryPage extends ConsumerWidget {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 2),
-                      child: WaveEntrance(
+                      child: KatEntrance(
                         index: groups[g]!.first,
                         rise: 8,
                         child: Text(
                           g,
-                          style: WaveType.sectionTitle.copyWith(fontSize: 13),
+                          style: KatType.sectionTitle.copyWith(fontSize: 13),
                         ),
                       ),
                     ),
@@ -147,12 +147,12 @@ class WaveHistoryPage extends ConsumerWidget {
                                 t.timestampMillis!,
                               ),
                             );
-                      return WaveEntrance(
+                      return KatEntrance(
                         index: i,
                         rise: 10,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: WaveTrackRow(
+                          child: KatTrackRow(
                             index: i + 1,
                             title: t.name,
                             artist: t.artist,
@@ -180,25 +180,25 @@ class WaveHistoryPage extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 2),
-                    child: WaveEntrance(
+                    child: KatEntrance(
                       rise: 8,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'YOUTUBE MUSIC',
-                            style: WaveType.overline.copyWith(
-                              color: waveAccent(context),
+                            style: KatType.overline.copyWith(
+                              color: katAccent(context),
                             ),
                           ),
                           Text(
                             'YouTube History',
-                            style: WaveType.sectionTitle.copyWith(fontSize: 13),
+                            style: KatType.sectionTitle.copyWith(fontSize: 13),
                           ),
                           Text(
                             '${ytTracks.length} recent plays',
-                            style: WaveType.body.copyWith(
-                              color: waveTextSecondary(context),
+                            style: KatType.body.copyWith(
+                              color: katTextSecondary(context),
                             ),
                           ),
                         ],
@@ -210,12 +210,12 @@ class WaveHistoryPage extends ConsumerWidget {
                   itemCount: ytTracks.length.clamp(0, 100),
                   itemBuilder: (context, j) {
                     final t = ytTracks[j];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: j,
                       rise: 10,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: WaveTrackRow(
+                        child: KatTrackRow(
                           index: j + 1,
                           title: t.title,
                           artist: t.artist,

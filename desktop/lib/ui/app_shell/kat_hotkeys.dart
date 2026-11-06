@@ -19,7 +19,7 @@ import 'package:flutter/services.dart';
 ///   also while typing.
 /// - Left/Right seek (5s, Shift 15s) globally whenever not typing.
 /// - Up/Down change volume (5%, Shift 15%) globally, EXCEPT inside a
-///   [WaveKeyNavScope] (track tables, menus), where they navigate the
+///   [KatKeyNavScope] (track tables, menus), where they navigate the
 ///   list instead — again the Spotify convention: arrows are contextual,
 ///   Space is global.
 /// - Typing (text fields) always wins for Space/arrows/Ctrl+L; only
@@ -28,8 +28,8 @@ import 'package:flutter/services.dart';
 ///   Linux, SMTC on Windows — see `isSystemMediaKey`). Returning false
 ///   (not swallowing) keeps that single-owner contract so a focused
 ///   press can never double-fire through both paths.
-class WaveHotkeyActions {
-  WaveHotkeyActions({
+class KatHotkeyActions {
+  KatHotkeyActions({
     required this.isTyping,
     required this.hasTrack,
     required this.togglePlay,
@@ -68,7 +68,7 @@ class WaveHotkeyActions {
 }
 
 /// Seek/volume steps shared by the global handler and the dock tooltips.
-class WaveHotkeySteps {
+class KatHotkeySteps {
   static const int seek = 5;
   static const int seekShift = 15;
   static const double volume = 0.05;
@@ -77,7 +77,7 @@ class WaveHotkeySteps {
 
 /// Returns true when keyboard focus is inside a text input. Centralized so
 /// the global handler and any fallback widgets agree on "typing".
-bool waveIsTypingFocused(FocusNode searchFocus) {
+bool katIsTypingFocused(FocusNode searchFocus) {
   if (searchFocus.hasFocus) return true;
   final focus = FocusManager.instance.primaryFocus;
   if (focus == null) return false;
@@ -108,8 +108,8 @@ bool _has(
 ///
 /// Text fields don't need this scope — typing already yields all keys
 /// except the Ctrl+combos and Esc.
-class WaveKeyNavScope extends StatelessWidget {
-  const WaveKeyNavScope({
+class KatKeyNavScope extends StatelessWidget {
+  const KatKeyNavScope({
     super.key,
     this.consumeUpDown = false,
     required this.child,
@@ -123,15 +123,15 @@ class WaveKeyNavScope extends StatelessWidget {
 }
 
 /// Nearest nav scope above the currently focused widget, if any.
-WaveKeyNavScope? _navScope() {
+KatKeyNavScope? _navScope() {
   final ctx = FocusManager.instance.primaryFocus?.context;
   if (ctx == null) return null;
-  return ctx.findAncestorWidgetOfExactType<WaveKeyNavScope>();
+  return ctx.findAncestorWidgetOfExactType<KatKeyNavScope>();
 }
 
-/// True when the focused widget sits in a [WaveKeyNavScope] that owns
+/// True when the focused widget sits in a [KatKeyNavScope] that owns
 /// Up/Down (so the global volume keys must yield to it).
-bool waveNavScopeOwnsUpDown() => _navScope()?.consumeUpDown == true;
+bool katNavScopeOwnsUpDown() => _navScope()?.consumeUpDown == true;
 
 /// True for OS-level media/volume keys. SMTC (Windows) and MPRIS
 /// (Linux) own these — the in-app dispatcher must never swallow them,
@@ -150,7 +150,7 @@ bool isSystemMediaKey(LogicalKeyboardKey k) =>
 /// Global key dispatcher. Attach via `HardwareKeyboard.instance.addHandler`
 /// and detach on dispose. Returns true = swallowed (focused widget never
 /// sees the key).
-bool handleWaveHotkey(KeyEvent event, WaveHotkeyActions a) {
+bool handleWaveHotkey(KeyEvent event, KatHotkeyActions a) {
   final isDown = event is KeyDownEvent;
   final isRepeat = event is KeyRepeatEvent;
   if (!isDown && !isRepeat) return false;
@@ -271,7 +271,7 @@ bool handleWaveHotkey(KeyEvent event, WaveHotkeyActions a) {
   // where they move within the list instead of changing volume. ---
   if (!ctrl && !alt && !meta) {
     if (!a.hasTrack()) return false;
-    final step = shift ? WaveHotkeySteps.seekShift : WaveHotkeySteps.seek;
+    final step = shift ? KatHotkeySteps.seekShift : KatHotkeySteps.seek;
     if (k == LogicalKeyboardKey.arrowRight) {
       a.seekBySeconds(step);
       return true;
@@ -281,7 +281,7 @@ bool handleWaveHotkey(KeyEvent event, WaveHotkeyActions a) {
       return true;
     }
     if (_navScope()?.consumeUpDown == true) return false;
-    final vStep = shift ? WaveHotkeySteps.volumeShift : WaveHotkeySteps.volume;
+    final vStep = shift ? KatHotkeySteps.volumeShift : KatHotkeySteps.volume;
     if (k == LogicalKeyboardKey.arrowUp) {
       a.volumeByDelta(vStep);
       return true;

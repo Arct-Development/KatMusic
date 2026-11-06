@@ -140,9 +140,9 @@ void main() {
           ),
       ];
       SharedPreferences.setMockInitialValues({
-        'lw_automix_enabled': true,
-        'lw_automix_seconds': 14,
-        'lw_automix_spectral': true,
+        'kat_automix_enabled': true,
+        'kat_automix_seconds': 14,
+        'kat_automix_spectral': true,
       });
       final prefs = Prefs(await SharedPreferences.getInstance());
       PlaybackService.debugAudioOutput = 'null';

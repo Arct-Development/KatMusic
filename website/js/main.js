@@ -1,10 +1,71 @@
 (() => {
   "use strict";
   const REPO = "Arct-Development/KatMusic", API = `https://api.github.com/repos/${REPO}/releases?per_page=100`;
+  const RELEASES = `https://github.com/${REPO}/releases`;
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STYLES = [["Classic", "Full player, tabs, queue and controls."], ["Poster", "Large circular artwork and expressive track text."], ["Timeline", "Progress-led layout with oversized timestamps."], ["Lyrics Stage", "Lyrics-focused view with synced highlighting and source controls."], ["iPod", "A compact, tactile player inspired by classic music devices."], ["Full Video", "Immersive playback with animated Canvas artwork when available."]];
-  const TICKER = ["Listen Together", "Group Blend", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Open source"];
+  const TICKER = ["Listen Together", "Group Blend", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Android · Windows · macOS · Linux", "Open source"];
+
+  /* ---------- platforms ---------- */
+  const ICONS = {
+    android: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13.5" r="6.4"/><rect x="3.2" y="12.4" width="2.3" height="5.6" rx="1.15"/><rect x="18.5" y="12.4" width="2.3" height="5.6" rx="1.15"/><path d="M8.1 6.3 6.9 4.4M15.9 6.3l1.2-1.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.8" cy="12.2" r=".9" fill="#000"/><circle cx="14.2" cy="12.2" r=".9" fill="#000"/></svg>',
+    windows: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.4 10.4 4v7.2H3zM11.6 3.8 21 2.4v8.8h-9.4zM3 12.8h7.4V20L3 18.6zM11.6 12.8H21v8.8l-9.4-1.4z"/></svg>',
+    macos: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.5-1.7-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.7-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.6.7 2.7.7c1.1 0 1.9-1.1 2.6-2.1.5-.8.7-1.1 1.1-2-2.9-1.1-2.4-4.3-2.4-4.4ZM14.4 5.4c.6-.7 1-1.7.9-2.7-.9.1-2 .6-2.6 1.3-.6.7-1.1 1.7-.9 2.7 1 .1 2-.6 2.6-1.3Z"/></svg>',
+    linux: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-2.4 0-3.6 2.1-3.6 4.3 0 1.6-.4 2.6-1.5 4-1.2 1.6-1.9 3.1-1.9 4.7 0 2.9 3.1 5 7 5s7-2.1 7-5c0-1.6-.7-3.1-1.9-4.7-1.1-1.4-1.5-2.4-1.5-4C15.6 4.1 14.4 2 12 2Zm-1.6 4.1a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm3.2 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2ZM12 8.5c1.2 0 2.2.7 2.2 1.5S13.2 11.5 12 11.5s-2.2-.7-2.2-1.5S10.8 8.5 12 8.5Z"/></svg>'
+  };
+  const PLATFORMS = [
+    {
+      id: "android", name: "Android", file: "APK package", button: "Download APK",
+      desc: "The full app, in your pocket: Listen Together, Group Blend, synced lyrics, native audio and offline downloads.",
+      specs: ["Android 10+", "ARM64 or universal", "Legacy for Android 7–9"],
+      hint: "Signed APKs. Verify with the SHA-256 checksum from the release.",
+      match: (n) => /\.apk$/i.test(n)
+    },
+    {
+      id: "windows", name: "Windows", file: "Windows package", button: "Download for Windows",
+      desc: "The same player, queue and lyrics on a desktop window, with Discord presence and system media keys.",
+      specs: ["Windows 10 / 11", "64-bit", "Portable ZIP — no installer"],
+      hint: "Extract the ZIP anywhere, then run KatMusic.exe. The app registers its own katmusic:// links.",
+      match: (n) => /windows/i.test(n) && /\.zip$/i.test(n)
+    },
+    {
+      id: "macos", name: "macOS", file: "macOS package", button: "Download for macOS",
+      desc: "A native window for the same library, with keyboard shortcuts tuned for macOS and URL-scheme handoff.",
+      specs: ["macOS 12+", "Apple silicon + Intel", "Unsigned .app in a ZIP"],
+      hint: "Drag KatMusic.app into Applications. If Gatekeeper blocks the first launch, right-click → Open.",
+      match: (n) => /macos|macosx|osx|darwin/i.test(n) && /\.(zip|dmg)$/i.test(n)
+    },
+    {
+      id: "linux", name: "Linux", file: "Linux package", button: "Download for Linux",
+      desc: "A 64-bit desktop build for the same account, playlists and downloads, packaged as a portable tarball.",
+      specs: ["64-bit Linux", "Tarball bundle", "GTK 3 + media_kit runtime"],
+      hint: "Extract and run the KatMusic binary inside the folder. Install your distribution's GTK 3 and libmpv packages if it refuses to start.",
+      match: (n) => /linux/i.test(n) && /\.(tar\.gz|tgz|zip|appimage)$/i.test(n)
+    }
+  ];
+  const STEPS = {
+    android: [
+      ["Choose a build", "Universal for most phones, ARM64 for 64-bit ARM devices, legacy for Android 7–9."],
+      ["Install the APK", "Open the download and allow installs from your browser when Android asks."],
+      ["Sign in or continue as guest", "Guest mode works offline; connect YouTube Music or Last.fm whenever you like."]
+    ],
+    windows: [
+      ["Download the ZIP", "Grab the Windows package above — it already contains everything the app needs."],
+      ["Extract and run", "Unzip the folder anywhere and launch KatMusic.exe. No installer, no admin rights."],
+      ["Sign in and pin it", "Sign in or continue as guest, then pin KatMusic to the taskbar for quick access."]
+    ],
+    macos: [
+      ["Download the ZIP", "The macOS package is a signed-out .app bundle inside a ZIP."],
+      ["Move it to Applications", "Drag KatMusic.app into Applications. On first launch use right-click → Open if Gatekeeper asks."],
+      ["Sign in", "Sign in or continue as guest, then keep KatMusic in the Dock."]
+    ],
+    linux: [
+      ["Download the tarball", "The Linux package is a portable folder, not a distro-specific package."],
+      ["Extract and run", "Unpack it and start the KatMusic binary. Install GTK 3 and libmpv if a library is missing."],
+      ["Sign in", "Sign in or continue as guest. The app adds its own katmusic:// handler."]
+    ]
+  };
 
   /* ---------- static pieces ---------- */
   $("#yr").textContent = new Date().getFullYear();
@@ -75,26 +136,125 @@
   const setCount = (n) => { cTarget = n; counters.forEach((c) => c.seen && cRun(c)); };
   counters.filter((c) => !c.seen).forEach((c) => new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { c.seen = true; o.disconnect(); if (cTarget) cRun(c); } }, { threshold: 0.4 }).observe(c.el));
 
-  /* ---------- live GitHub releases (always the newest stable) ---------- */
+  /* ---------- platform download panel ---------- */
   const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
   const fmtDate = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
-  const label = (n) => { n = n.toLowerCase(); if (n.includes("uncompressed")) return null; if (n.includes("android7")) return "Legacy · Android 7–9"; if (n.includes("arm64")) return "ARM64 · Android 10+"; return "Universal · Recommended"; };
-  let shownTag = null;
+  const apkLabel = (n) => { n = n.toLowerCase(); if (n.includes("uncompressed")) return "Raw build · unminified"; if (n.includes("android7")) return "Legacy · Android 7–9"; if (n.includes("arm64")) return "ARM64 · Android 10+"; return "Universal · recommended"; };
+  const apkRank = (n) => { n = n.toLowerCase(); if (n.includes("uncompressed")) return 3; if (n.includes("android7")) return 2; if (n.includes("arm64")) return 1; return 0; };
+  const desktopLabel = (p) => {
+    if (p.id === "windows") return "Windows 10/11 · 64-bit portable";
+    if (p.id === "macos") return "macOS 12+ · .app bundle";
+    return "Linux 64-bit · portable tarball";
+  };
+  const isDownloadable = (n) => PLATFORMS.some((p) => p.match(n));
 
-  function render(rel) {
-    const apks = rel.assets.filter((a) => /\.apk$/i.test(a.name) && label(a.name))
-      .sort((a, b) => (label(a.name).startsWith("Universal") ? -1 : 0) - (label(b.name).startsWith("Universal") ? -1 : 0));
-    const sum = rel.assets.find((a) => /sha256/i.test(a.name)), sel = $("#apk"), prev = sel.value;
-    $$("[data-tag]").forEach((e) => (e.textContent = rel.tag_name));
-    $$("[data-date]").forEach((e) => (e.textContent = e.closest(".chip") ? ` · ${fmtDate(rel.published_at)}` : fmtDate(rel.published_at)));
-    sel.innerHTML = ""; apks.forEach((a, i) => { const o = document.createElement("option"); o.value = i; o.textContent = label(a.name); sel.append(o); });
-    if (prev && apks[prev]) sel.value = prev;
-    const upd = () => { const a = apks[sel.value]; if (!a) return; $("#fname").textContent = a.name; $("#fsize").textContent = fmtSize(a.size); $("#dlbtn").href = a.browser_download_url; };
-    sel.onchange = upd; upd();
-    $("#notes").href = rel.html_url; const s = $("#sum"); s.hidden = !sum; if (sum) s.href = sum.browser_download_url;
+  function detectPlatform() {
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) return "android";
+    if (/iphone|ipad|ipod/i.test(ua)) return "android";        // no iOS build yet; show the closest real option
+    if (/windows|win32|win64/i.test(ua)) return "windows";
+    if (/mac os|macintosh/i.test(ua)) return "macos";
+    if (/linux|x11/i.test(ua)) return "linux";
+    return "android";
+  }
+
+  let rel = null, current = detectPlatform(), shownTag = null;
+  const chosen = {};
+  const plats = $("#plats");
+
+  PLATFORMS.forEach((p) => {
+    const b = document.createElement("button");
+    b.className = "plat";
+    b.type = "button";
+    b.role = "tab";
+    b.dataset.id = p.id;
+    b.setAttribute("aria-selected", "false");
+    b.innerHTML = `${ICONS[p.id] || ""}<span>${p.name}</span>`;
+    b.onclick = () => { current = p.id; paint(); };
+    plats.append(b);
+  });
+
+  const assetsFor = (p) => {
+    const list = ((rel && rel.assets) || []).filter((a) => p.match(a.name));
+    if (p.id === "android") list.sort((a, b) => apkRank(a.name) - apkRank(b.name));
+    return list;
+  };
+
+  function paint() {
+    const p = PLATFORMS.find((x) => x.id === current) || PLATFORMS[0];
+    $$(".plat", plats).forEach((b) => {
+      const on = b.dataset.id === p.id;
+      b.setAttribute("aria-selected", String(on));
+      b.setAttribute("aria-controls", "asset");
+    });
+    $("#pChip").textContent = p.name;
+    $("#pName").textContent = `KatMusic for ${p.name}`;
+    $("#pDesc").textContent = p.desc;
+    $("#pSpecs").innerHTML = p.specs.map((s) => `<li>${s}</li>`).join("");
+    $("#assetLabel").textContent = p.file;
+    $("#hint").textContent = p.hint;
+    $("#heroDl").textContent = p.button;
+
+    const steps = STEPS[p.id];
+    steps.forEach(([t, d], i) => { $(`#step${i + 1}t`).textContent = t; $(`#step${i + 1}p`).textContent = d; });
+    $("#installLead").textContent = `Steps for ${p.name}. Switch platforms above to change them.`;
+
+    const sel = $("#asset"), list = assetsFor(p), btn = $("#dlbtn"), miss = $("#miss");
+    if (!rel) {
+      sel.innerHTML = "<option>Loading…</option>";
+      sel.disabled = true;
+      $("#fname").textContent = "Fetching release…";
+      $("#fsize").textContent = "";
+      return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = "";
+    if (!list.length) {
+      sel.innerHTML = `<option>Not in ${rel.tag_name}</option>`;
+      sel.disabled = true;
+      $("#fname").textContent = `No ${p.name} package in ${rel.tag_name}`;
+      $("#fsize").textContent = "Desktop packages attach to a release after their builds finish.";
+      btn.textContent = "See all releases";
+      btn.href = RELEASES;
+      miss.hidden = false;
+      miss.textContent = `The ${p.name} build for ${rel.tag_name} is not published yet. The release page will list it as soon as the build finishes.`;
+      return;
+    }
+    miss.hidden = true;
+    list.forEach((a, i) => {
+      const o = document.createElement("option");
+      o.value = i;
+      o.textContent = p.id === "android" ? apkLabel(a.name) : desktopLabel(p);
+      sel.append(o);
+    });
+    const prev = chosen[p.id];
+    if (typeof prev === "number" && list[prev]) sel.value = prev;
+    const show = () => {
+      const a = list[+sel.value];
+      if (!a) return;
+      chosen[p.id] = +sel.value;
+      $("#fname").textContent = a.name;
+      $("#fsize").textContent = `${fmtSize(a.size)}${p.id === "android" ? " · signed" : ""}`;
+      btn.textContent = p.button;
+      btn.href = a.browser_download_url;
+    };
+    sel.onchange = show;
+    show();
+  }
+
+  function render(r) {
+    rel = r;
+    $$("[data-tag]").forEach((e) => (e.textContent = r.tag_name));
+    $$("[data-date]").forEach((e) => (e.textContent = e.closest(".chip") ? ` · ${fmtDate(r.published_at)}` : fmtDate(r.published_at)));
+    $("#notes").href = r.html_url;
+    const sum = r.assets.find((a) => /sha256|checksums/i.test(a.name));
+    const s = $("#sum");
+    s.hidden = !sum;
+    if (sum) s.href = sum.browser_download_url;
     $("#err").hidden = true;
-    if (shownTag && shownTag !== rel.tag_name) { const c = $(".dl-card"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); } // new release appeared while page was open
-    shownTag = rel.tag_name;
+    paint();
+    if (shownTag && shownTag !== r.tag_name) { const c = $(".dl-card"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); } // new release appeared while page was open
+    shownTag = r.tag_name;
   }
 
   async function loadRelease() {
@@ -107,18 +267,20 @@
         data = (await r.json()).map((x) => ({ tag_name: x.tag_name, draft: x.draft, prerelease: x.prerelease, published_at: x.published_at, html_url: x.html_url, assets: x.assets.map((a) => ({ name: a.name, size: a.size, download_count: a.download_count, browser_download_url: a.browser_download_url })) }));
         try { sessionStorage.setItem("kat-rel", JSON.stringify({ t: Date.now(), d: data })); } catch {}
       }
-      const ok = data.filter((r) => !r.draft && r.assets.some((a) => /\.apk$/i.test(a.name)));
-      const rel = ok.find((r) => !r.prerelease) || ok[0];
-      if (!rel) throw new Error("none");
-      render(rel);
-      setCount(data.reduce((n, r) => n + (r.draft ? 0 : r.assets.reduce((m, a) => m + (/\.apk$/i.test(a.name) ? a.download_count || 0 : 0), 0)), 0)); // all APK downloads, every release
+      const ok = data.filter((r) => !r.draft && r.assets.some((a) => isDownloadable(a.name)));
+      const release = ok.find((r) => !r.prerelease) || ok[0];
+      if (!release) throw new Error("none");
+      render(release);
+      // Every platform's packages count, across all releases: the asset
+      // download_count is served by GitHub and already includes clicks here.
+      setCount(data.reduce((n, r) => n + (r.draft ? 0 : r.assets.reduce((m, a) => m + (isDownloadable(a.name) ? a.download_count || 0 : 0), 0)), 0));
     } catch { $("#err").hidden = false; $("#fsize").textContent = "Use the GitHub releases page"; }
   }
+  paint();
   loadRelease();
-  // The APK is served from GitHub, so its asset download_count is the
-  // authoritative total and already includes clicks from this page. GitHub's
-  // API lags a few seconds, so refresh just after a click (bypassing the
-  // cache) instead of waiting for the 3-minute poll.
+
+  // GitHub's API lags a few seconds behind a click, so refresh just after
+  // one (bypassing the cache) instead of waiting for the 3-minute poll.
   const refreshAfterDownload = (delay) => setTimeout(() => {
     sessionStorage.removeItem("kat-rel");
     loadRelease();

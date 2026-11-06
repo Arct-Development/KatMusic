@@ -105,7 +105,7 @@ Future<void> _pump(
         friendsActivityProvider.overrideWith((ref) async => const []),
         podcastHomeProvider.overrideWith((ref) async => const []),
       ],
-      child: const FluentApp(themeMode: ThemeMode.dark, home: WaveHomePage()),
+      child: const FluentApp(themeMode: ThemeMode.dark, home: KatHomePage()),
     ),
   );
   await tester.pump();

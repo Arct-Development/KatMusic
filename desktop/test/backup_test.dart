@@ -11,17 +11,17 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({
-      'lw_sessionkey': 'SESSION',
-      'lw_lastfm_api_secret': 'SECRET',
-      'lw_addon_urls': 'https://example.invalid/addon',
+      'kat_sessionkey': 'SESSION',
+      'kat_lastfm_api_secret': 'SECRET',
+      'kat_addon_urls': 'https://example.invalid/addon',
       'ytm_cookies': 'COOKIE',
       'spotify_sp_dc': 'SPDC',
-      'lw_download_dir': r'C:\Music',
-      'lw_audio_device_id': 'device-1',
-      'lw_username': 'someone',
-      'lw_theme_mode': 'midnight',
-      'lw_lyrics_text_scale': 1.2,
-      'lw_amoled': true,
+      'kat_download_dir': r'C:\Music',
+      'kat_audio_device_id': 'device-1',
+      'kat_username': 'someone',
+      'kat_theme_mode': 'midnight',
+      'kat_lyrics_text_scale': 1.2,
+      'kat_amoled': true,
     });
     prefs = Prefs(await SharedPreferences.getInstance());
   });
@@ -47,15 +47,15 @@ void main() {
     final decoded = jsonDecode(json) as Map<String, dynamic>;
     expect(decoded['type'], backupType);
     final saved = decoded['prefs'] as Map<String, dynamic>;
-    expect((saved['strings'] as Map)['lw_theme_mode'], 'midnight');
-    expect((saved['doubles'] as Map)['lw_lyrics_text_scale'], 1.2);
-    expect((saved['booleans'] as Map)['lw_amoled'], true);
+    expect((saved['strings'] as Map)['kat_theme_mode'], 'midnight');
+    expect((saved['doubles'] as Map)['kat_lyrics_text_scale'], 1.2);
+    expect((saved['booleans'] as Map)['kat_amoled'], true);
   });
 
   test('import cannot write a secret or device-bound setting', () async {
-    await prefs.setPortablePref('lw_sessionkey', 'ATTACKER');
-    await prefs.setPortablePref('lw_download_dir', r'D:\elsewhere');
-    await prefs.setPortablePref('lw_theme_mode', 'pearl');
+    await prefs.setPortablePref('kat_sessionkey', 'ATTACKER');
+    await prefs.setPortablePref('kat_download_dir', r'D:\elsewhere');
+    await prefs.setPortablePref('kat_theme_mode', 'pearl');
     expect(prefs.sessionKey, 'SESSION');
     expect(prefs.downloadDir, r'C:\Music');
     expect(prefs.themeMode, 'pearl');

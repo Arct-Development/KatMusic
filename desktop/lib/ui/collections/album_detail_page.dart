@@ -124,12 +124,12 @@ final _albumCodec = SnapshotCodec<_AlbumDetail>(
 /// Serious album layout: 200px art + ALBUM overline + 28px title +
 /// artist link + year•tracks•duration + quality badge + Play (primary) +
 /// Shuffle + Download + More, then desktop track table with sort.
-class WaveAlbumPage extends ConsumerStatefulWidget {
+class KatAlbumPage extends ConsumerStatefulWidget {
   final String browseId;
   final String fallbackTitle;
   final String fallbackArtist;
   final String fallbackArt;
-  const WaveAlbumPage({
+  const KatAlbumPage({
     super.key,
     required this.browseId,
     this.fallbackTitle = '',
@@ -138,10 +138,10 @@ class WaveAlbumPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveAlbumPage> createState() => _WaveAlbumPageState();
+  ConsumerState<KatAlbumPage> createState() => _KatAlbumPageState();
 }
 
-class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
+class _KatAlbumPageState extends ConsumerState<KatAlbumPage> {
   bool _saving = false;
   String? _saveNote;
   InfoBarSeverity _saveSeverity = InfoBarSeverity.info;
@@ -208,7 +208,7 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
         art: widget.fallbackArt,
         tracks: null,
       ),
-      error: (e, _) => WaveError(
+      error: (e, _) => KatError(
         title: 'Could not load album',
         message: '$e',
         onRetry: () => ref.invalidate(_albumDetailProvider(widget.browseId)),
@@ -225,7 +225,7 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
   /// Album layout: header over the track table, shared by the loading and the
   /// loaded path. [tracks] null means `browseAlbum` has not answered yet — the
   /// header is already real (cover/title/artist were routed in by
-  /// [waveAlbumLocation]) and skeleton rows stand in for the table, which then
+  /// [katAlbumLocation]) and skeleton rows stand in for the table, which then
   /// fades in underneath. That is what the route entrance animates; with a
   /// spinner here it played over nothing and the album looked like it never
   /// faded in, just arrived late.
@@ -245,33 +245,33 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
     // stand a skeleton tile in rather than an empty artwork frame.
     Widget artTile(double size) => (loading && art.isEmpty)
         ? SkeletonBox(width: size, height: size)
-        : WaveFlightTarget(
+        : KatFlightTarget(
             kind: 'album',
             id: widget.browseId,
             enabled: art.isNotEmpty,
-            child: WaveArtwork(
+            child: KatArtwork(
               url: art,
               size: size,
-              radius: WaveRadius.artwork,
+              radius: KatRadius.artwork,
               title: albumTitle,
               artist: artist,
               label: albumTitle,
               kind: ArtworkKind.album,
             ),
           );
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(28, 24, 28, 32),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+            constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                WaveEntrance(
+                KatEntrance(
                   index: 0,
                   rise: 10,
-                  child: WaveAmbientBand(
+                  child: KatAmbientBand(
                     artworkUrl: art,
                     child: LayoutBuilder(
                       builder: (context, c) {
@@ -281,9 +281,9 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                           children: [
                             Text(
                               'ALBUM',
-                              style: WaveType.overline.copyWith(
+                              style: KatType.overline.copyWith(
                                 fontSize: 10,
-                                color: waveTextTertiary(context),
+                                color: katTextTertiary(context),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -291,10 +291,10 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                               albumTitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: WaveType.pageTitle.copyWith(fontSize: 28),
+                              style: KatType.pageTitle.copyWith(fontSize: 28),
                             ),
                             const SizedBox(height: 4),
-                            WaveLink(
+                            KatLink(
                               onPressed: () => context.go(
                                 '/search?q=${Uri.encodeComponent(artist)}',
                               ),
@@ -302,9 +302,9 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                                 artist,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: WaveType.body.copyWith(
+                                style: KatType.body.copyWith(
                                   fontSize: 14,
-                                  color: waveTextSecondary(context),
+                                  color: katTextSecondary(context),
                                 ),
                               ),
                             ),
@@ -319,8 +319,8 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                                       '${order.length} tracks',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: WaveType.meta.copyWith(
-                                        color: waveTextTertiary(context),
+                                      style: KatType.meta.copyWith(
+                                        color: katTextTertiary(context),
                                       ),
                                     ),
                                   ),
@@ -335,12 +335,12 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                             ),
                             const SizedBox(height: 14),
                             if (loading)
-                              // Placeholder for the transport row: WaveCommandBar
+                              // Placeholder for the transport row: KatCommandBar
                               // drops a button whose callback is null, so without
                               // this the header would jump when the browse lands.
                               const SizedBox(height: 32)
                             else
-                              WaveCommandBar(
+                              KatCommandBar(
                                 onPlay: order.isEmpty
                                     ? null
                                     : () => playGenerated(
@@ -378,7 +378,7 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                                       },
                                 overflowItems: order.isEmpty
                                     ? const []
-                                    : waveTrackMenuItems(
+                                    : katTrackMenuItems(
                                         context: context,
                                         ref: ref,
                                         title: order.first.name,
@@ -387,7 +387,7 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                                         videoId: order.first.videoId,
                                       ),
                                 trailing: [
-                                  WaveGhostButton(
+                                  KatGhostButton(
                                     label: _saving ? 'Saving…' : 'Save',
                                     icon: FluentIcons.save,
                                     onPressed: order.isEmpty || _saving
@@ -440,14 +440,14 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                 // Deliberately not a crossfade — the outgoing skeleton and
                 // the incoming table would have to overlap, and the Stack
                 // that needs would drop the table's full width.
-                WaveEntrance(
+                KatEntrance(
                   index: 1,
                   rise: 10,
                   child: TweenAnimationBuilder<double>(
                     key: ValueKey(loading ? 'album-loading' : 'album-tracks'),
                     tween: Tween(begin: 0, end: 1),
-                    duration: waveMotion(context, WaveMotion.normal),
-                    curve: WaveMotion.standard,
+                    duration: katMotion(context, KatMotion.normal),
+                    curve: KatMotion.standard,
                     builder: (context, t, child) =>
                         Opacity(opacity: t, child: child),
                     child: loading
@@ -455,7 +455,7 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              WaveDesktopTable<GeneratedTrack>(
+                              KatDesktopTable<GeneratedTrack>(
                                 items: order,
                                 keyOf: (t) => t.key,
                                 titleOf: (t) => t.name,
@@ -497,8 +497,8 @@ class _WaveAlbumPageState extends ConsumerState<WaveAlbumPage> {
                               const SizedBox(height: 18),
                               Text(
                                 '${order.length} tracks',
-                                style: WaveType.meta.copyWith(
-                                  color: waveTextTertiary(context),
+                                style: KatType.meta.copyWith(
+                                  color: katTextTertiary(context),
                                 ),
                               ),
                             ],
@@ -568,6 +568,6 @@ class _AlbumQualityChipState extends ConsumerState<_AlbumQualityChip> {
   Widget build(BuildContext context) {
     final badge = _badge;
     if (badge == null) return const SizedBox.shrink();
-    return WaveChip(label: badge, highlight: true);
+    return KatChip(label: badge, highlight: true);
   }
 }

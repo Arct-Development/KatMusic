@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../../ui/theme/tokens.dart';
-import 'lw_colors.dart';
+import 'kat_colors.dart';
 
 /// Haze material system — depth without blur soup.
 ///
@@ -144,18 +144,18 @@ class LwHaze extends StatelessWidget {
     this.enableBlur = true,
     this.fillAlpha,
   }) : level = LwHazeLevel.l3,
-       borderRadius = const BorderRadius.all(Radius.circular(WaveRadius.menu)),
+       borderRadius = const BorderRadius.all(Radius.circular(KatRadius.menu)),
        alignment = Alignment.center,
        blurScale = 1.0,
        alphaScale = 1.0;
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final spec = lwHazeSpecs[level]!;
     // Default fill follows the active palette (AMOLED / Custom); Pearl
     // keeps its #F9F9F9 content tone.
-    final surfaces = waveSurfaces(context);
+    final surfaces = katSurfaces(context);
     final resolvedBase =
         base ??
         (surfaces.isCustom || dark
@@ -221,7 +221,7 @@ class LwAmbientWash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (seed == null) return const SizedBox.shrink();
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final reduceT = MediaQuery.maybeOf(context)?.highContrast ?? false;
     if (reduceT) return const SizedBox.shrink();
     return IgnorePointer(

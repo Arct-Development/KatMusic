@@ -15,23 +15,23 @@ import '../../features/lastfm/home_repository.dart';
 import '../../features/search/search_repository.dart';
 import '../components/artwork.dart';
 import '../../app/accessibility.dart';
-import '../components/buttons.dart' show LWTooltip, WaveA11yButton;
+import '../components/buttons.dart' show KatTooltip, KatA11yButton;
 import '../components/inputs.dart';
 import '../components/menus.dart'
-    show WaveMenuAction, WaveMenuButton, WaveMenuSeparator;
-import '../navigation/wave_nav.dart';
+    show KatMenuAction, KatMenuButton, KatMenuSeparator;
+import '../navigation/kat_nav.dart';
 import '../search/search_page.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
 import '../theme/brand_icons.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Compact 44px title / nav / search bar.
 ///
 /// Left: back · forward
 /// Centre-left: compact search (not a giant toolbar)
 /// Right: profile · app menu · window controls
-class WaveTitleBar extends ConsumerWidget {
+class KatTitleBar extends ConsumerWidget {
   final TextEditingController searchController;
   final FocusNode searchFocus;
   final ValueChanged<String> onSearchSubmit;
@@ -42,7 +42,7 @@ class WaveTitleBar extends ConsumerWidget {
   final bool canGoForward;
   final VoidCallback? onBack;
   final VoidCallback? onForward;
-  const WaveTitleBar({
+  const KatTitleBar({
     super.key,
     required this.searchController,
     required this.searchFocus,
@@ -58,15 +58,15 @@ class WaveTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final auth = ref.watch(authRepositoryProvider);
-    return WaveLiquidGlass(
+    return KatLiquidGlass(
       base: dark
-          ? waveBackground(context).withValues(alpha: 0.72)
-          : waveBackground(context).withValues(alpha: 0.82),
-      border: Border(bottom: BorderSide(color: waveDivider(context))),
+          ? katBackground(context).withValues(alpha: 0.72)
+          : katBackground(context).withValues(alpha: 0.82),
+      border: Border(bottom: BorderSide(color: katDivider(context))),
       child: SizedBox(
-        height: WaveDensity.titleBar,
+        height: KatDensity.titleBar,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final maxW = constraints.maxWidth;
@@ -81,23 +81,23 @@ class WaveTitleBar extends ConsumerWidget {
                 SizedBox(width: Platform.isMacOS ? 84 : 6),
                 _BarBtn(
                   tooltip: 'Toggle navigation',
-                  icon: WaveIcons.panelLeft,
+                  icon: KatIcons.panelLeft,
                   onTap: onToggleRail,
                 ),
                 _BarBtn(
                   tooltip: 'Back',
-                  icon: WaveIcons.back,
+                  icon: KatIcons.back,
                   onTap: canGoBack ? onBack : null,
                 ),
                 _BarBtn(
                   tooltip: 'Forward',
-                  icon: WaveIcons.forward,
+                  icon: KatIcons.forward,
                   onTap: canGoForward ? onForward : null,
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: searchMax,
-                  child: _WaveSearchBox(
+                  child: _KatSearchBox(
                     controller: searchController,
                     focus: searchFocus,
                     onSubmit: onSearchSubmit,
@@ -109,7 +109,7 @@ class WaveTitleBar extends ConsumerWidget {
                 if (!compact)
                   _BarBtn(
                     tooltip: 'Commands (Ctrl+K)',
-                    icon: WaveIcons.command,
+                    icon: KatIcons.command,
                     onTap: onPalette,
                   ),
                 Expanded(
@@ -137,7 +137,7 @@ class WaveTitleBar extends ConsumerWidget {
                 const _CommunityBtns(),
                 const SizedBox(width: 6),
                 // Profile / account — tiny, no giant buttons.
-                WaveA11yButton(
+                KatA11yButton(
                   label: auth.status == AuthStatus.signedIn
                       ? 'Profile, ${auth.username}'
                       : 'Connect Last.fm',
@@ -163,7 +163,7 @@ class WaveTitleBar extends ConsumerWidget {
                               : '/welcome',
                         );
                       },
-                      child: LWTooltip(
+                      child: KatTooltip(
                         message: auth.status == AuthStatus.signedIn
                             ? auth.username
                             : 'Connect Last.fm',
@@ -173,9 +173,9 @@ class WaveTitleBar extends ConsumerWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: dark
-                                ? waveSurfaceRaised(context)
-                                : waveSurfaceOverlay(context),
-                            border: Border.all(color: waveDivider(context)),
+                                ? katSurfaceRaised(context)
+                                : katSurfaceOverlay(context),
+                            border: Border.all(color: katDivider(context)),
                           ),
                           child: Center(
                             child: Text(
@@ -183,7 +183,7 @@ class WaveTitleBar extends ConsumerWidget {
                                       auth.username.isNotEmpty
                                   ? auth.username[0].toUpperCase()
                                   : '?',
-                              style: WaveType.label.copyWith(fontSize: 11),
+                              style: KatType.label.copyWith(fontSize: 11),
                             ),
                           ),
                         ),
@@ -228,13 +228,13 @@ class _Hit {
 /// Most results the dropdown ever shows; "See all results" is extra.
 const _maxHits = 4;
 
-class _WaveSearchBox extends ConsumerStatefulWidget {
+class _KatSearchBox extends ConsumerStatefulWidget {
   final TextEditingController controller;
   final FocusNode focus;
   final ValueChanged<String> onSubmit;
   final ValueChanged<String> onGo;
   final VoidCallback onPalette;
-  const _WaveSearchBox({
+  const _KatSearchBox({
     required this.controller,
     required this.focus,
     required this.onSubmit,
@@ -242,10 +242,10 @@ class _WaveSearchBox extends ConsumerStatefulWidget {
     required this.onPalette,
   });
   @override
-  ConsumerState<_WaveSearchBox> createState() => _WaveSearchBoxState();
+  ConsumerState<_KatSearchBox> createState() => _KatSearchBoxState();
 }
 
-class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
+class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
   final _portal = OverlayPortalController();
   final _link = LayerLink();
   final _panelKey = GlobalKey();
@@ -300,7 +300,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
           _Hit(
             label: h,
             sub: 'Recent',
-            icon: WaveIcons.history,
+            icon: KatIcons.history,
             onSelect: () {
               widget.controller.text = h;
               widget.onSubmit(h);
@@ -311,18 +311,18 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
     final hits = <_Hit>[];
     if (_liveQ.isNotEmpty) {
       final songs =
-          ref.watch(waveSearchSongsProvider(_liveQ)).valueOrNull ??
+          ref.watch(katSearchSongsProvider(_liveQ)).valueOrNull ??
           const <SearchResultItem>[];
       final albums =
-          ref.watch(waveSearchAlbumsProvider(_liveQ)).valueOrNull ??
+          ref.watch(katSearchAlbumsProvider(_liveQ)).valueOrNull ??
           const <SearchResultItem>[];
       final artists =
-          ref.watch(waveSearchArtistsProvider(_liveQ)).valueOrNull ??
+          ref.watch(katSearchArtistsProvider(_liveQ)).valueOrNull ??
           const <SearchResultItem>[];
       _Hit song(SearchResultItem s) => _Hit(
         label: s.name,
         sub: s.artist.isNotEmpty ? 'Song • ${s.artist}' : 'Song',
-        icon: WaveIcons.music,
+        icon: KatIcons.music,
         art: s.artworkUrl,
         onSelect: () => playGenerated(
           ref,
@@ -343,12 +343,12 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
           _Hit(
             label: a.name,
             sub: a.artist.isNotEmpty ? 'Album • ${a.artist}' : 'Album',
-            icon: WaveIcons.albums,
+            icon: KatIcons.albums,
             art: a.artworkUrl,
             onSelect: () {
               if (a.entityId.isEmpty) return;
               widget.onGo(
-                waveAlbumLocation(
+                katAlbumLocation(
                   browseId: a.entityId,
                   title: a.name,
                   artist: a.artist,
@@ -379,7 +379,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
       _Hit(
         label: 'See all results for “$typed”',
         sub: 'Open the full Search page',
-        icon: WaveIcons.search,
+        icon: KatIcons.search,
         onSelect: () => widget.onSubmit(typed),
       ),
     );
@@ -471,7 +471,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
   }
 
   Widget _panel(BuildContext overlayContext) {
-    final dark = waveIsDark(overlayContext);
+    final dark = katIsDark(overlayContext);
     final hits = _shown;
     if (hits.isEmpty) return const SizedBox.shrink();
     final box = context.findRenderObject();
@@ -492,10 +492,10 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: dark
-                    ? waveSurfaceRaised(overlayContext)
-                    : waveSurfaceOverlay(overlayContext),
+                    ? katSurfaceRaised(overlayContext)
+                    : katSurfaceOverlay(overlayContext),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: waveDivider(overlayContext)),
+                border: Border.all(color: katDivider(overlayContext)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.28),
@@ -510,7 +510,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
                   for (var i = 0; i < hits.length; i++)
                     ListTile.selectable(
                       shape: RoundedRectangleBorder(
-                        borderRadius: WaveRadius.controlsRadius,
+                        borderRadius: KatRadius.controlsRadius,
                       ),
                       selected: i == _selected,
                       contentPadding: const EdgeInsets.symmetric(
@@ -523,15 +523,15 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
                         height: 28,
                         child: hits[i].art.isNotEmpty
                             ? (hits[i].circleArt
-                                  ? WaveArtwork.circle(
+                                  ? KatArtwork.circle(
                                       url: hits[i].art,
                                       size: 28,
                                       label: hits[i].label,
                                     )
-                                  : WaveArtwork(
+                                  : KatArtwork(
                                       url: hits[i].art,
                                       size: 28,
-                                      radius: WaveRadius.artwork,
+                                      radius: KatRadius.artwork,
                                       label: hits[i].label,
                                     ))
                             : Icon(hits[i].icon, size: 15),
@@ -559,10 +559,10 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final tertiary = dark
-        ? WaveColors.textTertiary
-        : WaveColors.lightTextTertiary;
+        ? KatColors.textTertiary
+        : KatColors.lightTextTertiary;
     _shown = _hits();
     _announceSuggestions();
     return CompositedTransformTarget(
@@ -570,7 +570,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
       child: OverlayPortal(
         controller: _portal,
         overlayChildBuilder: _panel,
-        child: LWTooltip(
+        child: KatTooltip(
           message: 'Search (Ctrl+F)',
           child: SizedBox(
             width: double.infinity,
@@ -584,11 +584,11 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
                 hint: 'Type to see suggestions, Enter to search',
                 textField: true,
                 child: TextBox(
-                  decoration: waveInputDecoration(radius: 8),
+                  decoration: katInputDecoration(radius: 8),
                   controller: widget.controller,
                   focusNode: widget.focus,
                   placeholder: 'Search',
-                  style: WaveType.body.copyWith(fontSize: 13),
+                  style: KatType.body.copyWith(fontSize: 13),
                   cursorHeight: 14,
                   onTapOutside: (e) {
                     if (_insidePanel(e.position)) return;
@@ -596,7 +596,7 @@ class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
                   },
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Icon(WaveIcons.search, size: 15, color: tertiary),
+                    child: Icon(KatIcons.search, size: 15, color: tertiary),
                   ),
                   suffix: widget.controller.text.isNotEmpty
                       ? Padding(
@@ -685,11 +685,11 @@ class _BarBtnState extends State<_BarBtn> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    return WaveA11yButton(
+    final dark = katIsDark(context);
+    return KatA11yButton(
       label: widget.tooltip,
       onTap: widget.onTap,
-      child: LWTooltip(
+      child: KatTooltip(
         message: widget.tooltip,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -704,27 +704,27 @@ class _BarBtnState extends State<_BarBtn> {
             onTapUp: (_) => setState(() => _pressed = false),
             onTapCancel: () => setState(() => _pressed = false),
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.fast),
-              width: WaveDensity.hitArea,
-              height: WaveDensity.hitArea,
+              duration: katMotion(context, KatMotion.fast),
+              width: KatDensity.hitArea,
+              height: KatDensity.hitArea,
               decoration: BoxDecoration(
                 color: _pressed
-                    ? wavePressedWash(context)
+                    ? katPressedWash(context)
                     : _hover
-                    ? waveHoverWash(context)
+                    ? katHoverWash(context)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(WaveRadius.controls),
+                borderRadius: BorderRadius.circular(KatRadius.controls),
               ),
               child: Builder(
                 builder: (context) {
                   final fg = widget.onTap == null
                       ? (dark
-                                ? WaveColors.textTertiary
-                                : WaveColors.lightTextTertiary)
+                                ? KatColors.textTertiary
+                                : KatColors.lightTextTertiary)
                             .withValues(alpha: 0.4)
                       : (dark
-                            ? WaveColors.textSecondary
-                            : WaveColors.lightTextSecondary);
+                            ? KatColors.textSecondary
+                            : KatColors.lightTextSecondary);
                   if (widget.iconWidget != null) {
                     return IconTheme(
                       data: IconThemeData(color: fg, size: 15),
@@ -746,35 +746,35 @@ class _AppMenu extends StatelessWidget {
   const _AppMenu();
   @override
   Widget build(BuildContext context) {
-    return WaveMenuButton(
+    return KatMenuButton(
       placement: FlyoutPlacementMode.bottomRight,
       entries: [
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.search, size: 15),
+        KatMenuAction(
+          leading: const Icon(KatIcons.search, size: 15),
           label: 'Search',
           hint: 'Ctrl+K',
           onPressed: () => context.go('/search'),
         ),
-        const WaveMenuSeparator(),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.history, size: 15),
+        const KatMenuSeparator(),
+        KatMenuAction(
+          leading: const Icon(KatIcons.history, size: 15),
           label: 'History',
           onPressed: () => context.go('/history'),
         ),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.mixes, size: 15),
+        KatMenuAction(
+          leading: const Icon(KatIcons.mixes, size: 15),
           label: 'Mix Lab',
           onPressed: () => context.go('/mixes'),
         ),
-        const WaveMenuSeparator(),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.settings, size: 15),
+        const KatMenuSeparator(),
+        KatMenuAction(
+          leading: const Icon(KatIcons.settings, size: 15),
           label: 'Settings',
           onPressed: () => context.go('/settings'),
         ),
       ],
       buttonBuilder: (context, onOpen) =>
-          _BarBtn(tooltip: 'Menu', icon: WaveIcons.more, onTap: onOpen),
+          _BarBtn(tooltip: 'Menu', icon: KatIcons.more, onTap: onOpen),
     );
   }
 }
@@ -878,11 +878,11 @@ class _WinBtnState extends State<_WinBtn> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    return WaveA11yButton(
+    final dark = katIsDark(context);
+    return KatA11yButton(
       label: widget.tooltip,
       onTap: widget.onTap,
-      child: LWTooltip(
+      child: KatTooltip(
         message: widget.tooltip,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -891,11 +891,11 @@ class _WinBtnState extends State<_WinBtn> {
           child: GestureDetector(
             onTap: widget.onTap,
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.fast),
+              duration: katMotion(context, KatMotion.fast),
               width: 44,
-              height: WaveDensity.titleBar,
+              height: KatDensity.titleBar,
               color: _hover
-                  ? (widget.danger ? WaveColors.danger : waveHoverWash(context))
+                  ? (widget.danger ? KatColors.danger : katHoverWash(context))
                   : Colors.transparent,
               child: Icon(
                 widget.icon,
@@ -903,8 +903,8 @@ class _WinBtnState extends State<_WinBtn> {
                 color: _hover && widget.danger
                     ? Colors.white
                     : (dark
-                          ? WaveColors.textSecondary
-                          : WaveColors.lightTextSecondary),
+                          ? KatColors.textSecondary
+                          : KatColors.lightTextSecondary),
               ),
             ),
           ),

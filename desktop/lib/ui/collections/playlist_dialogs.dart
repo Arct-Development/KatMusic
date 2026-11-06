@@ -20,18 +20,18 @@ Future<void> showWaveCreatePlaylist(BuildContext context, WidgetRef ref) async {
     builder: (context) => ContentDialog(
       title: const Text('New playlist'),
       content: TextBox(
-        decoration: waveInputDecoration(),
+        decoration: katInputDecoration(),
         controller: controller,
         placeholder: 'Playlist name',
         autofocus: true,
         onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(context).pop(controller.text.trim()),
           child: const Text('Create'),
         ),
@@ -65,18 +65,18 @@ Future<void> showWaveAddToNewPlaylist(
     builder: (context) => ContentDialog(
       title: const Text('New playlist'),
       content: TextBox(
-        decoration: waveInputDecoration(),
+        decoration: katInputDecoration(),
         controller: controller,
         placeholder: 'Playlist name',
         autofocus: true,
         onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(context).pop(controller.text.trim()),
           child: const Text('Create'),
         ),
@@ -101,17 +101,17 @@ Future<void> showWaveRenamePlaylist(
     builder: (context) => ContentDialog(
       title: const Text('Rename playlist'),
       content: TextBox(
-        decoration: waveInputDecoration(),
+        decoration: katInputDecoration(),
         controller: controller,
         autofocus: true,
         onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(context).pop(controller.text.trim()),
           child: const Text('Save'),
         ),
@@ -139,11 +139,11 @@ Future<void> showWaveDeletePlaylist(
         '"${playlist.title}" will be removed from your library, including any copy on YouTube Music.',
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Delete'),
         ),
@@ -293,7 +293,7 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextBox(
-                decoration: waveInputDecoration(),
+                decoration: katInputDecoration(),
                 controller: controller,
                 autofocus: true,
                 placeholder:
@@ -339,15 +339,15 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
             ],
           ),
           actions: [
-            WaveButton(
+            KatButton(
               onPressed: busy ? null : fromFile,
               child: const Text('From file...'),
             ),
-            WaveButton(
+            KatButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            WaveFilledButton(
+            KatFilledButton(
               onPressed: busy ? null : (ready != null ? doImport : fetch),
               child: Text(ready != null ? 'Import' : 'Fetch'),
             ),

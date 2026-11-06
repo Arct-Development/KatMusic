@@ -362,7 +362,7 @@ class LyricsRepository {
 
   /// Gap between provider waves; later waves are skipped once a hit lands.
   @visibleForTesting
-  Duration waveGap = const Duration(milliseconds: 1500);
+  Duration katGap = const Duration(milliseconds: 1500);
 
   static const _raceWaves = <List<String>>[
     ['lastwave', 'apple_music', 'lrclib', 'simp_music'],
@@ -649,7 +649,7 @@ class LyricsRepository {
               w == 0
                   ? attempt(id)
                   : Future<void>.delayed(
-                      waveGap * w,
+                      katGap * w,
                     ).then<LyricsResult?>((_) => raceOver ? null : attempt(id)),
     ];
 

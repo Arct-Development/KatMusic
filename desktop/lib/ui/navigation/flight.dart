@@ -16,8 +16,8 @@ import '../theme/tokens.dart';
 /// still break whenever a list rebuilds mid-transition.
 ///
 /// Instead the source rect is recorded once, when the detail route is pushed
-/// ([arm], called from `waveOpen`), and the destination replays the flight in
-/// an overlay entry that sits above *both* routes ([WaveFlightTarget]). So
+/// ([arm], called from `katOpen`), and the destination replays the flight in
+/// an overlay entry that sits above *both* routes ([KatFlightTarget]). So
 /// duplicate ids are harmless, cards need no changes at all, and a page that
 /// is popped mid-flight takes its overlay with it.
 ///
@@ -26,8 +26,8 @@ import '../theme/tokens.dart';
 /// (square artwork on top, caption underneath, artwork on the left of a row),
 /// so the flight starts on the cover without the card having to hand its
 /// artwork's geometry over.
-class WaveFlight {
-  WaveFlight._();
+class KatFlight {
+  KatFlight._();
 
   /// How long a recorded source stays eligible for consumption. The push and
   /// the destination's first frame are adjacent, so anything older is a stray
@@ -39,7 +39,7 @@ class WaveFlight {
   /// Records where the route being opened came from.
   ///
   /// [context] should be the pressed widget's context — cards already hand
-  /// their own `context` to `waveOpen`. Locations that are not a detail page
+  /// their own `context` to `katOpen`. Locations that are not a detail page
   /// (Now Playing, a search jump, a rail destination) arm nothing.
   static void arm(BuildContext context, String location) {
     final route = _parseLocation(location);
@@ -59,7 +59,7 @@ class WaveFlight {
       from: Rect.fromLTWH(topLeft.dx, topLeft.dy, side, side),
       // Artist covers are circles everywhere in the app; album and playlist
       // covers are the artwork radius.
-      fromRadius: route.$1 == 'artist' ? side / 2 : WaveRadius.artwork,
+      fromRadius: route.$1 == 'artist' ? side / 2 : KatRadius.artwork,
       recordedAt: DateTime.now(),
     );
   }
@@ -112,13 +112,13 @@ class _FlightSource {
   final DateTime recordedAt;
 }
 
-/// Destination end of a [WaveFlight]: renders [child] and, when a flight was
+/// Destination end of a [KatFlight]: renders [child] and, when a flight was
 /// armed for [kind]/[id], flies a copy of it in from the pressed card.
 ///
 /// The copy is the same widget the header will show, so a cover that is still
 /// resolving looks identical in flight and at rest — nothing has to be handed
 /// over but geometry.
-class WaveFlightTarget extends StatefulWidget {
+class KatFlightTarget extends StatefulWidget {
   final String kind;
   final String id;
 
@@ -132,26 +132,26 @@ class WaveFlightTarget extends StatefulWidget {
 
   final Widget child;
 
-  const WaveFlightTarget({
+  const KatFlightTarget({
     super.key,
     required this.kind,
     required this.id,
     required this.child,
-    this.radius = WaveRadius.artwork,
+    this.radius = KatRadius.artwork,
     this.enabled = true,
   });
 
   @override
-  State<WaveFlightTarget> createState() => _WaveFlightTargetState();
+  State<KatFlightTarget> createState() => _KatFlightTargetState();
 }
 
-class _WaveFlightTargetState extends State<WaveFlightTarget>
+class _KatFlightTargetState extends State<KatFlightTarget>
     with SingleTickerProviderStateMixin {
   final GlobalKey _slot = GlobalKey();
 
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: WaveMotion.normal,
+    duration: KatMotion.normal,
   );
 
   _FlightSource? _source;
@@ -164,7 +164,7 @@ class _WaveFlightTargetState extends State<WaveFlightTarget>
   void initState() {
     super.initState();
     if (widget.enabled) {
-      _source = WaveFlight._claim(widget.kind, widget.id);
+      _source = KatFlight._claim(widget.kind, widget.id);
     }
   }
 

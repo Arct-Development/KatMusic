@@ -296,7 +296,6 @@ KatMusic builds on the work of many open-source projects and services:
 
 - **[Mochy Music](https://github.com/InlitX/Mochy-Music)** by [InlitX](https://github.com/InlitX) — source and design inspiration for the Poster, Timeline and expressive Lyrics player styles. Original files and GPL-3.0 licence: [third_party/Mochy-Music](third_party/Mochy-Music/README.md).
 - **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** — lyrics-provider and integration reference.
-- **[Lastwave](https://github.com/Clash-Projects/LastWave-native)** — design and architectural inspiration.
 - **[RiMusic](https://github.com/fast4x/RiMusic)** — InnerTube and YouTube Music integration reference.
 - **[Monochrome Music](https://github.com/monochrome-music/monochrome)** — FLAC and lossless-streaming reference.
 - **[NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor)** — stream extraction.

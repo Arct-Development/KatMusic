@@ -20,10 +20,10 @@ import 'flight.dart';
 /// Use it for anything opened *from* a page: an album, an artist, a YouTube
 /// playlist, Now Playing. Rail destinations and command-palette jumps stay
 /// `go`/`goBranch` — those swap the tab rather than stacking on it.
-void waveOpen(BuildContext context, String location) {
+void katOpen(BuildContext context, String location) {
   // Record where this came from before pushing: the detail header replays the
   // cover flight out of the pressed card. See `flight.dart`.
-  WaveFlight.arm(context, location);
+  KatFlight.arm(context, location);
   context.push(location);
 }
 
@@ -38,7 +38,7 @@ void waveOpen(BuildContext context, String location) {
 /// entrance then animates; the track table fades in underneath when the
 /// browse lands. Every field is optional — a caller without the data simply
 /// gets the loading skeleton.
-String waveAlbumLocation({
+String katAlbumLocation({
   required String browseId,
   String title = '',
   String artist = '',

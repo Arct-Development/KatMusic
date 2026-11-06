@@ -29,11 +29,11 @@ void main() {
     });
   });
 
-  group('waveActivePath', () {
+  group('katActivePath', () {
     test('keeps Search selected when the query string is present', () {
-      expect(waveActivePath('/search?q=metro%20boomin'), '/search');
-      expect(waveActivePath('/home'), '/home');
-      expect(waveRoutePath('/search?q=metro'), '/search');
+      expect(katActivePath('/search?q=metro%20boomin'), '/search');
+      expect(katActivePath('/home'), '/home');
+      expect(katRoutePath('/search?q=metro'), '/search');
     });
   });
 }

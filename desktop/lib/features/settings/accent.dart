@@ -15,7 +15,7 @@ enum AccentSource {
   /// The colour picked in Settings ([Prefs.accentColor]).
   custom('custom', 'Custom colour'),
 
-  /// The KatMusic brand blue ([WaveColors.defaultAccent]).
+  /// The KatMusic brand blue ([KatColors.defaultAccent]).
   katmusic('katmusic', 'KatMusic Blue'),
 
   /// The desktop environment's accent ([SystemAccent]).
@@ -61,7 +61,7 @@ class AccentResolution {
 
   static const fallback = AccentResolution(
     source: AccentSource.custom,
-    color: WaveColors.defaultAccent,
+    color: KatColors.defaultAccent,
     resolved: true,
   );
 }
@@ -136,7 +136,7 @@ final accentResolutionProvider = Provider<AccentResolution>((ref) {
     case AccentSource.katmusic:
       return const AccentResolution(
         source: AccentSource.katmusic,
-        color: WaveColors.defaultAccent,
+        color: KatColors.defaultAccent,
         resolved: true,
       );
     case AccentSource.system:

@@ -13,8 +13,8 @@ import '../theme/tokens.dart';
 /// Only the radius is set. [TextBox] copies that single property onto its own
 /// decoration, which is what keeps the stock fill (hover/focus included) and
 /// the focus underline untouched.
-WidgetStateProperty<BoxDecoration> waveInputDecoration({
-  double radius = WaveRadius.controls,
+WidgetStateProperty<BoxDecoration> katInputDecoration({
+  double radius = KatRadius.controls,
 }) {
   return WidgetStatePropertyAll(
     BoxDecoration(borderRadius: BorderRadius.circular(radius)),

@@ -14,7 +14,7 @@ second ("standby") libmpv deck. Code: `lib/features/automix/` and the
    the last 60 s of the playing track and the first 60 s of the next one
    (same URL + headers as playback, so addon, YouTube and local files all
    work). A minute decodes in well under a second; nothing reaches the
-   sound card. Results are cached in `<temp>/lastwave/automix/`.
+   sound card. Results are cached in `<temp>/katmusic/automix/`.
 3. **Analysis** (`automix/audio_analysis.dart`, runs in an isolate) —
    spectral-flux onsets with the low band (kick/bass) weighted, tempo from
    the onset autocorrelation (refined at the 8th beat multiple), beat phase

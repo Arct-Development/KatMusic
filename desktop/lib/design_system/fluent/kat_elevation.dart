@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../ui/theme/tokens.dart';
 
-/// Elevation — restrained Fluent shadows, bridged to [WaveElevation].
+/// Elevation — restrained Fluent shadows, bridged to [KatElevation].
 ///
 /// These aliases used to carry their own hardcoded black plates, so the kit
 /// and the live UI could disagree about what "panel" meant and the light
@@ -15,21 +15,21 @@ class LwElevation {
 
   /// Hover lift for artwork and cards.
   static List<BoxShadow> lift(BuildContext context) =>
-      WaveElevation.lift(waveIsDark(context));
+      KatElevation.lift(katIsDark(context));
 
   /// Feature artwork at hero size.
   static List<BoxShadow> artwork(BuildContext context) =>
-      WaveElevation.artwork(waveIsDark(context));
+      KatElevation.artwork(katIsDark(context));
 
   /// Full-height side panel, cast inward.
   static List<BoxShadow> panel(BuildContext context) =>
-      WaveElevation.panel(waveIsDark(context));
+      KatElevation.panel(katIsDark(context));
 
   /// Menu / dialog flyout.
   static List<BoxShadow> flyout(BuildContext context) =>
-      WaveElevation.flyout(waveIsDark(context));
+      KatElevation.flyout(katIsDark(context));
 
   /// Round transport control on the dock.
   static List<BoxShadow> transport(BuildContext context) =>
-      WaveElevation.transport(waveIsDark(context));
+      KatElevation.transport(katIsDark(context));
 }

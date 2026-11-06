@@ -21,20 +21,20 @@ import 'playlist_dialogs.dart'
         showWaveDeletePlaylist,
         showWaveImportPlaylist,
         showWaveRenamePlaylist;
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Playlists browser: hero + filter + cover grid (never track rows).
-class WavePlaylistsPage extends ConsumerStatefulWidget {
-  const WavePlaylistsPage({super.key});
+class KatPlaylistsPage extends ConsumerStatefulWidget {
+  const KatPlaylistsPage({super.key});
 
   @override
-  ConsumerState<WavePlaylistsPage> createState() => _WavePlaylistsPageState();
+  ConsumerState<KatPlaylistsPage> createState() => _KatPlaylistsPageState();
 }
 
-class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
+class _KatPlaylistsPageState extends ConsumerState<KatPlaylistsPage> {
   final _filter = TextEditingController();
   String _q = '';
   bool _selecting = false;
@@ -60,11 +60,11 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
           '${doomed.length} playlist${doomed.length == 1 ? '' : 's'} will be removed, including any copy on YouTube Music. Liked Songs and Local songs stay.',
         ),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete'),
           ),
@@ -128,41 +128,41 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
     }
     // Full-width, left-aligned like the Liked/table pages — the grid
     // below fills the viewport instead of bunching in a centered cap.
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+            constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                WaveEntrance(
+                KatEntrance(
                   rise: 10,
-                  child: WaveCollectionHero(
+                  child: KatCollectionHero(
                     overline: 'Collect',
                     title: 'Playlists',
                     meta: '${all.length} playlists',
                     artworkUrl: heroCover,
-                    fallbackIcon: WaveIcons.playlists,
+                    fallbackIcon: KatIcons.playlists,
                     primaryActions: [
-                      WavePrimaryButton(
+                      KatPrimaryButton(
                         label: 'New',
                         icon: FluentIcons.add,
                         onPressed: () => showWaveCreatePlaylist(context, ref),
                       ),
-                      WaveGhostButton(
+                      KatGhostButton(
                         label: 'Import',
                         icon: FluentIcons.download,
                         onPressed: () => showWaveImportPlaylist(context, ref),
                       ),
                       if (_selecting) ...[
-                        WaveGhostButton(
+                        KatGhostButton(
                           label: 'Delete',
                           icon: FluentIcons.delete,
                           onPressed: _selected.isEmpty ? null : _deleteSelected,
                         ),
-                        WaveGhostButton(
+                        KatGhostButton(
                           label: 'Done',
                           icon: FluentIcons.check_mark,
                           onPressed: () => setState(() {
@@ -171,7 +171,7 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
                           }),
                         ),
                       ] else
-                        WaveGhostButton(
+                        KatGhostButton(
                           label: 'Select',
                           icon: FluentIcons.multi_select,
                           onPressed: () => setState(() => _selecting = true),
@@ -180,7 +180,7 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                WaveFilterBar(
+                KatFilterBar(
                   controller: _filter,
                   onChanged: (v) => setState(() => _q = v),
                   hint: 'Filter playlists…',
@@ -190,8 +190,8 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
                 const _LocalFolders(),
                 const SizedBox(height: 18),
                 if (shown.isEmpty && ytLists.isEmpty && spLists.isEmpty)
-                  WaveEmpty(
-                    icon: WaveIcons.playlists,
+                  KatEmpty(
+                    icon: KatIcons.playlists,
                     title: 'No playlists yet',
                     subtitle: _q.isEmpty
                         ? 'Create your first playlist to organise what you love.'
@@ -220,7 +220,7 @@ class _WavePlaylistsPageState extends ConsumerState<WavePlaylistsPage> {
                         final playlist = shown[i];
                         final protected =
                             playlist.isLikedSongs || playlist.isLocal;
-                        return WaveEntrance(
+                        return KatEntrance(
                           index: i,
                           rise: 10,
                           child: _PlaylistCard(
@@ -276,12 +276,12 @@ class _YtSection extends StatelessWidget {
       children: [
         Text(
           'YOUTUBE MUSIC',
-          style: WaveType.overline.copyWith(color: waveAccent(context)),
+          style: KatType.overline.copyWith(color: katAccent(context)),
         ),
         const SizedBox(height: 2),
         Text(
           '${lists.length} ${lists.length == 1 ? 'playlist' : 'playlists'}',
-          style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+          style: KatType.meta.copyWith(color: katTextTertiary(context)),
         ),
         const SizedBox(height: 6),
         // Same density as the Albums page (see above).
@@ -295,7 +295,7 @@ class _YtSection extends StatelessWidget {
             mainAxisExtent: 218,
           ),
           itemCount: lists.length,
-          itemBuilder: (context, i) => WaveEntrance(
+          itemBuilder: (context, i) => KatEntrance(
             index: i,
             rise: 10,
             child: _YtCard(index: i, lists: lists, artSize: 160),
@@ -327,9 +327,9 @@ class _YtCardState extends ConsumerState<_YtCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final p = widget.lists[widget.index];
-    void play() => waveOpen(
+    void play() => katOpen(
       context,
       '/ytplaylist/${p.id}'
       '?title=${Uri.encodeComponent(p.title)}'
@@ -349,30 +349,30 @@ class _YtCardState extends ConsumerState<_YtCard> {
         onTap: play,
         child: AnimatedScale(
           scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.normal),
+            duration: katMotion(context, KatMotion.normal),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              borderRadius: WaveRadius.artworkRadius,
-              boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+              borderRadius: KatRadius.artworkRadius,
+              boxShadow: [if (_hover) ...KatElevation.lift(dark)],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Stack(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: p.artworkUrl,
                       size: widget.artSize,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       label: p.title,
                     ),
                     Positioned.fill(
                       child: AnimatedOpacity(
                         opacity: _hover ? 1 : 0,
-                        duration: waveMotion(context, WaveMotion.fast),
+                        duration: katMotion(context, KatMotion.fast),
                         child: Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -383,12 +383,12 @@ class _YtCardState extends ConsumerState<_YtCard> {
                                 Colors.black.withValues(alpha: 0.55),
                               ],
                             ),
-                            borderRadius: WaveRadius.artworkRadius,
+                            borderRadius: KatRadius.artworkRadius,
                           ),
                           child: Center(
                             child: AnimatedScale(
                               scale: _hover ? 1.0 : 0.70,
-                              duration: waveMotion(context, WaveMotion.fast),
+                              duration: katMotion(context, KatMotion.fast),
                               curve: Curves.easeOutBack,
                               child: GestureDetector(
                                 onTap: play,
@@ -397,7 +397,7 @@ class _YtCardState extends ConsumerState<_YtCard> {
                                   height: 44,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: waveAccent(context),
+                                    color: katAccent(context),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(
@@ -408,9 +408,9 @@ class _YtCardState extends ConsumerState<_YtCard> {
                                     ],
                                   ),
                                   child: Icon(
-                                    WaveIcons.play,
+                                    KatIcons.play,
                                     size: 18,
-                                    color: waveOnAccent(context),
+                                    color: katOnAccent(context),
                                   ),
                                 ),
                               ),
@@ -426,7 +426,7 @@ class _YtCardState extends ConsumerState<_YtCard> {
                   p.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                  style: KatType.trackTitle.copyWith(fontSize: 12.5),
                 ),
                 Text(
                   p.trackCountText.isNotEmpty
@@ -434,7 +434,7 @@ class _YtCardState extends ConsumerState<_YtCard> {
                       : 'YouTube playlist',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(fontSize: 11.5),
+                  style: KatType.meta.copyWith(fontSize: 11.5),
                 ),
               ],
             ),
@@ -457,12 +457,12 @@ class _SpotifySection extends StatelessWidget {
       children: [
         Text(
           'SPOTIFY',
-          style: WaveType.overline.copyWith(color: waveAccent(context)),
+          style: KatType.overline.copyWith(color: katAccent(context)),
         ),
         const SizedBox(height: 2),
         Text(
           '${lists.length} ${lists.length == 1 ? 'playlist' : 'playlists'}',
-          style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+          style: KatType.meta.copyWith(color: katTextTertiary(context)),
         ),
         const SizedBox(height: 6),
         GridView.builder(
@@ -475,7 +475,7 @@ class _SpotifySection extends StatelessWidget {
             mainAxisExtent: 218,
           ),
           itemCount: lists.length,
-          itemBuilder: (context, i) => WaveEntrance(
+          itemBuilder: (context, i) => KatEntrance(
             index: i,
             rise: 10,
             child: _SpotifyCard(playlist: lists[i], artSize: 160),
@@ -501,9 +501,9 @@ class _SpotifyCardState extends State<_SpotifyCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final p = widget.playlist;
-    void open() => waveOpen(
+    void open() => katOpen(
       context,
       '/spotifyplaylist/${Uri.encodeComponent(p.id)}'
       '?title=${Uri.encodeComponent(p.name)}'
@@ -523,14 +523,14 @@ class _SpotifyCardState extends State<_SpotifyCard> {
         onTap: open,
         child: AnimatedScale(
           scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.normal),
+            duration: katMotion(context, KatMotion.normal),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              borderRadius: WaveRadius.artworkRadius,
-              boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+              borderRadius: KatRadius.artworkRadius,
+              boxShadow: [if (_hover) ...KatElevation.lift(dark)],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,26 +540,26 @@ class _SpotifyCardState extends State<_SpotifyCard> {
                         width: widget.artSize,
                         height: widget.artSize,
                         decoration: BoxDecoration(
-                          borderRadius: WaveRadius.artworkRadius,
+                          borderRadius: KatRadius.artworkRadius,
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              waveAccent(context),
-                              waveAccent(context).withValues(alpha: 0.45),
+                              katAccent(context),
+                              katAccent(context).withValues(alpha: 0.45),
                             ],
                           ),
                         ),
                         child: Icon(
-                          WaveIcons.likedFill,
+                          KatIcons.likedFill,
                           size: 44,
-                          color: waveOnAccent(context),
+                          color: katOnAccent(context),
                         ),
                       )
-                    : WaveArtwork(
+                    : KatArtwork(
                         url: p.artworkUrl,
                         size: widget.artSize,
-                        radius: WaveRadius.artwork,
+                        radius: KatRadius.artwork,
                         label: p.name,
                       ),
                 const SizedBox(height: 6),
@@ -567,7 +567,7 @@ class _SpotifyCardState extends State<_SpotifyCard> {
                   p.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                  style: KatType.trackTitle.copyWith(fontSize: 12.5),
                 ),
                 Text(
                   p.trackCount > 0
@@ -575,7 +575,7 @@ class _SpotifyCardState extends State<_SpotifyCard> {
                       : (p.owner.isNotEmpty ? p.owner : 'Spotify playlist'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(fontSize: 11.5),
+                  style: KatType.meta.copyWith(fontSize: 11.5),
                 ),
               ],
             ),
@@ -610,7 +610,7 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
   @override
   Widget build(BuildContext context) {
     final p = widget.playlist;
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final cover = _coverOf(p);
     void open() => context.go('/playlists/${p.id}');
     void play() {
@@ -621,14 +621,14 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
       open();
     }
 
-    return WaveContextMenu(
+    return KatContextMenu(
       items: () => [
-        WaveMenuAction(
+        KatMenuAction(
           leading: const Icon(FluentIcons.play, size: 13),
           label: 'Open',
           onPressed: open,
         ),
-        WaveMenuAction(
+        KatMenuAction(
           leading: Icon(
             p.isPinned ? FluentIcons.pinned : FluentIcons.pin,
             size: 13,
@@ -638,13 +638,13 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
               .read(playlistRepositoryProvider.notifier)
               .setPinned(p.id, !p.isPinned),
         ),
-        WaveMenuAction(
+        KatMenuAction(
           leading: const Icon(FluentIcons.edit, size: 13),
           label: 'Rename',
           onPressed: () => showWaveRenamePlaylist(context, ref, p),
         ),
         if (!p.isLikedSongs && !p.isLocal)
-          WaveMenuAction(
+          KatMenuAction(
             leading: const Icon(FluentIcons.delete, size: 13),
             label: 'Delete',
             onPressed: () => showWaveDeletePlaylist(context, ref, p),
@@ -664,32 +664,32 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
           onTap: play,
           child: AnimatedScale(
             scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-            duration: waveMotion(context, WaveMotion.fast),
+            duration: katMotion(context, KatMotion.fast),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.normal),
+              duration: katMotion(context, KatMotion.normal),
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: _hover
-                    ? (waveIsDark(context) ? Colors.white : Colors.black)
+                    ? (katIsDark(context) ? Colors.white : Colors.black)
                           .withValues(alpha: 0.05)
                     : Colors.transparent,
-                borderRadius: WaveRadius.artworkRadius,
+                borderRadius: KatRadius.artworkRadius,
                 border: widget.selected
-                    ? Border.all(color: waveAccent(context), width: 2)
+                    ? Border.all(color: katAccent(context), width: 2)
                     : null,
-                boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                boxShadow: [if (_hover) ...KatElevation.lift(dark)],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
                     children: [
-                      WaveArtwork(
+                      KatArtwork(
                         url: cover ?? '',
                         size: widget.artSize,
-                        radius: WaveRadius.artwork,
+                        radius: KatRadius.artwork,
                         label: p.title,
                       ),
                       if (widget.selecting)
@@ -731,7 +731,7 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                       Positioned.fill(
                         child: AnimatedOpacity(
                           opacity: _hover ? 1 : 0,
-                          duration: waveMotion(context, WaveMotion.fast),
+                          duration: katMotion(context, KatMotion.fast),
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -742,12 +742,12 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                                   Colors.black.withValues(alpha: 0.55),
                                 ],
                               ),
-                              borderRadius: WaveRadius.artworkRadius,
+                              borderRadius: KatRadius.artworkRadius,
                             ),
                             child: Center(
                               child: AnimatedScale(
                                 scale: _hover ? 1.0 : 0.70,
-                                duration: waveMotion(context, WaveMotion.fast),
+                                duration: katMotion(context, KatMotion.fast),
                                 curve: Curves.easeOutBack,
                                 child: GestureDetector(
                                   onTap: play,
@@ -756,7 +756,7 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                                     height: 44,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: waveAccent(context),
+                                      color: katAccent(context),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(
@@ -767,9 +767,9 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                                       ],
                                     ),
                                     child: Icon(
-                                      WaveIcons.play,
+                                      KatIcons.play,
                                       size: 18,
-                                      color: waveOnAccent(context),
+                                      color: katOnAccent(context),
                                     ),
                                   ),
                                 ),
@@ -785,7 +785,7 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                     p.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                    style: KatType.trackTitle.copyWith(fontSize: 12.5),
                   ),
                   Text(
                     p.isLocal
@@ -793,7 +793,7 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
                         : '${p.tracks.length} tracks',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.meta.copyWith(fontSize: 11.5),
+                    style: KatType.meta.copyWith(fontSize: 11.5),
                   ),
                 ],
               ),
@@ -827,7 +827,7 @@ class _LocalFolders extends ConsumerWidget {
       children: [
         Text(
           'ON THIS PC',
-          style: WaveType.overline.copyWith(color: waveAccent(context)),
+          style: KatType.overline.copyWith(color: katAccent(context)),
         ),
         const SizedBox(height: 2),
         Text(
@@ -836,7 +836,7 @@ class _LocalFolders extends ConsumerWidget {
               : (scan.label.isEmpty
                     ? 'Play files from folders you choose. Local songs stay on this PC and are never uploaded.'
                     : scan.label),
-          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+          style: KatType.meta.copyWith(color: katTextSecondary(context)),
         ),
         const SizedBox(height: 8),
         for (final folder in folders)
@@ -849,10 +849,10 @@ class _LocalFolders extends ConsumerWidget {
                     folder,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.trackTitle,
+                    style: KatType.trackTitle,
                   ),
                 ),
-                WaveGhostButton(
+                KatGhostButton(
                   label: 'Forget',
                   onPressed: busy
                       ? null
@@ -868,12 +868,12 @@ class _LocalFolders extends ConsumerWidget {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            WaveGhostButton(
+            KatGhostButton(
               label: 'Add folder',
               icon: FluentIcons.add,
               onPressed: busy ? null : add,
             ),
-            WaveGhostButton(
+            KatGhostButton(
               label: 'Rescan',
               icon: FluentIcons.refresh,
               onPressed: busy

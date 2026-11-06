@@ -10,12 +10,12 @@ import '../../../ui/theme/tokens.dart';
 class LwMotion {
   LwMotion._();
 
-  static const fast = WaveMotion.fast; // 110ms hover/press
-  static const normal = WaveMotion.normal; // 180ms selection/flyout
-  static const slow = WaveMotion.slow; // 260ms panel/page
-  static const Curve standard = WaveMotion.standard; // easeOutCubic
+  static const fast = KatMotion.fast; // 110ms hover/press
+  static const normal = KatMotion.normal; // 180ms selection/flyout
+  static const slow = KatMotion.slow; // 260ms panel/page
+  static const Curve standard = KatMotion.standard; // easeOutCubic
 
-  static const pageTransition = WaveMotion.normal;
+  static const pageTransition = KatMotion.normal;
   static const panelTransition = Duration(milliseconds: 220);
   static const flyoutTransition = Duration(milliseconds: 160);
 }

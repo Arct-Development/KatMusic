@@ -19,19 +19,19 @@ import 'buttons.dart';
 /// - addon daily quota spent (falls through to YouTube)
 /// - latest download done/error
 ///
-/// Dismissible per-bar, auto-collapses when clear. Rendered by [WaveShell]
+/// Dismissible per-bar, auto-collapses when clear. Rendered by [KatShell]
 /// directly under the title bar so it never blocks playback.
 /// One-shot "running in the tray" hint, set on first hide-to-tray.
 /// Session-scoped (resets on relaunch) — the pref itself lives in Prefs.
 final trayHintProvider = StateProvider<bool>((_) => false);
 
-class WaveInfoBarHost extends ConsumerStatefulWidget {
-  const WaveInfoBarHost({super.key});
+class KatInfoBarHost extends ConsumerStatefulWidget {
+  const KatInfoBarHost({super.key});
   @override
-  ConsumerState<WaveInfoBarHost> createState() => _WaveInfoBarHostState();
+  ConsumerState<KatInfoBarHost> createState() => _KatInfoBarHostState();
 }
 
-class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
+class _KatInfoBarHostState extends ConsumerState<KatInfoBarHost> {
   bool _dismissedOffline = false;
   bool _dismissedAuth = false;
   bool _dismissedYt = false;
@@ -107,7 +107,7 @@ class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
           content: const Text('Connect to keep scrobbling and picks.'),
           severity: InfoBarSeverity.warning,
           isLong: false,
-          action: WaveLink(
+          action: KatLink(
             onPressed: () => context.go('/welcome'),
             child: const Text('Connect'),
           ),
@@ -139,7 +139,7 @@ class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
           ),
           severity: InfoBarSeverity.warning,
           isLong: false,
-          action: WaveLink(
+          action: KatLink(
             onPressed: () => context.go('/settings?section=integrations'),
             child: const Text('Reconnect'),
           ),
@@ -187,7 +187,7 @@ class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
               ? InfoBarSeverity.success
               : InfoBarSeverity.error,
           isLong: false,
-          action: WaveLink(
+          action: KatLink(
             onPressed: () => context.go('/downloads'),
             child: const Text('Open'),
           ),
@@ -201,11 +201,11 @@ class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
     if (bars.isEmpty) return const SizedBox.shrink();
     return Container(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: waveDivider(context))),
+        border: Border(bottom: BorderSide(color: katDivider(context))),
       ),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+        constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

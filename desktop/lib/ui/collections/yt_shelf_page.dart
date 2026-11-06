@@ -5,32 +5,32 @@ import '../../app/track_actions.dart' show playGenerated;
 import '../../features/feed/feed_repository.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_library_providers.dart';
-import '../components/buttons.dart' show WavePlayPill;
+import '../components/buttons.dart' show KatPlayPill;
 import '../components/shelf.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Where a YouTube Music entity card leads — album, artist, playlist, mix.
 ///
-/// Home's shelf rail and [WaveYtShelfPage] share this, so a card cannot mean
+/// Home's shelf rail and [KatYtShelfPage] share this, so a card cannot mean
 /// two different things on the two surfaces.
 void openYtEntity(BuildContext context, YouTubeMusicEntity e) {
   final id = e.browseId.isNotEmpty ? e.browseId : e.playlistId;
   if (id.isEmpty) return;
   switch (e.kind) {
     case YouTubeEntityKind.artist:
-      waveOpen(context, '/artist/${Uri.encodeComponent(e.name)}');
+      katOpen(context, '/artist/${Uri.encodeComponent(e.name)}');
     case YouTubeEntityKind.album:
       // Albums are MPRE ids; anything else here is a misclassified playlist
       // id (recap-style cards) and belongs on the playlist page instead of a
       // dead Empty album.
       if (id.startsWith('MPRE')) {
-        waveOpen(
+        katOpen(
           context,
-          waveAlbumLocation(
+          katAlbumLocation(
             browseId: id,
             title: e.name,
             artist: e.artist.isNotEmpty ? e.artist : e.subtitle,
@@ -38,11 +38,11 @@ void openYtEntity(BuildContext context, YouTubeMusicEntity e) {
           ),
         );
       } else {
-        waveOpen(context, '/ytplaylist/${Uri.encodeComponent(id)}');
+        katOpen(context, '/ytplaylist/${Uri.encodeComponent(id)}');
       }
     case YouTubeEntityKind.playlist:
     case YouTubeEntityKind.mix:
-      waveOpen(context, '/ytplaylist/${Uri.encodeComponent(id)}');
+      katOpen(context, '/ytplaylist/${Uri.encodeComponent(id)}');
   }
 }
 
@@ -53,9 +53,9 @@ void openYtEntity(BuildContext context, YouTubeMusicEntity e) {
 /// full length is on screen with Play all beside it. Tracks queue from
 /// whichever card you press; entity shelves open the way their cards do on
 /// Home.
-class WaveYtShelfPage extends ConsumerWidget {
+class KatYtShelfPage extends ConsumerWidget {
   final String title;
-  const WaveYtShelfPage({super.key, required this.title});
+  const KatYtShelfPage({super.key, required this.title});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,9 +68,9 @@ class WaveYtShelfPage extends ConsumerWidget {
       }
     }
     if (match == null) {
-      if (shelves.isLoading) return const WaveLoading();
-      return WaveEmpty(
-        icon: WaveIcons.playlists,
+      if (shelves.isLoading) return const KatLoading();
+      return KatEmpty(
+        icon: KatIcons.playlists,
         title: 'Shelf not available',
         subtitle:
             'YouTube Music did not return "$title" this time. '
@@ -117,13 +117,13 @@ class WaveYtShelfPage extends ConsumerWidget {
         ? '${tracks.length} songs'
         : '${shelf.entities.length} items';
 
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(28, 22, 28, 16),
-              child: WaveEntrance(
+              child: KatEntrance(
                 rise: 10,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -134,28 +134,28 @@ class WaveYtShelfPage extends ConsumerWidget {
                         children: [
                           Text(
                             'YOUTUBE MUSIC',
-                            style: WaveType.overline.copyWith(
+                            style: KatType.overline.copyWith(
                               fontSize: 10,
-                              color: waveTextTertiary(context),
+                              color: katTextTertiary(context),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             shelf.title,
-                            style: WaveType.pageTitle.copyWith(fontSize: 26),
+                            style: KatType.pageTitle.copyWith(fontSize: 26),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             count,
-                            style: WaveType.meta.copyWith(
-                              color: waveTextSecondary(context),
+                            style: KatType.meta.copyWith(
+                              color: katTextSecondary(context),
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (tracks.isNotEmpty)
-                      WavePlayPill(
+                      KatPlayPill(
                         label: 'Play all',
                         onTap: () => playGenerated(
                           ref,
@@ -178,7 +178,7 @@ class WaveYtShelfPage extends ConsumerWidget {
                 runSpacing: 16,
                 children: [
                   for (var i = 0; i < cards.length; i++)
-                    WaveEntrance(index: i, rise: 8, child: cards[i]),
+                    KatEntrance(index: i, rise: 8, child: cards[i]),
                 ],
               ),
             ),
@@ -206,7 +206,7 @@ class WaveYtShelfPage extends ConsumerWidget {
     String videoId = '',
   }) => SizedBox(
     width: 160,
-    child: WaveMediaCard(
+    child: KatMediaCard(
       title: title,
       subtitle: subtitle,
       titleFallback: title,

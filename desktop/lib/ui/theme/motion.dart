@@ -10,36 +10,36 @@ import 'tokens.dart';
 /// drifting upward a short distance, with a small per-item stagger so
 /// sections cascade instead of popping as one slab.
 ///
-/// Recycling safety: [WaveEntranceGroup] owns ONE controller started when
+/// Recycling safety: [KatEntranceGroup] owns ONE controller started when
 /// the content mounts (typically when async data first arrives). Every
-/// [WaveEntrance] maps its index onto an interval of that single
+/// [KatEntrance] maps its index onto an interval of that single
 /// timeline, so lazily-built list/grid rows that mount AFTER the timeline
 /// finished render fully visible — no fade-replay when scrolling back up
 /// in virtualized lists ([SuperSliverList], [SliverGrid], …).
 ///
 /// Usage:
 /// ```dart
-/// WaveEntranceGroup(
+/// KatEntranceGroup(
 ///   child: CustomScrollView(slivers: [
-///     SliverToBoxAdapter(child: WaveEntrance(index: 0, child: header)),
-///     SliverGrid(... WaveEntrance(index: i, child: card) ...),
+///     SliverToBoxAdapter(child: KatEntrance(index: 0, child: header)),
+///     SliverGrid(... KatEntrance(index: i, child: card) ...),
 ///   ]),
 /// )
 /// ```
-class WaveEntranceGroup extends StatefulWidget {
+class KatEntranceGroup extends StatefulWidget {
   final Widget child;
 
   /// Set false while data loads and flip to true when content is ready —
   /// the timeline starts on the first `true` and never restarts.
   final bool start;
 
-  const WaveEntranceGroup({super.key, required this.child, this.start = true});
+  const KatEntranceGroup({super.key, required this.child, this.start = true});
 
   @override
-  State<WaveEntranceGroup> createState() => _WaveEntranceGroupState();
+  State<KatEntranceGroup> createState() => _KatEntranceGroupState();
 }
 
-class _WaveEntranceGroupState extends State<WaveEntranceGroup>
+class _KatEntranceGroupState extends State<KatEntranceGroup>
     with SingleTickerProviderStateMixin {
   /// Total window: must exceed max stagger + item duration.
   static const _window = Duration(milliseconds: 220);
@@ -55,7 +55,7 @@ class _WaveEntranceGroupState extends State<WaveEntranceGroup>
   }
 
   @override
-  void didUpdateWidget(WaveEntranceGroup oldWidget) {
+  void didUpdateWidget(KatEntranceGroup oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.start) _go();
   }
@@ -76,7 +76,7 @@ class _WaveEntranceGroupState extends State<WaveEntranceGroup>
   Widget build(BuildContext context) {
     // Reduce motion: the whole point of this widget is the movement, so
     // there is no "instant" version to fall back to — hand the child over.
-    if (waveReduceMotion(context)) return widget.child;
+    if (katReduceMotion(context)) return widget.child;
     // The scope stays for the group's whole life. Dropping it once the
     // timeline finished looked like a saving, but a descendant that rebuilds
     // afterwards — a rail row on expand/collapse, a table on sort, a row whose
@@ -84,30 +84,30 @@ class _WaveEntranceGroupState extends State<WaveEntranceGroup>
     // replayed its fade, so the content blinked back in. A completed group
     // already hands plain children back (`_groupDriven` short-circuits), so
     // keeping the scope costs one inherited lookup and nothing else.
-    return _WaveEntranceScope(controller: _controller, child: widget.child);
+    return _KatEntranceScope(controller: _controller, child: widget.child);
   }
 }
 
-class _WaveEntranceScope extends InheritedWidget {
+class _KatEntranceScope extends InheritedWidget {
   final AnimationController controller;
-  const _WaveEntranceScope({required this.controller, required super.child});
+  const _KatEntranceScope({required this.controller, required super.child});
 
   static AnimationController? of(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<_WaveEntranceScope>()
+      .dependOnInheritedWidgetOfExactType<_KatEntranceScope>()
       ?.controller;
 
   @override
-  bool updateShouldNotify(_WaveEntranceScope oldWidget) =>
+  bool updateShouldNotify(_KatEntranceScope oldWidget) =>
       oldWidget.controller != controller;
 }
 
 /// Staggered fade + rise entrance for one child.
 ///
-/// - Inside a [WaveEntranceGroup]: driven by the shared timeline
+/// - Inside a [KatEntranceGroup]: driven by the shared timeline
 ///   (recycle-safe for virtualized lists).
 /// - Standalone (no group): animates once on mount, but only for
 ///   [index] < [_standaloneCap] so deep rows in lazy lists never replay.
-class WaveEntrance extends StatelessWidget {
+class KatEntrance extends StatelessWidget {
   final int index;
   final Widget child;
 
@@ -115,11 +115,11 @@ class WaveEntrance extends StatelessWidget {
   final double rise;
 
   /// When true, always run a local one-shot entrance even inside a
-  /// [WaveEntranceGroup] — for content that must animate at page mount
+  /// [KatEntranceGroup] — for content that must animate at page mount
   /// instead of waiting for the group's start gate (e.g. page headers).
   final bool local;
 
-  const WaveEntrance({
+  const KatEntrance({
     super.key,
     this.index = 0,
     this.rise = 14,
@@ -141,9 +141,9 @@ class WaveEntrance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reduce motion: skip the stagger entirely (see [WaveEntranceGroup]).
-    if (waveReduceMotion(context)) return child;
-    final group = local ? null : _WaveEntranceScope.of(context);
+    // Reduce motion: skip the stagger entirely (see [KatEntranceGroup]).
+    if (katReduceMotion(context)) return child;
+    final group = local ? null : _KatEntranceScope.of(context);
     if (group != null) return _groupDriven(group);
     if (index >= _standaloneCap) return child;
     return _standalone();

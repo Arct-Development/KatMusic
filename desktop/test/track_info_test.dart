@@ -6,22 +6,26 @@ import 'package:katmusic_desktop/ui/components/menus.dart';
 
 void main() {
   group('trackShareLink', () {
-    test('uses the YouTube Music watch URL when there is a video id', () {
+    test('points at the KatMusic share page when there is a video id', () {
       const track = PlayableTrack(
         title: 'Song',
         artist: 'Singer',
         videoId: 'abc123',
       );
-      expect(trackShareLink(track), 'https://music.youtube.com/watch?v=abc123');
+      expect(
+        trackShareLink(track),
+        'https://katmusic.pages.dev/share.html'
+        '?v=abc123&title=Song&artist=Singer',
+      );
     });
 
-    test('falls back to the local path, then to nothing', () {
+    test('local-only tracks have no cross-device link', () {
       const local = PlayableTrack(
         title: 'Song',
         artist: 'Singer',
         playbackUrl: r'C:\Music\song.flac',
       );
-      expect(trackShareLink(local), r'C:\Music\song.flac');
+      expect(trackShareLink(local), isNull);
       const bare = PlayableTrack(title: 'Song', artist: 'Singer');
       expect(trackShareLink(bare), isNull);
     });
@@ -32,7 +36,7 @@ void main() {
     late File file;
 
     setUp(() {
-      dir = Directory.systemTemp.createTempSync('lw_origin');
+      dir = Directory.systemTemp.createTempSync('kat_origin');
       file = File('${dir.path}${Platform.pathSeparator}song.flac')
         ..writeAsBytesSync([0]);
     });

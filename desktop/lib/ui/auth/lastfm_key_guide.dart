@@ -34,11 +34,11 @@ class LastFmKeyGuide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secondary = waveIsDark(context)
-        ? WaveColors.textSecondary
-        : WaveColors.lightTextSecondary;
+    final secondary = katIsDark(context)
+        ? KatColors.textSecondary
+        : KatColors.lightTextSecondary;
     return Expander(
-      header: const Text('How do I get these keys?', style: WaveType.label),
+      header: const Text('How do I get these keys?', style: KatType.label),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -52,25 +52,25 @@ class LastFmKeyGuide extends StatelessWidget {
                     width: 20,
                     child: Text(
                       '${i + 1}.',
-                      style: WaveType.meta.copyWith(color: secondary),
+                      style: KatType.meta.copyWith(color: secondary),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       _steps[i],
-                      style: WaveType.meta.copyWith(color: secondary),
+                      style: KatType.meta.copyWith(color: secondary),
                     ),
                   ),
                 ],
               ),
             ),
           const SizedBox(height: 4),
-          WaveButton(onPressed: _open, child: const Text('Open Last.fm')),
+          KatButton(onPressed: _open, child: const Text('Open Last.fm')),
           const SizedBox(height: 6),
           Text(
             'The keys stay on this device and are only used to talk to '
             'Last.fm.',
-            style: WaveType.meta.copyWith(color: secondary),
+            style: KatType.meta.copyWith(color: secondary),
           ),
         ],
       ),

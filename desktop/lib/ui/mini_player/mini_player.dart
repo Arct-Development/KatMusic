@@ -6,29 +6,29 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../features/player/playback_service.dart';
 import '../components/artwork.dart';
-import '../components/buttons.dart' show LWTooltip;
+import '../components/buttons.dart' show KatTooltip;
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Small floating mini player window content.
 ///
 /// `grip + artwork + title/artist + prev + play/pause + next + minimize + expand + close`
 /// with an interactive scrubbable progress hairline.
 /// Clicking and dragging anywhere on the non-button areas moves the native desktop window.
-class WaveMiniPlayer extends ConsumerStatefulWidget {
+class KatMiniPlayer extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final VoidCallback onExpand;
-  const WaveMiniPlayer({
+  const KatMiniPlayer({
     super.key,
     required this.onClose,
     required this.onExpand,
   });
 
   @override
-  ConsumerState<WaveMiniPlayer> createState() => _WaveMiniPlayerState();
+  ConsumerState<KatMiniPlayer> createState() => _KatMiniPlayerState();
 }
 
-class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
+class _KatMiniPlayerState extends ConsumerState<KatMiniPlayer> {
   @override
   void initState() {
     super.initState();
@@ -49,7 +49,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final snap = ref.watch(
       playbackServiceProvider.select(
         (s) => (
@@ -75,9 +75,9 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          color: dark ? waveSurfaceRaised(context) : waveSurface(context),
+          color: dark ? katSurfaceRaised(context) : katSurface(context),
           border: Border.all(
-            color: waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
+            color: katDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
             width: 1,
           ),
         ),
@@ -104,18 +104,18 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
             child: Icon(
               FluentIcons.gripper_dots_vertical,
               size: 14,
-              color: waveTextSecondary(context).withValues(alpha: 0.5),
+              color: katTextSecondary(context).withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(width: 8),
-          Icon(WaveIcons.music, size: 16, color: waveTextSecondary(context)),
+          Icon(KatIcons.music, size: 16, color: katTextSecondary(context)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'No track playing',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: WaveType.meta.copyWith(fontSize: 12),
+              style: KatType.meta.copyWith(fontSize: 12),
             ),
           ),
           _MiniGlyph(
@@ -130,7 +130,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
           ),
           _MiniGlyph(
             tooltip: 'Expand to window',
-            icon: WaveIcons.expand,
+            icon: KatIcons.expand,
             onTap: widget.onExpand,
             size: 12,
           ),
@@ -169,7 +169,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                     child: Icon(
                       FluentIcons.gripper_dots_vertical,
                       size: 14,
-                      color: waveTextSecondary(context).withValues(alpha: 0.5),
+                      color: katTextSecondary(context).withValues(alpha: 0.5),
                     ),
                   ),
                 ),
@@ -178,11 +178,11 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: widget.onExpand,
-                    child: WaveArtwork(
+                    child: KatArtwork(
                       url: current.artworkUrl,
                       videoId: current.videoId,
                       size: 46,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       label: current.title,
                     ),
                   ),
@@ -203,7 +203,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                             current.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: WaveType.trackTitle.copyWith(
+                            style: KatType.trackTitle.copyWith(
                               fontSize: 12.0,
                               fontWeight: FontWeight.w600,
                             ),
@@ -213,7 +213,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                             current.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: WaveType.meta.copyWith(fontSize: 11.0),
+                            style: KatType.meta.copyWith(fontSize: 11.0),
                           ),
                         ],
                       ),
@@ -224,7 +224,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                 // Transport controls: Previous, Play/Pause, Next
                 _MiniGlyph(
                   tooltip: 'Previous',
-                  icon: WaveIcons.previous,
+                  icon: KatIcons.previous,
                   onTap: notifier.previous,
                   size: 13,
                 ),
@@ -237,7 +237,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                 const SizedBox(width: 2),
                 _MiniGlyph(
                   tooltip: 'Next',
-                  icon: WaveIcons.next,
+                  icon: KatIcons.next,
                   onTap: notifier.next,
                   size: 13,
                 ),
@@ -246,7 +246,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                 Container(
                   width: 1,
                   height: 18,
-                  color: waveDivider(context).withValues(alpha: 0.6),
+                  color: katDivider(context).withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 4),
                 _MiniGlyph(
@@ -261,7 +261,7 @@ class _WaveMiniPlayerState extends ConsumerState<WaveMiniPlayer> {
                 ),
                 _MiniGlyph(
                   tooltip: 'Expand to window',
-                  icon: WaveIcons.expand,
+                  icon: KatIcons.expand,
                   onTap: widget.onExpand,
                   size: 12,
                 ),
@@ -297,9 +297,9 @@ class _MiniPlay extends StatelessWidget {
     // The dock renders the accent with a luminance-derived glyph; the mini
     // player used to hardcode off-white + black, which broke under the
     // off-white "KatMusic neutral" accent and under light accents.
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     final onAccent = onAccentFor(accent);
-    return LWTooltip(
+    return KatTooltip(
       message: playing ? 'Pause' : 'Play',
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -321,7 +321,7 @@ class _MiniPlay extends StatelessWidget {
                       ),
                     )
                   : Icon(
-                      playing ? WaveIcons.pause : WaveIcons.play,
+                      playing ? KatIcons.pause : KatIcons.play,
                       size: 14,
                       color: onAccent,
                     ),
@@ -338,7 +338,7 @@ class _MiniProgress extends ConsumerWidget {
   const _MiniProgress();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final clock = ref.watch(
       playbackServiceProvider.select(
         (s) => (position: s.position, duration: s.duration),
@@ -377,7 +377,7 @@ class _MiniProgress extends ConsumerWidget {
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: progress,
-              child: Container(color: WaveColors.defaultAccent),
+              child: Container(color: KatColors.defaultAccent),
             ),
           ),
         ),
@@ -409,8 +409,8 @@ class _MiniGlyphState extends State<_MiniGlyph> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    return LWTooltip(
+    final dark = katIsDark(context);
+    return KatTooltip(
       message: widget.tooltip,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -419,14 +419,14 @@ class _MiniGlyphState extends State<_MiniGlyph> {
         child: GestureDetector(
           onTap: widget.onTap,
           child: AnimatedContainer(
-            duration: waveMotion(context, const Duration(milliseconds: 120)),
+            duration: katMotion(context, const Duration(milliseconds: 120)),
             width: 28,
             height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _hover
                   ? (widget.danger
-                        ? WaveColors.danger.withValues(alpha: 0.85)
+                        ? KatColors.danger.withValues(alpha: 0.85)
                         : (dark
                               ? Colors.white.withValues(alpha: 0.1)
                               : Colors.black.withValues(alpha: 0.06)))
@@ -440,7 +440,7 @@ class _MiniGlyphState extends State<_MiniGlyph> {
                     ? (widget.danger
                           ? Colors.white
                           : (dark ? Colors.white : Colors.black))
-                    : waveTextSecondary(context),
+                    : katTextSecondary(context),
               ),
             ),
           ),

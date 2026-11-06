@@ -7,29 +7,29 @@ import '../../core/storage/prefs.dart';
 import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 import 'artist_line.dart';
 import 'artwork.dart';
-import 'buttons.dart' show LWTooltip, WaveA11yButton;
-import 'desktop_table.dart' show WaveEqDots;
+import 'buttons.dart' show KatTooltip, KatA11yButton;
+import 'desktop_table.dart' show KatEqDots;
 import 'menus.dart';
 
 export 'artist_line.dart';
-export 'desktop_table.dart' show WaveDesktopTable, WaveSortDir, WaveEqDots;
+export 'desktop_table.dart' show KatDesktopTable, KatSortDir, KatEqDots;
 
 /// Dense desktop song row.
 ///
-/// New code should prefer [WaveDesktopTable] (desktop_table.dart) — one
+/// New code should prefer [KatDesktopTable] (desktop_table.dart) — one
 /// virtualized, sortable, keyboard-navigable table shared by Search, Home,
 /// Discover and Collections. This single-row widget stays for existing
-/// consumers and renders one [WaveDesktopTable]-identical row.
+/// consumers and renders one [KatDesktopTable]-identical row.
 
 /// Dense desktop song row.
 ///
 /// `01  [cover]  Title / Artist   Album   ♡  …  5:14`
 /// Hover: play replaces number, secondary actions appear.
 /// Playing: small accent indicator. No borders around rows.
-class WaveTrackRow extends ConsumerStatefulWidget {
+class KatTrackRow extends ConsumerStatefulWidget {
   final String title;
   final String artist;
   final String album;
@@ -45,7 +45,7 @@ class WaveTrackRow extends ConsumerStatefulWidget {
   final VoidCallback? onRemove;
   final VoidCallback? onTap;
   final bool showLike;
-  const WaveTrackRow({
+  const KatTrackRow({
     super.key,
     required this.title,
     required this.artist,
@@ -65,10 +65,10 @@ class WaveTrackRow extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveTrackRow> createState() => _WaveTrackRowState();
+  ConsumerState<KatTrackRow> createState() => _KatTrackRowState();
 }
 
-class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
+class _KatTrackRowState extends ConsumerState<KatTrackRow> {
   bool _hover = false;
   final FocusNode _focus = FocusNode();
 
@@ -103,8 +103,8 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     // Watch the playlist STATE (not the notifier — its identity never
     // changes, so watching it never rebuilds and the heart sticks).
     final liked = ref
@@ -120,7 +120,7 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
     final bg = widget.isCurrent
         ? accent.withValues(alpha: 0.0)
         : _hover
-        ? waveHoverWash(context)
+        ? katHoverWash(context)
         : Colors.transparent;
 
     final row = Focus(
@@ -151,12 +151,12 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
           },
           onDoubleTap: _activate,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.fast),
-            height: WaveDensity.trackRow,
+            duration: katMotion(context, KatMotion.fast),
+            height: KatDensity.trackRow,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: WaveRadius.artworkRadius,
+              borderRadius: KatRadius.artworkRadius,
             ),
             child: Row(
               children: [
@@ -165,20 +165,20 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                   width: 30,
                   child: Center(
                     child: widget.playing
-                        ? const WaveEqDots()
+                        ? const KatEqDots()
                         : _hover
                         ? Icon(
-                            WaveIcons.play,
+                            KatIcons.play,
                             size: 14,
                             color: dark
-                                ? WaveColors.textPrimary
-                                : WaveColors.lightTextPrimary,
+                                ? KatColors.textPrimary
+                                : KatColors.lightTextPrimary,
                           )
                         : Text(
                             widget.index != null
                                 ? widget.index!.toString().padLeft(2, '0')
                                 : '',
-                            style: WaveType.meta.copyWith(
+                            style: KatType.meta.copyWith(
                               fontSize: 12,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
@@ -186,18 +186,18 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                               color: widget.isCurrent
                                   ? accent
                                   : (dark
-                                        ? WaveColors.textTertiary
-                                        : WaveColors.lightTextTertiary),
+                                        ? KatColors.textTertiary
+                                        : KatColors.lightTextTertiary),
                             ),
                             textAlign: TextAlign.center,
                           ),
                   ),
                 ),
-                WaveArtwork(
+                KatArtwork(
                   url: widget.artworkUrl,
                   videoId: widget.videoId,
-                  size: WaveDensity.trackArt,
-                  radius: WaveRadius.artwork,
+                  size: KatDensity.trackArt,
+                  radius: KatRadius.artwork,
                   title: widget.title,
                   artist: widget.artist,
                   label: widget.title,
@@ -213,15 +213,15 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                         widget.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.trackTitle.copyWith(
+                        style: KatType.trackTitle.copyWith(
                           color: widget.isCurrent
                               ? accent
                               : (dark
-                                    ? WaveColors.textPrimary
-                                    : WaveColors.lightTextPrimary),
+                                    ? KatColors.textPrimary
+                                    : KatColors.lightTextPrimary),
                         ),
                       ),
-                      WaveArtistLine(artist: widget.artist),
+                      KatArtistLine(artist: widget.artist),
                     ],
                   ),
                 ),
@@ -233,16 +233,16 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                           widget.album,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.meta.copyWith(
+                          style: KatType.meta.copyWith(
                             color: dark
-                                ? WaveColors.textTertiary
-                                : WaveColors.lightTextTertiary,
+                                ? KatColors.textTertiary
+                                : KatColors.lightTextTertiary,
                           ),
                         ),
                 ),
                 // Secondary actions appear on hover / current.
                 AnimatedOpacity(
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   opacity: (_hover || widget.isCurrent || liked) ? 1 : 0,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -250,7 +250,7 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                       if (widget.showLike)
                         _RowGlyph(
                           tooltip: liked ? 'Unlike' : 'Like',
-                          icon: liked ? WaveIcons.likedFill : WaveIcons.liked,
+                          icon: liked ? KatIcons.likedFill : KatIcons.liked,
                           active: liked,
                           onTap: () {
                             ref
@@ -268,8 +268,8 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                         ),
                       _RowGlyph(
                         tooltip: 'More',
-                        icon: WaveIcons.more,
-                        menuItems: waveTrackMenuItems(
+                        icon: KatIcons.more,
+                        menuItems: katTrackMenuItems(
                           context: context,
                           ref: ref,
                           title: widget.title,
@@ -292,11 +292,11 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
-                    style: WaveType.meta.copyWith(
+                    style: KatType.meta.copyWith(
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: dark
-                          ? WaveColors.textTertiary
-                          : WaveColors.lightTextTertiary,
+                          ? KatColors.textTertiary
+                          : KatColors.lightTextTertiary,
                     ),
                   ),
                 ),
@@ -307,8 +307,8 @@ class _WaveTrackRowState extends ConsumerState<WaveTrackRow> {
       ),
     );
 
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.title,
@@ -336,7 +336,7 @@ class _RowGlyph extends StatefulWidget {
   final IconData icon;
   final bool active;
   final VoidCallback? onTap;
-  final List<WaveMenuEntry>? menuItems;
+  final List<KatMenuEntry>? menuItems;
   const _RowGlyph({
     required this.tooltip,
     required this.icon,
@@ -352,18 +352,18 @@ class _RowGlyphState extends State<_RowGlyph> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final color = widget.active
-        ? waveAccent(context)
+        ? katAccent(context)
         : _hover
-        ? (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
-        : (dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary);
+        ? (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
+        : (dark ? KatColors.textTertiary : KatColors.lightTextTertiary);
     if (widget.menuItems != null) {
-      return LWTooltip(
+      return KatTooltip(
         message: widget.tooltip,
-        child: WaveMenuButton(
+        child: KatMenuButton(
           entries: widget.menuItems!,
-          buttonBuilder: (context, onOpen) => WaveA11yButton(
+          buttonBuilder: (context, onOpen) => KatA11yButton(
             label: widget.tooltip,
             onTap: onOpen,
             child: MouseRegion(
@@ -374,7 +374,7 @@ class _RowGlyphState extends State<_RowGlyph> {
                 onTap: onOpen,
                 child: AnimatedScale(
                   scale: _hover ? 1.15 : 1.0,
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   curve: Curves.easeOutCubic,
                   child: Container(
                     width: 30,
@@ -389,9 +389,9 @@ class _RowGlyphState extends State<_RowGlyph> {
         ),
       );
     }
-    return LWTooltip(
+    return KatTooltip(
       message: widget.tooltip,
-      child: WaveA11yButton(
+      child: KatA11yButton(
         label: widget.tooltip,
         selected: widget.active,
         onTap: widget.onTap,
@@ -403,7 +403,7 @@ class _RowGlyphState extends State<_RowGlyph> {
             onTap: widget.onTap,
             child: AnimatedScale(
               scale: _hover ? 1.15 : 1.0,
-              duration: waveMotion(context, WaveMotion.fast),
+              duration: katMotion(context, KatMotion.fast),
               curve: Curves.easeOutCubic,
               child: Container(
                 width: 30,
@@ -419,22 +419,22 @@ class _RowGlyphState extends State<_RowGlyph> {
   }
 }
 
-class WaveTrackTableHeader extends StatelessWidget {
+class KatTrackTableHeader extends StatelessWidget {
   final bool showAlbum;
-  const WaveTrackTableHeader({super.key, this.showAlbum = true});
+  const KatTrackTableHeader({super.key, this.showAlbum = true});
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final style = WaveType.overline.copyWith(
+    final dark = katIsDark(context);
+    final style = KatType.overline.copyWith(
       fontSize: 9.5,
-      color: dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary,
+      color: dark ? KatColors.textTertiary : KatColors.lightTextTertiary,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
           const SizedBox(width: 30),
-          const SizedBox(width: WaveDensity.trackArt),
+          const SizedBox(width: KatDensity.trackArt),
           const SizedBox(width: 12),
           Expanded(flex: 5, child: Text('TITLE', style: style)),
           if (showAlbum) Expanded(flex: 3, child: Text('ALBUM', style: style)),

@@ -170,7 +170,7 @@ Future<void> exportDiagnostics(BuildContext context, WidgetRef ref) async {
         title: const Text('Could not export logs'),
         content: Text('$error'),
         actions: [
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Close'),
           ),
@@ -189,23 +189,23 @@ Future<void> exportDiagnostics(BuildContext context, WidgetRef ref) async {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(path, style: WaveType.meta),
+          Text(path, style: KatType.meta),
           const SizedBox(height: 10),
           Text(
             'URLs, cookies and tokens were stripped. Attach this file to a '
             'bug report — nothing was uploaded.',
-            style: WaveType.meta.copyWith(
-              color: waveTextSecondary(dialogContext),
+            style: KatType.meta.copyWith(
+              color: katTextSecondary(dialogContext),
             ),
           ),
         ],
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => LogBundle.revealFile(path),
           child: const Text('Show in folder'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Done'),
         ),

@@ -21,8 +21,8 @@ void main() {
   testWidgets('the cascade still fades content on mount', (tester) async {
     await tester.pumpWidget(
       host(
-        WaveEntranceGroup(
-          child: WaveEntrance(index: 0, child: const Text('Home')),
+        KatEntranceGroup(
+          child: KatEntrance(index: 0, child: const Text('Home')),
         ),
       ),
     );
@@ -46,8 +46,8 @@ void main() {
         StatefulBuilder(
           builder: (context, setState) {
             rebuild = setState;
-            return WaveEntranceGroup(
-              child: WaveEntrance(index: 0, child: const Text('Home')),
+            return KatEntranceGroup(
+              child: KatEntrance(index: 0, child: const Text('Home')),
             );
           },
         ),

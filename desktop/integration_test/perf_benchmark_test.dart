@@ -62,12 +62,12 @@ void main() {
 
     await _waitFor(
       tester,
-      find.byType(WaveShell),
+      find.byType(KatShell),
       reason:
           'App did not reach the main shell. Sign in or continue as '
           'guest once in this profile, then rerun.',
     );
-    final shellContext = tester.element(find.byType(WaveShell));
+    final shellContext = tester.element(find.byType(KatShell));
     final router = GoRouter.of(shellContext);
     final container = ProviderScope.containerOf(shellContext);
     final player = container.read(playbackServiceProvider.notifier);

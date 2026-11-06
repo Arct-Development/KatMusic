@@ -184,7 +184,7 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
         ),
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
@@ -220,7 +220,7 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
   ].join(' · ');
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
-    child: WaveButton(
+    child: KatButton(
       onPressed: () =>
           Navigator.of(dialogContext)
               .pop((email: r.email, pageId: r.channel.pageId)),
@@ -229,7 +229,7 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
         child: Row(
           children: [
             if (r.channel.photoUrl.isNotEmpty)
-              WaveArtwork.circle(
+              KatArtwork.circle(
                 url: r.channel.photoUrl,
                 size: 36,
                 label: name,
@@ -247,14 +247,14 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.trackTitle,
+                    style: KatType.trackTitle,
                   ),
                   Text(
                     sub,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.meta.copyWith(
-                      color: waveTextSecondary(dialogContext),
+                    style: KatType.meta.copyWith(
+                      color: katTextSecondary(dialogContext),
                     ),
                   ),
                 ],

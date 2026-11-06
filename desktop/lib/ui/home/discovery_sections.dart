@@ -13,7 +13,7 @@ import '../components/buttons.dart';
 import '../components/hero.dart';
 import '../components/select.dart';
 import '../components/shelf.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/tokens.dart';
 
 final _discoveryTintProvider = FutureProvider.autoDispose
@@ -56,18 +56,18 @@ class DiscoverySectionHead extends StatelessWidget {
       children: [
         Text(
           kicker.toUpperCase(),
-          style: WaveType.overline.copyWith(
+          style: KatType.overline.copyWith(
             fontSize: 10,
-            color: waveTextTertiary(context),
+            color: katTextTertiary(context),
           ),
         ),
         const SizedBox(height: 2),
-        Text(title, style: WaveType.sectionTitle),
+        Text(title, style: KatType.sectionTitle),
         if (subtitle != null) ...[
           const SizedBox(height: 2),
           Text(
             subtitle!,
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
         ],
       ],
@@ -82,7 +82,7 @@ class HomeSpotlightHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final narrow = MediaQuery.sizeOf(context).width < 720;
     final tint = ref
         .watch(_discoveryTintProvider(track.artworkUrl))
@@ -99,15 +99,15 @@ class HomeSpotlightHero extends ConsumerWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: wash,
-        borderRadius: WaveRadius.floatingRadius,
+        borderRadius: KatRadius.floatingRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          WaveArtwork(
+          KatArtwork(
             url: track.artworkUrl,
             size: artSize,
-            radius: WaveRadius.artwork,
+            radius: KatRadius.artwork,
             title: track.name,
             artist: track.artist,
           ),
@@ -123,14 +123,14 @@ class HomeSpotlightHero extends ConsumerWidget {
                     Icon(
                       FluentIcons.flashlight,
                       size: 11,
-                      color: waveTextTertiary(context),
+                      color: katTextTertiary(context),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'CHART SPOTLIGHT',
-                      style: WaveType.overline.copyWith(
+                      style: KatType.overline.copyWith(
                         fontSize: 10,
-                        color: waveTextTertiary(context),
+                        color: katTextTertiary(context),
                       ),
                     ),
                   ],
@@ -140,19 +140,19 @@ class HomeSpotlightHero extends ConsumerWidget {
                   track.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.pageTitle.copyWith(fontSize: 26),
+                  style: KatType.pageTitle.copyWith(fontSize: 26),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   track.artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.body.copyWith(
-                    color: waveTextSecondary(context),
+                  style: KatType.body.copyWith(
+                    color: katTextSecondary(context),
                   ),
                 ),
                 const SizedBox(height: 14),
-                WavePlayPill(
+                KatPlayPill(
                   label: 'Play Spotlight',
                   onTap: () => playGenerated(
                     ref,
@@ -237,17 +237,17 @@ class _HomeNewReleasesSectionState
               subtitle: 'Fresh records from the new-releases feed.',
             ),
             const SizedBox(height: 10),
-            WaveFilterBar(
+            KatFilterBar(
               controller: _filter,
               onChanged: (v) => setState(() => _q = v),
               hint: 'Filter new releases…',
               countLabel: '${shown.length} of ${list.length}',
-              sortSlot: WaveSelect<String>(
+              sortSlot: KatSelect<String>(
                 value: _sort,
                 options: const [
-                  WaveSelectOption(value: 'featured', label: 'Featured'),
-                  WaveSelectOption(value: 'az', label: 'Title A–Z'),
-                  WaveSelectOption(value: 'artist', label: 'Artist A–Z'),
+                  KatSelectOption(value: 'featured', label: 'Featured'),
+                  KatSelectOption(value: 'az', label: 'Title A–Z'),
+                  KatSelectOption(value: 'artist', label: 'Artist A–Z'),
                 ],
                 onChanged: (v) => setState(() => _sort = v),
               ),
@@ -256,9 +256,7 @@ class _HomeNewReleasesSectionState
             if (shown.isEmpty)
               Text(
                 'No releases match “$_q”.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               )
             else
               SizedBox(
@@ -361,7 +359,7 @@ class HomePopularShelvesSection extends ConsumerWidget {
             subtitle: 'Most present across charts and rotation.',
           ),
           const SizedBox(height: 10),
-          WaveRail(
+          KatRail(
             height: 178,
             itemCount: artists.length,
             separatorBuilder: (_, _) => const SizedBox(width: 16),
@@ -381,12 +379,12 @@ class ReleaseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final artist = album.artist.isNotEmpty ? album.artist : album.subtitle;
-    return WavePressable(
+    return KatPressable(
       onTap: () {
         if (album.browseId.isNotEmpty) {
-          waveOpen(
+          katOpen(
             context,
-            waveAlbumLocation(
+            katAlbumLocation(
               browseId: album.browseId,
               title: album.name,
               artist: artist,
@@ -400,10 +398,10 @@ class ReleaseCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            WaveArtwork(
+            KatArtwork(
               url: album.artworkUrl,
               size: 136,
-              radius: WaveRadius.artwork,
+              radius: KatRadius.artwork,
               title: album.name,
               artist: artist,
               kind: ArtworkKind.album,
@@ -413,13 +411,13 @@ class ReleaseCard extends StatelessWidget {
               album.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+              style: KatType.trackTitle.copyWith(fontSize: 12.5),
             ),
             Text(
               artist,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: WaveType.meta.copyWith(fontSize: 11.5),
+              style: KatType.meta.copyWith(fontSize: 11.5),
             ),
           ],
         ),
@@ -444,9 +442,9 @@ class _ArtistRailCardState extends State<ArtistRailCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final radius = BorderRadius.circular(
-      _hover ? WaveRadius.floating : _size / 2,
+      _hover ? KatRadius.floating : _size / 2,
     );
     final a = widget.artist;
 
@@ -461,35 +459,34 @@ class _ArtistRailCardState extends State<ArtistRailCard> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () =>
-            waveOpen(context, '/artist/${Uri.encodeComponent(a.name)}'),
+        onTap: () => katOpen(context, '/artist/${Uri.encodeComponent(a.name)}'),
         child: SizedBox(
           width: _size,
           child: Column(
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     AnimatedContainer(
-                      duration: waveMotion(context, WaveMotion.normal),
+                      duration: katMotion(context, KatMotion.normal),
                       curve: Curves.easeOutCubic,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         borderRadius: radius,
-                        boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                        boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                       ),
                       foregroundDecoration: BoxDecoration(
                         borderRadius: radius,
-                        border: Border.all(color: waveDivider(context)),
+                        border: Border.all(color: katDivider(context)),
                       ),
-                      child: WaveArtwork(
+                      child: KatArtwork(
                         url: a.artwork,
                         size: _size,
-                        radius: WaveRadius.structural,
+                        radius: KatRadius.structural,
                         kind: ArtworkKind.artist,
                         label: a.name,
                         title: a.name,
@@ -510,7 +507,7 @@ class _ArtistRailCardState extends State<ArtistRailCard> {
                         ),
                         child: Text(
                           '${a.rank}',
-                          style: WaveType.label.copyWith(
+                          style: KatType.label.copyWith(
                             fontSize: 11,
                             color: Colors.white,
                           ),
@@ -526,7 +523,7 @@ class _ArtistRailCardState extends State<ArtistRailCard> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                style: KatType.trackTitle.copyWith(fontSize: 12.5),
               ),
             ],
           ),

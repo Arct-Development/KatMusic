@@ -16,7 +16,7 @@ import '../components/artwork.dart';
 import '../components/buttons.dart';
 import '../components/states.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Friends you added yourself. Last.fm has no public "add friend" call, so
 /// these are kept on this device (kv_store) and shown next to the friends
@@ -105,14 +105,14 @@ void _openProfile(BuildContext context, WidgetRef ref, String name) {
   context.go('/profile');
 }
 
-class WaveFriendsPage extends ConsumerStatefulWidget {
-  const WaveFriendsPage({super.key});
+class KatFriendsPage extends ConsumerStatefulWidget {
+  const KatFriendsPage({super.key});
 
   @override
-  ConsumerState<WaveFriendsPage> createState() => _WaveFriendsPageState();
+  ConsumerState<KatFriendsPage> createState() => _KatFriendsPageState();
 }
 
-class _WaveFriendsPageState extends ConsumerState<WaveFriendsPage> {
+class _KatFriendsPageState extends ConsumerState<KatFriendsPage> {
   final _controller = TextEditingController();
   Timer? _debounce;
   String _query = '';
@@ -151,22 +151,22 @@ class _WaveFriendsPageState extends ConsumerState<WaveFriendsPage> {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+          constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'SOCIAL',
-                style: WaveType.overline.copyWith(color: waveAccent(context)),
+                style: KatType.overline.copyWith(color: katAccent(context)),
               ),
-              const Text('Friends', style: WaveType.pageTitle),
+              const Text('Friends', style: KatType.pageTitle),
               const SizedBox(height: 14),
               TextBox(
                 controller: _controller,
                 placeholder: 'Search users to add',
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 10),
-                  child: Icon(WaveIcons.search, size: 14),
+                  child: Icon(KatIcons.search, size: 14),
                 ),
                 suffix: _controller.text.isEmpty
                     ? null
@@ -190,16 +190,16 @@ class _WaveFriendsPageState extends ConsumerState<WaveFriendsPage> {
                     child: Center(child: ProgressRing()),
                   )
                 else if (friends.isEmpty)
-                  const WaveEmpty(
-                    icon: WaveIcons.friends,
+                  const KatEmpty(
+                    icon: KatIcons.friends,
                     title: 'No friends yet',
                     subtitle: 'Search for a user above and add them to see them here.',
                   )
                 else ...[
                   Text(
                     'YOUR FRIENDS · ${friends.length}',
-                    style: WaveType.overline.copyWith(
-                      color: waveTextTertiary(context),
+                    style: KatType.overline.copyWith(
+                      color: katTextTertiary(context),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -253,15 +253,15 @@ class _WaveFriendsPageState extends ConsumerState<WaveFriendsPage> {
         padding: EdgeInsets.symmetric(vertical: 32),
         child: Center(child: ProgressRing()),
       ),
-      error: (e, _) => WaveError(
+      error: (e, _) => KatError(
         title: 'Search failed',
         message: '$e',
         onRetry: () => ref.invalidate(_friendSearchProvider(_query)),
       ),
       data: (users) {
         if (users.isEmpty) {
-          return const WaveEmpty(
-            icon: WaveIcons.search,
+          return const KatEmpty(
+            icon: KatIcons.search,
             title: 'No users found',
             subtitle: 'Try the exact Last.fm username.',
           );
@@ -271,9 +271,7 @@ class _WaveFriendsPageState extends ConsumerState<WaveFriendsPage> {
           children: [
             Text(
               'USERS · ${users.length}',
-              style: WaveType.overline.copyWith(
-                color: waveTextTertiary(context),
-              ),
+              style: KatType.overline.copyWith(color: katTextTertiary(context)),
             ),
             const SizedBox(height: 6),
             for (final u in users)
@@ -331,7 +329,7 @@ class _PersonRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
             children: [
-              WaveArtwork.circle(
+              KatArtwork.circle(
                 url: avatarUrl,
                 size: 44,
                 label: name,
@@ -348,36 +346,36 @@ class _PersonRow extends StatelessWidget {
                       isYou ? '$name (you)' : name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle,
+                      style: KatType.trackTitle,
                     ),
                     if (subtitle.isNotEmpty)
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.meta.copyWith(
-                          color: waveTextSecondary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextSecondary(context),
                         ),
                       ),
                   ],
                 ),
               ),
-              WaveButton(onPressed: onView, child: const Text('Profile')),
+              KatButton(onPressed: onView, child: const Text('Profile')),
               if (!isYou) ...[
                 const SizedBox(width: 8),
                 if (!added)
-                  WavePrimaryButton(
+                  KatPrimaryButton(
                     label: 'Add',
                     icon: FluentIcons.add,
                     onPressed: onToggle,
                   )
                 else if (canRemove)
-                  WaveGhostButton(label: 'Remove', onPressed: onToggle)
+                  KatGhostButton(label: 'Remove', onPressed: onToggle)
                 else
                   Text(
                     'Friends',
-                    style: WaveType.meta.copyWith(
-                      color: waveTextTertiary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextTertiary(context),
                     ),
                   ),
               ],

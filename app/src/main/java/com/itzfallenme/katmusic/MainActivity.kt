@@ -299,10 +299,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         val uri = intent?.data
         val host = uri?.host.orEmpty().lowercase()
         val isSupportedMusicLink = intent?.action == Intent.ACTION_VIEW &&
-            (uri?.scheme == "http" || uri?.scheme == "https") &&
-            (host == "youtube.com" || host == "www.youtube.com" ||
-                host == "m.youtube.com" || host == "music.youtube.com" || host == "youtu.be" ||
-                host == "open.spotify.com" || host == "spotify.link")
+            (((uri?.scheme == "http" || uri?.scheme == "https") &&
+                (host == "youtube.com" || host == "www.youtube.com" ||
+                    host == "m.youtube.com" || host == "music.youtube.com" || host == "youtu.be" ||
+                    host == "open.spotify.com" || host == "spotify.link")) ||
+                (uri?.scheme == "katmusic" && host == "track"))
         val hasPlaybackTarget = isSupportedMusicLink || intent?.action == Intent.ACTION_SEND
         if (hasPlaybackTarget) {
             runCatching { linkPlaybackResolver.get().handleIntent(intent) }

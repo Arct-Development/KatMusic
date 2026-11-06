@@ -30,27 +30,27 @@ double _contrast(Color a, Color b) {
 void main() {
   group('dark text ladder', () {
     const surfaces = {
-      'background': WaveColors.background,
-      'surface': WaveColors.surface,
-      'raised': WaveColors.surfaceRaised,
-      'overlay': WaveColors.surfaceOverlay,
-      'AMOLED surface': WaveColors.amoledSurface,
+      'background': KatColors.background,
+      'surface': KatColors.surface,
+      'raised': KatColors.surfaceRaised,
+      'overlay': KatColors.surfaceOverlay,
+      'AMOLED surface': KatColors.amoledSurface,
     };
 
     test('every tier clears its floor on every surface', () {
       for (final entry in surfaces.entries) {
         expect(
-          _contrast(WaveColors.textPrimary, entry.value),
+          _contrast(KatColors.textPrimary, entry.value),
           greaterThan(7.0),
           reason: 'primary on ${entry.key}',
         );
         expect(
-          _contrast(WaveColors.textSecondary, entry.value),
+          _contrast(KatColors.textSecondary, entry.value),
           greaterThan(4.5),
           reason: 'secondary on ${entry.key}',
         );
         expect(
-          _contrast(WaveColors.textTertiary, entry.value),
+          _contrast(KatColors.textTertiary, entry.value),
           greaterThan(4.0),
           reason: 'meta tier on ${entry.key}',
         );
@@ -59,9 +59,9 @@ void main() {
 
     test('tiers stay ordered primary > secondary > meta', () {
       for (final entry in surfaces.entries) {
-        final primary = _contrast(WaveColors.textPrimary, entry.value);
-        final secondary = _contrast(WaveColors.textSecondary, entry.value);
-        final meta = _contrast(WaveColors.textTertiary, entry.value);
+        final primary = _contrast(KatColors.textPrimary, entry.value);
+        final secondary = _contrast(KatColors.textSecondary, entry.value);
+        final meta = _contrast(KatColors.textTertiary, entry.value);
         expect(primary, greaterThan(secondary), reason: entry.key);
         expect(secondary, greaterThan(meta), reason: entry.key);
       }
@@ -70,26 +70,26 @@ void main() {
 
   group('light text ladder', () {
     const surfaces = {
-      'background': WaveColors.lightBackground,
-      'content': WaveColors.lightContent,
-      'surface': WaveColors.lightSurface,
-      'overlay': WaveColors.lightOverlay,
+      'background': KatColors.lightBackground,
+      'content': KatColors.lightContent,
+      'surface': KatColors.lightSurface,
+      'overlay': KatColors.lightOverlay,
     };
 
     test('every tier clears its floor on every surface', () {
       for (final entry in surfaces.entries) {
         expect(
-          _contrast(WaveColors.lightTextPrimary, entry.value),
+          _contrast(KatColors.lightTextPrimary, entry.value),
           greaterThan(7.0),
           reason: 'primary on ${entry.key}',
         );
         expect(
-          _contrast(WaveColors.lightTextSecondary, entry.value),
+          _contrast(KatColors.lightTextSecondary, entry.value),
           greaterThan(4.5),
           reason: 'secondary on ${entry.key}',
         );
         expect(
-          _contrast(WaveColors.lightTextTertiary, entry.value),
+          _contrast(KatColors.lightTextTertiary, entry.value),
           greaterThan(4.0),
           reason: 'meta tier on ${entry.key}',
         );
@@ -102,14 +102,14 @@ void main() {
       for (final ladder in [
         (
           'graphite',
-          [WaveColors.background, WaveColors.surface, WaveColors.surfaceRaised],
+          [KatColors.background, KatColors.surface, KatColors.surfaceRaised],
         ),
         (
           'AMOLED',
           [
-            WaveColors.amoledBackground,
-            WaveColors.amoledSurface,
-            WaveColors.amoledSurfaceRaised,
+            KatColors.amoledBackground,
+            KatColors.amoledSurface,
+            KatColors.amoledSurfaceRaised,
           ],
         ),
       ]) {
@@ -126,17 +126,17 @@ void main() {
 
     test('AMOLED only ever collapses the dark base', () {
       expect(
-        _luminance(WaveColors.amoledBackground),
-        lessThan(_luminance(WaveColors.background)),
+        _luminance(KatColors.amoledBackground),
+        lessThan(_luminance(KatColors.background)),
       );
       expect(
-        _luminance(WaveColors.amoledSurface),
-        lessThan(_luminance(WaveColors.surface)),
+        _luminance(KatColors.amoledSurface),
+        lessThan(_luminance(KatColors.surface)),
       );
       // Text tokens are shared, so contrast only improves on black.
       expect(
-        _contrast(WaveColors.textPrimary, WaveColors.amoledBackground),
-        greaterThan(_contrast(WaveColors.textPrimary, WaveColors.background)),
+        _contrast(KatColors.textPrimary, KatColors.amoledBackground),
+        greaterThan(_contrast(KatColors.textPrimary, KatColors.background)),
       );
     });
   });

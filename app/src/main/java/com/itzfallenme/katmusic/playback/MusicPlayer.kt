@@ -380,6 +380,15 @@ class MusicPlayer @Inject constructor(
     private var ticker: Job? = null
     private var playRequest: Job? = null
     /**
+     * Verification pass for a natural track end. ExoPlayer normally advances
+     * to the next window itself; forcing a resolve in the ENDED callback can
+     * stop the deck while that transition is already in flight (the audible
+     * "music stops, then the next song starts" report). Give Media3 a short
+     * grace period, then advance only if the same item is still parked at
+     * STATE_ENDED.
+     */
+    private var naturalEndVerification: Job? = null
+    /**
      * Keep-alive for a stream that died mid-track: re-resolves in place with
      * backoff while the track stays buffered, instead of parking the player on
      * "Unable to resolve" (mid-song stop). Cancelled by any explicit
@@ -912,8 +921,8 @@ class MusicPlayer @Inject constructor(
                         _state.update { it.copy(positionMs = 0L, isPlaying = true) }
                     }
                 } else {
-                    android.util.Log.i("MusicPlayer", "Playback STATE_ENDED for '${_state.value.current?.title}' -> advancing to next")
-                    onMain { handleNaturalTrackEnd() }
+                    android.util.Log.i("MusicPlayer", "Playback STATE_ENDED for '${_state.value.current?.title}' -> verifying natural advance")
+                    scheduleNaturalEndVerification(live)
                 }
             }
             refresh(live)
@@ -948,6 +957,10 @@ class MusicPlayer @Inject constructor(
             _state.update { it.copy(speed = playbackParameters.speed, pitch = playbackParameters.pitch) }
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // A real transition means Media3 won the race; the ENDED safety
+            // net must not resolve/rebuild the new item underneath it.
+            naturalEndVerification?.cancel()
+            naturalEndVerification = null
             if (isCasting) return
             // In-place quality swap replaces the playing item with the same
             // song at the same position from a better source. It reports as
@@ -6430,6 +6443,21 @@ class MusicPlayer @Inject constructor(
      * and sits in [losslessBypassMediaIds]) and only then falls back to
      * YouTube. No YouTube-only shortcut lives on this path.
      */
+    /** Lets ExoPlayer own a normal end-of-track transition before the fallback. */
+    @MainThread
+    private fun scheduleNaturalEndVerification(endedOn: Player) {
+        val endedIndex = endedOn.currentMediaItemIndex
+        naturalEndVerification?.cancel()
+        naturalEndVerification = applicationScope.launch(Dispatchers.Main.immediate) {
+            delay(NATURAL_END_GRACE_MS)
+            if (isCasting) return@launch
+            val live = activeDeck ?: player
+            if (live.playbackState != Player.STATE_ENDED) return@launch
+            if (live.currentMediaItemIndex != endedIndex) return@launch
+            handleNaturalTrackEnd()
+        }
+    }
+
     @MainThread
     private fun handleNaturalTrackEnd() {
         if (isCasting) return
@@ -9305,11 +9333,15 @@ class MusicPlayer @Inject constructor(
         /** Tail window where a pinned READY+playWhenReady state counts as a
          *  missed natural advance and triggers the lossless-first watchdog. */
         const val END_OF_TRACK_STALL_THRESHOLD_MS = 750L
+
         /** Grace before a tail-parked window (pos pinned at the duration
          *  with playWhenReady, no ENDED) is force-advanced. Well above
          *  gapless handoffs (ms) and resolve hiccups, far below "stuck
          *  at -0:00 forever". */
         const val TAIL_PIN_TIMEOUT_MS = 5_000L
+        /** Grace before the natural-end fallback may touch a transitions race. */
+        const val NATURAL_END_GRACE_MS = 650L
+
         /** Debounce so STATE_ENDED + ticker watchdog can't churn generations. */
         const val AUTO_ADVANCE_DEBOUNCE_MS = 3_000L
         /** Buffered lead kept for the crossfade standby: the next track is

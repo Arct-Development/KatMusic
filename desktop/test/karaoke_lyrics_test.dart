@@ -716,7 +716,7 @@ void main() {
       await tester.pumpWidget(
         FluentApp(
           home: Center(
-            child: WaveKaraokeLyricLine(
+            child: KatKaraokeLyricLine(
               line: line,
               positionMs: pos.value,
               positionListenable: pos,
@@ -889,7 +889,7 @@ void main() {
             home: const ScaffoldPage(
               content: Column(
                 children: [
-                  WaveKaraokeLyricLine(
+                  KatKaraokeLyricLine(
                     key: ValueKey('active_line'),
                     line: sampleLine,
                     positionMs: 1200,
@@ -897,7 +897,7 @@ void main() {
                     isPast: false,
                     blurSigma: 3.5,
                   ),
-                  WaveKaraokeLyricLine(
+                  KatKaraokeLyricLine(
                     key: ValueKey('inactive_line'),
                     line: sampleLine,
                     positionMs: 1200,

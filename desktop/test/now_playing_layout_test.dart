@@ -47,7 +47,7 @@ PlayerSnapshot _snapshot() => const PlayerSnapshot(
 );
 
 Future<void> _pumpNowPlaying(WidgetTester tester, {required Size size}) async {
-  SharedPreferences.setMockInitialValues({'lw_visualizer_enabled': false});
+  SharedPreferences.setMockInitialValues({'kat_visualizer_enabled': false});
   final prefs = await Prefs.load();
   final db = AppDatabase.inMemory();
   addTearDown(db.close);
@@ -66,13 +66,13 @@ Future<void> _pumpNowPlaying(WidgetTester tester, {required Size size}) async {
         artworkPaletteProvider.overrideWith(
           (ref, url) async => ArtworkPalette.fallback,
         ),
-        waveLyricsProvider.overrideWith(
+        katLyricsProvider.overrideWith(
           (ref, track) => Stream.value(const LyricsResult.empty()),
         ),
       ],
       child: const FluentApp(
         themeMode: ThemeMode.dark,
-        home: WaveNowPlayingPage(),
+        home: KatNowPlayingPage(),
       ),
     ),
   );
@@ -97,11 +97,11 @@ void main() {
     expect(find.text('HI-RES'), findsOneWidget);
     expect(find.text('FLAC · 4608 kbps'), findsOneWidget);
     expect(
-      find.ancestor(of: find.text('HI-RES'), matching: find.byType(WaveGlass)),
+      find.ancestor(of: find.text('HI-RES'), matching: find.byType(KatGlass)),
       findsNothing,
     );
     expect(
-      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(WaveGlass)),
+      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(KatGlass)),
       findsNothing,
     );
     expect(_upNextRowRect(tester).bottom, lessThanOrEqualTo(size.height));
@@ -118,7 +118,7 @@ void main() {
 
     expect(find.text('Do Numbari (From "Mirzapur The Movie")'), findsOneWidget);
     expect(
-      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(WaveGlass)),
+      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(KatGlass)),
       findsNothing,
     );
     expect(_upNextRowRect(tester).bottom, lessThanOrEqualTo(size.height));

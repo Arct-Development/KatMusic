@@ -46,7 +46,7 @@ class DiscordPresenceService {
   /// uploaded instead.
   static const discordLogoAsset =
       'https://raw.githubusercontent.com/Arct-Development/KatMusic/'
-      'main/katmusic-logo.png';
+      'main/desktop/assets/brand/katmusic-logo.png';
 
   static const _maxField = 120;
   static const _pushInterval = Duration(seconds: 15);

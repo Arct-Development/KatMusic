@@ -80,14 +80,14 @@ Future<void> spotifyConnectWithCookie(
             '2. Press F12 → Application (Firefox: Storage) → Cookies → '
             'https://open.spotify.com.\n'
             '3. Copy the Value of the "sp_dc" cookie and paste it below.',
-            style: WaveType.meta.copyWith(
-              color: waveTextSecondary(dialogContext),
+            style: KatType.meta.copyWith(
+              color: katTextSecondary(dialogContext),
             ),
           ),
           const SizedBox(height: 10),
           TextBox(
             controller: controller,
-            decoration: waveInputDecoration(),
+            decoration: katInputDecoration(),
             placeholder: 'sp_dc value',
             obscureText: true,
             autofocus: true,
@@ -96,11 +96,11 @@ Future<void> spotifyConnectWithCookie(
         ],
       ),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Cancel'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(controller.text),
           child: const Text('Connect'),
         ),
@@ -152,7 +152,7 @@ Future<void> _notice(BuildContext context, String title, String message) {
       title: Text(title),
       content: Text(message),
       actions: [
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),

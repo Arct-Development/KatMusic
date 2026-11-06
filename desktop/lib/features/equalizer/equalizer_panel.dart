@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../ui/components/buttons.dart' show LWTooltip;
+import '../../ui/components/buttons.dart' show KatTooltip;
 import '../../ui/theme/tokens.dart';
 import 'equalizer_controller.dart';
 import 'equalizer_models.dart';
@@ -9,16 +9,16 @@ import 'equalizer_models.dart';
 /// Contextual 10-band Equalizer and Studio Master Clarity panel.
 ///
 /// Designed with slide-over drawer styling matching KatMusic design tokens.
-class WaveEqualizerPanel extends ConsumerStatefulWidget {
+class KatEqualizerPanel extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
   final bool embedded;
-  const WaveEqualizerPanel({super.key, this.onClose, this.embedded = false});
+  const KatEqualizerPanel({super.key, this.onClose, this.embedded = false});
 
   @override
-  ConsumerState<WaveEqualizerPanel> createState() => _WaveEqualizerPanelState();
+  ConsumerState<KatEqualizerPanel> createState() => _KatEqualizerPanelState();
 }
 
-class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
+class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
   int _selectedTab = 0; // 0 = 10-Band EQ, 1 = Studio Master Clarity
   late final ScrollController _eqScrollController;
   late final ScrollController _clarityScrollController;
@@ -39,7 +39,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final eq = ref.watch(equalizerProvider);
     final notifier = ref.read(equalizerProvider.notifier);
 
@@ -47,22 +47,21 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: waveSurface(context),
+        color: katSurface(context),
         border: widget.embedded
             ? Border.all(
-                color: waveDivider(context)
-                    .withValues(alpha: dark ? 0.35 : 0.6),
+                color: katDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
                 width: 1,
               )
             : Border(
                 left: BorderSide(
-                  color: waveDivider(context)
+                  color: katDivider(context)
                       .withValues(alpha: dark ? 0.35 : 0.6),
                   width: 1,
                 ),
               ),
         borderRadius: widget.embedded
-            ? BorderRadius.circular(WaveRadius.menu)
+            ? BorderRadius.circular(KatRadius.menu)
             : null,
       ),
       child: Column(
@@ -104,12 +103,12 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
     }
 
     return Container(
-      height: WaveDensity.titleBar + 12,
+      height: KatDensity.titleBar + 12,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+            color: katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
           ),
         ),
       ),
@@ -119,8 +118,8 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
             FluentIcons.equalizer,
             size: 18,
             color: eq.isProcessingActive
-                ? WaveColors.defaultAccent
-                : waveTextSecondary(context),
+                ? KatColors.defaultAccent
+                : katTextSecondary(context),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -130,17 +129,17 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
               children: [
                 Text(
                   'Equalizer & Sound FX',
-                  style: WaveType.sectionTitle.copyWith(fontSize: 14),
+                  style: KatType.sectionTitle.copyWith(fontSize: 14),
                 ),
                 Text(
                   statusSubtitle,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 11,
                     color: eq.isProcessingActive
                         ? (eq.studioClarityEnabled
                               ? const Color(0xFFF5A623)
-                              : WaveColors.defaultAccent)
-                        : waveTextSecondary(context),
+                              : KatColors.defaultAccent)
+                        : katTextSecondary(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -155,13 +154,13 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
           ),
           const SizedBox(width: 8),
           // Reset button
-          LWTooltip(
+          KatTooltip(
             message: 'Reset all bands to flat (0 dB)',
             child: IconButton(
               icon: Icon(
                 FluentIcons.refresh,
                 size: 13,
-                color: waveTextSecondary(context),
+                color: katTextSecondary(context),
               ),
               onPressed: notifier.reset,
             ),
@@ -169,13 +168,13 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
           if (widget.onClose != null) ...[
             const SizedBox(width: 4),
             // Close button
-            LWTooltip(
+            KatTooltip(
               message: 'Close panel',
               child: IconButton(
                 icon: Icon(
                   FluentIcons.chrome_close,
                   size: 12,
-                  color: waveTextSecondary(context),
+                  color: katTextSecondary(context),
                 ),
                 onPressed: widget.onClose,
               ),
@@ -192,7 +191,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: waveDivider(context).withValues(alpha: dark ? 0.2 : 0.35),
+            color: katDivider(context).withValues(alpha: dark ? 0.2 : 0.35),
           ),
         ),
       ),
@@ -277,18 +276,18 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
           // Studio Master Clarity hero card
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(WaveRadius.menu),
+              borderRadius: BorderRadius.circular(KatRadius.menu),
               color: active
                   ? (dark ? const Color(0xFF1F1B14) : const Color(0xFFFFF9ED))
                   : (dark
-                        ? waveSurfaceRaised(context)
-                        : waveSurfaceOverlay(context)),
+                        ? katSurfaceRaised(context)
+                        : katSurfaceOverlay(context)),
               border: Border.all(
                 color: active
                     ? (dark
                           ? const Color(0xFF8A6D3B).withValues(alpha: 0.8)
                           : const Color(0xFFE5B760))
-                    : waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
+                    : katDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
                 width: active ? 1.5 : 1,
               ),
             ),
@@ -313,7 +312,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                         size: 18,
                         color: active
                             ? const Color(0xFFF5A623)
-                            : waveTextSecondary(context),
+                            : katTextSecondary(context),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -323,21 +322,21 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                         children: [
                           Text(
                             'Studio Master Clarity',
-                            style: WaveType.body.copyWith(
+                            style: KatType.body.copyWith(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                               color: active
                                   ? (dark
                                         ? Colors.white
                                         : const Color(0xFF5A3E00))
-                                  : waveTextPrimary(context),
+                                  : katTextPrimary(context),
                             ),
                           ),
                           Text(
                             'Audiophile reference curve ported from KatMusic Native',
-                            style: WaveType.meta.copyWith(
+                            style: KatType.meta.copyWith(
                               fontSize: 11,
-                              color: waveTextSecondary(context),
+                              color: katTextSecondary(context),
                             ),
                           ),
                         ],
@@ -352,9 +351,9 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                 const SizedBox(height: 12),
                 Text(
                   'Engineered to eliminate low-mid boxiness, tighten sub-bass control, preserve natural vocal body, and introduce a transparent, silky high-frequency air shelf.',
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 11,
-                    color: waveTextSecondary(context),
+                    color: katTextSecondary(context),
                     height: 1.4,
                   ),
                 ),
@@ -366,9 +365,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
           // Acoustic Target Profile Selector
           Text(
             'ACOUSTIC TARGET PROFILE',
-            style: WaveType.overline.copyWith(
-              color: waveTextSecondary(context),
-            ),
+            style: KatType.overline.copyWith(color: katTextSecondary(context)),
           ),
           const SizedBox(height: 8),
 
@@ -383,14 +380,14 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
             height: 80,
             decoration: BoxDecoration(
               color: dark ? const Color(0xFF101010) : const Color(0xFFF0F0F0),
-              borderRadius: BorderRadius.circular(WaveRadius.menu),
+              borderRadius: BorderRadius.circular(KatRadius.menu),
               border: Border.all(
-                color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+                color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(WaveRadius.menu - 2),
+              borderRadius: BorderRadius.circular(KatRadius.menu - 2),
               child: CustomPaint(
                 painter: _EqCurvePainter(
                   gainsDb: eq.combinedGainsDb,
@@ -419,19 +416,17 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
     return GestureDetector(
       onTap: () => notifier.setClarityPreset(target.key),
       child: AnimatedContainer(
-        duration: waveMotion(context, const Duration(milliseconds: 140)),
+        duration: katMotion(context, const Duration(milliseconds: 140)),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(WaveRadius.menu),
+          borderRadius: BorderRadius.circular(KatRadius.menu),
           color: isSelected
               ? (dark ? const Color(0xFF2B2418) : const Color(0xFFFFF3D6))
-              : (dark
-                    ? waveSurfaceRaised(context)
-                    : waveSurfaceOverlay(context)),
+              : (dark ? katSurfaceRaised(context) : katSurfaceOverlay(context)),
           border: Border.all(
             color: isSelected
                 ? (dark ? const Color(0xFFF5A623) : const Color(0xFFE5B760))
-                : waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+                : katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -445,7 +440,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                 border: Border.all(
                   color: isSelected
                       ? const Color(0xFFF5A623)
-                      : waveTextSecondary(context).withValues(alpha: 0.5),
+                      : katTextSecondary(context).withValues(alpha: 0.5),
                   width: 2,
                 ),
                 color: isSelected && active
@@ -460,22 +455,22 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                 children: [
                   Text(
                     target.displayName,
-                    style: WaveType.body.copyWith(
+                    style: KatType.body.copyWith(
                       fontWeight: isSelected
                           ? FontWeight.w700
                           : FontWeight.w600,
                       fontSize: 12.5,
                       color: isSelected
                           ? (dark ? Colors.white : const Color(0xFF5A3E00))
-                          : waveTextPrimary(context),
+                          : katTextPrimary(context),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     target.description,
-                    style: WaveType.meta.copyWith(
+                    style: KatType.meta.copyWith(
                       fontSize: 10.5,
-                      color: waveTextSecondary(context),
+                      color: katTextSecondary(context),
                     ),
                   ),
                 ],
@@ -492,14 +487,14 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
       height: 76,
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF101010) : const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(WaveRadius.menu),
+        borderRadius: BorderRadius.circular(KatRadius.menu),
         border: Border.all(
-          color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+          color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(WaveRadius.menu - 2),
+        borderRadius: BorderRadius.circular(KatRadius.menu - 2),
         child: CustomPaint(
           painter: _EqCurvePainter(
             gainsDb: eq.combinedGainsDb,
@@ -534,7 +529,7 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
           return GestureDetector(
             onTap: () => notifier.applyPreset(preset),
             child: AnimatedContainer(
-              duration: waveMotion(context, const Duration(milliseconds: 140)),
+              duration: katMotion(context, const Duration(milliseconds: 140)),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
@@ -545,13 +540,12 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                                 : const Color(0xFFE5B760))
                           : (dark ? Colors.white : Colors.black))
                     : (dark
-                          ? waveSurfaceRaised(context)
-                          : waveSurfaceOverlay(context)),
+                          ? katSurfaceRaised(context)
+                          : katSurfaceOverlay(context)),
                 border: Border.all(
                   color: isSelected
                       ? Colors.transparent
-                      : waveDivider(context)
-                            .withValues(alpha: dark ? 0.3 : 0.5),
+                      : katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
                 ),
               ),
               child: Center(
@@ -570,14 +564,14 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
                     ],
                     Text(
                       preset.name,
-                      style: WaveType.label.copyWith(
+                      style: KatType.label.copyWith(
                         fontSize: 11,
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,
                         color: isSelected
                             ? (dark ? Colors.black : Colors.white)
-                            : waveTextSecondary(context),
+                            : katTextSecondary(context),
                       ),
                     ),
                   ],
@@ -600,10 +594,10 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: dark ? waveSurfaceRaised(context) : waveSurfaceOverlay(context),
-        borderRadius: BorderRadius.circular(WaveRadius.menu),
+        color: dark ? katSurfaceRaised(context) : katSurfaceOverlay(context),
+        borderRadius: BorderRadius.circular(KatRadius.menu),
         border: Border.all(
-          color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+          color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
         ),
       ),
       child: Row(
@@ -666,9 +660,9 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
         const Spacer(),
         Text(
           'Double-click band to zero',
-          style: WaveType.meta.copyWith(
+          style: KatType.meta.copyWith(
             fontSize: 10,
-            color: waveTextSecondary(context).withValues(alpha: 0.7),
+            color: katTextSecondary(context).withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -686,16 +680,16 @@ class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
       ),
       child: Row(
         children: [
-          Icon(FluentIcons.info, size: 13, color: waveTextSecondary(context)),
+          Icon(FluentIcons.info, size: 13, color: katTextSecondary(context)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               eq.isProcessingActive
                   ? 'Hardware-accelerated 32-bit float biquad filter applied via libmpv.'
                   : 'Bypassed: Audio stream flows directly to output with bit-perfect integrity.',
-              style: WaveType.meta.copyWith(
+              style: KatType.meta.copyWith(
                 fontSize: 10.5,
-                color: waveTextSecondary(context),
+                color: katTextSecondary(context),
               ),
             ),
           ),
@@ -754,11 +748,11 @@ class _VerticalEqBand extends StatelessWidget {
 
     Color activeColor;
     if (gainDb > 0) {
-      activeColor = WaveColors.defaultAccent;
+      activeColor = KatColors.defaultAccent;
     } else if (gainDb < 0) {
       activeColor = const Color(0xFF42A5F5);
     } else {
-      activeColor = waveTextSecondary(context);
+      activeColor = katTextSecondary(context);
     }
 
     return Expanded(
@@ -773,12 +767,12 @@ class _VerticalEqBand extends StatelessWidget {
               child: Center(
                 child: Text(
                   gainText,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 9.5,
                     fontWeight: isNonZero ? FontWeight.w700 : FontWeight.normal,
                     color: isNonZero && enabled
                         ? activeColor
-                        : waveTextSecondary(context).withValues(alpha: 0.6),
+                        : katTextSecondary(context).withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -879,7 +873,7 @@ class _VerticalEqBand extends StatelessWidget {
                                             : Colors.black.withValues(
                                                 alpha: 0.87,
                                               )))
-                                : waveTextSecondary(context)
+                                : katTextSecondary(context)
                                       .withValues(alpha: 0.4),
                             width: 2,
                           ),
@@ -927,11 +921,11 @@ class _VerticalEqBand extends StatelessWidget {
               ),
               child: Text(
                 eqBandLabel(freqHz),
-                style: WaveType.label.copyWith(
+                style: KatType.label.copyWith(
                   fontSize: 10,
                   color: isNonZero && enabled
-                      ? waveTextPrimary(context)
-                      : waveTextSecondary(context),
+                      ? katTextPrimary(context)
+                      : katTextSecondary(context),
                   fontWeight: isNonZero && enabled
                       ? FontWeight.w600
                       : FontWeight.normal,
@@ -967,16 +961,16 @@ class _TabButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: waveMotion(context, const Duration(milliseconds: 140)),
+        duration: katMotion(context, const Duration(milliseconds: 140)),
         padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(WaveRadius.menu),
+          borderRadius: BorderRadius.circular(KatRadius.menu),
           color: selected
-              ? (dark ? waveSurfaceRaised(context) : Colors.white)
+              ? (dark ? katSurfaceRaised(context) : Colors.white)
               : Colors.transparent,
           border: Border.all(
             color: selected
-                ? waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6)
+                ? katDivider(context).withValues(alpha: dark ? 0.35 : 0.6)
                 : Colors.transparent,
           ),
           boxShadow: selected
@@ -998,18 +992,18 @@ class _TabButton extends StatelessWidget {
               color: selected
                   ? (badgeActive
                         ? const Color(0xFFF5A623)
-                        : waveTextPrimary(context))
-                  : waveTextSecondary(context),
+                        : katTextPrimary(context))
+                  : katTextSecondary(context),
             ),
             const SizedBox(width: 6),
             Text(
               title,
-              style: WaveType.body.copyWith(
+              style: KatType.body.copyWith(
                 fontSize: 11.5,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 color: selected
-                    ? waveTextPrimary(context)
-                    : waveTextSecondary(context),
+                    ? katTextPrimary(context)
+                    : katTextSecondary(context),
               ),
             ),
             if (badgeActive) ...[
@@ -1053,15 +1047,15 @@ class _QuickActionPill extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.05)
               : Colors.black.withValues(alpha: 0.04),
           border: Border.all(
-            color: waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+            color: katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
           ),
         ),
         child: Text(
           label,
-          style: WaveType.meta.copyWith(
+          style: KatType.meta.copyWith(
             fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: waveTextSecondary(context),
+            color: katTextSecondary(context),
           ),
         ),
       ),

@@ -16,17 +16,17 @@ import '../../../features/search/shared_providers.dart'
 import '../components/ambient.dart';
 import '../components/artwork.dart';
 import '../components/buttons.dart'
-    show LWTooltip, WaveGhostButton, WaveLink, WavePrimaryButton;
+    show KatTooltip, KatGhostButton, KatLink, KatPrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/shelf.dart';
 import '../components/skeletons.dart';
 import '../components/states.dart';
 import '../navigation/flight.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import 'yt_shelf_page.dart' show openYtEntity;
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 class _ArtistDetail {
   final String name;
@@ -550,14 +550,14 @@ GeneratedTrack _fillFromYtm(GeneratedTrack t, List<YouTubeMusicTrack> songs) {
 /// Artist page — 168px circle + ARTIST overline + 30px name +
 /// Play/Shuffle + full Popular (See-all) + Albums 136px +
 /// Singles 118px + Related.
-class WaveArtistPage extends ConsumerStatefulWidget {
+class KatArtistPage extends ConsumerStatefulWidget {
   final String name;
-  const WaveArtistPage({super.key, required this.name});
+  const KatArtistPage({super.key, required this.name});
   @override
-  ConsumerState<WaveArtistPage> createState() => _WaveArtistPageState();
+  ConsumerState<KatArtistPage> createState() => _KatArtistPageState();
 }
 
-class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
+class _KatArtistPageState extends ConsumerState<KatArtistPage> {
   bool _showAllPopular = false;
   bool _bioExpanded = false;
 
@@ -584,7 +584,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
           pending: const {'art', 'bio', 'popular', 'albums'},
         ),
       ),
-      error: (e, _) => WaveError(
+      error: (e, _) => KatError(
         title: 'Could not load artist',
         message: '$e',
         onRetry: () => ref.invalidate(_artistDetailProvider(widget.name)),
@@ -593,7 +593,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
     );
   }
 
-  Widget _circleRail(List<Widget> circles) => WaveRail(
+  Widget _circleRail(List<Widget> circles) => KatRail(
     height: 168,
     itemCount: circles.length,
     separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -620,7 +620,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
           ),
       ]);
     } else if (shelf.entities.isNotEmpty) {
-      rail = WaveRail(
+      rail = KatRail(
         height: 196,
         itemCount: shelf.entities.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -646,7 +646,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
         videoId: t.videoId,
         durationSeconds: t.durationSeconds,
       );
-      rail = WaveRail(
+      rail = KatRail(
         height: 196,
         itemCount: shelf.trackCards.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -674,12 +674,12 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
             children: [
               Text(
                 shelf.title.isEmpty ? 'More' : shelf.title,
-                style: WaveType.sectionTitle,
+                style: KatType.sectionTitle,
               ),
               const SizedBox(width: 8),
               Text(
                 '$count',
-                style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+                style: KatType.meta.copyWith(color: katTextTertiary(context)),
               ),
             ],
           ),
@@ -720,7 +720,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
     // is what read as the portrait blinking. The skeleton covers that window,
     // and leaving `url` unchanged keeps the photo that already resolved when
     // the detail lands, instead of invalidating it for the thumbnail.
-    Widget portrait(double size) => WaveFlightTarget(
+    Widget portrait(double size) => KatFlightTarget(
       kind: 'artist',
       id: widget.name,
       enabled: _flightOk == true && d.artwork.isNotEmpty,
@@ -730,7 +730,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          WaveArtwork.circle(
+          KatArtwork.circle(
             url: '',
             fallbackUrls: [if (d.artwork.isNotEmpty) d.artwork],
             size: size,
@@ -743,19 +743,19 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
         ],
       ),
     );
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(28, 24, 28, 32),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+            constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                WaveEntrance(
+                KatEntrance(
                   index: 0,
                   rise: 10,
-                  child: WaveAmbientBand(
+                  child: KatAmbientBand(
                     artworkUrl: d.artwork,
                     child: LayoutBuilder(
                       builder: (context, c) {
@@ -764,9 +764,9 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                           children: [
                             Text(
                               'ARTIST',
-                              style: WaveType.overline.copyWith(
+                              style: KatType.overline.copyWith(
                                 fontSize: 10,
-                                color: waveTextTertiary(context),
+                                color: katTextTertiary(context),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -774,7 +774,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                               d.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: WaveType.pageTitle.copyWith(fontSize: 30),
+                              style: KatType.pageTitle.copyWith(fontSize: 30),
                             ),
                             if (bioLoading) ...[
                               const SizedBox(height: 8),
@@ -803,7 +803,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                                 runSpacing: 10,
                                 children: [
                                   if (d.popular.isNotEmpty)
-                                    WavePrimaryButton(
+                                    KatPrimaryButton(
                                       label: 'Play',
                                       icon: FluentIcons.play,
                                       onPressed: () => playGenerated(
@@ -815,9 +815,9 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                                       ),
                                     ),
                                   if (d.popular.isNotEmpty)
-                                    WaveGhostButton(
+                                    KatGhostButton(
                                       label: 'Shuffle',
-                                      icon: WaveIcons.shuffle,
+                                      icon: KatIcons.shuffle,
                                       onPressed: () {
                                         final s = List.of(d.popular)..shuffle();
                                         playGenerated(
@@ -863,15 +863,15 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                 ],
                 if (d.popular.isNotEmpty) ...[
                   const SizedBox(height: 26),
-                  WaveEntrance(
+                  KatEntrance(
                     index: 1,
                     rise: 8,
                     child: Row(
                       children: [
-                        Text('Popular', style: WaveType.sectionTitle),
+                        Text('Popular', style: KatType.sectionTitle),
                         const Spacer(),
                         if (d.popular.length > 5)
-                          WaveLink(
+                          KatLink(
                             onPressed: () => setState(
                               () => _showAllPopular = !_showAllPopular,
                             ),
@@ -879,17 +879,17 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                               _showAllPopular
                                   ? 'Show less'
                                   : 'See all (${d.popular.length})',
-                              style: WaveType.label,
+                              style: KatType.label,
                             ),
                           ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 6),
-                  WaveEntrance(
+                  KatEntrance(
                     index: 2,
                     rise: 10,
-                    child: WaveDesktopTable<GeneratedTrack>(
+                    child: KatDesktopTable<GeneratedTrack>(
                       items: visiblePopular,
                       keyOf: (t) => t.key,
                       titleOf: (t) => t.name,
@@ -931,19 +931,19 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                   _shelfSection(context, d, d.shelves[si], si),
                 if (d.shelves.isEmpty && d.albums.isNotEmpty) ...[
                   const SizedBox(height: 26),
-                  WaveEntrance(
+                  KatEntrance(
                     index: 3,
                     rise: 8,
-                    child: Text('Albums', style: WaveType.sectionTitle),
+                    child: Text('Albums', style: KatType.sectionTitle),
                   ),
                   const SizedBox(height: 10),
-                  WaveRail(
+                  KatRail(
                     height: 196,
                     itemCount: d.albums.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (context, i) {
                       final a = d.albums[i];
-                      return WaveEntrance(
+                      return KatEntrance(
                         index: i,
                         rise: 10,
                         child: _ArtistAlbumCard(
@@ -953,9 +953,9 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                           width: 136,
                           artSize: 136,
                           artist: d.name,
-                          onTap: () => waveOpen(
+                          onTap: () => katOpen(
                             context,
-                            waveAlbumLocation(
+                            katAlbumLocation(
                               browseId: a.browseId,
                               title: a.name,
                               artist: d.name,
@@ -969,19 +969,19 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                 ],
                 if (d.shelves.isEmpty && d.singles.isNotEmpty) ...[
                   const SizedBox(height: 22),
-                  WaveEntrance(
+                  KatEntrance(
                     index: 4,
                     rise: 8,
-                    child: Text('Singles & EPs', style: WaveType.sectionTitle),
+                    child: Text('Singles & EPs', style: KatType.sectionTitle),
                   ),
                   const SizedBox(height: 10),
-                  WaveRail(
+                  KatRail(
                     height: 168,
                     itemCount: d.singles.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (context, i) {
                       final a = d.singles[i];
-                      return WaveEntrance(
+                      return KatEntrance(
                         index: i,
                         rise: 10,
                         child: _ArtistAlbumCard(
@@ -992,9 +992,9 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                           artSize: 118,
                           titleSize: 12,
                           artist: d.name,
-                          onTap: () => waveOpen(
+                          onTap: () => katOpen(
                             context,
-                            waveAlbumLocation(
+                            katAlbumLocation(
                               browseId: a.browseId,
                               title: a.name,
                               artist: d.name,
@@ -1008,13 +1008,10 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                 ],
                 if (d.related.isNotEmpty && !d.shelves.any(_isArtistShelf)) ...[
                   const SizedBox(height: 22),
-                  WaveEntrance(
+                  KatEntrance(
                     index: 5,
                     rise: 8,
-                    child: Text(
-                      'Related artists',
-                      style: WaveType.sectionTitle,
-                    ),
+                    child: Text('Related artists', style: KatType.sectionTitle),
                   ),
                   const SizedBox(height: 10),
                   _circleRail([
@@ -1022,7 +1019,7 @@ class _WaveArtistPageState extends ConsumerState<WaveArtistPage> {
                       _ArtistCircle(
                         name: r,
                         artworkUrl: '',
-                        onTap: () => waveOpen(
+                        onTap: () => katOpen(
                           context,
                           '/artist/${Uri.encodeComponent(r)}',
                         ),
@@ -1062,7 +1059,7 @@ class _ArtistCircleState extends State<_ArtistCircle> {
 
   @override
   Widget build(BuildContext context) {
-    return LWTooltip(
+    return KatTooltip(
       message: widget.name,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -1078,7 +1075,7 @@ class _ArtistCircleState extends State<_ArtistCircle> {
               duration: const Duration(milliseconds: 140),
               child: Column(
                 children: [
-                  WaveArtwork.circle(
+                  KatArtwork.circle(
                     url: widget.artworkUrl,
                     size: 112,
                     label: widget.name,
@@ -1091,7 +1088,7 @@ class _ArtistCircleState extends State<_ArtistCircle> {
                     maxLines: 2,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                    style: KatType.trackTitle.copyWith(fontSize: 12.5),
                   ),
                 ],
               ),
@@ -1140,13 +1137,13 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     void play() {
       _focus.requestFocus();
       widget.onTap();
     }
 
-    return LWTooltip(
+    return KatTooltip(
       message: widget.title,
       child: Focus(
         focusNode: _focus,
@@ -1174,38 +1171,38 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
             onTap: play,
             child: AnimatedScale(
               scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-              duration: waveMotion(context, WaveMotion.fast),
+              duration: katMotion(context, KatMotion.fast),
               curve: Curves.easeOutCubic,
               child: AnimatedContainer(
-                duration: waveMotion(context, WaveMotion.normal),
+                duration: katMotion(context, KatMotion.normal),
                 curve: Curves.easeOutCubic,
                 width: widget.width,
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   color: _hover || _focus.hasFocus
-                      ? (waveIsDark(context)
+                      ? (katIsDark(context)
                                 ? const Color(0xFFFFFFFF)
                                 : const Color(0xFF000000))
                             .withValues(alpha: 0.05)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(WaveRadius.artwork),
+                  borderRadius: BorderRadius.circular(KatRadius.artwork),
                   border: _focus.hasFocus
                       ? Border.all(
-                          color: waveFocusRing(context),
-                          width: WaveState.focusRing,
+                          color: katFocusRing(context),
+                          width: KatState.focusRing,
                         )
                       : Border.all(color: Colors.transparent),
-                  boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                  boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Stack(
                       children: [
-                        WaveArtwork(
+                        KatArtwork(
                           url: widget.artworkUrl,
                           size: widget.artSize,
-                          radius: WaveRadius.artwork,
+                          radius: KatRadius.artwork,
                           label: widget.title,
                           title: widget.title,
                           artist: widget.artist,
@@ -1214,7 +1211,7 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                         Positioned.fill(
                           child: AnimatedOpacity(
                             opacity: _hover ? 1 : 0,
-                            duration: waveMotion(context, WaveMotion.fast),
+                            duration: katMotion(context, KatMotion.fast),
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -1226,16 +1223,13 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(
-                                  WaveRadius.artwork,
+                                  KatRadius.artwork,
                                 ),
                               ),
                               child: Center(
                                 child: AnimatedScale(
                                   scale: _hover ? 1.0 : 0.70,
-                                  duration: waveMotion(
-                                    context,
-                                    WaveMotion.fast,
-                                  ),
+                                  duration: katMotion(context, KatMotion.fast),
                                   curve: Curves.easeOutBack,
                                   child: GestureDetector(
                                     onTap: play,
@@ -1244,7 +1238,7 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                                       height: 44,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: waveAccent(context),
+                                        color: katAccent(context),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withValues(
@@ -1255,9 +1249,9 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                                         ],
                                       ),
                                       child: Icon(
-                                        WaveIcons.play,
+                                        KatIcons.play,
                                         size: 18,
-                                        color: waveOnAccent(context),
+                                        color: katOnAccent(context),
                                       ),
                                     ),
                                   ),
@@ -1273,11 +1267,11 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(
+                      style: KatType.trackTitle.copyWith(
                         fontSize: widget.titleSize,
                         color: dark
-                            ? WaveColors.textPrimary
-                            : WaveColors.lightTextPrimary,
+                            ? KatColors.textPrimary
+                            : KatColors.lightTextPrimary,
                       ),
                     ),
                     if (widget.subtitle.isNotEmpty)
@@ -1285,11 +1279,11 @@ class _ArtistAlbumCardState extends State<_ArtistAlbumCard> {
                         widget.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.meta.copyWith(
+                        style: KatType.meta.copyWith(
                           fontSize: 11,
                           color: dark
-                              ? WaveColors.textSecondary
-                              : WaveColors.lightTextSecondary,
+                              ? KatColors.textSecondary
+                              : KatColors.lightTextSecondary,
                         ),
                       ),
                   ],
@@ -1315,7 +1309,7 @@ class _ExpandableBio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = WaveType.body.copyWith(color: waveTextSecondary(context));
+    final style = KatType.body.copyWith(color: katTextSecondary(context));
     return LayoutBuilder(
       builder: (context, c) {
         final painter = TextPainter(
@@ -1338,11 +1332,11 @@ class _ExpandableBio extends StatelessWidget {
             if (overflows)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: WaveLink(
+                child: KatLink(
                   onPressed: onToggle,
                   child: Text(
                     expanded ? 'Show less' : 'Read more',
-                    style: WaveType.label,
+                    style: KatType.label,
                   ),
                 ),
               ),

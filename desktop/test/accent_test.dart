@@ -215,7 +215,7 @@ void main() {
 
   group('AccentResolution', () {
     test('default fallback is the neutral brand accent', () {
-      expect(AccentResolution.fallback.color, WaveColors.defaultAccent);
+      expect(AccentResolution.fallback.color, KatColors.defaultAccent);
       expect(AccentResolution.fallback.resolved, isTrue);
     });
   });
@@ -245,8 +245,8 @@ void main() {
 
     test('custom uses the picked colour', () async {
       final c = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'custom',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'custom',
       });
       final r = c.read(accentResolutionProvider);
       expect(r.source, AccentSource.custom);
@@ -256,19 +256,19 @@ void main() {
 
     test('katmusic uses the neutral brand accent, not the pick', () async {
       final c = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'katmusic',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'katmusic',
       });
       final r = c.read(accentResolutionProvider);
       expect(r.source, AccentSource.katmusic);
-      expect(r.color, WaveColors.defaultAccent);
+      expect(r.color, KatColors.defaultAccent);
       expect(r.resolved, isTrue);
     });
 
     test('system uses the desktop accent when there is one', () async {
       final c = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'system',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'system',
       }, system: const Color(0xFF3DAEE9));
       await c.read(systemAccentProvider.future);
       final r = c.read(accentResolutionProvider);
@@ -279,8 +279,8 @@ void main() {
 
     test('system falls back to custom when the desktop exposes none', () async {
       final c = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'system',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'system',
       }, system: null);
       await c.read(systemAccentProvider.future);
       final r = c.read(accentResolutionProvider);
@@ -290,8 +290,8 @@ void main() {
 
     test('artwork uses the cover tint, else falls back to custom', () async {
       final tinted = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'artwork',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'artwork',
       }, artwork: const Color(0xFF7A4F2E));
       final r = tinted.read(accentResolutionProvider);
       expect(r.source, AccentSource.artwork);
@@ -299,8 +299,8 @@ void main() {
       expect(r.resolved, isTrue);
 
       final plain = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_source': 'artwork',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_source': 'artwork',
       }, artwork: null);
       final fallback = plain.read(accentResolutionProvider);
       expect(fallback.resolved, isFalse);
@@ -309,8 +309,8 @@ void main() {
 
     test('legacy "manual" source is a custom accent', () async {
       final c = await container({
-        'lw_accent': 0xFF12AB34,
-        'lw_accent_mode': 'manual',
+        'kat_accent': 0xFF12AB34,
+        'kat_accent_mode': 'manual',
       });
       final r = c.read(accentResolutionProvider);
       expect(r.source, AccentSource.custom);
@@ -353,14 +353,11 @@ void main() {
       // hardcoded whites used to vanish into their own disc.
       var context = await themeContext(
         tester,
-        accent: WaveColors.defaultAccent,
+        accent: KatColors.defaultAccent,
         dark: true,
       );
-      expect(
-        waveAccent(context).toARGB32(),
-        WaveColors.defaultAccent.toARGB32(),
-      );
-      expect(waveOnAccent(context), Colors.white);
+      expect(katAccent(context).toARGB32(), KatColors.defaultAccent.toARGB32());
+      expect(katOnAccent(context), Colors.white);
       expect(onAccentFor(const Color(0xFFF5F4F0)), Colors.black);
       expect(onAccentFor(const Color(0xFFE03030)), Colors.white);
 
@@ -369,8 +366,8 @@ void main() {
         accent: const Color(0xFFE03030),
         dark: true,
       );
-      expect(waveAccent(context).toARGB32(), 0xFFE03030);
-      expect(waveOnAccent(context), Colors.white);
+      expect(katAccent(context).toARGB32(), 0xFFE03030);
+      expect(katOnAccent(context), Colors.white);
     });
 
     testWidgets('washes flip with the theme, never hardcoded white', (
@@ -381,17 +378,17 @@ void main() {
         accent: const Color(0xFFE03030),
         dark: true,
       );
-      expect(waveHoverWash(context), Colors.white.withValues(alpha: 0.07));
-      expect(wavePressedWash(context), Colors.white.withValues(alpha: 0.12));
-      expect(waveWash(context, 0.5), Colors.white.withValues(alpha: 0.5));
+      expect(katHoverWash(context), Colors.white.withValues(alpha: 0.07));
+      expect(katPressedWash(context), Colors.white.withValues(alpha: 0.12));
+      expect(katWash(context, 0.5), Colors.white.withValues(alpha: 0.5));
 
       context = await themeContext(
         tester,
         accent: const Color(0xFFE03030),
         dark: false,
       );
-      expect(waveHoverWash(context), Colors.black.withValues(alpha: 0.07));
-      expect(wavePressedWash(context), Colors.black.withValues(alpha: 0.12));
+      expect(katHoverWash(context), Colors.black.withValues(alpha: 0.07));
+      expect(katPressedWash(context), Colors.black.withValues(alpha: 0.12));
     });
 
     testWidgets('focus ring follows the accent (was a fixed grey)', (
@@ -402,7 +399,7 @@ void main() {
         accent: const Color(0xFFE03030),
         dark: true,
       );
-      final ring = waveFocusRing(context);
+      final ring = katFocusRing(context);
       expect(ring.r, closeTo(224 / 255, 0.01));
       expect(ring.a, closeTo(0.85, 0.01));
     });

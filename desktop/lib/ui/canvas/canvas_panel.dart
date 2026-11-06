@@ -10,7 +10,7 @@ import '../theme/tokens.dart';
 import 'canvas_geometry.dart';
 
 export 'canvas_geometry.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 const Color _white70 = Color(0xB3FFFFFF);
 const Color _white54 = Color(0x8AFFFFFF);
@@ -22,16 +22,16 @@ const Color _white54 = Color(0x8AFFFFFF);
 /// [open] is passed down because the shell keeps this widget mounted while
 /// the panel is slid shut: the clip lookup and the player only run while
 /// it is open.
-class WaveCanvasPanel extends ConsumerStatefulWidget {
+class KatCanvasPanel extends ConsumerStatefulWidget {
   final bool open;
   final VoidCallback onClose;
-  const WaveCanvasPanel({super.key, required this.open, required this.onClose});
+  const KatCanvasPanel({super.key, required this.open, required this.onClose});
 
   @override
-  ConsumerState<WaveCanvasPanel> createState() => _WaveCanvasPanelState();
+  ConsumerState<KatCanvasPanel> createState() => _KatCanvasPanelState();
 }
 
-class _WaveCanvasPanelState extends ConsumerState<WaveCanvasPanel> {
+class _KatCanvasPanelState extends ConsumerState<KatCanvasPanel> {
   AnimatedArtworkSession? _session;
   String _attached = '';
 
@@ -71,7 +71,7 @@ class _WaveCanvasPanelState extends ConsumerState<WaveCanvasPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final track = ref.watch(playbackServiceProvider.select((s) => s.current));
 
     CanvasPanelClip? clip;
@@ -220,7 +220,7 @@ class _Frame extends ConsumerWidget {
                       clip != null
                           ? 'CANVAS · ${clip!.source.toUpperCase()}'
                           : 'CANVAS',
-                      style: WaveType.overline.copyWith(color: Colors.white),
+                      style: KatType.overline.copyWith(color: Colors.white),
                     ),
                   ),
                   if (loading)
@@ -231,7 +231,7 @@ class _Frame extends ConsumerWidget {
                     ),
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: const Icon(WaveIcons.close, size: 12),
+                    icon: const Icon(KatIcons.close, size: 12),
                     style: ButtonStyle(
                       foregroundColor: WidgetStatePropertyAll(Colors.white),
                     ),
@@ -265,26 +265,26 @@ class _Frame extends ConsumerWidget {
                   if (title.isEmpty)
                     Text(
                       'Play a track to see its canvas',
-                      style: WaveType.meta.copyWith(color: _white70),
+                      style: KatType.meta.copyWith(color: _white70),
                     )
                   else ...[
                     Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(color: Colors.white),
+                      style: KatType.trackTitle.copyWith(color: Colors.white),
                     ),
                     Text(
                       artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta.copyWith(color: _white70),
+                      style: KatType.meta.copyWith(color: _white70),
                     ),
                     if (clip == null && !loading) ...[
                       const SizedBox(height: 6),
                       Text(
                         note.isEmpty ? 'No canvas for this track.' : note,
-                        style: WaveType.meta.copyWith(
+                        style: KatType.meta.copyWith(
                           color: _white54,
                           fontSize: 11,
                         ),

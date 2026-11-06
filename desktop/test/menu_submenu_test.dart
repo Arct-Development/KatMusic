@@ -7,10 +7,7 @@ import 'package:katmusic_desktop/core/storage/app_database.dart';
 import 'package:katmusic_desktop/features/library/playlists.dart';
 import 'package:katmusic_desktop/ui/components/menus.dart';
 
-Future<void> _pumpPanel(
-  WidgetTester tester,
-  List<WaveMenuEntry> entries,
-) async {
+Future<void> _pumpPanel(WidgetTester tester, List<KatMenuEntry> entries) async {
   await tester.binding.setSurfaceSize(const Size(1000, 700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
@@ -20,7 +17,7 @@ Future<void> _pumpPanel(
         content: Center(
           child: SizedBox(
             width: 260,
-            child: WaveFlyoutPanel.items(entries: entries),
+            child: KatFlyoutPanel.items(entries: entries),
           ),
         ),
       ),
@@ -31,11 +28,11 @@ Future<void> _pumpPanel(
 
 /// Builds the real "Add to playlist" entry against [repo] and hands back the
 /// rows it would cascade.
-Future<List<WaveMenuEntry>> _playlistRows(
+Future<List<KatMenuEntry>> _playlistRows(
   WidgetTester tester,
   PlaylistRepository repo,
 ) async {
-  WaveMenuSubmenu? entry;
+  KatMenuSubmenu? entry;
   await tester.pumpWidget(
     ProviderScope(
       overrides: [playlistRepositoryProvider.overrideWith((ref) => repo)],
@@ -43,7 +40,7 @@ Future<List<WaveMenuEntry>> _playlistRows(
         themeMode: ThemeMode.dark,
         home: Consumer(
           builder: (context, ref, _) {
-            entry ??= waveAddToPlaylistEntry(
+            entry ??= katAddToPlaylistEntry(
               context: context,
               ref: ref,
               playlists: ref.watch(playlistRepositoryProvider),
@@ -69,7 +66,7 @@ void main() {
     await repo.ensureLikedSongs();
 
     final rows = await _playlistRows(tester, repo);
-    final labels = rows.whereType<WaveMenuAction>().map((a) => a.label);
+    final labels = rows.whereType<KatMenuAction>().map((a) => a.label);
 
     expect(labels, contains('New playlist…'));
     // The liked row is the repository's own; it is never a filing target.
@@ -86,22 +83,19 @@ void main() {
     await repo.createCustom('Chill');
 
     final rows = await _playlistRows(tester, repo);
-    final labels = rows
-        .whereType<WaveMenuAction>()
-        .map((a) => a.label)
-        .toList();
+    final labels = rows.whereType<KatMenuAction>().map((a) => a.label).toList();
 
     expect(labels, ['Chill', 'New playlist…']);
   });
 
   testWidgets('hovering a submenu row opens its nested panel', (tester) async {
     await _pumpPanel(tester, [
-      WaveMenuAction(label: 'Play', onPressed: () {}),
-      WaveMenuSubmenu(
+      KatMenuAction(label: 'Play', onPressed: () {}),
+      KatMenuSubmenu(
         label: 'Add to playlist',
         items: () => [
-          WaveMenuAction(label: 'Chill', onPressed: () {}),
-          WaveMenuAction(label: 'Focus', onPressed: () {}),
+          KatMenuAction(label: 'Chill', onPressed: () {}),
+          KatMenuAction(label: 'Focus', onPressed: () {}),
         ],
       ),
     ]);
@@ -124,7 +118,7 @@ void main() {
 
   testWidgets('a submenu with no entries has nothing to show', (tester) async {
     await _pumpPanel(tester, [
-      WaveMenuSubmenu(label: 'Add to playlist', items: () => const []),
+      KatMenuSubmenu(label: 'Add to playlist', items: () => const []),
     ]);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);

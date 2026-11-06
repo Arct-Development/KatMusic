@@ -13,7 +13,7 @@ import '../components/buttons.dart';
 import '../components/inputs.dart';
 import 'lastfm_key_guide.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 const _githubUrl = 'https://github.com/Arct-Development/KatMusic';
 
@@ -23,14 +23,14 @@ const _githubUrl = 'https://github.com/Arct-Development/KatMusic';
 /// session, this is the entire application — no Home, no player, no
 /// navigation behind it. Authentication is the only way in; the
 /// GitHub star action is strictly optional and secondary.
-class WaveWelcomePage extends ConsumerStatefulWidget {
-  const WaveWelcomePage({super.key});
+class KatWelcomePage extends ConsumerStatefulWidget {
+  const KatWelcomePage({super.key});
 
   @override
-  ConsumerState<WaveWelcomePage> createState() => _WaveWelcomePageState();
+  ConsumerState<KatWelcomePage> createState() => _KatWelcomePageState();
 }
 
-class _WaveWelcomePageState extends ConsumerState<WaveWelcomePage> {
+class _KatWelcomePageState extends ConsumerState<KatWelcomePage> {
   WebAuthHandshake? _handshake;
   bool _busy = false;
   String? _error;
@@ -121,10 +121,10 @@ class _WaveWelcomePageState extends ConsumerState<WaveWelcomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     return Mica(
-      backgroundColor: waveBackground(context),
+      backgroundColor: katBackground(context),
       child: Column(
         children: [
           const _WelcomeChrome(),
@@ -201,7 +201,7 @@ class _WelcomeChrome extends StatelessWidget {
   Widget build(BuildContext context) {
     return DragToMoveArea(
       child: SizedBox(
-        height: WaveDensity.titleBar,
+        height: KatDensity.titleBar,
         child: Row(
           children: [
             // macOS keeps the native traffic lights above the chromeless
@@ -211,15 +211,13 @@ class _WelcomeChrome extends StatelessWidget {
             SizedBox(width: Platform.isMacOS ? 84 : 16),
             Text(
               'KATMUSIC',
-              style: WaveType.overline.copyWith(
-                color: waveTextTertiary(context),
-              ),
+              style: KatType.overline.copyWith(color: katTextTertiary(context)),
             ),
             const Spacer(),
             if (!Platform.isMacOS) ...[
               _ChromeBtn(
                 tooltip: 'Minimize',
-                icon: WaveIcons.minimize,
+                icon: KatIcons.minimize,
                 onTap: () async {
                   try {
                     await windowManager.minimize();
@@ -228,7 +226,7 @@ class _WelcomeChrome extends StatelessWidget {
               ),
               _ChromeBtn(
                 tooltip: 'Maximize',
-                icon: WaveIcons.maximize,
+                icon: KatIcons.maximize,
                 iconSize: 12,
                 onTap: () async {
                   try {
@@ -242,7 +240,7 @@ class _WelcomeChrome extends StatelessWidget {
               ),
               _ChromeBtn(
                 tooltip: 'Close',
-                icon: WaveIcons.close,
+                icon: KatIcons.close,
                 danger: true,
                 onTap: () async {
                   try {
@@ -281,11 +279,11 @@ class _ChromeBtnState extends State<_ChromeBtn> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    return WaveA11yButton(
+    final dark = katIsDark(context);
+    return KatA11yButton(
       label: widget.tooltip,
       onTap: widget.onTap,
-      child: LWTooltip(
+      child: KatTooltip(
         message: widget.tooltip,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -294,12 +292,12 @@ class _ChromeBtnState extends State<_ChromeBtn> {
           child: GestureDetector(
             onTap: widget.onTap,
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.fast),
+              duration: katMotion(context, KatMotion.fast),
               width: 46,
-              height: WaveDensity.titleBar,
+              height: KatDensity.titleBar,
               color: _hover
                   ? (widget.danger
-                        ? WaveColors.danger
+                        ? KatColors.danger
                         : (dark
                               ? Colors.white.withValues(alpha: 0.07)
                               : Colors.black.withValues(alpha: 0.06)))
@@ -310,8 +308,8 @@ class _ChromeBtnState extends State<_ChromeBtn> {
                 color: _hover && widget.danger
                     ? Colors.white
                     : (dark
-                          ? WaveColors.textSecondary
-                          : WaveColors.lightTextSecondary),
+                          ? KatColors.textSecondary
+                          : KatColors.lightTextSecondary),
               ),
             ),
           ),
@@ -353,7 +351,7 @@ class _EqualizerRow extends StatelessWidget {
       38.0,
       54.0,
     ];
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     // Bars share the full width evenly (flex gaps) so the motif lines
     // up with the buttons above and below it.
     return SizedBox(
@@ -367,7 +365,7 @@ class _EqualizerRow extends StatelessWidget {
               width: 5,
               height: heights[i],
               decoration: BoxDecoration(
-                borderRadius: WaveRadius.tinyRadius,
+                borderRadius: KatRadius.tinyRadius,
                 color: i % 5 == 2
                     ? accent
                     : accent.withValues(alpha: 0.25 + (i % 5) * 0.1),
@@ -410,14 +408,14 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final handshake = widget.handshake;
     final busy = widget.busy;
     final error = widget.error;
     final tertiary = dark
-        ? WaveColors.textTertiary
-        : WaveColors.lightTextTertiary;
+        ? KatColors.textTertiary
+        : KatColors.lightTextTertiary;
     // Subscribe to auth transitions (signingIn -> signedOut on a
     // successful key save) so `configured` re-evaluates: Prefs itself
     // never notifies, and without this the panel stays stale forever.
@@ -435,13 +433,13 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
           Text(
             'KatMusic',
             textAlign: TextAlign.center,
-            style: WaveType.pageTitle.copyWith(fontSize: 40),
+            style: KatType.pageTitle.copyWith(fontSize: 40),
           ),
           const SizedBox(height: 6),
           Text(
             'High-Resolution Lossless Music Player',
             textAlign: TextAlign.center,
-            style: WaveType.body.copyWith(
+            style: KatType.body.copyWith(
               fontWeight: FontWeight.w600,
               color: accent,
             ),
@@ -451,10 +449,10 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
             'Stream YouTube Music and lossless FLAC up to 24-bit / '
             '192 kHz, with synced lyrics and offline downloads.',
             textAlign: TextAlign.center,
-            style: WaveType.body.copyWith(
+            style: KatType.body.copyWith(
               color: dark
-                  ? WaveColors.textSecondary
-                  : WaveColors.lightTextSecondary,
+                  ? KatColors.textSecondary
+                  : KatColors.lightTextSecondary,
             ),
           ),
           const SizedBox(height: 28),
@@ -473,7 +471,7 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
             ),
             const SizedBox(height: 12),
           ],
-          WaveFilledButton(
+          KatFilledButton(
             // Something must hold focus on first paint, or a screen
             // reader opens on an empty window with nothing to read.
             autofocus: handshake == null && !_wantsLastFm,
@@ -504,11 +502,11 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
             'Browse, stream and download right away. You can connect '
             'Last.fm later in Settings.',
             textAlign: TextAlign.center,
-            style: WaveType.meta.copyWith(color: tertiary),
+            style: KatType.meta.copyWith(color: tertiary),
           ),
           const SizedBox(height: 20),
           if (showKeys) ...[const _ApiKeyForm(), const SizedBox(height: 12)],
-          WaveButton(
+          KatButton(
             onPressed: busy
                 ? null
                 : (!configured && !_wantsLastFm)
@@ -541,7 +539,7 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
           ),
           if (handshake != null) ...[
             const SizedBox(height: 10),
-            WaveButton(
+            KatButton(
               // Mounts when the browser approval starts: focus lands here,
               // so coming back from the browser reads the next step.
               autofocus: true,
@@ -574,7 +572,7 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
               semanticsLabel:
                   'Approve KatMusic in the browser tab that '
                   'just opened, then finish sign-in here.',
-              style: WaveType.meta.copyWith(color: tertiary),
+              style: KatType.meta.copyWith(color: tertiary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -582,15 +580,15 @@ class _AuthPanelState extends ConsumerState<_AuthPanel> {
           Text(
             'Scrobbling, stats and taste sync. Authentication opens '
             'through Last.fm, KatMusic never asks for your password.',
-            style: WaveType.meta.copyWith(color: tertiary),
+            style: KatType.meta.copyWith(color: tertiary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 28),
           const ExcludeSemantics(child: _EqualizerRow()),
           const SizedBox(height: 24),
-          Container(height: 1, color: waveDivider(context)),
+          Container(height: 1, color: katDivider(context)),
           const SizedBox(height: 14),
-          WaveLink(
+          KatLink(
             onPressed: widget.onGitHub,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -656,7 +654,7 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     // Same subscription as the parent panel: a successful save flips
     // auth state, which rebuilds us so the success state below shows.
     ref.watch(authRepositoryProvider.select((s) => s.status));
@@ -669,8 +667,8 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
       return Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         decoration: BoxDecoration(
-          borderRadius: WaveRadius.floatingRadius,
-          border: Border.all(color: waveDivider(context)),
+          borderRadius: KatRadius.floatingRadius,
+          border: Border.all(color: katDivider(context)),
         ),
         child: Row(
           children: [
@@ -681,7 +679,7 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
                 liveRegion: true,
                 child: Text(
                   'Keys validated — connect with Last.fm below.',
-                  style: WaveType.meta.copyWith(color: Colors.green),
+                  style: KatType.meta.copyWith(color: Colors.green),
                 ),
               ),
             ),
@@ -692,13 +690,13 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        borderRadius: WaveRadius.floatingRadius,
-        border: Border.all(color: waveDivider(context)),
+        borderRadius: KatRadius.floatingRadius,
+        border: Border.all(color: katDivider(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Last.fm API keys', style: WaveType.label),
+          const Text('Last.fm API keys', style: KatType.label),
           const SizedBox(height: 2),
           const SizedBox(height: 4),
           const LastFmKeyGuide(),
@@ -707,7 +705,7 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
             label: 'Last.fm API key',
             textField: true,
             child: TextBox(
-              decoration: waveInputDecoration(),
+              decoration: katInputDecoration(),
               controller: _key,
               placeholder: 'API key',
               autofocus: true,
@@ -719,7 +717,7 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
             textField: true,
             obscured: true,
             child: TextBox(
-              decoration: waveInputDecoration(),
+              decoration: katInputDecoration(),
               controller: _secret,
               placeholder: 'Shared secret',
               obscureText: true,
@@ -731,12 +729,12 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
               liveRegion: true,
               child: Text(
                 _error!,
-                style: WaveType.meta.copyWith(color: Colors.red),
+                style: KatType.meta.copyWith(color: Colors.red),
               ),
             ),
           ],
           const SizedBox(height: 10),
-          WaveButton(
+          KatButton(
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const Row(
@@ -758,10 +756,10 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
           Text(
             'KatMusic ships with no keys of its own — these stay on '
             'this device.',
-            style: WaveType.meta.copyWith(
+            style: KatType.meta.copyWith(
               color: dark
-                  ? WaveColors.textTertiary
-                  : WaveColors.lightTextTertiary,
+                  ? KatColors.textTertiary
+                  : KatColors.lightTextTertiary,
             ),
             textAlign: TextAlign.center,
           ),

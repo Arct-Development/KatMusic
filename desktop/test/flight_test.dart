@@ -6,7 +6,7 @@ import 'package:katmusic_desktop/ui/navigation/flight.dart';
 /// destination header. These cover the contract between the two: what arms,
 /// what consumes, what is refused (duplicate ids, stale arms, reduce motion).
 void main() {
-  setUp(WaveFlight.reset);
+  setUp(KatFlight.reset);
 
   Widget app(Widget child, {bool reduceMotion = false}) {
     return FluentApp(
@@ -32,14 +32,14 @@ void main() {
       ),
     );
 
-    WaveFlight.arm(cardContext, '/now');
-    expect(WaveFlight.isArmed, isFalse);
+    KatFlight.arm(cardContext, '/now');
+    expect(KatFlight.isArmed, isFalse);
 
-    WaveFlight.arm(cardContext, '/home');
-    expect(WaveFlight.isArmed, isFalse);
+    KatFlight.arm(cardContext, '/home');
+    expect(KatFlight.isArmed, isFalse);
 
-    WaveFlight.arm(cardContext, '/album/abc?title=T');
-    expect(WaveFlight.isArmed, isTrue);
+    KatFlight.arm(cardContext, '/album/abc?title=T');
+    expect(KatFlight.isArmed, isTrue);
   });
 
   testWidgets('refuses a rail-sized or page-sized box', (tester) async {
@@ -69,11 +69,11 @@ void main() {
       ),
     );
 
-    WaveFlight.arm(tiny, '/album/abc');
-    expect(WaveFlight.isArmed, isFalse);
+    KatFlight.arm(tiny, '/album/abc');
+    expect(KatFlight.isArmed, isFalse);
 
-    WaveFlight.arm(huge, '/album/abc');
-    expect(WaveFlight.isArmed, isFalse);
+    KatFlight.arm(huge, '/album/abc');
+    expect(KatFlight.isArmed, isFalse);
   });
 
   testWidgets('destination claims its own id and flies exactly once', (
@@ -92,13 +92,13 @@ void main() {
         ),
       ),
     );
-    WaveFlight.arm(source, '/album/right');
-    expect(WaveFlight.isArmed, isTrue);
+    KatFlight.arm(source, '/album/right');
+    expect(KatFlight.isArmed, isTrue);
 
     // A header for a different album must leave the arm alone.
     await tester.pumpWidget(
       app(
-        const WaveFlightTarget(
+        const KatFlightTarget(
           key: ValueKey('wrong'),
           kind: 'album',
           id: 'wrong',
@@ -107,11 +107,11 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(WaveFlight.isArmed, isTrue);
+    expect(KatFlight.isArmed, isTrue);
 
     await tester.pumpWidget(
       app(
-        const WaveFlightTarget(
+        const KatFlightTarget(
           key: ValueKey('right'),
           kind: 'album',
           id: 'right',
@@ -120,15 +120,15 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(WaveFlight.isArmed, isFalse);
+    expect(KatFlight.isArmed, isFalse);
 
     // The overlay carries the flight while it runs, then hands back to the
     // header's own cover.
-    expect(find.byType(WaveFlightTarget), findsOneWidget);
+    expect(find.byType(KatFlightTarget), findsOneWidget);
     await tester.pumpAndSettle();
     await tester.pumpWidget(
       app(
-        const WaveFlightTarget(
+        const KatFlightTarget(
           kind: 'album',
           id: 'right',
           child: SizedBox(width: 200, height: 200),
@@ -154,12 +154,12 @@ void main() {
         reduceMotion: true,
       ),
     );
-    WaveFlight.arm(source, '/artist/Someone');
-    expect(WaveFlight.isArmed, isTrue);
+    KatFlight.arm(source, '/artist/Someone');
+    expect(KatFlight.isArmed, isTrue);
 
     await tester.pumpWidget(
       app(
-        const WaveFlightTarget(
+        const KatFlightTarget(
           kind: 'artist',
           id: 'Someone',
           radius: 84,
@@ -169,7 +169,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(WaveFlight.isArmed, isFalse);
+    expect(KatFlight.isArmed, isFalse);
     expect(tester.takeException(), isNull);
   });
 }

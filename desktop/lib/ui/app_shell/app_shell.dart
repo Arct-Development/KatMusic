@@ -22,7 +22,7 @@ import '../components/infobar_host.dart';
 import '../navigation/destinations.dart';
 import '../navigation/route_origin.dart';
 import '../navigation/side_rail.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../player_dock/player_dock.dart';
 import '../canvas/canvas_panel.dart';
 import '../now_playing/immersive.dart';
@@ -33,7 +33,7 @@ import '../../core/storage/prefs.dart';
 import '../../features/updates/update_service.dart';
 import 'command_palette.dart';
 import 'title_bar.dart';
-import 'wave_hotkeys.dart';
+import 'kat_hotkeys.dart';
 
 /// Rebuilt desktop shell — THIS IS A MUSIC PLAYER.
 ///
@@ -48,16 +48,16 @@ import 'wave_hotkeys.dart';
 /// └─────────────────────────────────────────────┘
 /// ```
 /// No permanent right panel. Queue slides over content when requested.
-class WaveShell extends ConsumerStatefulWidget {
+class KatShell extends ConsumerStatefulWidget {
   final String location;
   final Widget child;
-  const WaveShell({super.key, required this.location, required this.child});
+  const KatShell({super.key, required this.location, required this.child});
 
   @override
-  ConsumerState<WaveShell> createState() => _WaveShellState();
+  ConsumerState<KatShell> createState() => _KatShellState();
 }
 
-class _WaveShellState extends ConsumerState<WaveShell> {
+class _KatShellState extends ConsumerState<KatShell> {
   // Boot collapsed: the overlay rail covers content when open, so it
   // starts shut (toggle via hamburger, auto-collapses on outside tap).
   bool _railExpanded = false;
@@ -246,7 +246,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
       // The dock is structural: reserves 80px on every view, including
       // Now Playing — its in-page transport was removed so this dock is
       // the single control surface.
-      _dockCache = WavePlayerDock(
+      _dockCache = KatPlayerDock(
         compact: compact,
         onExpand: _expandNowPlaying,
         lyricsActive: lyricsActive,
@@ -279,7 +279,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
         _titleCanForward != canGoForward) {
       _titleCanBack = canGoBack;
       _titleCanForward = canGoForward;
-      _titleBarCache = WaveTitleBar(
+      _titleBarCache = KatTitleBar(
         searchController: _searchController,
         searchFocus: _searchFocus,
         onSearchSubmit: _submitSearch,
@@ -305,7 +305,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     _wireHotkeys();
     // Truly global in-app shortcuts: HardwareKeyboard fires before focus
     // dispatch, so Space/arrows can't be eaten by the focused button or
-    // list (see wave_hotkeys.dart).
+    // list (see kat_hotkeys.dart).
     HardwareKeyboard.instance.addHandler(_onGlobalKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkUpdatesOnLaunch();
@@ -327,8 +327,8 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     if (!mounted) return false;
     return handleWaveHotkey(
       event,
-      WaveHotkeyActions(
-        isTyping: () => waveIsTypingFocused(_searchFocus),
+      KatHotkeyActions(
+        isTyping: () => katIsTypingFocused(_searchFocus),
         hasTrack: () => ref.read(playbackServiceProvider).current != null,
         togglePlay: () {
           if (mounted) ref.read(playbackServiceProvider.notifier).toggle();
@@ -486,7 +486,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
   }
 
   @override
-  void didUpdateWidget(WaveShell oldWidget) {
+  void didUpdateWidget(KatShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location == widget.location) return;
     _syncSearchField(widget.location);
@@ -582,7 +582,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
   }
 
   /// Opens Now Playing *on top* of the current page, so the page the user was
-  /// on is still underneath when it crossfades closed over it (see waveOpen).
+  /// on is still underneath when it crossfades closed over it (see katOpen).
   /// Dock expand button: opens Now Playing; pressed again while already
   /// there it goes edge-to-edge (see [nowPlayingImmersiveProvider]).
   void _expandNowPlaying() {
@@ -615,7 +615,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
       _miniOpen = false;
       _queueOpen = false;
     });
-    waveOpen(context, '/now');
+    katOpen(context, '/now');
   }
 
   void _goBack() {
@@ -738,11 +738,11 @@ class _WaveShellState extends ConsumerState<WaveShell> {
         );
       }
     });
-    final active = waveActivePath(widget.location);
+    final active = katActivePath(widget.location);
     // Responsive: rail collapses at canonical compact breakpoint (900),
     // never a permanent right panel.
     final collapsed = width < 900 ? true : !_railExpanded;
-    final routePath = waveRoutePath(widget.location);
+    final routePath = katRoutePath(widget.location);
     final isNowPlaying = routePath.startsWith('/now');
     final immersive = ref.watch(nowPlayingImmersiveProvider) && isNowPlaying;
     // Immersive only lives on Now Playing: leaving the route resets it.
@@ -788,8 +788,8 @@ class _WaveShellState extends ConsumerState<WaveShell> {
 
     if (_miniOpen) {
       return Mica(
-        backgroundColor: waveBackground(context),
-        child: WaveMiniPlayer(
+        backgroundColor: katBackground(context),
+        child: KatMiniPlayer(
           onClose: () => _exitMiniPlayer(),
           onExpand: () => _exitMiniPlayer(expand: true),
         ),
@@ -800,13 +800,13 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     // purpose. Those only fire via focus-bubbling, so focused buttons and
     // lists ate Space/arrows before the shell saw them. All app-wide keys
     // live in the HardwareKeyboard handler (see initState/_onGlobalKey +
-    // wave_hotkeys.dart), which runs before focus dispatch and works from
+    // kat_hotkeys.dart), which runs before focus dispatch and works from
     // anywhere. Enter is deliberately left to focused controls.
     return Mica(
-      backgroundColor: waveBackground(context),
+      backgroundColor: katBackground(context),
       // Single pointer observer for the whole chrome. Route
       // transitions anchor at wherever the user last released the
-      // pointer (see WaveRouteOrigin): one Listener here beats a global
+      // pointer (see KatRouteOrigin): one Listener here beats a global
       // key per card, translucent keeps it out of the hit-test verdict,
       // and pointer-up is dispatched before the gesture arena resolves
       // the tap, so the anchor is always in place for the navigation it
@@ -832,14 +832,14 @@ class _WaveShellState extends ConsumerState<WaveShell> {
             return KeyEventResult.ignored;
           }
           // Up/Down are volume only outside nav scopes (menus, tables).
-          if (vertical && waveNavScopeOwnsUpDown()) {
+          if (vertical && katNavScopeOwnsUpDown()) {
             return KeyEventResult.ignored;
           }
           final hk = HardwareKeyboard.instance;
           if (hk.isControlPressed || hk.isAltPressed || hk.isMetaPressed) {
             return KeyEventResult.ignored;
           }
-          if (waveIsTypingFocused(_searchFocus) ||
+          if (katIsTypingFocused(_searchFocus) ||
               ref.read(playbackServiceProvider).current == null) {
             return KeyEventResult.ignored;
           }
@@ -847,7 +847,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
         },
         child: Listener(
           behavior: HitTestBehavior.translucent,
-          onPointerUp: (event) => WaveRouteOrigin.record(event.position),
+          onPointerUp: (event) => KatRouteOrigin.record(event.position),
           onPointerDown: (event) {
             if (event.kind != PointerDeviceKind.mouse) return;
             if (event.buttons & kBackMouseButton != 0) {
@@ -860,7 +860,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
             children: [
               if (!immersive) ...[
                 _titleBarFor(_backStack.isNotEmpty, _forwardStack.isNotEmpty),
-                const WaveInfoBarHost(),
+                const KatInfoBarHost(),
               ],
               // Overlay rail: the content below keeps full width and the
               // rail floats above its left edge (60 collapsed, 200
@@ -893,8 +893,8 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                             final railW = immersive
                                 ? 0.0
                                 : (collapsed
-                                      ? WaveDensity.railCollapsed
-                                      : WaveDensity.railExpanded);
+                                      ? KatDensity.railCollapsed
+                                      : KatDensity.railExpanded);
                             // Exact 9:16 from the content height; the page
                             // keeps its minimum width.
                             final cw = canvasPanelWidth(
@@ -911,9 +911,9 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                 // so the page re-lays out to the space
                                 // left and stays fully usable.
                                 AnimatedPositioned(
-                                  duration: waveMotion(
+                                  duration: katMotion(
                                     context,
-                                    WaveMotion.normal,
+                                    KatMotion.normal,
                                   ),
                                   curve: Curves.easeOutCubic,
                                   // The expanded rail is the collapsed
@@ -931,9 +931,9 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                 // the page. Queue / equalizer are painted
                                 // after it, so they overlay it.
                                 AnimatedPositioned(
-                                  duration: waveMotion(
+                                  duration: katMotion(
                                     context,
-                                    WaveMotion.normal,
+                                    KatMotion.normal,
                                   ),
                                   curve: Curves.easeOutCubic,
                                   top: 0,
@@ -946,7 +946,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       ignoring: !_canvasOpen,
                                       child: Offstage(
                                         offstage: !_canvasOpen,
-                                        child: WaveCanvasPanel(
+                                        child: KatCanvasPanel(
                                           open: _canvasOpen,
                                           onClose: _closeCanvas,
                                         ),
@@ -961,7 +961,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                     left: 0,
                                     top: 0,
                                     bottom: 0,
-                                    child: WaveSideRail(
+                                    child: KatSideRail(
                                       expanded: !collapsed,
                                       active: active,
                                       onGo: _go,
@@ -976,16 +976,16 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       child: const Center(
                                         child: Text(
                                           'Drop audio files to play',
-                                          style: WaveType.sectionTitle,
+                                          style: KatType.sectionTitle,
                                         ),
                                       ),
                                     ),
                                   ),
                                 // Contextual queue — slides smoothly from right.
                                 AnimatedPositioned(
-                                  duration: waveMotion(
+                                  duration: katMotion(
                                     context,
-                                    WaveMotion.normal,
+                                    KatMotion.normal,
                                   ),
                                   curve: Curves.easeOutCubic,
                                   top: 0,
@@ -1013,18 +1013,16 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       child: Offstage(
                                         offstage: !_queueOpen && _queueSettled,
                                         child: _queuePanelCache ??=
-                                            WaveQueuePanel(
-                                              onClose: _closeQueue,
-                                            ),
+                                            KatQueuePanel(onClose: _closeQueue),
                                       ),
                                     ),
                                   ),
                                 ),
                                 // Contextual Equalizer & Studio Master Clarity drawer — slides smoothly from right.
                                 AnimatedPositioned(
-                                  duration: waveMotion(
+                                  duration: katMotion(
                                     context,
-                                    WaveMotion.normal,
+                                    KatMotion.normal,
                                   ),
                                   curve: Curves.easeOutCubic,
                                   top: 0,
@@ -1048,7 +1046,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                             !_equalizerOpen &&
                                             _equalizerSettled,
                                         child: _equalizerPanelCache ??=
-                                            WaveEqualizerPanel(
+                                            KatEqualizerPanel(
                                               onClose: _closeEqualizer,
                                             ),
                                       ),
@@ -1062,15 +1060,15 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                 // panels never cover its toggles.
                                 if (immersive)
                                   AnimatedPositioned(
-                                    duration: waveMotion(
+                                    duration: katMotion(
                                       context,
-                                      WaveMotion.normal,
+                                      KatMotion.normal,
                                     ),
                                     curve: Curves.easeOutCubic,
                                     left: 0,
                                     right: _canvasOpen ? cw : 0,
                                     bottom: 0,
-                                    child: WaveImmersiveDockOverlay(
+                                    child: KatImmersiveDockOverlay(
                                       child: _dockFor(
                                         lyricsActive: isNowPlaying,
                                         queueActive: _queueOpen,

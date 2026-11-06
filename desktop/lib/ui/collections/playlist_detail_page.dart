@@ -14,7 +14,7 @@ import '../../features/library/playlists.dart';
 import '../../core/storage/prefs.dart';
 import '../../features/player/playback_service.dart';
 import '../components/buttons.dart'
-    show LWTooltip, WaveGhostButton, WaveIconButton, WavePrimaryButton;
+    show KatTooltip, KatGhostButton, KatIconButton, KatPrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/menus.dart';
@@ -24,24 +24,23 @@ import 'playlist_dialogs.dart'
     show showWaveDeletePlaylist, showWaveRenamePlaylist;
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Playlist detail: artwork hero + filter + indexed track table.
 ///
 /// Play/Shuffle are prioritized; Pin/Rename/Delete live in overflow.
 /// Multi-select is supported via Shift+click range (checkbox column
 /// appears when selection is active).
-class WavePlaylistDetailPage extends ConsumerStatefulWidget {
+class KatPlaylistDetailPage extends ConsumerStatefulWidget {
   final int id;
-  const WavePlaylistDetailPage({super.key, required this.id});
+  const KatPlaylistDetailPage({super.key, required this.id});
 
   @override
-  ConsumerState<WavePlaylistDetailPage> createState() =>
-      _WavePlaylistDetailPageState();
+  ConsumerState<KatPlaylistDetailPage> createState() =>
+      _KatPlaylistDetailPageState();
 }
 
-class _WavePlaylistDetailPageState
-    extends ConsumerState<WavePlaylistDetailPage> {
+class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   late String _sort;
@@ -111,8 +110,8 @@ class _WavePlaylistDetailPageState
     final playlists = ref.watch(playlistRepositoryProvider);
     final playlist = playlists.where((p) => p.id == widget.id).firstOrNull;
     if (playlist == null) {
-      return WaveEmpty(
-        icon: WaveIcons.playlists,
+      return KatEmpty(
+        icon: KatIcons.playlists,
         title: 'Playlist not found',
         subtitle: 'It may have been deleted.',
         actionLabel: 'Back to playlists',
@@ -183,7 +182,7 @@ class _WavePlaylistDetailPageState
                   entry.status == DownloadStatus.queued),
         );
 
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -191,14 +190,14 @@ class _WavePlaylistDetailPageState
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
-                child: WaveEntrance(
+                child: KatEntrance(
                   rise: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      WaveCollectionHero(
+                      KatCollectionHero(
                         flightKind: 'playlist',
                         flightId: '${playlist.id}',
                         overline:
@@ -207,10 +206,10 @@ class _WavePlaylistDetailPageState
                         meta:
                             '${playlist.tracks.length} tracks${_q.isNotEmpty ? ' · ${tracks.length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: WaveIcons.playlists,
+                        fallbackIcon: KatIcons.playlists,
                         primaryActions: [
                           if (tracks.isNotEmpty) ...[
-                            WavePrimaryButton(
+                            KatPrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
                               onPressed: () => playGenerated(
@@ -221,9 +220,9 @@ class _WavePlaylistDetailPageState
                                 queueAll: asGenerated(),
                               ),
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Shuffle',
-                              icon: WaveIcons.shuffle,
+                              icon: KatIcons.shuffle,
                               onPressed: () {
                                 // Shuffle BEFORE picking first.
                                 final shuffled = asGenerated()..shuffle();
@@ -236,7 +235,7 @@ class _WavePlaylistDetailPageState
                                 );
                               },
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: downloading ? 'Cancel' : 'Download',
                               icon: downloading
                                   ? FluentIcons.cancel
@@ -268,36 +267,36 @@ class _WavePlaylistDetailPageState
                           ],
                         ],
                         overflowItems: [
-                          WaveMenuAction(
+                          KatMenuAction(
                             leading: const Icon(FluentIcons.photo, size: 13),
                             label: 'Change cover',
                             onPressed: () => _changeCover(playlist),
                           ),
-                          WaveMenuAction(
+                          KatMenuAction(
                             leading: const Icon(FluentIcons.page, size: 13),
                             label: 'Export CSV',
                             onPressed: () => _export(playlist, csv: true),
                           ),
-                          WaveMenuAction(
+                          KatMenuAction(
                             leading: const Icon(FluentIcons.page, size: 13),
                             label: 'Export M3U',
                             onPressed: () => _export(playlist, csv: false),
                           ),
-                          WaveMenuAction(
+                          KatMenuAction(
                             leading: const Icon(FluentIcons.pin, size: 13),
                             label: playlist.isPinned ? 'Unpin' : 'Pin',
                             onPressed: () => ref
                                 .read(playlistRepositoryProvider.notifier)
                                 .setPinned(playlist.id, !playlist.isPinned),
                           ),
-                          WaveMenuAction(
+                          KatMenuAction(
                             leading: const Icon(FluentIcons.edit, size: 13),
                             label: 'Rename',
                             onPressed: () =>
                                 showWaveRenamePlaylist(context, ref, playlist),
                           ),
                           if (!playlist.isLikedSongs)
-                            WaveMenuAction(
+                            KatMenuAction(
                               leading: const Icon(FluentIcons.delete, size: 13),
                               label: 'Delete',
                               onPressed: () => showWaveDeletePlaylist(
@@ -309,7 +308,7 @@ class _WavePlaylistDetailPageState
                         ],
                       ),
                       const SizedBox(height: 12),
-                      WaveFilterBar(
+                      KatFilterBar(
                         controller: _filter,
                         onChanged: (v) => setState(() => _q = v),
                         hint: 'Filter in playlist…',
@@ -317,24 +316,24 @@ class _WavePlaylistDetailPageState
                         sortSlot: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            LWTooltip(
+                            KatTooltip(
                               message: 'Sort (also sortable via table headers)',
-                              child: WaveSelect<String>(
+                              child: KatSelect<String>(
                                 value: _sort,
                                 options: const [
-                                  WaveSelectOption(
+                                  KatSelectOption(
                                     value: 'default',
                                     label: 'Default order',
                                   ),
-                                  WaveSelectOption(
+                                  KatSelectOption(
                                     value: 'added',
                                     label: 'Date added',
                                   ),
-                                  WaveSelectOption(
+                                  KatSelectOption(
                                     value: 'title',
                                     label: 'Title A–Z',
                                   ),
-                                  WaveSelectOption(
+                                  KatSelectOption(
                                     value: 'artist',
                                     label: 'Artist A–Z',
                                   ),
@@ -343,11 +342,11 @@ class _WavePlaylistDetailPageState
                               ),
                             ),
                             const SizedBox(width: 4),
-                            WaveIconButton(
+                            KatIconButton(
                               tooltip: _asc ? 'Reverse order' : 'Normal order',
                               selected: !_asc,
                               icon: Icon(
-                                _asc ? WaveIcons.sortUp : WaveIcons.sortDown,
+                                _asc ? KatIcons.sortUp : KatIcons.sortDown,
                                 size: 14,
                               ),
                               onPressed: () => _setSort(_sort, !_asc),
@@ -364,8 +363,8 @@ class _WavePlaylistDetailPageState
           ),
           if (tracks.isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
-                icon: WaveIcons.playlists,
+              child: KatEmpty(
+                icon: KatIcons.playlists,
                 title: 'Empty playlist',
                 subtitle: 'Add tracks from any menu.',
               ),
@@ -373,7 +372,7 @@ class _WavePlaylistDetailPageState
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: WaveDesktopTable<GeneratedTrack>(
+              sliver: KatDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,

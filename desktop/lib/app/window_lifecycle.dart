@@ -17,7 +17,7 @@ import '../ui/components/infobar_host.dart';
 /// App-scoped window + tray lifecycle owner.
 ///
 /// Mounted above the router (see [KatMusicApp]) so the handlers exist on
-/// EVERY route — including `/welcome`, which renders outside [WaveShell].
+/// EVERY route — including `/welcome`, which renders outside [KatShell].
 /// Previously these listeners lived in the shell, so with
 /// `setPreventClose(true)` active the welcome-page × button was swallowed
 /// with zero handlers and tray menu clicks hit zero listeners.

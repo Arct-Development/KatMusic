@@ -2,10 +2,10 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../navigation/flight.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 import 'ambient.dart';
 import 'artwork.dart';
-import 'buttons.dart' show LWTooltip, WaveButton;
+import 'buttons.dart' show KatTooltip, KatButton;
 import 'inputs.dart';
 import 'menus.dart';
 
@@ -15,7 +15,7 @@ import 'menus.dart';
 /// [160-200px art with ambient ring] [title block: overline, 22px title,
 /// meta line, action row: primary Play + ghost Shuffle + sort/filter slot
 /// + overflow]. Responsive: stacks vertically under 720px.
-class WaveCollectionHero extends StatelessWidget {
+class KatCollectionHero extends StatelessWidget {
   final String overline;
   final String title;
   final String meta;
@@ -23,7 +23,7 @@ class WaveCollectionHero extends StatelessWidget {
   final IconData fallbackIcon;
   final double artworkSize;
   final List<Widget> primaryActions;
-  final List<WaveMenuEntry> overflowItems;
+  final List<KatMenuEntry> overflowItems;
   final Widget? trailing;
 
   /// Route identity of this collection, for the cover flight from the card
@@ -32,13 +32,13 @@ class WaveCollectionHero extends StatelessWidget {
   final String? flightKind;
   final String? flightId;
 
-  const WaveCollectionHero({
+  const KatCollectionHero({
     super.key,
     required this.overline,
     required this.title,
     required this.meta,
     this.artworkUrl = '',
-    this.fallbackIcon = WaveIcons.music,
+    this.fallbackIcon = KatIcons.music,
     this.artworkSize = 168,
     this.primaryActions = const [],
     this.overflowItems = const [],
@@ -49,17 +49,17 @@ class WaveCollectionHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    // Unconditional canonical artwork: WaveArtwork handles '' via the
+    final dark = katIsDark(context);
+    // Unconditional canonical artwork: KatArtwork handles '' via the
     // tonal fallback (label initials), so no flat generic placeholder.
-    final art = WaveFlightTarget(
+    final art = KatFlightTarget(
       kind: flightKind ?? '',
       id: flightId ?? '',
       enabled: flightKind != null && flightId != null && artworkUrl.isNotEmpty,
-      child: WaveArtwork(
+      child: KatArtwork(
         url: artworkUrl,
         size: artworkSize,
-        radius: WaveRadius.artwork,
+        radius: KatRadius.artwork,
         label: title,
       ),
     );
@@ -70,41 +70,41 @@ class WaveCollectionHero extends StatelessWidget {
       children: [
         Text(
           overline.toUpperCase(),
-          style: WaveType.overline.copyWith(color: waveAccent(context)),
+          style: KatType.overline.copyWith(color: katAccent(context)),
         ),
         const SizedBox(height: 4),
         Text(
           title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: WaveType.pageTitle,
+          style: KatType.pageTitle,
         ),
         const SizedBox(height: 4),
         Text(
           meta,
-          style: WaveType.meta.copyWith(
+          style: KatType.meta.copyWith(
             color: dark
-                ? WaveColors.textSecondary
-                : WaveColors.lightTextSecondary,
+                ? KatColors.textSecondary
+                : KatColors.lightTextSecondary,
           ),
         ),
-        const SizedBox(height: WaveSpacing.x8),
+        const SizedBox(height: KatSpacing.x8),
         Wrap(
-          spacing: WaveSpacing.x4,
-          runSpacing: WaveSpacing.x4,
+          spacing: KatSpacing.x4,
+          runSpacing: KatSpacing.x4,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             ...primaryActions,
             if (overflowItems.isNotEmpty)
-              WaveMenuButton(
+              KatMenuButton(
                 entries: overflowItems,
                 placement: FlyoutPlacementMode.bottomRight,
-                buttonBuilder: (context, onOpen) => LWTooltip(
+                buttonBuilder: (context, onOpen) => KatTooltip(
                   message: 'More actions',
                   child: SizedBox(
-                    width: WaveDensity.hitArea,
+                    width: KatDensity.hitArea,
                     height: 32,
-                    child: WaveButton(
+                    child: KatButton(
                       onPressed: onOpen,
                       child: const Icon(FluentIcons.more, size: 15),
                     ),
@@ -121,7 +121,7 @@ class WaveCollectionHero extends StatelessWidget {
     // content width, unlike MediaQuery window width (+200 rail error). The
     // artwork-tinted band behind it (no blur) is what stops the hero reading
     // as a flat banner — layout is untouched, it paints underneath.
-    return WaveAmbientBand(
+    return KatAmbientBand(
       artworkUrl: artworkUrl,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -131,7 +131,7 @@ class WaveCollectionHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 art,
-                const SizedBox(height: WaveSpacing.x8),
+                const SizedBox(height: KatSpacing.x8),
                 textBlock(),
               ],
             );
@@ -140,7 +140,7 @@ class WaveCollectionHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               art,
-              const SizedBox(width: WaveSpacing.x16),
+              const SizedBox(width: KatSpacing.x16),
               Expanded(child: textBlock()),
             ],
           );
@@ -151,13 +151,13 @@ class WaveCollectionHero extends StatelessWidget {
 }
 
 /// Compact filter bar: Fluent TextBox + optional count + sort slot.
-class WaveFilterBar extends StatelessWidget {
+class KatFilterBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final String hint;
   final String? countLabel;
   final Widget? sortSlot;
-  const WaveFilterBar({
+  const KatFilterBar({
     super.key,
     required this.controller,
     required this.onChanged,
@@ -168,7 +168,7 @@ class WaveFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 560;
@@ -178,17 +178,17 @@ class WaveFilterBar extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 300),
                 child: TextBox(
-                  decoration: waveInputDecoration(),
+                  decoration: katInputDecoration(),
                   controller: controller,
                   placeholder: hint,
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: Icon(
-                      WaveIcons.search,
+                      KatIcons.search,
                       size: 15,
                       color: dark
-                          ? WaveColors.textTertiary
-                          : WaveColors.lightTextTertiary,
+                          ? KatColors.textTertiary
+                          : KatColors.lightTextTertiary,
                     ),
                   ),
                   onChanged: onChanged,
@@ -196,16 +196,16 @@ class WaveFilterBar extends StatelessWidget {
               ),
             ),
             if (countLabel != null && !compact) ...[
-              const SizedBox(width: WaveSpacing.x8),
+              const SizedBox(width: KatSpacing.x8),
               Flexible(
                 child: Text(
                   countLabel!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     color: dark
-                        ? WaveColors.textTertiary
-                        : WaveColors.lightTextTertiary,
+                        ? KatColors.textTertiary
+                        : KatColors.lightTextTertiary,
                   ),
                 ),
               ),
@@ -220,12 +220,12 @@ class WaveFilterBar extends StatelessWidget {
 }
 
 /// Page header used by non-collection pages (search, settings…).
-class WavePageHeader extends StatelessWidget {
+class KatPageHeader extends StatelessWidget {
   final String overline;
   final String title;
   final String? subtitle;
   final Widget? action;
-  const WavePageHeader({
+  const KatPageHeader({
     super.key,
     required this.overline,
     required this.title,
@@ -235,7 +235,7 @@ class WavePageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -245,18 +245,18 @@ class WavePageHeader extends StatelessWidget {
             children: [
               Text(
                 overline.toUpperCase(),
-                style: WaveType.overline.copyWith(color: waveAccent(context)),
+                style: KatType.overline.copyWith(color: katAccent(context)),
               ),
               const SizedBox(height: 2),
-              Text(title, style: WaveType.pageTitle),
+              Text(title, style: KatType.pageTitle),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: WaveType.body.copyWith(
+                  style: KatType.body.copyWith(
                     color: dark
-                        ? WaveColors.textSecondary
-                        : WaveColors.lightTextSecondary,
+                        ? KatColors.textSecondary
+                        : KatColors.lightTextSecondary,
                   ),
                 ),
               ],

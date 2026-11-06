@@ -171,8 +171,8 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final releaseDate = widget.update.publishedAt != null
         ? DateFormat.yMMMMd().format(widget.update.publishedAt!)
         : null;
@@ -185,7 +185,7 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(WaveRadius.controls),
+              borderRadius: BorderRadius.circular(KatRadius.controls),
             ),
             child: Icon(FluentIcons.update_restore, color: accent, size: 20),
           ),
@@ -197,7 +197,7 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
               children: [
                 Row(
                   children: [
-                    const Text('Update Arrived', style: WaveType.sectionTitle),
+                    const Text('Update Arrived', style: KatType.sectionTitle),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -205,13 +205,13 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: WaveColors.success.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(WaveRadius.tiny),
+                        color: KatColors.success.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(KatRadius.tiny),
                       ),
                       child: Text(
                         'v${widget.update.version}',
-                        style: WaveType.overline.copyWith(
-                          color: WaveColors.success,
+                        style: KatType.overline.copyWith(
+                          color: KatColors.success,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -221,10 +221,10 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                 const SizedBox(height: 2),
                 Text(
                   'Current version: v$appVersion${releaseDate != null ? ' · $releaseDate' : ''}',
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     color: dark
-                        ? WaveColors.textSecondary
-                        : WaveColors.lightTextSecondary,
+                        ? KatColors.textSecondary
+                        : KatColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -242,7 +242,7 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                     widget.update.title != widget.update.tagName
                 ? widget.update.title
                 : 'Changelog:',
-            style: WaveType.body.copyWith(fontWeight: FontWeight.w600),
+            style: KatType.body.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Flexible(
@@ -251,9 +251,9 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
               constraints: const BoxConstraints(maxHeight: 240),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: waveSurface(context),
-                borderRadius: BorderRadius.circular(WaveRadius.controls),
-                border: Border.all(color: waveOutline(context)),
+                color: katSurface(context),
+                borderRadius: BorderRadius.circular(KatRadius.controls),
+                border: Border.all(color: katOutline(context)),
               ),
               child: Scrollbar(
                 child: SingleChildScrollView(
@@ -271,21 +271,21 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: WaveColors.danger.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(WaveRadius.tiny),
+                color: KatColors.danger.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(KatRadius.tiny),
               ),
               child: Row(
                 children: [
                   const Icon(
                     FluentIcons.error_badge,
-                    color: WaveColors.danger,
+                    color: KatColors.danger,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: WaveType.meta.copyWith(color: WaveColors.danger),
+                      style: KatType.meta.copyWith(color: KatColors.danger),
                     ),
                   ),
                 ],
@@ -307,15 +307,15 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                       _totalBytes > 0
                           ? 'Downloading: ${(_progress * 100).toStringAsFixed(0)}%'
                           : 'Starting download...',
-                      style: WaveType.meta,
+                      style: KatType.meta,
                     ),
                     if (_totalBytes > 0)
                       Text(
                         '${_formatBytes(_receivedBytes)} / ${_formatBytes(_totalBytes)}',
-                        style: WaveType.meta.copyWith(
+                        style: KatType.meta.copyWith(
                           color: dark
-                              ? WaveColors.textSecondary
-                              : WaveColors.lightTextSecondary,
+                              ? KatColors.textSecondary
+                              : KatColors.lightTextSecondary,
                         ),
                       ),
                   ],
@@ -328,20 +328,20 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                 children: [
                   Text(
                     'Package:',
-                    style: WaveType.meta.copyWith(
+                    style: KatType.meta.copyWith(
                       fontWeight: FontWeight.w600,
                       color: dark
-                          ? WaveColors.textSecondary
-                          : WaveColors.lightTextSecondary,
+                          ? KatColors.textSecondary
+                          : KatColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: WaveSelect<AppReleaseAsset>(
+                    child: KatSelect<AppReleaseAsset>(
                       value: _selectedAsset,
                       options: widget.update.assets
                           .map(
-                            (a) => WaveSelectOption(
+                            (a) => KatSelectOption(
                               value: a,
                               label: '${a.name} (${_formatBytes(a.size)})',
                             ),
@@ -369,14 +369,14 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
       ),
       actions: _isDownloading
           ? [
-              WaveButton(
+              KatButton(
                 onPressed: _cancelDownload,
                 child: const Text('Cancel Download'),
               ),
             ]
           : [
               if (widget.update.htmlUrl.isNotEmpty)
-                WaveButton(
+                KatButton(
                   onPressed: _openReleaseUrl,
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -387,11 +387,11 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                     ],
                   ),
                 ),
-              WaveButton(
+              KatButton(
                 onPressed: _onDecline,
                 child: const Text('Remind Me Later'),
               ),
-              WaveFilledButton(
+              KatFilledButton(
                 onPressed: _startUpdate,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -415,7 +415,7 @@ class _ChangelogRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final lines = markdown.split('\n');
 
     final widgets = <Widget>[];
@@ -432,7 +432,7 @@ class _ChangelogRenderer extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8, bottom: 4),
             child: Text(
               line.substring(4).replaceAll('**', ''),
-              style: WaveType.body.copyWith(fontWeight: FontWeight.bold),
+              style: KatType.body.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
         );
@@ -442,7 +442,7 @@ class _ChangelogRenderer extends StatelessWidget {
             padding: const EdgeInsets.only(top: 10, bottom: 4),
             child: Text(
               line.substring(3).replaceAll('**', ''),
-              style: WaveType.sectionTitle.copyWith(fontSize: 16),
+              style: KatType.sectionTitle.copyWith(fontSize: 16),
             ),
           ),
         );
@@ -452,7 +452,7 @@ class _ChangelogRenderer extends StatelessWidget {
             padding: const EdgeInsets.only(top: 12, bottom: 6),
             child: Text(
               line.substring(2).replaceAll('**', ''),
-              style: WaveType.pageTitle.copyWith(fontSize: 18),
+              style: KatType.pageTitle.copyWith(fontSize: 18),
             ),
           ),
         );
@@ -467,17 +467,17 @@ class _ChangelogRenderer extends StatelessWidget {
                 Text(
                   '• ',
                   style: TextStyle(
-                    color: waveAccent(context),
+                    color: katAccent(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Expanded(
                   child: Text(
                     content,
-                    style: WaveType.body.copyWith(
+                    style: KatType.body.copyWith(
                       color: dark
-                          ? WaveColors.textPrimary
-                          : WaveColors.lightTextPrimary,
+                          ? KatColors.textPrimary
+                          : KatColors.lightTextPrimary,
                       height: 1.35,
                     ),
                   ),
@@ -492,10 +492,10 @@ class _ChangelogRenderer extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               line,
-              style: WaveType.body.copyWith(
+              style: KatType.body.copyWith(
                 color: dark
-                    ? WaveColors.textSecondary
-                    : WaveColors.lightTextSecondary,
+                    ? KatColors.textSecondary
+                    : KatColors.lightTextSecondary,
                 height: 1.35,
               ),
             ),

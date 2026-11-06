@@ -5,7 +5,7 @@ import 'buttons.dart';
 import 'ambient.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 import 'artwork.dart';
 import 'menus.dart';
 
@@ -13,15 +13,15 @@ import 'menus.dart';
 /// action link.
 ///
 /// Hierarchy is typographic (no boxes): overline labels the group,
-/// [WaveType.sectionTitle] names it, count is quiet meta, action is a
+/// [KatType.sectionTitle] names it, count is quiet meta, action is a
 /// text link.
-class LWSectionHeader extends StatelessWidget {
+class KatSectionHeader extends StatelessWidget {
   final String title;
   final String? overline;
   final int? count;
   final String? actionLabel;
   final VoidCallback? onAction;
-  const LWSectionHeader({
+  const KatSectionHeader({
     super.key,
     required this.title,
     this.overline,
@@ -32,10 +32,10 @@ class LWSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final tertiary = dark
-        ? WaveColors.textTertiary
-        : WaveColors.lightTextTertiary;
+        ? KatColors.textTertiary
+        : KatColors.lightTextTertiary;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -47,7 +47,7 @@ class LWSectionHeader extends StatelessWidget {
               if (overline != null && overline!.isNotEmpty)
                 Text(
                   overline!.toUpperCase(),
-                  style: WaveType.overline.copyWith(color: tertiary),
+                  style: KatType.overline.copyWith(color: tertiary),
                 ),
               if (overline != null && overline!.isNotEmpty)
                 const SizedBox(height: 2),
@@ -59,14 +59,14 @@ class LWSectionHeader extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.sectionTitle,
+                      style: KatType.sectionTitle,
                     ),
                   ),
                   if (count != null) ...[
                     const SizedBox(width: 6),
                     Text(
                       '$count',
-                      style: WaveType.meta.copyWith(
+                      style: KatType.meta.copyWith(
                         color: tertiary,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -78,11 +78,11 @@ class LWSectionHeader extends StatelessWidget {
           ),
         ),
         if (actionLabel != null && onAction != null)
-          WaveLink(
+          KatLink(
             onPressed: onAction,
             child: Text(
               actionLabel!,
-              style: WaveType.label.copyWith(color: waveAccent(context)),
+              style: KatType.label.copyWith(color: katAccent(context)),
             ),
           ),
       ],
@@ -97,7 +97,7 @@ class LWSectionHeader extends StatelessWidget {
 /// Single-row horizontal carousel that lets its tiles lift on hover.
 ///
 /// The lift is a ×1.03 scale plus a drop shadow reaching ~10px above the
-/// cover (see [WaveMediaCard]). A plain `ListView` clips to its own
+/// cover (see [KatMediaCard]). A plain `ListView` clips to its own
 /// viewport, whose height *is* the tile height — so the tile sits flush
 /// against the top edge and the whole lift gets shaved off along the
 /// rail's top the moment the pointer enters. The cover then reads as
@@ -109,7 +109,7 @@ class LWSectionHeader extends StatelessWidget {
 /// disappear) and leaves the vertical axis alone, so the lift survives.
 /// It costs no layout: the overflow lands in the gap the section spacing
 /// above the rail already leaves.
-class WaveRail extends StatelessWidget {
+class KatRail extends StatelessWidget {
   final double height;
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
@@ -117,7 +117,7 @@ class WaveRail extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final ScrollPhysics? physics;
 
-  const WaveRail({
+  const KatRail({
     super.key,
     required this.height,
     required this.itemCount,
@@ -158,7 +158,7 @@ class WaveRail extends StatelessWidget {
   }
 }
 
-/// Clips [WaveRail] horizontally, but leaves a tile height of slack above
+/// Clips [KatRail] horizontally, but leaves a tile height of slack above
 /// and below so the hover lift is never cut (finite, so the rect stays
 /// safe for the engine's clip layer).
 class _RailClip extends CustomClipper<Rect> {
@@ -166,9 +166,9 @@ class _RailClip extends CustomClipper<Rect> {
 
   @override
   Rect getClip(Size size) => Rect.fromLTRB(
-    -WaveRail._sideSlack,
+    -KatRail._sideSlack,
     -size.height,
-    size.width + WaveRail._sideSlack,
+    size.width + KatRail._sideSlack,
     size.height * 2,
   );
 
@@ -176,7 +176,7 @@ class _RailClip extends CustomClipper<Rect> {
   bool shouldReclip(covariant CustomClipper<Rect> oldClipper) => false;
 }
 
-class WaveShelf extends StatelessWidget {
+class KatShelf extends StatelessWidget {
   final String title;
   final String? subtitle;
   final int count;
@@ -184,7 +184,7 @@ class WaveShelf extends StatelessWidget {
   final double cardWidth;
   final double height;
   final List<Widget> children;
-  const WaveShelf({
+  const KatShelf({
     super.key,
     required this.title,
     this.subtitle,
@@ -197,8 +197,8 @@ class WaveShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -209,14 +209,14 @@ class WaveShelf extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: WaveType.sectionTitle),
+                  Text(title, style: KatType.sectionTitle),
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: WaveType.meta.copyWith(
+                      style: KatType.meta.copyWith(
                         color: dark
-                            ? WaveColors.textSecondary
-                            : WaveColors.lightTextSecondary,
+                            ? KatColors.textSecondary
+                            : KatColors.lightTextSecondary,
                       ),
                     ),
                 ],
@@ -225,35 +225,35 @@ class WaveShelf extends StatelessWidget {
             if (count > 0)
               Text(
                 '$count',
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   color: dark
-                      ? WaveColors.textTertiary
-                      : WaveColors.lightTextTertiary,
+                      ? KatColors.textTertiary
+                      : KatColors.lightTextTertiary,
                 ),
               ),
             if (onPlayAll != null) ...[
-              const SizedBox(width: WaveSpacing.x8),
-              WaveLink(
+              const SizedBox(width: KatSpacing.x8),
+              KatLink(
                 onPressed: onPlayAll,
                 child: Text(
                   'Play all',
-                  style: WaveType.label.copyWith(color: accent),
+                  style: KatType.label.copyWith(color: accent),
                 ),
               ),
             ],
           ],
         ),
-        const SizedBox(height: WaveSpacing.x8),
-        WaveRail(
+        const SizedBox(height: KatSpacing.x8),
+        KatRail(
           height: height,
           itemCount: children.length,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
-          separatorBuilder: (_, _) => const SizedBox(width: WaveSpacing.x8),
+          separatorBuilder: (_, _) => const SizedBox(width: KatSpacing.x8),
           // Staggered entrance per card (group-gated when the page
-          // provides a WaveEntranceGroup).
-          itemBuilder: (context, i) => WaveEntrance(
+          // provides a KatEntranceGroup).
+          itemBuilder: (context, i) => KatEntrance(
             index: i,
             rise: 10,
             child: SizedBox(width: cardWidth, child: children[i]),
@@ -265,7 +265,7 @@ class WaveShelf extends StatelessWidget {
 }
 
 /// Artwork-led media card with centered hover play affordance.
-class WaveMediaCard extends ConsumerStatefulWidget {
+class KatMediaCard extends ConsumerStatefulWidget {
   final String title;
   final String subtitle;
   final String artworkUrl;
@@ -274,7 +274,7 @@ class WaveMediaCard extends ConsumerStatefulWidget {
   final String titleFallback;
   final String artist;
   final String videoId;
-  const WaveMediaCard({
+  const KatMediaCard({
     super.key,
     required this.title,
     required this.subtitle,
@@ -287,25 +287,25 @@ class WaveMediaCard extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveMediaCard> createState() => _WaveMediaCardState();
+  ConsumerState<KatMediaCard> createState() => _KatMediaCardState();
 }
 
-class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
+class _KatMediaCardState extends ConsumerState<KatMediaCard> {
   bool _hover = false;
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final seedColor = _hover
         ? (ref.watch(artworkSeedProvider(widget.artworkUrl)).valueOrNull ??
               const Color(0xFF232838))
         : const Color(0xFF232838);
-    return WaveContextMenu(
+    return KatContextMenu(
       items: widget.artist.isEmpty && widget.videoId.isEmpty
           ? () => const []
-          : () => waveTrackMenuItems(
+          : () => katTrackMenuItems(
               context: context,
               ref: ref,
               title: widget.artist.isEmpty
@@ -335,16 +335,16 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: waveMotion(context, WaveMotion.normal),
+                  duration: katMotion(context, KatMotion.normal),
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
-                    borderRadius: WaveRadius.artworkRadius,
+                    borderRadius: KatRadius.artworkRadius,
                     boxShadow: [
                       if (_hover) ...[
-                        ...WaveElevation.lift(dark),
+                        ...KatElevation.lift(dark),
                         BoxShadow(
                           color: seedColor.withValues(alpha: 0.20),
                           blurRadius: 16,
@@ -355,20 +355,20 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
                   ),
                   child: Stack(
                     children: [
-                      WaveArtwork(
+                      KatArtwork(
                         url: widget.artworkUrl,
                         size: 160,
-                        radius: WaveRadius.artwork,
+                        radius: KatRadius.artwork,
                         title: widget.title,
                         artist: widget.artist,
                       ),
                       Positioned.fill(
                         child: AnimatedOpacity(
-                          duration: waveMotion(context, WaveMotion.fast),
+                          duration: katMotion(context, KatMotion.fast),
                           opacity: _hover ? 1 : 0,
                           child: Container(
                             decoration: BoxDecoration(
-                              borderRadius: WaveRadius.artworkRadius,
+                              borderRadius: KatRadius.artworkRadius,
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -381,7 +381,7 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
                             child: Center(
                               child: AnimatedScale(
                                 scale: _hover ? 1.0 : 0.70,
-                                duration: waveMotion(context, WaveMotion.fast),
+                                duration: katMotion(context, KatMotion.fast),
                                 curve: Curves.easeOutBack,
                                 child: GestureDetector(
                                   onTap: widget.onPlay ?? widget.onTap,
@@ -401,7 +401,7 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
                                       ],
                                     ),
                                     child: Icon(
-                                      WaveIcons.play,
+                                      KatIcons.play,
                                       size: 18,
                                       color: onAccentFor(accent),
                                     ),
@@ -421,20 +421,20 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
                 widget.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.trackTitle.copyWith(
+                style: KatType.trackTitle.copyWith(
                   color: dark
-                      ? WaveColors.textPrimary
-                      : WaveColors.lightTextPrimary,
+                      ? KatColors.textPrimary
+                      : KatColors.lightTextPrimary,
                 ),
               ),
               Text(
                 widget.subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   color: dark
-                      ? WaveColors.textSecondary
-                      : WaveColors.lightTextSecondary,
+                      ? KatColors.textSecondary
+                      : KatColors.lightTextSecondary,
                 ),
               ),
             ],
@@ -445,14 +445,14 @@ class _WaveMediaCardState extends ConsumerState<WaveMediaCard> {
   }
 }
 
-class WaveQuickTile extends ConsumerStatefulWidget {
+class KatQuickTile extends ConsumerStatefulWidget {
   final String title;
   final String subtitle;
   final String artworkUrl;
   final bool playing;
   final VoidCallback onTap;
-  final List<WaveMenuEntry> Function()? menuBuilder;
-  const WaveQuickTile({
+  final List<KatMenuEntry> Function()? menuBuilder;
+  const KatQuickTile({
     super.key,
     required this.title,
     required this.subtitle,
@@ -463,16 +463,16 @@ class WaveQuickTile extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveQuickTile> createState() => _WaveQuickTileState();
+  ConsumerState<KatQuickTile> createState() => _KatQuickTileState();
 }
 
-class _WaveQuickTileState extends ConsumerState<WaveQuickTile> {
+class _KatQuickTileState extends ConsumerState<KatQuickTile> {
   bool _hover = false;
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     final tile = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -488,43 +488,43 @@ class _WaveQuickTileState extends ConsumerState<WaveQuickTile> {
         behavior: HitTestBehavior.opaque,
         child: AnimatedScale(
           scale: _pressed ? 0.98 : (_hover ? 1.02 : 1.0),
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.fast),
+            duration: katMotion(context, KatMotion.fast),
             height: 60,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: widget.playing
                   ? accent.withValues(alpha: 0.14)
                   : _hover
-                  ? waveHoverWash(context)
-                  : waveSurface(context),
-              borderRadius: WaveRadius.artworkRadius,
+                  ? katHoverWash(context)
+                  : katSurface(context),
+              borderRadius: KatRadius.artworkRadius,
               border: Border.all(
                 color: widget.playing
                     ? accent.withValues(alpha: 0.5)
-                    : waveDivider(context),
+                    : katDivider(context),
               ),
             ),
             child: Row(
               children: [
                 Stack(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: widget.artworkUrl,
                       size: 48,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                     ),
                     if (_hover || widget.playing)
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: WaveRadius.artworkRadius,
+                            borderRadius: KatRadius.artworkRadius,
                           ),
                           child: Icon(
-                            widget.playing ? WaveIcons.pause : WaveIcons.play,
+                            widget.playing ? KatIcons.pause : KatIcons.play,
                             size: 16,
                             color: Colors.white,
                           ),
@@ -542,13 +542,13 @@ class _WaveQuickTileState extends ConsumerState<WaveQuickTile> {
                         widget.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                        style: KatType.trackTitle.copyWith(fontSize: 12.5),
                       ),
                       Text(
                         widget.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.meta.copyWith(fontSize: 11.5),
+                        style: KatType.meta.copyWith(fontSize: 11.5),
                       ),
                     ],
                   ),
@@ -560,6 +560,6 @@ class _WaveQuickTileState extends ConsumerState<WaveQuickTile> {
       ),
     );
     if (widget.menuBuilder == null) return tile;
-    return WaveContextMenu(items: widget.menuBuilder!, child: tile);
+    return KatContextMenu(items: widget.menuBuilder!, child: tile);
   }
 }

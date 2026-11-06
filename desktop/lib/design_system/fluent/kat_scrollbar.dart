@@ -14,11 +14,11 @@ import '../../../ui/theme/tokens.dart';
 /// - vertical only for page regions; horizontal carousels hide bars and
 ///   rely on wheel/trackpad/drag + subtle edge affordance
 /// - reserves space so durations/actions/lyrics never sit underneath
-class WaveThinScrollbar extends StatelessWidget {
+class KatThinScrollbar extends StatelessWidget {
   final Widget child;
   final ScrollController? controller;
   final bool thumbVisible;
-  const WaveThinScrollbar({
+  const KatThinScrollbar({
     super.key,
     required this.child,
     this.controller,
@@ -31,9 +31,9 @@ class WaveThinScrollbar extends StatelessWidget {
       controller: controller,
       thumbVisibility: thumbVisible,
       thickness: 6,
-      radius: const Radius.circular(WaveRadius.tiny),
+      radius: const Radius.circular(KatRadius.tiny),
       minThumbLength: 40,
-      fadeDuration: WaveMotion.normal,
+      fadeDuration: KatMotion.normal,
       timeToFade: const Duration(milliseconds: 800),
       pressDuration: Duration.zero,
       child: child,
@@ -44,8 +44,8 @@ class WaveThinScrollbar extends StatelessWidget {
 /// Global scroll behaviour: thin Fluent bars, smooth inertia scroll physics,
 /// and support for mouse and trackpad dragging. Horizontal strips scroll via wheel/
 /// trackpad/drag; the bar only appears while interacting.
-class WaveScrollBehavior extends FluentScrollBehavior {
-  const WaveScrollBehavior();
+class KatScrollBehavior extends FluentScrollBehavior {
+  const KatScrollBehavior();
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -82,8 +82,8 @@ class WaveScrollBehavior extends FluentScrollBehavior {
         controller: details.controller,
         thumbVisibility: false,
         thickness: 4,
-        radius: const Radius.circular(WaveRadius.tiny),
-        fadeDuration: WaveMotion.fast,
+        radius: const Radius.circular(KatRadius.tiny),
+        fadeDuration: KatMotion.fast,
         timeToFade: const Duration(milliseconds: 600),
         child: child,
       );
@@ -92,14 +92,14 @@ class WaveScrollBehavior extends FluentScrollBehavior {
         controller: details.controller,
         thumbVisibility: false,
         thickness: 6,
-        radius: const Radius.circular(WaveRadius.tiny),
+        radius: const Radius.circular(KatRadius.tiny),
         minThumbLength: 40,
-        fadeDuration: WaveMotion.normal,
+        fadeDuration: KatMotion.normal,
         timeToFade: const Duration(milliseconds: 800),
         child: child,
       );
     }
-    return WaveSmoothScroll(
+    return KatSmoothScroll(
       controller: details.controller,
       direction: details.direction,
       child: scrollbar,
@@ -110,14 +110,14 @@ class WaveScrollBehavior extends FluentScrollBehavior {
 /// Intercepts desktop mouse wheel [PointerScrollEvent]s to interpolate
 /// target scroll offsets smoothly over time (160ms easeOutCubic)
 /// via a high-refresh-rate [Ticker] instead of discrete single-frame pixel jumps.
-class WaveSmoothScroll extends StatefulWidget {
+class KatSmoothScroll extends StatefulWidget {
   final Widget child;
   final ScrollController? controller;
   final AxisDirection direction;
   final Duration duration;
   final Curve curve;
 
-  const WaveSmoothScroll({
+  const KatSmoothScroll({
     super.key,
     required this.child,
     this.controller,
@@ -127,10 +127,10 @@ class WaveSmoothScroll extends StatefulWidget {
   });
 
   @override
-  State<WaveSmoothScroll> createState() => _WaveSmoothScrollState();
+  State<KatSmoothScroll> createState() => _KatSmoothScrollState();
 }
 
-class _WaveSmoothScrollState extends State<WaveSmoothScroll>
+class _KatSmoothScrollState extends State<KatSmoothScroll>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
   double? _targetPixels;

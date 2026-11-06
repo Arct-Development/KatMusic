@@ -12,7 +12,7 @@ void main() {
   late Directory dir;
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('lw_diag_test');
+    dir = Directory.systemTemp.createTempSync('kat_diag_test');
   });
 
   tearDown(() {

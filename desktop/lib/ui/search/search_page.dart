@@ -7,9 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../components/buttons.dart' show LWTooltip, WaveLink;
+import '../components/buttons.dart' show KatTooltip, KatLink;
 import '../components/inputs.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 import '../../app/track_actions.dart' show formatDuration, playGenerated;
 import '../../core/audio/stream_models.dart';
@@ -26,7 +26,7 @@ import '../components/artwork.dart';
 import '../components/desktop_table.dart';
 import '../components/states.dart';
 import '../podcasts/podcasts_page.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
 
@@ -36,7 +36,7 @@ import '../theme/tokens.dart';
 /// the same query resolve instantly and a new query never blanks the page —
 /// [_CombinedResults] keeps the previous lists on screen with skeleton rows
 /// for sections still pending.
-final waveSearchSongsProvider = FutureProvider.autoDispose
+final katSearchSongsProvider = FutureProvider.autoDispose
     .family<List<SearchResultItem>, String>((ref, q) {
       if (q.trim().isEmpty) return Future.value(const <SearchResultItem>[]);
       return ref.watch(searchRepositoryProvider).search(SearchTab.tracks, q);
@@ -45,17 +45,17 @@ final waveSearchSongsProvider = FutureProvider.autoDispose
 // keystroke prefix otherwise lives in the container forever with its
 // results (songs already was; albums/artists/playlists/suggestions
 // were not — unbounded retention per search session).
-final waveSearchAlbumsProvider = FutureProvider.autoDispose
+final katSearchAlbumsProvider = FutureProvider.autoDispose
     .family<List<SearchResultItem>, String>((ref, q) {
       if (q.trim().isEmpty) return Future.value(const <SearchResultItem>[]);
       return ref.watch(searchRepositoryProvider).search(SearchTab.albums, q);
     });
-final waveSearchArtistsProvider = FutureProvider.autoDispose
+final katSearchArtistsProvider = FutureProvider.autoDispose
     .family<List<SearchResultItem>, String>((ref, q) {
       if (q.trim().isEmpty) return Future.value(const <SearchResultItem>[]);
       return ref.watch(searchRepositoryProvider).search(SearchTab.artists, q);
     });
-final waveSearchPlaylistsProvider = FutureProvider.autoDispose
+final katSearchPlaylistsProvider = FutureProvider.autoDispose
     .family<List<SearchResultItem>, String>((ref, q) {
       if (q.trim().isEmpty) return Future.value(const <SearchResultItem>[]);
       return ref.watch(searchRepositoryProvider).search(SearchTab.playlists, q);
@@ -63,20 +63,20 @@ final waveSearchPlaylistsProvider = FutureProvider.autoDispose
 
 /// Last.fm people. [enabled] stays false for ordinary song queries so a
 /// music search does not spend a user.getinfo / user.search call.
-final waveSearchUsersProvider = FutureProvider.autoDispose
+final katSearchUsersProvider = FutureProvider.autoDispose
     .family<List<SearchResultItem>, ({String q, bool enabled})>((ref, arg) {
       if (!arg.enabled || arg.q.trim().length < 2) {
         return Future.value(const <SearchResultItem>[]);
       }
       return ref.watch(searchRepositoryProvider).search(SearchTab.users, arg.q);
     });
-final waveSuggestionsProvider = FutureProvider.autoDispose
+final katSuggestionsProvider = FutureProvider.autoDispose
     .family<List<SearchSuggestion>, String>((ref, q) async {
       if (q.trim().length < 2) return const <SearchSuggestion>[];
       return ref.watch(searchRepositoryProvider).getSuggestions(q.trim());
     });
 
-final waveSearchPreviewProvider = FutureProvider.autoDispose
+final katSearchPreviewProvider = FutureProvider.autoDispose
     .family<SearchResultItem?, String>((ref, q) {
       if (q.trim().isEmpty) return Future.value(null);
       return ref.watch(searchRepositoryProvider).previewForQuery(q.trim());
@@ -113,14 +113,14 @@ PlayableTrack playableFromSearch(SearchResultItem e) => PlayableTrack(
 /// Search — live results when a query is submitted; empty state is
 /// Recently Searched cards + a browse-category mosaic. The search field
 /// stays left-pinned so clearing recents cannot re-center the page.
-class WaveSearchPage extends ConsumerStatefulWidget {
+class KatSearchPage extends ConsumerStatefulWidget {
   final String initialQuery;
-  const WaveSearchPage({super.key, this.initialQuery = ''});
+  const KatSearchPage({super.key, this.initialQuery = ''});
   @override
-  ConsumerState<WaveSearchPage> createState() => _WaveSearchPageState();
+  ConsumerState<KatSearchPage> createState() => _KatSearchPageState();
 }
 
-class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
+class _KatSearchPageState extends ConsumerState<KatSearchPage> {
   late final TextEditingController _controller;
   final FocusNode _focus = FocusNode();
   Timer? _typeDebounce;
@@ -142,7 +142,7 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
   }
 
   @override
-  void didUpdateWidget(WaveSearchPage old) {
+  void didUpdateWidget(KatSearchPage old) {
     super.didUpdateWidget(old);
     if (old.initialQuery != widget.initialQuery) {
       _controller.text = widget.initialQuery;
@@ -247,9 +247,9 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final suggestions =
-        ref.watch(waveSuggestionsProvider(_suggestQuery)).valueOrNull ??
+        ref.watch(katSuggestionsProvider(_suggestQuery)).valueOrNull ??
         const <SearchSuggestion>[];
     final showSuggestions =
         _query.isNotEmpty &&
@@ -265,7 +265,7 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
         ? 24.0
         : 28.0;
     final side =
-        ((viewport - WaveDensity.contentMax) / 2).clamp(0, double.infinity) +
+        ((viewport - KatDensity.contentMax) / 2).clamp(0, double.infinity) +
         pad;
     final fieldWidth = math.min(420.0, math.max(0.0, viewport - side * 2));
 
@@ -275,11 +275,11 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
         physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(side, 22, side, 32),
         children: [
-          WaveEntrance(
+          KatEntrance(
             rise: 10,
             child: Text(
               'Search',
-              style: WaveType.pageTitle.copyWith(fontSize: 22),
+              style: KatType.pageTitle.copyWith(fontSize: 22),
             ),
           ),
           const SizedBox(height: 12),
@@ -288,7 +288,7 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
             child: SizedBox(
               width: fieldWidth,
               child: TextBox(
-                decoration: waveInputDecoration(),
+                decoration: katInputDecoration(),
                 controller: _controller,
                 focusNode: _focus,
                 autofocus: true,
@@ -296,11 +296,11 @@ class _WaveSearchPageState extends ConsumerState<WaveSearchPage> {
                 prefix: Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Icon(
-                    WaveIcons.search,
+                    KatIcons.search,
                     size: 15,
                     color: dark
-                        ? WaveColors.textTertiary
-                        : WaveColors.lightTextTertiary,
+                        ? KatColors.textTertiary
+                        : KatColors.lightTextTertiary,
                   ),
                 ),
                 onChanged: _onChanged,
@@ -424,15 +424,15 @@ class _SuggestionRowState extends State<_SuggestionRow> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: active ? waveHoverWash(context) : Colors.transparent,
-            borderRadius: BorderRadius.circular(WaveRadius.controls),
+            color: active ? katHoverWash(context) : Colors.transparent,
+            borderRadius: BorderRadius.circular(KatRadius.controls),
           ),
           child: Row(
             children: [
-              WaveArtwork(
+              KatArtwork(
                 url: s.artworkUrl,
                 size: 32,
-                radius: isArtist ? 999 : WaveRadius.artwork,
+                radius: isArtist ? 999 : KatRadius.artwork,
                 isCircle: isArtist,
                 label: s.text,
                 title: s.text,
@@ -449,24 +449,24 @@ class _SuggestionRowState extends State<_SuggestionRow> {
                       s.text,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.body,
+                      style: KatType.body,
                     ),
                     if (s.subtitle.isNotEmpty)
                       Text(
                         s.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.meta.copyWith(
-                          color: waveTextTertiary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextTertiary(context),
                         ),
                       ),
                   ],
                 ),
               ),
               Icon(
-                isArtist ? WaveIcons.artists : WaveIcons.mixes,
+                isArtist ? KatIcons.artists : KatIcons.mixes,
                 size: 15,
-                color: waveTextTertiary(context),
+                color: katTextTertiary(context),
               ),
             ],
           ),
@@ -495,13 +495,13 @@ class _RecentlySearched extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('Recently Searched', style: WaveType.sectionTitle),
+            Text('Recently Searched', style: KatType.sectionTitle),
             const Spacer(),
-            WaveLink(
+            KatLink(
               onPressed: onClear,
               child: Text(
                 'Clear',
-                style: WaveType.label.copyWith(color: waveAccent(context)),
+                style: KatType.label.copyWith(color: katAccent(context)),
               ),
             ),
           ],
@@ -575,8 +575,8 @@ class _RecentSearchCardState extends ConsumerState<_RecentSearchCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final hit = ref.watch(waveSearchPreviewProvider(widget.query)).valueOrNull;
+    final dark = katIsDark(context);
+    final hit = ref.watch(katSearchPreviewProvider(widget.query)).valueOrNull;
     final title = hit?.name.isNotEmpty == true ? hit!.name : widget.query;
     final isArtist = hit?.tab == SearchTab.artists;
     void play() => widget.onOpen();
@@ -605,17 +605,17 @@ class _RecentSearchCardState extends ConsumerState<_RecentSearchCard> {
           onTap: play,
           child: AnimatedScale(
             scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-            duration: waveMotion(context, WaveMotion.fast),
+            duration: katMotion(context, KatMotion.fast),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.normal),
+              duration: katMotion(context, KatMotion.normal),
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: _hover
-                    ? waveSurfaceOverlay(context)
-                    : waveSurface(context),
-                borderRadius: BorderRadius.circular(WaveRadius.controls),
+                    ? katSurfaceOverlay(context)
+                    : katSurface(context),
+                borderRadius: BorderRadius.circular(KatRadius.controls),
                 boxShadow: [
                   if (_hover)
                     BoxShadow(
@@ -627,10 +627,10 @@ class _RecentSearchCardState extends ConsumerState<_RecentSearchCard> {
               ),
               child: Row(
                 children: [
-                  WaveArtwork(
+                  KatArtwork(
                     url: hit?.artworkUrl ?? '',
                     size: 48,
-                    radius: isArtist ? 999 : WaveRadius.artwork,
+                    radius: isArtist ? 999 : KatRadius.artwork,
                     isCircle: isArtist,
                     label: title,
                     title: title,
@@ -646,29 +646,29 @@ class _RecentSearchCardState extends ConsumerState<_RecentSearchCard> {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.trackTitle,
+                          style: KatType.trackTitle,
                         ),
                         Text(
                           _kindLine(hit),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.meta.copyWith(
-                            color: waveTextTertiary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextTertiary(context),
                           ),
                         ),
                       ],
                     ),
                   ),
                   if (_hover)
-                    LWTooltip(
+                    KatTooltip(
                       message: 'Remove',
                       child: MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: IconButton(
                           icon: Icon(
-                            WaveIcons.close,
+                            KatIcons.close,
                             size: 12,
-                            color: waveTextTertiary(context),
+                            color: katTextTertiary(context),
                           ),
                           onPressed: widget.onRemove,
                         ),
@@ -693,7 +693,7 @@ class _BrowseCategories extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Browse Categories', style: WaveType.sectionTitle),
+        Text('Browse Categories', style: KatType.sectionTitle),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, c) {
@@ -808,10 +808,10 @@ class _BrowseTileState extends ConsumerState<_BrowseTile> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _hover ? 1.05 : 1,
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(WaveRadius.menu),
+            borderRadius: BorderRadius.circular(KatRadius.menu),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -861,7 +861,7 @@ class _BrowseTileState extends ConsumerState<_BrowseTile> {
                     widget.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.trackTitle.copyWith(
+                    style: KatType.trackTitle.copyWith(
                       fontSize: 16,
                       color: Colors.white,
                       height: 1.15,
@@ -975,13 +975,13 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
     switch (hero.tab) {
       case SearchTab.artists:
         if (hero.name.isNotEmpty) {
-          waveOpen(context, '/artist/${Uri.encodeComponent(hero.name)}');
+          katOpen(context, '/artist/${Uri.encodeComponent(hero.name)}');
         }
       case SearchTab.albums:
         if (hero.entityId.isNotEmpty) {
-          waveOpen(
+          katOpen(
             context,
-            waveAlbumLocation(
+            katAlbumLocation(
               browseId: hero.entityId,
               title: hero.name,
               artist: hero.artist,
@@ -1014,7 +1014,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
       context.go('/playlists/$id');
       return;
     }
-    waveOpen(
+    katOpen(
       context,
       '/ytplaylist/${item.entityId}'
       '?title=${Uri.encodeComponent(item.name)}'
@@ -1024,10 +1024,10 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
 
   @override
   Widget build(BuildContext context) {
-    final songsAsync = ref.watch(waveSearchSongsProvider(widget.query));
-    final albumsAsync = ref.watch(waveSearchAlbumsProvider(widget.query));
-    final artistsAsync = ref.watch(waveSearchArtistsProvider(widget.query));
-    final playlistsAsync = ref.watch(waveSearchPlaylistsProvider(widget.query));
+    final songsAsync = ref.watch(katSearchSongsProvider(widget.query));
+    final albumsAsync = ref.watch(katSearchAlbumsProvider(widget.query));
+    final artistsAsync = ref.watch(katSearchArtistsProvider(widget.query));
+    final playlistsAsync = ref.watch(katSearchPlaylistsProvider(widget.query));
     final showSongs = _show(SearchTab.tracks);
     final showAlbums = _show(SearchTab.albums);
     final showArtists = _show(SearchTab.artists);
@@ -1039,7 +1039,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                 .read(searchRepositoryProvider)
                 .looksLikeLastFmUser(widget.query));
     final usersAsync = ref.watch(
-      waveSearchUsersProvider((q: widget.query, enabled: showUsers)),
+      katSearchUsersProvider((q: widget.query, enabled: showUsers)),
     );
     final lastFmReady = ref.watch(prefsProvider).lastFmApiKey.isNotEmpty;
     final podcastsOn =
@@ -1085,8 +1085,8 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
     if (widget.filter == SearchTab.users && !lastFmReady && _users.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: 20),
-        child: WaveEmpty(
-          icon: WaveIcons.friends,
+        child: KatEmpty(
+          icon: KatIcons.friends,
           title: 'Connect Last.fm to search people',
           subtitle: 'User search uses the Last.fm API key from Settings.',
           actionLabel: 'Open Settings',
@@ -1105,8 +1105,8 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
       final usersOnly = widget.filter == SearchTab.users;
       return Padding(
         padding: const EdgeInsets.only(top: 20),
-        child: WaveEmpty(
-          icon: anyError ? FluentIcons.error : WaveIcons.search,
+        child: KatEmpty(
+          icon: anyError ? FluentIcons.error : KatIcons.search,
           title: anyError
               ? 'Search failed'
               : (usersOnly ? 'No users' : 'No results'),
@@ -1132,12 +1132,12 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
     // Stagger slots for the results cascade (one per section).
     var e = 0;
     int slot() => e++;
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showUsers) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1149,23 +1149,19 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
             if (!lastFmReady)
               Text(
                 'Connect Last.fm in Settings to search people.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               )
             else if (_users.isEmpty && usersAsync.isLoading)
               const _SkeletonRows(count: 3)
             else if (_users.isEmpty)
               Text(
                 'No matching Last.fm users.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               )
             else
               for (final user in _users.take(8))
                 ListTile(
-                  leading: WaveArtwork.circle(
+                  leading: KatArtwork.circle(
                     url: user.artworkUrl,
                     size: 36,
                     label: user.name,
@@ -1184,10 +1180,10 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
               (_songs.isNotEmpty ||
                   _artists.isNotEmpty ||
                   _albums.isNotEmpty)) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
-              child: Text('Top Result', style: WaveType.sectionTitle),
+              child: Text('Top Result', style: KatType.sectionTitle),
             ),
             const SizedBox(height: 10),
             if (_songs.isEmpty &&
@@ -1196,7 +1192,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                 anyLoading)
               const _SkeletonRows(count: 1, rowHeight: 64)
             else
-              WaveEntrance(
+              KatEntrance(
                 index: slot(),
                 child: _TopResult(
                   song: _songs.isNotEmpty ? _songs.first : null,
@@ -1210,7 +1206,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
           ],
           // Songs — canonical desktop table (5 rows, shrink-wrapped).
           if (showSongs && (_songs.isNotEmpty || songsAsync.isLoading)) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1231,7 +1227,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
             const SizedBox(height: 24),
           ],
           if (showAlbums && (_albums.isNotEmpty || albumsAsync.isLoading)) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1253,7 +1249,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) {
                     final a = rankedAlbums[i];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: i,
                       rise: 10,
                       child: _CoverCard(
@@ -1263,9 +1259,9 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                         size: 124,
                         onTap: () {
                           if (a.entityId.isNotEmpty) {
-                            waveOpen(
+                            katOpen(
                               context,
-                              waveAlbumLocation(
+                              katAlbumLocation(
                                 browseId: a.entityId,
                                 title: a.name,
                                 artist: a.artist.isNotEmpty
@@ -1285,7 +1281,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
           ],
           if (showArtists &&
               (_artists.isNotEmpty || artistsAsync.isLoading)) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1307,13 +1303,13 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                   separatorBuilder: (_, _) => const SizedBox(width: 16),
                   itemBuilder: (context, i) {
                     final a = _artists[i];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: i,
                       rise: 10,
                       child: MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
-                          onTap: () => waveOpen(
+                          onTap: () => katOpen(
                             context,
                             '/artist/${Uri.encodeComponent(a.name)}',
                           ),
@@ -1321,7 +1317,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                             width: 96,
                             child: Column(
                               children: [
-                                WaveArtwork.circle(
+                                KatArtwork.circle(
                                   url: a.artworkUrl,
                                   size: 96,
                                   label: a.name,
@@ -1334,7 +1330,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
-                                  style: WaveType.trackTitle.copyWith(
+                                  style: KatType.trackTitle.copyWith(
                                     fontSize: 12,
                                   ),
                                 ),
@@ -1351,7 +1347,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
           ],
           if (showPlaylists &&
               (_playlists.isNotEmpty || playlistsAsync.isLoading)) ...[
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1373,7 +1369,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
                   separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) {
                     final p = rankedPlaylists[i];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: i,
                       rise: 10,
                       child: _CoverCard(
@@ -1391,7 +1387,7 @@ class _CombinedResultsState extends ConsumerState<_CombinedResults> {
           if (podcastsOn &&
               (episodes.isNotEmpty || podcastAsync.isLoading)) ...[
             const SizedBox(height: 24),
-            WaveEntrance(
+            KatEntrance(
               index: slot(),
               rise: 8,
               child: _SectionHead(
@@ -1429,7 +1425,7 @@ class _SectionHead extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(label, style: WaveType.sectionTitle),
+        Text(label, style: KatType.sectionTitle),
         if (loading) ...[
           const SizedBox(width: 8),
           const SizedBox(
@@ -1450,7 +1446,7 @@ class _SkeletonRows extends StatelessWidget {
   const _SkeletonRows({required this.count, this.rowHeight = 54});
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final wash = (dark ? Colors.white : Colors.black).withValues(alpha: 0.06);
     return Column(
       children: [
@@ -1466,7 +1462,7 @@ class _SkeletonRows extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: wash,
-                    borderRadius: BorderRadius.circular(WaveRadius.artwork),
+                    borderRadius: BorderRadius.circular(KatRadius.artwork),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1481,7 +1477,7 @@ class _SkeletonRows extends StatelessWidget {
                         width: 180,
                         decoration: BoxDecoration(
                           color: wash,
-                          borderRadius: WaveRadius.tinyRadius,
+                          borderRadius: KatRadius.tinyRadius,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1490,7 +1486,7 @@ class _SkeletonRows extends StatelessWidget {
                         width: 120,
                         decoration: BoxDecoration(
                           color: wash,
-                          borderRadius: WaveRadius.tinyRadius,
+                          borderRadius: KatRadius.tinyRadius,
                         ),
                       ),
                     ],
@@ -1515,7 +1511,7 @@ class _SkeletonCards extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final wash = (dark ? Colors.white : Colors.black).withValues(alpha: 0.06);
     return SizedBox(
       height: size + 54,
@@ -1535,7 +1531,7 @@ class _SkeletonCards extends StatelessWidget {
                 shape: circle ? BoxShape.circle : BoxShape.rectangle,
                 borderRadius: circle
                     ? null
-                    : BorderRadius.circular(WaveRadius.artwork),
+                    : BorderRadius.circular(KatRadius.artwork),
               ),
             ),
             const SizedBox(height: 5),
@@ -1544,7 +1540,7 @@ class _SkeletonCards extends StatelessWidget {
               width: size * 0.8,
               decoration: BoxDecoration(
                 color: wash,
-                borderRadius: WaveRadius.tinyRadius,
+                borderRadius: KatRadius.tinyRadius,
               ),
             ),
           ],
@@ -1571,7 +1567,7 @@ class _TopResult extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     // Prefer artist > album > song as the hero.
     final hero = artist ?? album ?? song;
     if (hero == null) return const SizedBox.shrink();
@@ -1588,17 +1584,17 @@ class _TopResult extends StatelessWidget {
           child: Row(
             children: [
               isArtist
-                  ? WaveArtwork.circle(
+                  ? KatArtwork.circle(
                       url: hero.artworkUrl,
                       size: 48,
                       label: hero.name,
                       title: hero.name,
                       artist: hero.name,
                     )
-                  : WaveArtwork(
+                  : KatArtwork(
                       url: hero.artworkUrl,
                       size: 48,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       label: hero.name,
                       title: hero.name,
                       artist: hero.artist,
@@ -1622,7 +1618,7 @@ class _TopResult extends StatelessWidget {
                       ),
                       child: Text(
                         hero.tab.name.toUpperCase(),
-                        style: WaveType.overline.copyWith(fontSize: 9),
+                        style: KatType.overline.copyWith(fontSize: 9),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1630,14 +1626,14 @@ class _TopResult extends StatelessWidget {
                       hero.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(fontSize: 15),
+                      style: KatType.trackTitle.copyWith(fontSize: 15),
                     ),
                     Text(
                       hero.artist.isNotEmpty ? hero.artist : hero.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta.copyWith(
-                        color: waveTextSecondary(context),
+                      style: KatType.meta.copyWith(
+                        color: katTextSecondary(context),
                       ),
                     ),
                   ],
@@ -1656,7 +1652,7 @@ class _TopResult extends StatelessWidget {
                         color: dark ? Colors.white : Colors.black,
                       ),
                       child: Icon(
-                        WaveIcons.play,
+                        KatIcons.play,
                         size: 15,
                         color: dark ? Colors.black : Colors.white,
                       ),
@@ -1665,9 +1661,9 @@ class _TopResult extends StatelessWidget {
                 )
               else
                 Icon(
-                  WaveIcons.chevronRight,
+                  KatIcons.chevronRight,
                   size: 16,
-                  color: waveTextTertiary(context),
+                  color: katTextTertiary(context),
                 ),
             ],
           ),
@@ -1693,7 +1689,7 @@ class _SongsTable extends ConsumerWidget {
     final shown = limit == null ? songs : songs.take(limit!).toList();
     String keyOf(SearchResultItem e) =>
         '${e.name.toLowerCase()}|${e.artist.toLowerCase()}';
-    return WaveDesktopTable<SearchResultItem>(
+    return KatDesktopTable<SearchResultItem>(
       shrinkWrap: true,
       playOnSingleTap: true,
       showArtistColumn: false,
@@ -1740,10 +1736,10 @@ class _CoverCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              WaveArtwork(
+              KatArtwork(
                 url: art,
                 size: size,
-                radius: WaveRadius.artwork,
+                radius: KatRadius.artwork,
                 label: title,
               ),
               const SizedBox(height: 5),
@@ -1751,13 +1747,13 @@ class _CoverCard extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.trackTitle.copyWith(fontSize: 12),
+                style: KatType.trackTitle.copyWith(fontSize: 12),
               ),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta.copyWith(fontSize: 11),
+                style: KatType.meta.copyWith(fontSize: 11),
               ),
             ],
           ),

@@ -8,6 +8,19 @@ void main() {
     expect(jamCodeFromLink('KATMUSIC://JAM?code=xy9z'), 'XY9Z');
   });
 
+  test('reads a shared track into the landing route', () {
+    final route = routeForLink(
+      'katmusic://track?v=abc123XYZ_&title=Cold%2FMess&artist=Prateek%20Kuhad',
+    );
+    expect(route, contains('/shared-track?'));
+    expect(route, contains('v=abc123XYZ_'));
+    expect(route, contains('title=Cold%2FMess'));
+    expect(
+      trackFromLink('katmusic://track?v=abc123XYZ_')?.videoId,
+      'abc123XYZ_',
+    );
+  });
+
   test('rejects anything else', () {
     expect(jamCodeFromLink('katmusic://jam'), isNull);
     expect(jamCodeFromLink('katmusic://jam?code='), isNull);
@@ -15,5 +28,7 @@ void main() {
     expect(jamCodeFromLink('katmusic://other?code=ABC123'), isNull);
     expect(jamCodeFromLink('https://example.com/jam?code=ABC123'), isNull);
     expect(routeForLink('not a link'), isNull);
+    expect(trackFromLink('katmusic://track?v='), isNull);
+    expect(trackFromLink('katmusic://track?v=../x'), isNull);
   });
 }

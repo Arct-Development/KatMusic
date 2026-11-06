@@ -6,7 +6,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../../core/artwork/artwork_resolver.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 export '../../core/artwork/artwork_resolver.dart' show ArtworkKind;
 
@@ -25,7 +25,7 @@ export '../../core/artwork/artwork_resolver.dart' show ArtworkKind;
 /// the background (iTunes store covers for tracks/albums, Deezer press
 /// photos for artists) and hot-swapped in — the original image keeps
 /// showing until then and remains as fallback.
-class WaveArtwork extends StatefulWidget {
+class KatArtwork extends StatefulWidget {
   final String url;
   final String videoId;
   final List<String> fallbackUrls;
@@ -46,13 +46,13 @@ class WaveArtwork extends StatefulWidget {
   /// search on the label would swap in an unrelated artist's photo.
   final bool upgrade;
 
-  const WaveArtwork({
+  const KatArtwork({
     super.key,
     required this.url,
     this.videoId = '',
     this.fallbackUrls = const [],
     required this.size,
-    this.radius = WaveRadius.artwork,
+    this.radius = KatRadius.artwork,
     this.isCircle = false,
     this.label = '',
     this.title = '',
@@ -61,7 +61,7 @@ class WaveArtwork extends StatefulWidget {
     this.upgrade = true,
   });
 
-  const WaveArtwork.circle({
+  const KatArtwork.circle({
     super.key,
     required this.url,
     this.videoId = '',
@@ -76,10 +76,10 @@ class WaveArtwork extends StatefulWidget {
        kind = ArtworkKind.artist;
 
   @override
-  State<WaveArtwork> createState() => _WaveArtworkState();
+  State<KatArtwork> createState() => _KatArtworkState();
 }
 
-class _WaveArtworkState extends State<WaveArtwork> {
+class _KatArtworkState extends State<KatArtwork> {
   int _gen = 0;
   int _attempt = 0;
   int _chainIndex = 0;
@@ -95,7 +95,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
   ArtworkKind get _kind =>
       widget.kind ?? (widget.isCircle ? ArtworkKind.artist : ArtworkKind.track);
 
-  /// [WaveArtwork.url] minus images that load fine but show nothing: the
+  /// [KatArtwork.url] minus images that load fine but show nothing: the
   /// Last.fm star placeholder and Deezer's blank-artist silhouette.
   String get _primaryUrl {
     final u = widget.url;
@@ -231,7 +231,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
   }
 
   @override
-  void didUpdateWidget(WaveArtwork old) {
+  void didUpdateWidget(KatArtwork old) {
     super.didUpdateWidget(old);
     if (old.url != widget.url ||
         old.title != widget.title ||
@@ -279,7 +279,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
 
     // Store-search kickoff runs post-frame, not in the build phase:
     // a fresh page mounts N artworks in one frame (the settings-open
-    // trace showed ~7 WaveArtwork subtrees in a single BUILD), and
+    // trace showed ~7 KatArtwork subtrees in a single BUILD), and
     // starting N iTunes/Deezer resolutions synchronously inside that
     // frame's didChangeDependencies piles store machinery onto the
     // navigation frame. One frame later is visually identical.
@@ -456,8 +456,8 @@ class _WaveArtworkState extends State<WaveArtwork> {
       dark ? 0.14 : 0.72,
     ).toColor();
     return AnimatedContainer(
-      duration: waveMotion(context, WaveMotion.normal),
-      curve: WaveMotion.standard,
+      duration: katMotion(context, KatMotion.normal),
+      curve: KatMotion.standard,
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
@@ -478,7 +478,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
             if (initials.isNotEmpty)
               Text(
                 initials,
-                style: WaveType.sectionTitle.copyWith(
+                style: KatType.sectionTitle.copyWith(
                   fontSize: widget.size * 0.24,
                   fontWeight: FontWeight.w700,
                   color: dark
@@ -488,7 +488,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
               )
             else
               Icon(
-                WaveIcons.music,
+                KatIcons.music,
                 size: widget.size * 0.30,
                 color: dark
                     ? Colors.white.withValues(alpha: 0.55)
@@ -499,7 +499,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
               width: widget.size * 0.22,
               height: 2,
               decoration: BoxDecoration(
-                borderRadius: WaveRadius.tinyRadius,
+                borderRadius: KatRadius.tinyRadius,
                 color: (dark ? Colors.white : Colors.black).withValues(
                   alpha: 0.35,
                 ),
@@ -625,7 +625,7 @@ class _WaveArtworkState extends State<WaveArtwork> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final local = _fileImage(context, dark);
     if (local != null) return local;
     if (_chain.isEmpty || _chainIndex >= _chain.length) {
@@ -684,14 +684,14 @@ class _WaveArtworkState extends State<WaveArtwork> {
         maxHeightDiskCache: diskCache,
         fit: BoxFit.cover,
         useOldImageOnUrlChange: true,
-        fadeInDuration: noFade ? Duration.zero : WaveMotion.fast,
-        fadeOutDuration: noFade ? Duration.zero : WaveMotion.fast,
+        fadeInDuration: noFade ? Duration.zero : KatMotion.fast,
+        fadeOutDuration: noFade ? Duration.zero : KatMotion.fast,
         placeholderFadeInDuration: Duration.zero,
         placeholder: (context, _) => seenBefore
             ? SizedBox(
                 width: widget.size,
                 height: widget.size,
-                child: ColoredBox(color: waveSurfaceOverlay(context)),
+                child: ColoredBox(color: katSurfaceOverlay(context)),
               )
             : _fallback(context, dark),
         errorWidget: (context, _, _) {
@@ -704,16 +704,16 @@ class _WaveArtworkState extends State<WaveArtwork> {
     );
     if (widget.isCircle) {
       return AnimatedContainer(
-        duration: waveMotion(context, WaveMotion.normal),
-        curve: WaveMotion.standard,
+        duration: katMotion(context, KatMotion.normal),
+        curve: KatMotion.standard,
         width: widget.size,
         height: widget.size,
         child: ClipOval(child: image),
       );
     }
     return AnimatedContainer(
-      duration: waveMotion(context, WaveMotion.normal),
-      curve: WaveMotion.standard,
+      duration: katMotion(context, KatMotion.normal),
+      curve: KatMotion.standard,
       width: widget.size,
       height: widget.size,
       child: ClipRRect(

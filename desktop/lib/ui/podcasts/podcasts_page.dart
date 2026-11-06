@@ -16,9 +16,9 @@ import '../components/image_aspect.dart';
 import '../components/hero.dart';
 import '../components/shelf.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Home shelf. Hidden by the parent when the provider is empty or podcasts
 /// are turned off — this widget still renders nothing in that case.
@@ -45,7 +45,7 @@ class PodcastHomeShelf extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LWSectionHeader(
+        KatSectionHeader(
           overline: 'Listen',
           title: 'Podcasts',
           count: shows.isNotEmpty ? shows.length : episodes.length,
@@ -54,7 +54,7 @@ class PodcastHomeShelf extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         if (shows.isNotEmpty)
-          WaveRail(
+          KatRail(
             height: 228,
             itemCount: shows.length > 12 ? 12 : shows.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -62,7 +62,7 @@ class PodcastHomeShelf extends ConsumerWidget {
               final show = shows[i];
               return SizedBox(
                 width: 160,
-                child: WaveMediaCard(
+                child: KatMediaCard(
                   title: show.title,
                   subtitle: show.publisher.isEmpty ? 'Podcast' : show.publisher,
                   artworkUrl: show.artworkUrl,
@@ -83,7 +83,7 @@ class PodcastHomeShelf extends ConsumerWidget {
 }
 
 void _openShow(BuildContext context, PodcastShow show) {
-  waveOpen(
+  katOpen(
     context,
     '/podcasts/${Uri.encodeComponent(show.showId)}'
     '?title=${Uri.encodeComponent(show.title)}',
@@ -154,11 +154,11 @@ class _WidePodcastCardState extends State<_WidePodcastCard> {
               child: AspectRatio(
                 aspectRatio: widget.aspect,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(WaveRadius.artwork),
+                  borderRadius: BorderRadius.circular(KatRadius.artwork),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      ColoredBox(color: waveSurface(context)),
+                      ColoredBox(color: katSurface(context)),
                       if (widget.artworkUrl.isNotEmpty)
                         CachedNetworkImage(
                           imageUrl: widget.artworkUrl,
@@ -178,7 +178,7 @@ class _WidePodcastCardState extends State<_WidePodcastCard> {
                               height: 44,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: waveAccent(context),
+                                color: katAccent(context),
                               ),
                               child: const Icon(
                                 FluentIcons.play,
@@ -199,13 +199,13 @@ class _WidePodcastCardState extends State<_WidePodcastCard> {
               widget.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: WaveType.trackTitle,
+              style: KatType.trackTitle,
             ),
             Text(
               widget.subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+              style: KatType.meta.copyWith(color: katTextSecondary(context)),
             ),
           ],
         ),
@@ -221,7 +221,7 @@ Widget _showRail(
   List<PodcastShow> shows, {
   bool wide = false,
 }) {
-  return WaveRail(
+  return KatRail(
     height: wide ? 196 : 228,
     itemCount: shows.length,
     separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -240,7 +240,7 @@ Widget _showRail(
       }
       return SizedBox(
         width: 160,
-        child: WaveMediaCard(
+        child: KatMediaCard(
           title: show.title,
           subtitle: show.publisher.isEmpty ? 'Podcast' : show.publisher,
           artworkUrl: show.artworkUrl,
@@ -258,7 +258,7 @@ Widget _episodeRail(
   List<PodcastEpisode> episodes, {
   bool wide = false,
 }) {
-  return WaveRail(
+  return KatRail(
     height: wide ? 196 : 228,
     itemCount: episodes.length,
     separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -285,7 +285,7 @@ Widget _episodeRail(
       }
       return SizedBox(
         width: 160,
-        child: WaveMediaCard(
+        child: KatMediaCard(
           title: episode.title,
           subtitle: episode.showTitle.isNotEmpty
               ? episode.showTitle
@@ -299,14 +299,14 @@ Widget _episodeRail(
   );
 }
 
-class WavePodcastsPage extends ConsumerStatefulWidget {
-  const WavePodcastsPage({super.key});
+class KatPodcastsPage extends ConsumerStatefulWidget {
+  const KatPodcastsPage({super.key});
 
   @override
-  ConsumerState<WavePodcastsPage> createState() => _WavePodcastsPageState();
+  ConsumerState<KatPodcastsPage> createState() => _KatPodcastsPageState();
 }
 
-class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
+class _KatPodcastsPageState extends ConsumerState<KatPodcastsPage> {
   final _controller = TextEditingController();
   Timer? _debounce;
   String _query = '';
@@ -332,15 +332,15 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
         padding: EdgeInsets.symmetric(vertical: 32),
         child: Center(child: ProgressRing()),
       ),
-      error: (e, _) => WaveError(
+      error: (e, _) => KatError(
         title: 'Search failed',
         message: '$e',
         onRetry: () => ref.invalidate(podcastSearchProvider(_query)),
       ),
       data: (episodes) {
         if (episodes.isEmpty) {
-          return WaveEmpty(
-            icon: WaveIcons.podcasts,
+          return KatEmpty(
+            icon: KatIcons.podcasts,
             title: 'No results',
             subtitle: 'Nothing found for "$_query".',
           );
@@ -360,12 +360,12 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (shows.isNotEmpty) ...[
-              LWSectionHeader(title: 'Shows'),
+              KatSectionHeader(title: 'Shows'),
               const SizedBox(height: 10),
               _showRail(context, shows),
               const SizedBox(height: 22),
             ],
-            LWSectionHeader(title: 'Episodes'),
+            KatSectionHeader(title: 'Episodes'),
             const SizedBox(height: 10),
             _episodeRail(context, ref, episodes, wide: true),
           ],
@@ -377,8 +377,8 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
   @override
   Widget build(BuildContext context) {
     if (!ref.watch(prefsProvider).podcastsEnabled) {
-      return WaveEmpty(
-        icon: WaveIcons.podcasts,
+      return KatEmpty(
+        icon: KatIcons.podcasts,
         title: 'Podcasts are off',
         subtitle: 'Turn them on in Settings → Library.',
         actionLabel: 'Open settings',
@@ -387,8 +387,8 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
     }
     final home = ref.watch(podcastHomeProvider);
     return home.when(
-      loading: () => const WaveLoading(label: 'Loading podcasts…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading podcasts…'),
+      error: (e, _) => KatError(
         title: 'Podcasts failed',
         message: '$e',
         onRetry: () => ref.invalidate(podcastHomeProvider),
@@ -423,12 +423,12 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           children: [
-            WaveCollectionHero(
+            KatCollectionHero(
               overline: 'Listen',
               title: 'Podcasts',
               meta: 'YouTube Music shows and episodes',
               artworkUrl: heroArt,
-              fallbackIcon: WaveIcons.podcasts,
+              fallbackIcon: KatIcons.podcasts,
             ),
             const SizedBox(height: 16),
             TextBox(
@@ -436,7 +436,7 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
               placeholder: 'Search podcasts and episodes',
               prefix: const Padding(
                 padding: EdgeInsets.only(left: 10),
-                child: Icon(WaveIcons.search, size: 14),
+                child: Icon(KatIcons.search, size: 14),
               ),
               suffix: _controller.text.isEmpty
                   ? null
@@ -457,14 +457,14 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
             if (_query.isNotEmpty)
               _searchResults(context)
             else if (visible.isEmpty)
-              const WaveEmpty(
-                icon: WaveIcons.podcasts,
+              const KatEmpty(
+                icon: KatIcons.podcasts,
                 title: 'No podcasts yet',
                 subtitle: 'YouTube Music did not return any shows.',
               )
             else
               for (final shelf in visible) ...[
-                LWSectionHeader(title: shelf.title),
+                KatSectionHeader(title: shelf.title),
                 const SizedBox(height: 10),
                 if (shelf.shows.isNotEmpty)
                   // Shows keep their square (1:1) cover; episodes are 16:9.
@@ -480,28 +480,27 @@ class _WavePodcastsPageState extends ConsumerState<WavePodcastsPage> {
   }
 }
 
-class WavePodcastShowPage extends ConsumerStatefulWidget {
+class KatPodcastShowPage extends ConsumerStatefulWidget {
   final String showId;
   final String fallbackTitle;
-  const WavePodcastShowPage({
+  const KatPodcastShowPage({
     super.key,
     required this.showId,
     this.fallbackTitle = '',
   });
 
   @override
-  ConsumerState<WavePodcastShowPage> createState() =>
-      _WavePodcastShowPageState();
+  ConsumerState<KatPodcastShowPage> createState() => _KatPodcastShowPageState();
 }
 
-class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
+class _KatPodcastShowPageState extends ConsumerState<KatPodcastShowPage> {
   final List<PodcastEpisode> _extra = [];
   String? _moreToken;
   bool _replacedToken = false;
   bool _loadingMore = false;
 
   @override
-  void didUpdateWidget(covariant WavePodcastShowPage oldWidget) {
+  void didUpdateWidget(covariant KatPodcastShowPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.showId != widget.showId) {
       _extra.clear();
@@ -529,8 +528,8 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
   @override
   Widget build(BuildContext context) {
     if (!ref.watch(prefsProvider).podcastsEnabled) {
-      return WaveEmpty(
-        icon: WaveIcons.podcasts,
+      return KatEmpty(
+        icon: KatIcons.podcasts,
         title: 'Podcasts are off',
         subtitle: 'Turn them on in Settings → Library.',
         actionLabel: 'Open settings',
@@ -540,16 +539,16 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
     ref.watch(playbackServiceProvider.select((s) => s.position.inSeconds));
     final async = ref.watch(podcastShowProvider(widget.showId));
     return async.when(
-      loading: () => const WaveLoading(label: 'Loading show…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading show…'),
+      error: (e, _) => KatError(
         title: 'Could not load show',
         message: '$e',
         onRetry: () => ref.invalidate(podcastShowProvider(widget.showId)),
       ),
       data: (page) {
         if (page == null) {
-          return WaveEmpty(
-            icon: WaveIcons.podcasts,
+          return KatEmpty(
+            icon: KatIcons.podcasts,
             title: widget.fallbackTitle.isEmpty
                 ? 'Show unavailable'
                 : widget.fallbackTitle,
@@ -573,7 +572,7 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           children: [
-            WaveCollectionHero(
+            KatCollectionHero(
               overline: 'Podcast',
               title: page.show.title,
               meta: [
@@ -581,10 +580,10 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
                 '${episodes.length} episodes',
               ].join(' · '),
               artworkUrl: page.show.artworkUrl,
-              fallbackIcon: WaveIcons.podcasts,
+              fallbackIcon: KatIcons.podcasts,
               primaryActions: [
                 if (episodes.isNotEmpty)
-                  WavePrimaryButton(
+                  KatPrimaryButton(
                     label: 'Play',
                     icon: FluentIcons.play,
                     onPressed: () => playPodcastEpisodes(
@@ -600,15 +599,13 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
               const SizedBox(height: 12),
               Text(
                 page.show.description,
-                style: WaveType.body.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.body.copyWith(color: katTextSecondary(context)),
               ),
             ],
             const SizedBox(height: 12),
             if (episodes.isEmpty)
-              const WaveEmpty(
-                icon: WaveIcons.podcasts,
+              const KatEmpty(
+                icon: KatIcons.podcasts,
                 title: 'No episodes',
                 subtitle: 'This show did not include any episodes.',
               )
@@ -628,7 +625,7 @@ class _WavePodcastShowPageState extends ConsumerState<WavePodcastShowPage> {
                 ),
             if ((token ?? '').isNotEmpty) ...[
               const SizedBox(height: 8),
-              WaveGhostButton(
+              KatGhostButton(
                 label: _loadingMore ? 'Loading…' : 'Load more',
                 onPressed: _loadingMore ? null : () => _more(token),
               ),
@@ -687,24 +684,24 @@ class PodcastEpisodeRow extends StatelessWidget {
                 width: 28,
                 child: Text(
                   '${index + 1}',
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     color: playing
-                        ? waveAccent(context)
-                        : waveTextTertiary(context),
+                        ? katAccent(context)
+                        : katTextTertiary(context),
                   ),
                 ),
               ),
               ImageAspectBuilder(
                 url: episode.artworkUrl,
                 builder: (context, aspect) => ClipRRect(
-                  borderRadius: BorderRadius.circular(WaveRadius.artwork),
+                  borderRadius: BorderRadius.circular(KatRadius.artwork),
                   child: SizedBox(
                     width: 44 * aspect,
                     height: 44,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        ColoredBox(color: waveHoverWash(context)),
+                        ColoredBox(color: katHoverWash(context)),
                         if (episode.artworkUrl.isNotEmpty)
                           CachedNetworkImage(
                             imageUrl: episode.artworkUrl,
@@ -725,8 +722,8 @@ class PodcastEpisodeRow extends StatelessWidget {
                       episode.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(
-                        color: playing ? waveAccent(context) : null,
+                      style: KatType.trackTitle.copyWith(
+                        color: playing ? katAccent(context) : null,
                       ),
                     ),
                     if (meta.isNotEmpty)
@@ -734,8 +731,8 @@ class PodcastEpisodeRow extends StatelessWidget {
                         meta,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.meta.copyWith(
-                          color: waveTextSecondary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextSecondary(context),
                         ),
                       ),
                     if (fraction > 0.02) ...[

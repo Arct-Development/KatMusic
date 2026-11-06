@@ -22,7 +22,7 @@ class ThemeState {
   final String accentSource;
 
   /// Experimental: panels sit further off the surface — thinner fill, wider
-  /// blur. Threaded into [WaveHazeScope], so every WaveHaze / WaveGlass
+  /// blur. Threaded into [KatHazeScope], so every KatHaze / KatGlass
   /// follows the switch without reading prefs itself.
   final bool liquidGlass;
 
@@ -43,13 +43,13 @@ class ThemeState {
   });
 
   /// The palette for the Custom theme, or null for Midnight / Pearl.
-  WaveSurfaces? get customSurfaces =>
-      isCustom ? WaveSurfaces.fromCustomBase(customBase) : null;
+  KatSurfaces? get customSurfaces =>
+      isCustom ? KatSurfaces.fromCustomBase(customBase) : null;
 
   /// Brightness actually rendered: Pearl, or a Custom theme on a light
   /// base.
   bool get effectiveLight =>
-      isLight || (isCustom && WaveSurfaces.isLightBase(customBase));
+      isLight || (isCustom && KatSurfaces.isLightBase(customBase));
 }
 
 class ThemeController extends StateNotifier<ThemeState> {

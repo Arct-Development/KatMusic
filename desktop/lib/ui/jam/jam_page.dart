@@ -11,19 +11,19 @@ import '../components/artwork.dart';
 import '../components/buttons.dart';
 import '../components/inputs.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Collaborative listening room. Local playback keeps running if the
 /// server cannot be reached; the error is shown here.
-class WaveJamPage extends ConsumerStatefulWidget {
+class KatJamPage extends ConsumerStatefulWidget {
   final String? initialCode;
-  const WaveJamPage({super.key, this.initialCode});
+  const KatJamPage({super.key, this.initialCode});
 
   @override
-  ConsumerState<WaveJamPage> createState() => _WaveJamPageState();
+  ConsumerState<KatJamPage> createState() => _KatJamPageState();
 }
 
-class _WaveJamPageState extends ConsumerState<WaveJamPage> {
+class _KatJamPageState extends ConsumerState<KatJamPage> {
   late final TextEditingController _name;
   late final TextEditingController _code;
   late final TextEditingController _chat;
@@ -58,7 +58,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
   }
 
   @override
-  void didUpdateWidget(WaveJamPage oldWidget) {
+  void didUpdateWidget(KatJamPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     final code = widget.initialCode;
     if (code != null && code != oldWidget.initialCode) _code.text = code;
@@ -157,15 +157,15 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
         children: [
           Row(
             children: [
-              Text('Jam', style: WaveType.pageTitle),
+              Text('Jam', style: KatType.pageTitle),
               if (active) ...[
                 const SizedBox(width: 12),
-                _Pill(label: 'Live', color: WaveColors.success, dot: true),
+                _Pill(label: 'Live', color: KatColors.success, dot: true),
               ],
               const Spacer(),
-              WaveIconButton(
+              KatIconButton(
                 tooltip: 'Close',
-                icon: const Icon(WaveIcons.close, size: 14),
+                icon: const Icon(KatIcons.close, size: 14),
                 onPressed: () => context.go('/home'),
               ),
             ],
@@ -177,7 +177,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                 : 'Listen together. Rooms run on a hosted Clash Projects '
                       'server; if it is unreachable, playback on this device '
                       'keeps going.',
-            style: WaveType.body.copyWith(color: waveTextSecondary(context)),
+            style: KatType.body.copyWith(color: katTextSecondary(context)),
           ),
           const SizedBox(height: 20),
           Expanded(child: active ? _room(context, jam) : _entry(context, jam)),
@@ -219,7 +219,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                     TextBox(
                       controller: _name,
                       placeholder: 'Listener',
-                      decoration: waveInputDecoration(),
+                      decoration: katInputDecoration(),
                     ),
                   ],
                 ),
@@ -229,12 +229,12 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Always-on rooms', style: WaveType.sectionTitle),
+                    Text('Always-on rooms', style: KatType.sectionTitle),
                     const SizedBox(height: 4),
                     Text(
                       'Open all day. The first person in is the admin.',
-                      style: WaveType.meta.copyWith(
-                        color: waveTextSecondary(context),
+                      style: KatType.meta.copyWith(
+                        color: katTextSecondary(context),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -249,7 +249,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                                 children: [
                                   Text(
                                     station.title,
-                                    style: WaveType.body.copyWith(
+                                    style: KatType.body.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -257,15 +257,15 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                                     _counts[station.code] == null
                                         ? '${station.blurb} · ${station.code}'
                                         : '${_counts[station.code]} listening · ${station.code}',
-                                    style: WaveType.meta.copyWith(
-                                      color: waveTextSecondary(context),
+                                    style: KatType.meta.copyWith(
+                                      color: katTextSecondary(context),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 8),
-                            WaveFilledButton(
+                            KatFilledButton(
                               onPressed: busy
                                   ? null
                                   : () {
@@ -288,12 +288,12 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Start a room', style: WaveType.sectionTitle),
+                    Text('Start a room', style: KatType.sectionTitle),
                     const SizedBox(height: 4),
                     Text(
                       'You get a code to share with friends.',
-                      style: WaveType.meta.copyWith(
-                        color: waveTextSecondary(context),
+                      style: KatType.meta.copyWith(
+                        color: katTextSecondary(context),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -311,7 +311,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                     const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: WaveFilledButton(
+                      child: KatFilledButton(
                         onPressed: busy
                             ? null
                             : () {
@@ -332,12 +332,12 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Join a room', style: WaveType.sectionTitle),
+                    Text('Join a room', style: KatType.sectionTitle),
                     const SizedBox(height: 4),
                     Text(
                       'Enter the code a friend sent you.',
-                      style: WaveType.meta.copyWith(
-                        color: waveTextSecondary(context),
+                      style: KatType.meta.copyWith(
+                        color: katTextSecondary(context),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -347,7 +347,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           child: TextBox(
                             controller: _code,
                             placeholder: 'ABC123',
-                            decoration: waveInputDecoration(),
+                            decoration: katInputDecoration(),
                             style: const TextStyle(
                               letterSpacing: 3,
                               fontWeight: FontWeight.w600,
@@ -361,7 +361,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        WaveButton(
+                        KatButton(
                           onPressed: busy
                               ? null
                               : () {
@@ -436,7 +436,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
 
   Widget _roomColumn(BuildContext context, JamSnapshot jam) {
     final controller = ref.read(jamControllerProvider.notifier);
-    final secondary = waveTextSecondary(context);
+    final secondary = katTextSecondary(context);
     final track = jam.track;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -457,10 +457,10 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: waveAccent(context).withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(WaveRadius.menu),
+                  color: katAccent(context).withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(KatRadius.menu),
                   border: Border.all(
-                    color: waveAccent(context).withValues(alpha: 0.28),
+                    color: katAccent(context).withValues(alpha: 0.28),
                     width: 0.8,
                   ),
                 ),
@@ -492,7 +492,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                   if (jam.radio)
                     _Pill(
                       label: 'Live station',
-                      color: WaveColors.success,
+                      color: KatColors.success,
                       dot: true,
                     )
                   else if (jam.permanent)
@@ -512,13 +512,13 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
               Row(
                 children: [
                   Expanded(
-                    child: WaveFilledButton(
+                    child: KatFilledButton(
                       onPressed: () => _copyInvite(jam.roomCode),
                       child: Text(_copied ? 'Copied' : 'Copy invite'),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  WaveButton(
+                  KatButton(
                     onPressed: controller.leave,
                     child: const Text('Leave'),
                   ),
@@ -537,12 +537,12 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
               if (track == null)
                 Text(
                   'Nothing yet. Play a song and it plays for everyone.',
-                  style: WaveType.meta.copyWith(color: secondary),
+                  style: KatType.meta.copyWith(color: secondary),
                 )
               else
                 Row(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: track.artworkUrl ?? '',
                       title: track.title,
                       artist: track.artist,
@@ -557,14 +557,14 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                             track.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: WaveType.trackTitle,
+                            style: KatType.trackTitle,
                           ),
                           const SizedBox(height: 2),
                           Text(
                             track.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: WaveType.meta.copyWith(color: secondary),
+                            style: KatType.meta.copyWith(color: secondary),
                           ),
                         ],
                       ),
@@ -590,7 +590,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
               if (jam.queue.isEmpty)
                 Text(
                   'Nothing queued.',
-                  style: WaveType.meta.copyWith(color: secondary),
+                  style: KatType.meta.copyWith(color: secondary),
                 )
               else ...[
                 for (var i = 0; i < jam.queue.length && i < 5; i++)
@@ -602,7 +602,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           width: 22,
                           child: Text(
                             '${i + 1}',
-                            style: WaveType.meta.copyWith(color: secondary),
+                            style: KatType.meta.copyWith(color: secondary),
                           ),
                         ),
                         Expanded(
@@ -612,7 +612,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                                 : '${jam.queue[i].title} · ${jam.queue[i].artist}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: WaveType.body,
+                            style: KatType.body,
                           ),
                         ),
                       ],
@@ -623,7 +623,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       '+${jam.queue.length - 5} more',
-                      style: WaveType.meta.copyWith(color: secondary),
+                      style: KatType.meta.copyWith(color: secondary),
                     ),
                   ),
               ],
@@ -651,7 +651,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                               : person.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.body,
+                          style: KatType.body,
                         ),
                       ),
                       if (person.isHost)
@@ -666,7 +666,7 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           jam.isMainHost &&
                           person.userId != jam.userId) ...[
                         const SizedBox(width: 8),
-                        WaveButton(
+                        KatButton(
                           onPressed: () =>
                               controller.transferAdmin(person.userId),
                           child: const Text('Make admin'),
@@ -677,13 +677,13 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           person.userId != jam.userId) ...[
                         const SizedBox(width: 8),
                         if (person.isCoHost)
-                          WaveButton(
+                          KatButton(
                             onPressed: () =>
                                 controller.revokeHost(person.userId),
                             child: const Text('Remove host'),
                           )
                         else if (jam.coHostId.isEmpty)
-                          WaveButton(
+                          KatButton(
                             onPressed: () =>
                                 controller.grantHost(person.userId),
                             child: const Text('Make host'),
@@ -709,14 +709,14 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: _Label('Chat'),
           ),
-          Container(height: 1, color: waveDivider(context)),
+          Container(height: 1, color: katDivider(context)),
           Expanded(
             child: jam.chat.isEmpty
                 ? Center(
                     child: Text(
                       'No messages yet. Say hi.',
-                      style: WaveType.meta.copyWith(
-                        color: waveTextTertiary(context),
+                      style: KatType.meta.copyWith(
+                        color: katTextTertiary(context),
                       ),
                     ),
                   )
@@ -736,14 +736,14 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                     },
                   ),
           ),
-          Container(height: 1, color: waveDivider(context)),
+          Container(height: 1, color: katDivider(context)),
           if (_replyTo != null)
             Container(
               padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
               decoration: BoxDecoration(
-                color: waveAccent(context).withValues(alpha: 0.08),
+                color: katAccent(context).withValues(alpha: 0.08),
                 border: Border(
-                  left: BorderSide(color: waveAccent(context), width: 3),
+                  left: BorderSide(color: katAccent(context), width: 3),
                 ),
               ),
               child: Row(
@@ -754,8 +754,8 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                       children: [
                         Text(
                           'Replying to ${_replyTo!.userName}',
-                          style: WaveType.meta.copyWith(
-                            color: waveAccent(context),
+                          style: KatType.meta.copyWith(
+                            color: katAccent(context),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -763,14 +763,14 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                           _replyTo!.text,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.meta.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  WaveIconButton(
+                  KatIconButton(
                     tooltip: 'Cancel reply',
                     icon: const Icon(FluentIcons.chrome_close, size: 11),
                     onPressed: () => setState(() => _replyTo = null),
@@ -787,14 +787,14 @@ class _WaveJamPageState extends ConsumerState<WaveJamPage> {
                     controller: _chat,
                     focusNode: _chatFocus,
                     placeholder: 'Message',
-                    decoration: waveInputDecoration(),
+                    decoration: katInputDecoration(),
                     // onEditingComplete (not onSubmitted) so Enter does not
                     // run the default "unfocus after submit".
                     onEditingComplete: _send,
                   ),
                 ),
                 const SizedBox(width: 8),
-                WaveFilledButton(onPressed: _send, child: const Text('Send')),
+                KatFilledButton(onPressed: _send, child: const Text('Send')),
               ],
             ),
           ),
@@ -811,8 +811,8 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final base = waveSurface(context);
+    final dark = katIsDark(context);
+    final base = katSurface(context);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -829,8 +829,8 @@ class _Card extends StatelessWidget {
             base,
           ],
         ),
-        borderRadius: BorderRadius.circular(WaveRadius.floating),
-        border: Border.all(color: waveDivider(context), width: 0.8),
+        borderRadius: BorderRadius.circular(KatRadius.floating),
+        border: Border.all(color: katDivider(context), width: 0.8),
       ),
       child: child,
     );
@@ -844,7 +844,7 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text.toUpperCase(),
-    style: WaveType.overline.copyWith(color: waveTextTertiary(context)),
+    style: KatType.overline.copyWith(color: katTextTertiary(context)),
   );
 }
 
@@ -856,7 +856,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = color ?? waveTextSecondary(context);
+    final tone = color ?? katTextSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -876,7 +876,7 @@ class _Pill extends StatelessWidget {
           ],
           Text(
             label,
-            style: WaveType.meta.copyWith(
+            style: KatType.meta.copyWith(
               color: tone,
               fontWeight: FontWeight.w600,
               fontSize: 11,
@@ -903,7 +903,7 @@ class _Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: waveAccent(context).withValues(alpha: 0.18),
+        color: katAccent(context).withValues(alpha: 0.18),
       ),
       child: Text(
         initial.toUpperCase(),
@@ -927,7 +927,7 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     return Padding(
       padding: EdgeInsets.only(top: showName ? 10 : 3),
       child: Column(
@@ -940,8 +940,8 @@ class _Bubble extends StatelessWidget {
               padding: const EdgeInsets.only(left: 4, bottom: 3),
               child: Text(
                 line.isHost ? '${line.userName} · host' : line.userName,
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
+                style: KatType.meta.copyWith(
+                  color: katTextSecondary(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -959,7 +959,7 @@ class _Bubble extends StatelessWidget {
     );
   }
 
-  Widget _replyButton() => WaveIconButton(
+  Widget _replyButton() => KatIconButton(
     tooltip: 'Reply',
     icon: const Icon(FluentIcons.reply, size: 12),
     onPressed: onReply,
@@ -977,13 +977,13 @@ class _Bubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: mine
                   ? accent.withValues(alpha: 0.18)
-                  : waveSurfaceRaised(context),
+                  : katSurfaceRaised(context),
               // Chat-bubble shape: the corner facing the speaker is tight.
               borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(WaveRadius.menu + 4),
-                topRight: const Radius.circular(WaveRadius.menu + 4),
-                bottomLeft: Radius.circular(mine ? WaveRadius.menu + 4 : 4),
-                bottomRight: Radius.circular(mine ? 4 : WaveRadius.menu + 4),
+                topLeft: const Radius.circular(KatRadius.menu + 4),
+                topRight: const Radius.circular(KatRadius.menu + 4),
+                bottomLeft: Radius.circular(mine ? KatRadius.menu + 4 : 4),
+                bottomRight: Radius.circular(mine ? 4 : KatRadius.menu + 4),
               ),
             ),
             child: Column(
@@ -1003,7 +1003,7 @@ class _Bubble extends StatelessWidget {
                       children: [
                         Text(
                           reply.userName,
-                          style: WaveType.meta.copyWith(
+                          style: KatType.meta.copyWith(
                             color: accent,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1012,8 +1012,8 @@ class _Bubble extends StatelessWidget {
                           reply.text,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: WaveType.meta.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                       ],
@@ -1021,7 +1021,7 @@ class _Bubble extends StatelessWidget {
                   ),
                 SelectableText(
                   line.text,
-                  style: WaveType.body,
+                  style: KatType.body,
                   contextMenuBuilder: TextBox.defaultContextMenuBuilder,
                 ),
               ],

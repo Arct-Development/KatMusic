@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/search/search_repository.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Keyboard-first command palette (Ctrl+K).
 ///
@@ -25,16 +25,19 @@ Future<void> showWaveCommandPalette(
 }) {
   final controller = TextEditingController();
   final routes = <(String path, String label, IconData icon)>[
-    (('/home'), 'Go to Home', WaveIcons.home),
-    (('/search'), 'Go to Search', WaveIcons.search),
-    (('/liked'), 'Go to Liked Songs', WaveIcons.liked),
+    (('/home'), 'Go to Home', KatIcons.home),
+    (('/discover'), 'Go to Discover', KatIcons.discover),
+    (('/new-releases'), 'Go to New Releases', KatIcons.albums),
+    (('/search'), 'Go to Search', KatIcons.search),
+    (('/liked'), 'Go to Liked Songs', KatIcons.liked),
     (('/albums'), 'Go to Albums', FluentIcons.music_note),
     (('/artists'), 'Go to Artists', FluentIcons.contact),
-    (('/playlists'), 'Go to Playlists', WaveIcons.playlists),
+    (('/playlists'), 'Go to Playlists', KatIcons.playlists),
     (('/podcasts'), 'Go to Podcasts', FluentIcons.headset),
     (('/mixes'), 'Open Mix Lab', FluentIcons.lightbulb),
+    (('/group-blend'), 'Open Group Blend', KatIcons.friends),
     (('/downloads'), 'Go to Downloads', FluentIcons.download),
-    (('/history'), 'Go to History', WaveIcons.history),
+    (('/history'), 'Go to History', KatIcons.history),
     (('/now'), 'Open Now Playing', FluentIcons.circle_fill),
     (('/settings'), 'Open Settings', FluentIcons.settings),
   ];
@@ -170,7 +173,7 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final results = _results();
     final sel = results.isEmpty ? 0 : _selected.clamp(0, results.length - 1);
     // Group consecutive entries under mini-section headers. Rows are
@@ -198,11 +201,11 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
         constraints: const BoxConstraints(maxWidth: 440),
         style: ContentDialogThemeData(
           decoration: BoxDecoration(
-            color: waveSurfaceRaised(context),
+            color: katSurfaceRaised(context),
             borderRadius: const BorderRadius.all(
-              Radius.circular(WaveRadius.floating),
+              Radius.circular(KatRadius.floating),
             ),
-            border: Border.all(color: waveDivider(context)),
+            border: Border.all(color: katDivider(context)),
             // Cheap open frame: blur 28/2 rasterizes a large shadow on
             // the exact frame the dialog appears; 12/0 reads the same
             // at 440px width.
@@ -222,18 +225,18 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextBox(
-                decoration: waveInputDecoration(),
+                decoration: katInputDecoration(),
                 controller: widget.controller,
                 autofocus: true,
                 placeholder: 'Type a command…',
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 8),
-                  child: Icon(WaveIcons.search, size: 15),
+                  child: Icon(KatIcons.search, size: 15),
                 ),
                 onChanged: _onChanged,
                 onSubmitted: (_) => _activate(results),
               ),
-              const SizedBox(height: WaveSpacing.x8),
+              const SizedBox(height: KatSpacing.x8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 320),
                 child: results.isEmpty
@@ -251,9 +254,9 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
                               padding: const EdgeInsets.fromLTRB(10, 10, 10, 2),
                               child: Text(
                                 item.title.toUpperCase(),
-                                style: WaveType.overline.copyWith(
+                                style: KatType.overline.copyWith(
                                   fontSize: 9,
-                                  color: waveTextTertiary(context),
+                                  color: katTextTertiary(context),
                                 ),
                               ),
                             );
@@ -275,7 +278,7 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
           ),
         ),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
@@ -317,7 +320,7 @@ class _PaletteRow extends StatelessWidget {
     final r = entry;
     final leading = Icon(r.icon, size: 15);
     return ListTile.selectable(
-      shape: RoundedRectangleBorder(borderRadius: WaveRadius.controlsRadius),
+      shape: RoundedRectangleBorder(borderRadius: KatRadius.controlsRadius),
       selected: selected,
       selectionMode: ListTileSelectionMode.single,
       leading: SizedBox(width: 28, height: 28, child: leading),

@@ -8,7 +8,7 @@ import '../search/shared_providers.dart';
 /// kv_store key for the home shelf order and hidden set.
 const homeShelfLayoutKey = 'home_shelf_layout';
 
-/// Stable ids for the shelves [WaveHomePage] builds.
+/// Stable ids for the shelves [KatHomePage] builds.
 ///
 /// A shelf added to [HomeShelfCatalog.defaults] later still shows up for
 /// people who already saved a layout: [resolveHomeShelfOrder] leaves any

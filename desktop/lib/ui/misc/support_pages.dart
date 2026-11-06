@@ -22,7 +22,7 @@ import 'friends_page.dart' show localFriendsProvider;
 import '../components/track_row.dart';
 import '../theme/tokens.dart';
 
-export 'friends_page.dart' show WaveFriendsPage;
+export 'friends_page.dart' show KatFriendsPage;
 
 /// Secondary pages re-homed in the Fluent system.
 ///
@@ -116,14 +116,14 @@ String _topPeriodLabel(String period) => switch (period) {
   _ => 'All time',
 };
 
-class WaveProfilePage extends ConsumerStatefulWidget {
-  const WaveProfilePage({super.key});
+class KatProfilePage extends ConsumerStatefulWidget {
+  const KatProfilePage({super.key});
 
   @override
-  ConsumerState<WaveProfilePage> createState() => _WaveProfilePageState();
+  ConsumerState<KatProfilePage> createState() => _KatProfilePageState();
 }
 
-class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
+class _KatProfilePageState extends ConsumerState<KatProfilePage> {
   String _period = '7day';
 
   @override
@@ -132,7 +132,7 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
     final viewing = ref.watch(viewingProfileProvider);
     final user = viewing ?? auth.username;
     if (user.isEmpty) {
-      return WaveEmpty(
+      return KatEmpty(
         icon: FluentIcons.contact,
         title: 'No profile selected',
         subtitle: 'Connect Last.fm in Settings to see your profile.',
@@ -144,13 +144,13 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+          constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'SOCIAL',
-                style: WaveType.overline.copyWith(color: waveAccent(context)),
+                style: KatType.overline.copyWith(color: katAccent(context)),
               ),
               Builder(
                 builder: (context) {
@@ -169,7 +169,7 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      WaveArtwork.circle(
+                      KatArtwork.circle(
                         url: stats?.avatarUrl ?? '',
                         size: 88,
                         label: user,
@@ -182,14 +182,14 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(user, style: WaveType.pageTitle),
+                            Text(user, style: KatType.pageTitle),
                             const SizedBox(height: 4),
                             Text(
                               viewing != null
                                   ? 'Last.fm profile'
                                   : 'Your Last.fm profile',
-                              style: WaveType.body.copyWith(
-                                color: waveTextSecondary(context),
+                              style: KatType.body.copyWith(
+                                color: katTextSecondary(context),
                               ),
                             ),
                             if (stats != null) ...[
@@ -201,8 +201,8 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
                                   '${n(stats.albumCount)} albums',
                                   '${n(stats.trackCount)} tracks',
                                 ].join(' · '),
-                                style: WaveType.meta.copyWith(
-                                  color: waveTextTertiary(context),
+                                style: KatType.meta.copyWith(
+                                  color: katTextTertiary(context),
                                 ),
                               ),
                             ],
@@ -213,21 +213,21 @@ class _WaveProfilePageState extends ConsumerState<WaveProfilePage> {
                                 runSpacing: 8,
                                 children: [
                                   if (isFriend)
-                                    WaveGhostButton(
+                                    KatGhostButton(
                                       label: 'Remove friend',
                                       onPressed: () => ref
                                           .read(localFriendsProvider.notifier)
                                           .remove(viewing),
                                     )
                                   else
-                                    WavePrimaryButton(
+                                    KatPrimaryButton(
                                       label: 'Add friend',
                                       icon: FluentIcons.add,
                                       onPressed: () => ref
                                           .read(localFriendsProvider.notifier)
                                           .add(viewing),
                                     ),
-                                  WaveButton(
+                                  KatButton(
                                     onPressed: () => ref
                                         .read(viewingProfileProvider.notifier)
                                         .clear(),
@@ -323,7 +323,7 @@ class _TopTracksSection extends ConsumerWidget {
       children: [
         Text(
           'TOP TRACKS',
-          style: WaveType.overline.copyWith(color: waveAccent(context)),
+          style: KatType.overline.copyWith(color: katAccent(context)),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -339,8 +339,8 @@ class _TopTracksSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         topAsync.when(
-          loading: () => const WaveLoading(label: 'Loading top tracks…'),
-          error: (e, _) => WaveError(
+          loading: () => const KatLoading(label: 'Loading top tracks…'),
+          error: (e, _) => KatError(
             title: 'Could not load top tracks',
             message: '$e',
             onRetry: () => ref.invalidate(
@@ -350,7 +350,7 @@ class _TopTracksSection extends ConsumerWidget {
           data: (all) {
             final tracks = all.take(30).toList();
             if (tracks.isEmpty) {
-              return const WaveEmpty(
+              return const KatEmpty(
                 icon: FluentIcons.music_note,
                 title: 'No top tracks yet',
                 subtitle: 'Scrobble more to fill this chart.',
@@ -381,7 +381,7 @@ class _TopTracksSection extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                WaveDesktopTable<HomeTrack>(
+                KatDesktopTable<HomeTrack>(
                   items: tracks,
                   keyOf: (t) =>
                       '${t.name.toLowerCase()}|${t.artist.toLowerCase()}',
@@ -444,13 +444,11 @@ class _TopTracksSection extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     'ONLY ON YOUTUBE',
-                    style: WaveType.overline.copyWith(
-                      color: waveAccent(context),
-                    ),
+                    style: KatType.overline.copyWith(color: katAccent(context)),
                   ),
                   const SizedBox(height: 8),
                   for (var i = 0; i < ytOnly.length.clamp(0, 10); i++)
-                    WaveTrackRow(
+                    KatTrackRow(
                       index: i + 1,
                       title: ytOnly[i].name,
                       artist: ytOnly[i].artist,
@@ -476,14 +474,14 @@ class _TopTracksSection extends ConsumerWidget {
 }
 
 /// Friends page (search + add + profiles) lives in friends_page.dart.
-class WaveMixLabPage extends ConsumerStatefulWidget {
-  const WaveMixLabPage({super.key});
+class KatMixLabPage extends ConsumerStatefulWidget {
+  const KatMixLabPage({super.key});
 
   @override
-  ConsumerState<WaveMixLabPage> createState() => _WaveMixLabPageState();
+  ConsumerState<KatMixLabPage> createState() => _KatMixLabPageState();
 }
 
-class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
+class _KatMixLabPageState extends ConsumerState<KatMixLabPage> {
   static const _modes = <(MixMode, String)>[
     (MixMode.top, 'Top tracks'),
     (MixMode.recent, 'Recent'),
@@ -575,11 +573,11 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
         title: const Text('Save playlist'),
         content: TextBox(controller: name, placeholder: 'Playlist name'),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Save'),
           ),
@@ -615,21 +613,19 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+          constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'LISTEN',
-                style: WaveType.overline.copyWith(color: waveAccent(context)),
+                style: KatType.overline.copyWith(color: katAccent(context)),
               ),
-              const Text('Mix Lab', style: WaveType.pageTitle),
+              const Text('Mix Lab', style: KatType.pageTitle),
               const SizedBox(height: 2),
               Text(
                 '$_count tracks · $_modeLabel',
-                style: WaveType.body.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.body.copyWith(color: katTextSecondary(context)),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -664,7 +660,7 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
                 children: [
                   SizedBox(
                     width: 92,
-                    child: Text('$_count tracks', style: WaveType.meta),
+                    child: Text('$_count tracks', style: KatType.meta),
                   ),
                   Expanded(
                     child: Slider(
@@ -698,13 +694,13 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  WavePrimaryButton(
+                  KatPrimaryButton(
                     label: _busy ? 'Generating…' : 'Generate',
                     icon: FluentIcons.refresh,
                     onPressed: _busy ? null : _generate,
                   ),
                   if (_tracks.isNotEmpty) ...[
-                    WaveGhostButton(
+                    KatGhostButton(
                       label: 'Play',
                       icon: FluentIcons.play,
                       onPressed: () => playGenerated(
@@ -715,7 +711,7 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
                         queueAll: _tracks,
                       ),
                     ),
-                    WaveGhostButton(
+                    KatGhostButton(
                       label: 'Save playlist',
                       icon: FluentIcons.save,
                       onPressed: _save,
@@ -725,15 +721,15 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
               ),
               const SizedBox(height: 12),
               if (_busy)
-                const WaveLoading(label: 'Generating mix…')
+                const KatLoading(label: 'Generating mix…')
               else if (_error != null)
-                WaveError(
+                KatError(
                   title: 'Mix failed',
                   message: _error!,
                   onRetry: _generate,
                 )
               else if (_tracks.isEmpty)
-                const WaveEmpty(
+                const KatEmpty(
                   icon: FluentIcons.lightbulb,
                   title: 'No mix yet',
                   subtitle:
@@ -742,9 +738,9 @@ class _WaveMixLabPageState extends ConsumerState<WaveMixLabPage> {
               else
                 Column(
                   children: [
-                    const WaveTrackTableHeader(showAlbum: false),
+                    const KatTrackTableHeader(showAlbum: false),
                     for (var i = 0; i < _tracks.length; i++)
-                      WaveTrackRow(
+                      KatTrackRow(
                         index: i + 1,
                         title: _tracks[i].name,
                         artist: _tracks[i].artist,

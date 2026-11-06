@@ -12,7 +12,7 @@ chrome of its foundation:
 
 - midnight-navy surfaces (`#060910` / `#0B111C` / `#111B2A`);
 - KatMusic blue (`#3D91FF`) for selection, progress and focus;
-- Figtree for the complete Wave type ramp;
+- Figtree for the complete Kat type ramp;
 - shader-backed [Liquid Glass](https://github.com/sdegenaar/liquid_glass_widgets)
   on the title bar, navigation rail, player dock and floating controls;
 - KatMusic logo, welcome lockup, navigation labels and home wordmark;
@@ -71,9 +71,8 @@ version tags.
 - `lib/features/lossless`: lossless/addon sources.
 - `lib/features/lyrics`: timed lyrics plus provider fallback.
 - `lib/features/jam`: synchronized listening rooms.
-- `lib/ui`: Fluent shell, Wave design tokens, Liquid Glass chrome.
+- `lib/ui`: Fluent shell, Kat design tokens, Liquid Glass chrome.
 - `lib/core`: storage, networking, diagnostics and artwork cache.
 
-Desktop foundation adapted from LastWave Desktop; the KatMusic identity, theme,
-navigation wording, artwork, packaging metadata and Liquid Glass surfaces are
-KatMusic-specific. The third-party LastWave lyrics provider keeps its own name.
+KatMusic Desktop is its own application: the identity, theme, navigation,
+artwork, packaging metadata and Liquid Glass surfaces are KatMusic-specific.

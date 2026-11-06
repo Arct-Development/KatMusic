@@ -18,11 +18,11 @@ import '../components/ambient.dart';
 import '../components/artist_line.dart';
 import '../components/artwork.dart';
 import '../components/buttons.dart'
-    show LWTooltip, LWVolumeSlider, WaveA11yButton, WaveLink;
+    show KatTooltip, KatVolumeSlider, KatA11yButton, KatLink;
 import '../components/menus.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Coherent desktop music player — ONE object, 80px, three zones.
 ///
@@ -35,7 +35,7 @@ import '../theme/wave_icons.dart';
 /// Always visible — placeholder when nothing is playing, never collapses.
 /// Position ticks are scoped to [_DockProgress] only via
 /// `select((s) => position/buffered/duration)`; the shell never rebuilds.
-class WavePlayerDock extends ConsumerWidget {
+class KatPlayerDock extends ConsumerWidget {
   final VoidCallback onExpand;
   final VoidCallback onToggleQueue;
   final VoidCallback onToggleLyrics;
@@ -54,7 +54,7 @@ class WavePlayerDock extends ConsumerWidget {
   /// (like, transport, timeline, volume, queue, exit). The track identity is
   /// already on the stage, so it is not repeated here.
   final bool compact;
-  const WavePlayerDock({
+  const KatPlayerDock({
     super.key,
     this.compact = false,
     required this.onExpand,
@@ -71,7 +71,7 @@ class WavePlayerDock extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     // NOTE: position/duration/buffered/volume/speed deliberately excluded
     // here so 1s ticks and volume drags never rebuild the whole dock.
     // _DockProgress owns position; _VolumeSection owns volume; _DockOverflow
@@ -107,8 +107,8 @@ class WavePlayerDock extends ConsumerWidget {
 
     final targetBase = () {
       final baseColor = dark
-          ? waveDockTranslucent(context)
-          : waveSurface(context).withValues(alpha: 0.97);
+          ? katDockTranslucent(context)
+          : katSurface(context).withValues(alpha: 0.97);
       if (dockTint != null && dark) {
         return Color.lerp(baseColor, dockTint, 0.05) ?? baseColor;
       }
@@ -117,17 +117,17 @@ class WavePlayerDock extends ConsumerWidget {
 
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(begin: targetBase, end: targetBase),
-      duration: waveMotion(context, WaveMotion.normal),
+      duration: katMotion(context, KatMotion.normal),
       curve: Curves.easeOutCubic,
       builder: (context, animatedBase, child) {
-        return WaveLiquidGlass(
+        return KatLiquidGlass(
           base: animatedBase ?? targetBase,
-          border: Border(top: BorderSide(color: waveDivider(context))),
+          border: Border(top: BorderSide(color: katDivider(context))),
           child: child!,
         );
       },
       child: SizedBox(
-        height: compact ? _kCompactDockHeight : WaveDensity.dock,
+        height: compact ? _kCompactDockHeight : KatDensity.dock,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: LayoutBuilder(
@@ -154,7 +154,7 @@ class WavePlayerDock extends ConsumerWidget {
                   SizedBox(
                     width: narrow ? 200 : 290,
                     child: AnimatedSwitcher(
-                      duration: waveMotion(context, WaveMotion.normal),
+                      duration: katMotion(context, KatMotion.normal),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
                       transitionBuilder: (child, anim) =>
@@ -168,20 +168,20 @@ class WavePlayerDock extends ConsumerWidget {
                               key: ValueKey(current.queueKey),
                               child: Row(
                                 children: [
-                                  WaveA11yButton(
+                                  KatA11yButton(
                                     label: 'Open Now Playing',
                                     onTap: onExpand,
                                     child: MouseRegion(
                                       cursor: SystemMouseCursors.click,
                                       child: GestureDetector(
                                         onTap: onExpand,
-                                        child: LWTooltip(
+                                        child: KatTooltip(
                                           message: 'Open Now Playing',
-                                          child: WaveArtwork(
+                                          child: KatArtwork(
                                             url: current.artworkUrl,
                                             videoId: current.videoId,
                                             size: 48,
-                                            radius: WaveRadius.artwork,
+                                            radius: KatRadius.artwork,
                                             label: current.title,
                                             title: current.title,
                                             artist: current.artist,
@@ -209,22 +209,22 @@ class WavePlayerDock extends ConsumerWidget {
                                                 current.title,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: WaveType.trackTitle
+                                                style: KatType.trackTitle
                                                     .copyWith(
                                                       fontSize: 13.5,
                                                       fontWeight:
                                                           FontWeight.w600,
                                                     ),
                                               ),
-                                              WaveArtistLine(
+                                              KatArtistLine(
                                                 artist: current.artist,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: WaveType.meta.copyWith(
+                                                style: KatType.meta.copyWith(
                                                   fontSize: 12,
                                                   color: dark
-                                                      ? WaveColors.textSecondary
-                                                      : WaveColors
+                                                      ? KatColors.textSecondary
+                                                      : KatColors
                                                             .lightTextSecondary,
                                                 ),
                                               ),
@@ -238,9 +238,9 @@ class WavePlayerDock extends ConsumerWidget {
                                   if (!narrow)
                                     _Glyph(
                                       tooltip: 'More',
-                                      icon: WaveIcons.more,
+                                      icon: KatIcons.more,
                                       onTap: null,
-                                      menuItems: waveTrackMenuItems(
+                                      menuItems: katTrackMenuItems(
                                         context: context,
                                         ref: ref,
                                         title: current.title,
@@ -274,7 +274,7 @@ class WavePlayerDock extends ConsumerWidget {
                               children: [
                                 _Glyph(
                                   tooltip: jamLive ? 'Live station' : 'Shuffle',
-                                  icon: WaveIcons.shuffle,
+                                  icon: KatIcons.shuffle,
                                   // Live rooms: off and dimmed (not just un-lit),
                                   // since the host owns the queue order.
                                   active: player.shuffleEnabled && !jamLive,
@@ -288,7 +288,7 @@ class WavePlayerDock extends ConsumerWidget {
                                       : jamLocked
                                       ? 'Locked in Jam until $jamUnlockAt'
                                       : 'Previous',
-                                  icon: WaveIcons.previous,
+                                  icon: KatIcons.previous,
                                   large: true,
                                   onTap: current == null || jamLocked
                                       ? null
@@ -311,7 +311,7 @@ class WavePlayerDock extends ConsumerWidget {
                                       : jamLocked
                                       ? 'Locked in Jam until $jamUnlockAt'
                                       : 'Next',
-                                  icon: WaveIcons.next,
+                                  icon: KatIcons.next,
                                   large: true,
                                   onTap: current == null || jamLocked
                                       ? null
@@ -322,8 +322,8 @@ class WavePlayerDock extends ConsumerWidget {
                                       ? 'Live station'
                                       : 'Repeat ${player.repeatMode.name}',
                                   icon: player.repeatMode == RepeatMode.one
-                                      ? WaveIcons.repeatOne
-                                      : WaveIcons.repeat,
+                                      ? KatIcons.repeatOne
+                                      : KatIcons.repeat,
                                   active:
                                       player.repeatMode != RepeatMode.off &&
                                       !jamLive,
@@ -373,7 +373,7 @@ class WavePlayerDock extends ConsumerWidget {
                             if (showJam)
                               _Glyph(
                                 tooltip: 'Jam',
-                                icon: WaveIcons.friends,
+                                icon: KatIcons.friends,
                                 active:
                                     GoRouterState.of(context).uri.path ==
                                     '/jam',
@@ -381,21 +381,21 @@ class WavePlayerDock extends ConsumerWidget {
                               ),
                             _Glyph(
                               tooltip: 'Queue',
-                              icon: WaveIcons.queue,
+                              icon: KatIcons.queue,
                               active: queueActive,
                               onTap: onToggleQueue,
                             ),
                             if (onToggleEqualizer != null)
                               _Glyph(
                                 tooltip: 'Equalizer',
-                                icon: WaveIcons.equalizer,
+                                icon: KatIcons.equalizer,
                                 active: equalizerActive,
                                 onTap: onToggleEqualizer!,
                               ),
                             if (onToggleCanvas != null)
                               _Glyph(
                                 tooltip: 'Canvas',
-                                icon: WaveIcons.canvas,
+                                icon: KatIcons.canvas,
                                 active: canvasActive,
                                 onTap: onToggleCanvas!,
                               ),
@@ -406,13 +406,13 @@ class WavePlayerDock extends ConsumerWidget {
                             if (showExpand)
                               _Glyph(
                                 tooltip: 'Now Playing',
-                                icon: WaveIcons.expand,
+                                icon: KatIcons.expand,
                                 onTap: onExpand,
                               ),
                             if (showMini)
                               _Glyph(
                                 tooltip: 'Mini player',
-                                icon: WaveIcons.miniPlayer,
+                                icon: KatIcons.miniPlayer,
                                 onTap: onToggleMini,
                               ),
                             _DockOverflow(
@@ -463,7 +463,7 @@ class WavePlayerDock extends ConsumerWidget {
               tooltip: jamLocked
                   ? 'Locked in Jam until $jamUnlockAt'
                   : 'Previous',
-              icon: WaveIcons.previous,
+              icon: KatIcons.previous,
               large: true,
               onTap: current == null || jamLocked ? null : notifier.previous,
             ),
@@ -475,7 +475,7 @@ class WavePlayerDock extends ConsumerWidget {
             ),
             _Glyph(
               tooltip: jamLocked ? 'Locked in Jam until $jamUnlockAt' : 'Next',
-              icon: WaveIcons.next,
+              icon: KatIcons.next,
               large: true,
               onTap: current == null || jamLocked ? null : notifier.next,
             ),
@@ -490,13 +490,13 @@ class WavePlayerDock extends ConsumerWidget {
               const _VolumeFlyoutSection(),
             _Glyph(
               tooltip: 'Queue',
-              icon: WaveIcons.queue,
+              icon: KatIcons.queue,
               active: queueActive,
               onTap: onToggleQueue,
             ),
             _Glyph(
               tooltip: 'Exit fullscreen (Esc)',
-              icon: WaveIcons.exitFullscreen,
+              icon: KatIcons.exitFullscreen,
               onTap: onExpand,
             ),
           ],
@@ -506,7 +506,7 @@ class WavePlayerDock extends ConsumerWidget {
   }
 }
 
-/// Height of the fullscreen overlay dock ([WavePlayerDock.compact]).
+/// Height of the fullscreen overlay dock ([KatPlayerDock.compact]).
 const double _kCompactDockHeight = 56;
 
 /// Placeholder identity — dock never collapses to zero height.
@@ -515,13 +515,13 @@ class _IdleIdentity extends StatelessWidget {
   const _IdleIdentity({super.key, required this.onExpand});
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     return Row(
       children: [
-        const WaveArtwork(
+        const KatArtwork(
           url: '',
           size: 56,
-          radius: WaveRadius.artwork,
+          radius: KatRadius.artwork,
           label: 'Nothing playing',
         ),
         const SizedBox(width: 10),
@@ -534,17 +534,17 @@ class _IdleIdentity extends StatelessWidget {
                 'Nothing playing',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.trackTitle.copyWith(fontSize: 13.5),
+                style: KatType.trackTitle.copyWith(fontSize: 13.5),
               ),
               Text(
                 'Pick something to start',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   fontSize: 12,
                   color: dark
-                      ? WaveColors.textTertiary
-                      : WaveColors.lightTextTertiary,
+                      ? KatColors.textTertiary
+                      : KatColors.lightTextTertiary,
                 ),
               ),
             ],
@@ -586,12 +586,12 @@ class _QualityFlyoutState extends ConsumerState<_QualityFlyout> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final s = widget.stream;
     final outputPath = ref.watch(audioOutputProvider).path;
     return FlyoutTarget(
       controller: _flyout,
-      child: LWTooltip(
+      child: KatTooltip(
         message:
             '${s.audioCodec}${s.bitrateKbps > 0 ? ' · ${s.bitrateKbps} kbps' : ''} — details',
         child: MouseRegion(
@@ -605,35 +605,35 @@ class _QualityFlyoutState extends ConsumerState<_QualityFlyout> {
                 placementMode: FlyoutPlacementMode.topCenter,
                 transitionDuration: const Duration(milliseconds: 90),
                 transitionBuilder: fastFlyoutTransition,
-                builder: (context) => WaveFlyoutPanel.items(
+                builder: (context) => KatFlyoutPanel.items(
                   entries: [
-                    WaveMenuAction(
-                      leading: const Icon(WaveIcons.gauge, size: 15),
+                    KatMenuAction(
+                      leading: const Icon(KatIcons.gauge, size: 15),
                       label: '${s.qualityBadge} · ${s.audioCodec}',
                       onPressed: () {},
                     ),
-                    const WaveMenuSeparator(),
-                    WaveMenuAction(
-                      leading: const Icon(WaveIcons.music, size: 15),
+                    const KatMenuSeparator(),
+                    KatMenuAction(
+                      leading: const Icon(KatIcons.music, size: 15),
                       label: 'Sample rate · ${_sourceRateLabel(s)}',
                       onPressed: () {},
                     ),
                     if (outputPath.output != null)
-                      WaveMenuAction(
-                        leading: const Icon(WaveIcons.speaker, size: 15),
+                      KatMenuAction(
+                        leading: const Icon(KatIcons.speaker, size: 15),
                         label:
                             'Output · ${outputPath.output}'
                             '${outputPath.resampling ? ' (resampled)' : ''}',
                         onPressed: () {},
                       ),
                     if (outputPath.output != null && outputPath.resampling)
-                      WaveMenuAction(
-                        leading: const Icon(WaveIcons.gauge, size: 15),
+                      KatMenuAction(
+                        leading: const Icon(KatIcons.gauge, size: 15),
                         label: 'Device rate differs from the source',
                         onPressed: () {},
                       ),
-                    WaveMenuAction(
-                      leading: const Icon(WaveIcons.mixes, size: 15),
+                    KatMenuAction(
+                      leading: const Icon(KatIcons.mixes, size: 15),
                       label:
                           (s.qualityBadge == 'ATMOS' ||
                               s.audioCodec.contains('ATMOS'))
@@ -642,14 +642,14 @@ class _QualityFlyoutState extends ConsumerState<_QualityFlyout> {
                       onPressed: () {},
                     ),
                     if (s.bitrateKbps > 0)
-                      WaveMenuAction(
-                        leading: const Icon(WaveIcons.clock, size: 15),
+                      KatMenuAction(
+                        leading: const Icon(KatIcons.clock, size: 15),
                         label: 'Bitrate · ${s.bitrateKbps} kbps',
                         onPressed: () {},
                       ),
-                    const WaveMenuSeparator(),
-                    WaveMenuAction(
-                      leading: const Icon(WaveIcons.settings, size: 15),
+                    const KatMenuSeparator(),
+                    KatMenuAction(
+                      leading: const Icon(KatIcons.settings, size: 15),
                       label: 'Quality settings',
                       onPressed: () => context.go('/settings'),
                     ),
@@ -660,17 +660,17 @@ class _QualityFlyoutState extends ConsumerState<_QualityFlyout> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
-                color: _hover ? waveHoverWash(context) : Colors.transparent,
-                border: Border.all(color: waveOutline(context)),
-                borderRadius: BorderRadius.circular(WaveRadius.controls),
+                color: _hover ? katHoverWash(context) : Colors.transparent,
+                border: Border.all(color: katOutline(context)),
+                borderRadius: BorderRadius.circular(KatRadius.controls),
               ),
               child: Text(
                 s.qualityBadge,
-                style: WaveType.overline.copyWith(
+                style: KatType.overline.copyWith(
                   fontSize: 9,
                   color: dark
-                      ? WaveColors.textSecondary
-                      : WaveColors.lightTextSecondary,
+                      ? KatColors.textSecondary
+                      : KatColors.lightTextSecondary,
                 ),
               ),
             ),
@@ -684,19 +684,19 @@ class _QualityFlyoutState extends ConsumerState<_QualityFlyout> {
 /// Endpoints + path detail for the More menu's Output submenu. The current endpoint is tinted with the
 /// accent — the same signal the glyph itself carries when the path is
 /// bit-perfect.
-List<WaveMenuEntry> _outputEntries(
+List<KatMenuEntry> _outputEntries(
   BuildContext context,
   WidgetRef ref,
   AudioOutputState output,
 ) {
   final path = output.path;
-  final accent = waveAccent(context);
+  final accent = katAccent(context);
   void select(String id) =>
       ref.read(audioOutputProvider.notifier).selectDevice(id);
   return [
-    WaveMenuAction(
+    KatMenuAction(
       leading: Icon(
-        WaveIcons.device,
+        KatIcons.device,
         size: 15,
         color: output.selectedId.isEmpty ? accent : null,
       ),
@@ -704,47 +704,47 @@ List<WaveMenuEntry> _outputEntries(
       onPressed: () => select(''),
     ),
     for (final d in output.devices.take(8))
-      WaveMenuAction(
+      KatMenuAction(
         leading: Icon(
-          WaveIcons.device,
+          KatIcons.device,
           size: 15,
           color: d.id == output.selectedId ? accent : null,
         ),
         label: d.displayName,
         onPressed: () => select(d.id),
       ),
-    const WaveMenuSeparator(),
-    WaveMenuAction(
-      leading: const Icon(WaveIcons.music, size: 15),
+    const KatMenuSeparator(),
+    KatMenuAction(
+      leading: const Icon(KatIcons.music, size: 15),
       label: 'Source · ${path.sourceLabel}',
       onPressed: () {},
     ),
-    WaveMenuAction(
-      leading: const Icon(WaveIcons.streamPath, size: 15),
+    KatMenuAction(
+      leading: const Icon(KatIcons.streamPath, size: 15),
       label: Platform.isWindows
           ? (path.exclusiveActive ? 'WASAPI · Exclusive' : 'WASAPI · Shared')
           : 'System output',
       onPressed: () {},
     ),
-    WaveMenuAction(
-      leading: const Icon(WaveIcons.volume, size: 15),
+    KatMenuAction(
+      leading: const Icon(KatIcons.volume, size: 15),
       label: path.hardwareVolume
           ? 'Volume · DAC hardware'
           : (path.softwareVolume ? 'Volume · Software' : 'Volume · Unity'),
       onPressed: () {},
     ),
-    const WaveMenuSeparator(),
-    WaveMenuAction(
+    const KatMenuSeparator(),
+    KatMenuAction(
       leading: Icon(
-        path.bitPerfect ? WaveIcons.check : WaveIcons.info,
+        path.bitPerfect ? KatIcons.check : KatIcons.info,
         size: 15,
         color: path.bitPerfect ? accent : null,
       ),
       label: path.bitPerfect ? 'Bit-Perfect' : path.reason.label,
       onPressed: () {},
     ),
-    WaveMenuAction(
-      leading: const Icon(WaveIcons.settings, size: 15),
+    KatMenuAction(
+      leading: const Icon(KatIcons.settings, size: 15),
       label: 'Output settings',
       onPressed: () => context.go('/settings?section=audio'),
     ),
@@ -758,7 +758,7 @@ class _Glyph extends StatefulWidget {
   final bool active;
   final bool large;
   final VoidCallback? onTap;
-  final List<WaveMenuEntry>? menuItems;
+  final List<KatMenuEntry>? menuItems;
   const _Glyph({
     required this.tooltip,
     required this.icon,
@@ -777,17 +777,17 @@ class _GlyphState extends State<_Glyph> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final disabled = widget.onTap == null && widget.menuItems == null;
     final color = widget.active
         ? accent
         : disabled
-        ? (dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary)
+        ? (dark ? KatColors.textTertiary : KatColors.lightTextTertiary)
               .withValues(alpha: 0.5)
         : _hover
-        ? (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
-        : (dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary);
+        ? (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
+        : (dark ? KatColors.textSecondary : KatColors.lightTextSecondary);
     Widget glyph = MouseRegion(
       cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -802,7 +802,7 @@ class _GlyphState extends State<_Glyph> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _pressed ? 0.90 : (_hover ? 1.10 : 1.0),
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: Container(
             width: 34,
@@ -819,10 +819,10 @@ class _GlyphState extends State<_Glyph> {
       ),
     );
     if (widget.menuItems != null) {
-      glyph = WaveMenuButton(
+      glyph = KatMenuButton(
         entries: widget.menuItems!,
         placement: FlyoutPlacementMode.topRight,
-        buttonBuilder: (context, onOpen) => WaveA11yButton(
+        buttonBuilder: (context, onOpen) => KatA11yButton(
           label: widget.tooltip,
           onTap: onOpen,
           child: MouseRegion(
@@ -839,7 +839,7 @@ class _GlyphState extends State<_Glyph> {
               onTap: onOpen,
               child: AnimatedScale(
                 scale: _pressed ? 0.90 : (_hover ? 1.10 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: Container(
                   width: 34,
@@ -853,20 +853,20 @@ class _GlyphState extends State<_Glyph> {
         ),
       );
     } else {
-      glyph = WaveA11yButton(
+      glyph = KatA11yButton(
         label: widget.tooltip,
         selected: widget.active,
         onTap: widget.onTap,
         child: glyph,
       );
     }
-    return LWTooltip(message: widget.tooltip, child: glyph);
+    return KatTooltip(message: widget.tooltip, child: glyph);
   }
 }
 
 /// Fluent media transport button — 36px accent disc, NOT a giant FAB.
 ///
-/// Uses the active [waveAccent] (KatMusic / System / Artwork accent) with
+/// Uses the active [katAccent] (KatMusic / System / Artwork accent) with
 /// contrast glyph, 1px tonal ring + restrained shadow. Hover 92%,
 /// pressed 85%, focus ring 2px, tooltip with shortcut. Both themes.
 class _PlayGlyph extends StatefulWidget {
@@ -896,8 +896,8 @@ class _PlayGlyphState extends State<_PlayGlyph> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final onAccent = onAccentFor(accent);
     Color bg;
     if (!widget.enabled) {
@@ -910,7 +910,7 @@ class _PlayGlyphState extends State<_PlayGlyph> {
       bg = accent;
     }
     final fg = widget.enabled ? onAccent : onAccent.withValues(alpha: 0.5);
-    return LWTooltip(
+    return KatTooltip(
       message: widget.playing ? 'Pause (Space)' : 'Play (Space)',
       child: Semantics(
         button: true,
@@ -950,10 +950,10 @@ class _PlayGlyphState extends State<_PlayGlyph> {
               onTap: widget.enabled ? widget.onTap : null,
               child: AnimatedScale(
                 scale: _pressed ? 0.92 : (_hover ? 1.06 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
@@ -967,7 +967,7 @@ class _PlayGlyphState extends State<_PlayGlyph> {
                               .withValues(alpha: _focus.hasFocus ? 0.9 : 0.14),
                       width: _focus.hasFocus ? 2 : 1,
                     ),
-                    boxShadow: WaveElevation.transport(dark),
+                    boxShadow: KatElevation.transport(dark),
                   ),
                   child: Center(
                     child: widget.buffering
@@ -981,7 +981,7 @@ class _PlayGlyphState extends State<_PlayGlyph> {
                             ),
                           )
                         : AnimatedSwitcher(
-                            duration: waveMotion(
+                            duration: katMotion(
                               context,
                               const Duration(milliseconds: 180),
                             ),
@@ -997,7 +997,7 @@ class _PlayGlyphState extends State<_PlayGlyph> {
                                   ),
                                 ),
                             child: Icon(
-                              widget.playing ? WaveIcons.pause : WaveIcons.play,
+                              widget.playing ? KatIcons.pause : KatIcons.play,
                               key: ValueKey(widget.playing),
                               size: 15,
                               color: fg,
@@ -1059,8 +1059,8 @@ class _DockProgressState extends ConsumerState<_DockProgress> {
     final jamLive = ref.watch(
       jamControllerProvider.select((j) => j.isStationListener),
     );
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final clock = ref.watch(
       playbackServiceProvider.select(
         (s) =>
@@ -1074,10 +1074,10 @@ class _DockProgressState extends ConsumerState<_DockProgress> {
       themeControllerProvider.select((t) => t.wavySeekbar),
     );
 
-    final timeStyle = WaveType.meta.copyWith(
+    final timeStyle = KatType.meta.copyWith(
       fontSize: 11,
       fontFeatures: const [FontFeature.tabularFigures()],
-      color: dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary,
+      color: dark ? KatColors.textTertiary : KatColors.lightTextTertiary,
     );
     final totalMs = clock.duration.inMilliseconds;
     // mpv reports no duration until the source is open — a restored session
@@ -1131,7 +1131,7 @@ class _DockProgressState extends ConsumerState<_DockProgress> {
               }
               return KeyEventResult.ignored;
             },
-            child: LWTooltip(
+            child: KatTooltip(
               message:
                   hoverLabel ??
                   (jamLive
@@ -1173,7 +1173,7 @@ class _DockProgressState extends ConsumerState<_DockProgress> {
                       opacity: jamLive ? 0.45 : 1,
                       child: RepaintBoundary(
                         child: wavy
-                            ? _WaveTimeline(
+                            ? _KatTimeline(
                                 progress: clock.position,
                                 buffered: clock.buffered,
                                 total: clock.duration,
@@ -1242,8 +1242,8 @@ class _DockProgressState extends ConsumerState<_DockProgress> {
 ///
 /// Static by design: the wave is a shape, not an animation, so it costs no
 /// frames and has nothing to unwind under reduce motion.
-class _WaveTimeline extends StatelessWidget {
-  const _WaveTimeline({
+class _KatTimeline extends StatelessWidget {
+  const _KatTimeline({
     required this.progress,
     required this.buffered,
     required this.total,
@@ -1301,7 +1301,7 @@ class _WaveTimeline extends StatelessWidget {
               height: 12,
               width: width,
               child: CustomPaint(
-                painter: _WaveTimelinePainter(
+                painter: _KatTimelinePainter(
                   progress: _ratio(progress),
                   buffered: _ratio(buffered),
                   showThumb: showThumb,
@@ -1320,8 +1320,8 @@ class _WaveTimeline extends StatelessWidget {
   }
 }
 
-class _WaveTimelinePainter extends CustomPainter {
-  const _WaveTimelinePainter({
+class _KatTimelinePainter extends CustomPainter {
+  const _KatTimelinePainter({
     required this.progress,
     required this.buffered,
     required this.showThumb,
@@ -1398,7 +1398,7 @@ class _WaveTimelinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _WaveTimelinePainter old) =>
+  bool shouldRepaint(covariant _KatTimelinePainter old) =>
       old.progress != progress ||
       old.buffered != buffered ||
       old.showThumb != showThumb ||
@@ -1450,7 +1450,7 @@ class _LikeGlyphState extends ConsumerState<_LikeGlyph>
     // fired on unlike too.) Settle is mounted-guarded so a track change
     // mid-pop can't drive a disposed controller. Reduce motion keeps the
     // glyph at rest: the fill change still lands on the same frame.
-    if (!liked && !waveReduceMotion(context)) {
+    if (!liked && !katReduceMotion(context)) {
       _anim
           .animateTo(
             1.25,
@@ -1495,7 +1495,7 @@ class _LikeGlyphState extends ConsumerState<_LikeGlyph>
       scale: _anim,
       child: _Glyph(
         tooltip: liked ? 'Unlike' : 'Like',
-        icon: liked ? WaveIcons.likedFill : WaveIcons.liked,
+        icon: liked ? KatIcons.likedFill : KatIcons.liked,
         active: liked,
         onTap: _onToggle,
       ),
@@ -1535,7 +1535,7 @@ class _VolumeFlyoutSection extends ConsumerWidget {
 }
 
 /// Fluent volume: mute glyph + 84px thin slider with percentage tooltip.
-/// Keyboard arrows supported via [LWVolumeSlider] focus.
+/// Keyboard arrows supported via [KatVolumeSlider] focus.
 class _VolumeGlyph extends StatelessWidget {
   final double volume;
   final VoidCallback onMute;
@@ -1552,12 +1552,12 @@ class _VolumeGlyph extends StatelessWidget {
       children: [
         _Glyph(
           tooltip: volume == 0 ? 'Unmute' : 'Mute (${(volume * 100).round()}%)',
-          icon: volume == 0 ? WaveIcons.volumeMute : WaveIcons.volume,
+          icon: volume == 0 ? KatIcons.volumeMute : KatIcons.volume,
           onTap: onMute,
         ),
-        LWTooltip(
+        KatTooltip(
           message: '${(volume * 100).round()}%',
-          child: LWVolumeSlider(
+          child: KatVolumeSlider(
             value: volume.clamp(0.0, 1.0),
             onChanged: onVolume,
           ),
@@ -1595,18 +1595,18 @@ class _VolumeFlyoutGlyphState extends ConsumerState<_VolumeFlyoutGlyph> {
     final volume = widget.volume;
     return FlyoutTarget(
       controller: _controller,
-      child: LWTooltip(
+      child: KatTooltip(
         message: 'Volume (${(volume * 100).round()}%)',
         child: _Glyph(
           tooltip: 'Volume',
-          icon: volume == 0 ? WaveIcons.volumeMute : WaveIcons.volume,
+          icon: volume == 0 ? KatIcons.volumeMute : KatIcons.volume,
           onTap: () {
             _controller.showFlyout(
               barrierColor: Colors.transparent,
               placementMode: FlyoutPlacementMode.topCenter,
               transitionDuration: const Duration(milliseconds: 90),
               transitionBuilder: fastFlyoutTransition,
-              builder: (context) => WaveFlyoutPanel.child(
+              builder: (context) => KatFlyoutPanel.child(
                 maxWidth: 240,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -1616,22 +1616,22 @@ class _VolumeFlyoutGlyphState extends ConsumerState<_VolumeFlyoutGlyph> {
                     children: [
                       Text(
                         'Volume ${(volume * 100).round()}%',
-                        style: WaveType.label,
+                        style: KatType.label,
                       ),
                       const SizedBox(height: 8),
-                      LWVolumeSlider(
+                      KatVolumeSlider(
                         value: volume.clamp(0.0, 1.0),
                         onChanged: widget.onVolume,
                       ),
                       const SizedBox(height: 4),
-                      WaveLink(
+                      KatLink(
                         onPressed: () {
                           widget.onMute();
                           _controller.close();
                         },
                         child: Text(
                           volume == 0 ? 'Unmute' : 'Mute',
-                          style: WaveType.label,
+                          style: KatType.label,
                         ),
                       ),
                     ],
@@ -1688,65 +1688,65 @@ class _DockOverflow extends ConsumerWidget {
         showMiniItem;
     return _Glyph(
       tooltip: 'More',
-      icon: WaveIcons.more,
+      icon: KatIcons.more,
       menuItems: [
         // Collapsed priority controls reappear here — nothing is lost
         // at narrow widths, nothing overflows the window.
         if (showJamItem)
-          WaveMenuAction(
-            leading: const Icon(WaveIcons.friends, size: 15),
+          KatMenuAction(
+            leading: const Icon(KatIcons.friends, size: 15),
             label: 'Jam',
             onPressed: () => context.go('/jam'),
           ),
         if (showQualityItem && stream != null)
-          WaveMenuAction(
-            leading: const Icon(WaveIcons.gauge, size: 15),
+          KatMenuAction(
+            leading: const Icon(KatIcons.gauge, size: 15),
             label: '${stream.qualityBadge} · ${stream.audioCodec}',
             onPressed: () => context.go('/settings'),
           ),
         if (showOutputItem)
-          WaveMenuSubmenu(
-            leading: const Icon(WaveIcons.speaker, size: 15),
+          KatMenuSubmenu(
+            leading: const Icon(KatIcons.speaker, size: 15),
             label: output.path.bitPerfect
                 ? 'Output · $outputName · Bit-Perfect'
                 : 'Output · $outputName',
             items: () => outputEntries,
           ),
         if (showExpandItem)
-          WaveMenuAction(
-            leading: const Icon(WaveIcons.expand, size: 15),
+          KatMenuAction(
+            leading: const Icon(KatIcons.expand, size: 15),
             label: 'Open Now Playing',
             onPressed: onExpand,
           ),
         if (showMiniItem)
-          WaveMenuAction(
-            leading: const Icon(WaveIcons.miniPlayer, size: 15),
+          KatMenuAction(
+            leading: const Icon(KatIcons.miniPlayer, size: 15),
             label: 'Mini player',
             onPressed: onToggleMini,
           ),
-        if (hasCollapsed) const WaveMenuSeparator(),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.gauge, size: 15),
+        if (hasCollapsed) const KatMenuSeparator(),
+        KatMenuAction(
+          leading: const Icon(KatIcons.gauge, size: 15),
           label: 'Speed $speedLabel×',
           onPressed: notifier.cycleSpeed,
         ),
-        WaveMenuSubmenu(
-          leading: const Icon(WaveIcons.clock, size: 15),
+        KatMenuSubmenu(
+          leading: const Icon(KatIcons.clock, size: 15),
           label: _sleepLabel(sleep),
           items: () => [
-            WaveMenuAction(
+            KatMenuAction(
               leading: _sleepMark(sleepMinutes == null),
               label: 'Off',
               onPressed: () => notifier.setSleepTimer(null),
             ),
             for (final minutes in _sleepPresets)
-              WaveMenuAction(
+              KatMenuAction(
                 leading: _sleepMark(sleepMinutes == minutes),
                 label: '$minutes minutes',
                 onPressed: () =>
                     notifier.setSleepTimer(Duration(minutes: minutes)),
               ),
-            WaveMenuAction(
+            KatMenuAction(
               leading: _sleepMark(
                 sleepMinutes != null && !_sleepPresets.contains(sleepMinutes),
               ),
@@ -1755,8 +1755,8 @@ class _DockOverflow extends ConsumerWidget {
             ),
           ],
         ),
-        WaveMenuAction(
-          leading: const Icon(WaveIcons.downloadAction, size: 15),
+        KatMenuAction(
+          leading: const Icon(KatIcons.downloadAction, size: 15),
           label: 'Download this track',
           onPressed: () {
             final current = ref.read(playbackServiceProvider).current;
@@ -1836,7 +1836,7 @@ class _CustomSleepDialogState extends State<_CustomSleepDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Minutes', style: WaveType.trackTitle),
+          const Text('Minutes', style: KatType.trackTitle),
           const SizedBox(height: 6),
           TextBox(
             controller: _controller,
@@ -1846,7 +1846,7 @@ class _CustomSleepDialogState extends State<_CustomSleepDialog> {
             onSubmitted: (_) => _start(),
           ),
           const SizedBox(height: 6),
-          Text('1–1440. Replaces the current timer.', style: WaveType.meta),
+          Text('1–1440. Replaces the current timer.', style: KatType.meta),
         ],
       ),
       actions: [

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Rebuilt navigation — music first, panels secondary.
 ///
@@ -12,47 +12,49 @@ import '../theme/wave_icons.dart';
 ///
 /// History stays routable but is not on the rail.
 /// Mix Lab is a listen destination, so [/mixes] matches the loop above
-/// before the fallback at the bottom of [waveActivePath].
-class WaveDestination {
+/// before the fallback at the bottom of [katActivePath].
+class KatDestination {
   final String path;
   final String label;
   final IconData icon;
-  const WaveDestination(this.path, this.label, this.icon);
+  const KatDestination(this.path, this.label, this.icon);
 }
 
-const waveListenDestinations = [
-  WaveDestination('/home', 'Listen', WaveIcons.home),
-  WaveDestination('/stats', 'Soundprint', WaveIcons.stats),
-  WaveDestination('/search', 'Explore', WaveIcons.search),
-  WaveDestination('/mixes', 'Blend Lab', WaveIcons.mixes),
+const katListenDestinations = [
+  KatDestination('/home', 'Listen', KatIcons.home),
+  KatDestination('/discover', 'Discover', KatIcons.discover),
+  KatDestination('/stats', 'Soundprint', KatIcons.stats),
+  KatDestination('/search', 'Explore', KatIcons.search),
+  KatDestination('/mixes', 'Blend Lab', KatIcons.mixes),
+  KatDestination('/group-blend', 'Group Blend', KatIcons.friends),
 ];
 
-const waveCollectionDestinations = [
-  WaveDestination('/liked', 'Favorites', WaveIcons.liked),
-  WaveDestination('/playlists', 'Collections', WaveIcons.playlists),
-  WaveDestination('/podcasts', 'Shows', WaveIcons.podcasts),
+const katCollectionDestinations = [
+  KatDestination('/liked', 'Favorites', KatIcons.liked),
+  KatDestination('/playlists', 'Collections', KatIcons.playlists),
+  KatDestination('/podcasts', 'Shows', KatIcons.podcasts),
 ];
 
-const waveOfflineDestinations = [
-  WaveDestination('/downloads', 'Offline', WaveIcons.downloads),
+const katOfflineDestinations = [
+  KatDestination('/downloads', 'Offline', KatIcons.downloads),
 ];
 
-const waveSystemDestinations = [
-  WaveDestination('/friends', 'Listening Circle', WaveIcons.friends),
-  WaveDestination('/settings', 'Settings', WaveIcons.settings),
+const katSystemDestinations = [
+  KatDestination('/friends', 'Listening Circle', KatIcons.friends),
+  KatDestination('/settings', 'Settings', KatIcons.settings),
 ];
 
-List<WaveDestination> get allWaveDestinations => [
-  ...waveListenDestinations,
-  ...waveCollectionDestinations,
-  ...waveOfflineDestinations,
-  ...waveSystemDestinations,
+List<KatDestination> get allWaveDestinations => [
+  ...katListenDestinations,
+  ...katCollectionDestinations,
+  ...katOfflineDestinations,
+  ...katSystemDestinations,
 ];
 
-String waveRoutePath(String location) => location.split('?').first;
+String katRoutePath(String location) => location.split('?').first;
 
-String waveActivePath(String location) {
-  final path = waveRoutePath(location);
+String katActivePath(String location) {
+  final path = katRoutePath(location);
   for (final d in allWaveDestinations) {
     if (path == d.path || path.startsWith('${d.path}/')) {
       return d.path;

@@ -92,11 +92,11 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
             'unless you overwrite them: $names',
           ),
           actions: [
-            WaveButton(
+            KatButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Keep newer'),
             ),
-            WaveFilledButton(
+            KatFilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Overwrite'),
             ),
@@ -138,23 +138,23 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Backup', style: WaveType.trackTitle),
+        Text('Backup', style: KatType.trackTitle),
         const SizedBox(height: 4),
         Text(
           'Playlists, hidden recommendations, home layout and settings. '
           'Accounts, cookies and keys are never included.',
-          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+          style: KatType.meta.copyWith(color: katTextSecondary(context)),
         ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            WaveFilledButton(
+            KatFilledButton(
               onPressed: _busy ? null : _export,
               child: const Text('Export backup'),
             ),
-            WaveButton(
+            KatButton(
               onPressed: _busy ? null : _import,
               child: const Text('Import backup'),
             ),
@@ -164,7 +164,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
           const SizedBox(height: 8),
           Text(
             _status,
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
         ],
       ],

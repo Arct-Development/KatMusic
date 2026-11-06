@@ -9,7 +9,7 @@ import '../theme/tokens.dart';
 /// the visible branch with no motion at all, so the side rail cut between
 /// pages. This container keeps that exact keep-alive contract and layers the
 /// app's one motion language on top: the incoming branch fades in and rises
-/// 6px over [WaveMotion.normal], while the outgoing branch fades out beneath
+/// 6px over [KatMotion.normal], while the outgoing branch fades out beneath
 /// it. Only content moves — the rail, title bar and dock are outside the
 /// branch and stay put.
 ///
@@ -24,8 +24,8 @@ import '../theme/tokens.dart';
 ///
 /// Honours the OS reduce-motion switch (`MediaQuery.disableAnimations`):
 /// the switch then applies instantly, with no fade or rise.
-class WaveBranchSwitcher extends StatefulWidget {
-  const WaveBranchSwitcher({
+class KatBranchSwitcher extends StatefulWidget {
+  const KatBranchSwitcher({
     super.key,
     required this.currentIndex,
     required this.children,
@@ -38,15 +38,15 @@ class WaveBranchSwitcher extends StatefulWidget {
   final List<Widget> children;
 
   @override
-  State<WaveBranchSwitcher> createState() => _WaveBranchSwitcherState();
+  State<KatBranchSwitcher> createState() => _KatBranchSwitcherState();
 }
 
-class _WaveBranchSwitcherState extends State<WaveBranchSwitcher>
+class _KatBranchSwitcherState extends State<KatBranchSwitcher>
     with SingleTickerProviderStateMixin {
   /// 0 → the incoming branch is fully transparent, 1 → settled.
   late final AnimationController _fade = AnimationController(
     vsync: this,
-    duration: waveMotion(context, WaveMotion.normal),
+    duration: katMotion(context, KatMotion.normal),
     value: 1,
   );
 
@@ -58,7 +58,7 @@ class _WaveBranchSwitcherState extends State<WaveBranchSwitcher>
   bool _reducedMotion = false;
 
   @override
-  void didUpdateWidget(covariant WaveBranchSwitcher oldWidget) {
+  void didUpdateWidget(covariant KatBranchSwitcher oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex == widget.currentIndex) return;
     if (_reducedMotion) {

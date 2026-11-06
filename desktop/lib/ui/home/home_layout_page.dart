@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../features/feed/home_shelf_layout.dart';
 import '../components/buttons.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Reorder and hide the Home shelves. Order and the hidden set live in
 /// SQLite `kv_store` (`home_shelf_layout`), not Prefs.
-class WaveHomeLayoutPage extends ConsumerWidget {
-  const WaveHomeLayoutPage({super.key});
+class KatHomeLayoutPage extends ConsumerWidget {
+  const KatHomeLayoutPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,25 +22,25 @@ class WaveHomeLayoutPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Edit home', style: WaveType.pageTitle.copyWith(fontSize: 24)),
+          Text('Edit home', style: KatType.pageTitle.copyWith(fontSize: 24)),
           const SizedBox(height: 4),
           Text(
             'Show, hide, and reorder shelves. Reset restores the default order.',
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              WaveGhostButton(
+              KatGhostButton(
                 label: 'Reset',
-                icon: WaveIcons.history,
+                icon: KatIcons.history,
                 onPressed: notifier.reset,
               ),
-              WavePrimaryButton(
+              KatPrimaryButton(
                 label: 'Done',
-                icon: WaveIcons.back,
+                icon: KatIcons.back,
                 onPressed: () => context.go('/home'),
               ),
             ],
@@ -71,8 +71,8 @@ class WaveHomeLayoutPage extends ConsumerWidget {
                   ),
                   title: Text(
                     HomeShelfCatalog.label(id),
-                    style: WaveType.body.copyWith(
-                      color: shown ? null : waveTextTertiary(context),
+                    style: KatType.body.copyWith(
+                      color: shown ? null : katTextTertiary(context),
                     ),
                   ),
                   trailing: ToggleSwitch(

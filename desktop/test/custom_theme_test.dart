@@ -11,19 +11,17 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  group('WaveSurfaces.fromCustomBase', () {
+  group('KatSurfaces.fromCustomBase', () {
     test('every random base keeps body text readable on every surface', () {
       final rnd = math.Random(3);
       for (var i = 0; i < 500; i++) {
         final base = Color(0xFF000000 | rnd.nextInt(0xFFFFFF));
-        final s = WaveSurfaces.fromCustomBase(base);
-        final light = WaveSurfaces.isLightBase(base);
-        final text = light
-            ? WaveColors.lightTextPrimary
-            : WaveColors.textPrimary;
+        final s = KatSurfaces.fromCustomBase(base);
+        final light = KatSurfaces.isLightBase(base);
+        final text = light ? KatColors.lightTextPrimary : KatColors.textPrimary;
         final text2 = light
-            ? WaveColors.lightTextSecondary
-            : WaveColors.textSecondary;
+            ? KatColors.lightTextSecondary
+            : KatColors.textSecondary;
         for (final surface in [
           s.background,
           s.surface,
@@ -48,7 +46,7 @@ void main() {
     test(
       'dark ladder steps get lighter, light pages sit under their cards',
       () {
-        final dark = WaveSurfaces.fromCustomBase(const Color(0xFF1A2A44));
+        final dark = KatSurfaces.fromCustomBase(const Color(0xFF1A2A44));
         expect(
           dark.surface.computeLuminance(),
           greaterThan(dark.background.computeLuminance()),
@@ -62,8 +60,8 @@ void main() {
           greaterThan(dark.surfaceRaised.computeLuminance()),
         );
 
-        final light = WaveSurfaces.fromCustomBase(const Color(0xFFEFE7DA));
-        expect(WaveSurfaces.isLightBase(const Color(0xFFEFE7DA)), isTrue);
+        final light = KatSurfaces.fromCustomBase(const Color(0xFFEFE7DA));
+        expect(KatSurfaces.isLightBase(const Color(0xFFEFE7DA)), isTrue);
         expect(
           light.surface.computeLuminance(),
           greaterThan(light.background.computeLuminance()),
@@ -76,10 +74,10 @@ void main() {
     );
 
     test('stock palettes are untouched', () {
-      expect(WaveSurfaces.graphite.isCustom, isFalse);
-      expect(WaveSurfaces.graphite.surfaceOverlay, WaveColors.surfaceOverlay);
-      expect(WaveSurfaces.graphite.outlineSoft, WaveColors.outlineSoft);
-      expect(WaveSurfaces.amoled.isCustom, isFalse);
+      expect(KatSurfaces.graphite.isCustom, isFalse);
+      expect(KatSurfaces.graphite.surfaceOverlay, KatColors.surfaceOverlay);
+      expect(KatSurfaces.graphite.outlineSoft, KatColors.outlineSoft);
+      expect(KatSurfaces.amoled.isCustom, isFalse);
     });
   });
 }

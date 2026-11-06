@@ -24,9 +24,9 @@ final nowPlayingActivityProvider = StateProvider<int>((_) => 0);
 /// immersive Now Playing stage. Fades out with the page's other controls
 /// and ignores pointer and focus while hidden, so a hidden dock can't eat
 /// clicks meant for the lyrics.
-class WaveImmersiveDockOverlay extends ConsumerWidget {
+class KatImmersiveDockOverlay extends ConsumerWidget {
   final Widget child;
-  const WaveImmersiveDockOverlay({super.key, required this.child});
+  const KatImmersiveDockOverlay({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,7 +34,7 @@ class WaveImmersiveDockOverlay extends ConsumerWidget {
     return MouseRegion(
       onHover: (_) => ref.read(nowPlayingActivityProvider.notifier).state++,
       child: AnimatedOpacity(
-        duration: waveMotion(context, const Duration(milliseconds: 350)),
+        duration: katMotion(context, const Duration(milliseconds: 350)),
         opacity: idle ? 0.0 : 1.0,
         child: ExcludeFocus(
           excluding: idle,

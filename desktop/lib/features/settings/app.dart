@@ -12,7 +12,7 @@ import '../../app/window_lifecycle.dart';
 import '../../app/auth_gate.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../../core/storage/prefs.dart';
-import '../../design_system/fluent/lw_scrollbar.dart';
+import '../../design_system/fluent/kat_scrollbar.dart';
 import '../../features/lastfm/auth_repository.dart';
 import '../../ui/theme/fluent_theme.dart';
 import '../../ui/theme/haze.dart';
@@ -29,7 +29,7 @@ import 'theme_controller.dart';
 
 /// KatMusic desktop application root.
 ///
-/// Single primary system: FluentApp router + Wave Fluent theme.
+/// Single primary system: FluentApp router + Kat Fluent theme.
 /// Native window material via flutter_acrylic/window_manager.
 ///
 /// Last.fm authentication is compulsory: [AuthGate] is seeded from the
@@ -79,7 +79,7 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
     // delay (single hidden window, reused for app lifetime): this moves
     // the one-time WebView init off the first ciphered playback, so a
     // WEB_REMIX fallback never stalls transport on a cold window spawn.
-    // Direct-only mode (lw_disable_potoken) skips it — zero WebViews.
+    // Direct-only mode (kat_disable_potoken) skips it — zero WebViews.
     Future.microtask(() {
       // Artist tiles whose Deezer lookup fails (rate limit, no press
       // photo) fall back to the YouTube Music portrait, same as the
@@ -215,16 +215,16 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
       custom: customLight ? custom : null,
     );
 
-    return WaveHazeScope(
+    return KatHazeScope(
       material: switch (theme.hazeMaterial) {
-        'haze' => WaveMaterialMode.haze,
-        'solid' => WaveMaterialMode.solid,
-        _ => WaveMaterialMode.automatic,
+        'haze' => KatMaterialMode.haze,
+        'solid' => KatMaterialMode.solid,
+        _ => KatMaterialMode.automatic,
       },
       intensity: switch (theme.hazeIntensity) {
-        'low' => WaveHazeIntensity.low,
-        'high' => WaveHazeIntensity.high,
-        _ => WaveHazeIntensity.medium,
+        'low' => KatHazeIntensity.low,
+        'high' => KatHazeIntensity.high,
+        _ => KatHazeIntensity.medium,
       },
       liquidGlass: theme.liquidGlass,
       child: LiquidGlassWidgets.wrap(
@@ -249,7 +249,7 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
             routerConfig: _router,
             // ONE Fluent scrollbar treatment everywhere: thin, fades when
             // idle, no browser-style horizontal bars under carousels.
-            scrollBehavior: const WaveScrollBehavior(),
+            scrollBehavior: const KatScrollBehavior(),
             // No acrylic anywhere: fluent MenuFlyout/ComboBox render a
             // fullscreen BackdropFilter blur unless DisableAcrylic is
             // present — that blur sample on the open frame is the hitch

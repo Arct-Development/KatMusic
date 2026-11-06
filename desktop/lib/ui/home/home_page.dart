@@ -28,11 +28,11 @@ import '../components/menus.dart';
 import '../components/shelf.dart';
 import '../collections/yt_shelf_page.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../podcasts/podcasts_page.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 import 'discovery_sections.dart';
 
 /// Rich editorial Home — every section has a distinct representation.
@@ -41,8 +41,8 @@ import 'discovery_sections.dart';
 /// editorial cards · Charts = ranked numeral rows · New releases = dense
 /// 124px grid. Real feed data only; skeletons while loading, actions on
 /// empty — never a blank "Loading music…" or a giant spinner.
-class WaveHomePage extends ConsumerWidget {
-  const WaveHomePage({super.key});
+class KatHomePage extends ConsumerWidget {
+  const KatHomePage({super.key});
 
   String get _greeting {
     final h = DateTime.now().hour;
@@ -70,7 +70,7 @@ class WaveHomePage extends ConsumerWidget {
         ? 24.0
         : 28.0;
     final side =
-        ((viewport - WaveDensity.contentMax) / 2).clamp(0, double.infinity) +
+        ((viewport - KatDensity.contentMax) / 2).clamp(0, double.infinity) +
         pad;
     final quickCols = viewport < 900
         ? 1
@@ -87,14 +87,14 @@ class WaveHomePage extends ConsumerWidget {
     // One shared WinUI entrance timeline for the whole page: it starts
     // the moment feed data lands, so sections cascade in together and
     // lazily-built rows never replay the animation during scroll.
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       start: feed.hasValue,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
             padding: EdgeInsets.fromLTRB(side, 22, side, 0),
             sliver: SliverToBoxAdapter(
-              child: WaveEntrance(
+              child: KatEntrance(
                 local: true,
                 child: _Header(
                   greeting: _greeting,
@@ -113,7 +113,7 @@ class WaveHomePage extends ConsumerWidget {
             error: (e, _) => SliverPadding(
               padding: EdgeInsets.fromLTRB(side, 18, side, 32),
               sliver: SliverToBoxAdapter(
-                child: WaveError(
+                child: KatError(
                   title: 'Could not load your feed',
                   message: '$e',
                   onRetry: () => ref.invalidate(feedProvider),
@@ -183,7 +183,7 @@ class WaveHomePage extends ConsumerWidget {
                 return SliverPadding(
                   padding: EdgeInsets.fromLTRB(side, 18, side, 32),
                   sliver: SliverToBoxAdapter(
-                    child: WaveEmpty(
+                    child: KatEmpty(
                       icon: FluentIcons.music_note,
                       title: copy.title,
                       subtitle: copy.subtitle,
@@ -235,10 +235,10 @@ class WaveHomePage extends ConsumerWidget {
       SliverPadding(
         padding: EdgeInsets.symmetric(horizontal: side),
         sliver: SliverToBoxAdapter(
-          child: WaveEntrance(
+          child: KatEntrance(
             index: slot++,
             rise: 8,
-            child: LWSectionHeader(
+            child: KatSectionHeader(
               overline: overline,
               title: title,
               count: count,
@@ -260,7 +260,7 @@ class WaveHomePage extends ConsumerWidget {
           mainAxisExtent: 56,
         ),
         delegate: SliverChildBuilderDelegate(
-          (context, i) => WaveEntrance(
+          (context, i) => KatEntrance(
             index: i,
             rise: 10,
             child: _QuickTile(track: tracks[i]),
@@ -350,7 +350,7 @@ class WaveHomePage extends ConsumerWidget {
           SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: side),
             sliver: SliverToBoxAdapter(
-              child: WaveEntrance(
+              child: KatEntrance(
                 index: slot++,
                 child: _FeaturedHero(
                   track: heroTrack,
@@ -522,7 +522,7 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               child: _FeaturedHero(
                 track: heroTrack,
@@ -544,10 +544,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: 'Jump back in',
                 title: 'Quick Picks',
                 count: picks.length,
@@ -567,7 +567,7 @@ class WaveHomePage extends ConsumerWidget {
               mainAxisExtent: 56,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => WaveEntrance(
+              (context, i) => KatEntrance(
                 index: i,
                 rise: 10,
                 child: _QuickTile(track: picks[i]),
@@ -587,10 +587,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: 'History',
                 title: 'Continue Listening',
                 count: recent.length,
@@ -626,10 +626,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: becauseKicker,
                 title: 'Made For You',
                 count: mixes.length,
@@ -658,10 +658,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: 'Rotation',
                 title: 'Albums For You',
                 count: albums.length,
@@ -718,10 +718,10 @@ class WaveHomePage extends ConsumerWidget {
           SliverPadding(
             padding: EdgeInsets.only(left: side, right: side),
             sliver: SliverToBoxAdapter(
-              child: WaveEntrance(
+              child: KatEntrance(
                 index: slot(),
                 rise: 8,
-                child: LWSectionHeader(
+                child: KatSectionHeader(
                   overline: 'Artists',
                   title: 'Artists For You',
                   count: artists.length,
@@ -754,10 +754,10 @@ class WaveHomePage extends ConsumerWidget {
           SliverPadding(
             padding: EdgeInsets.only(left: side, right: side),
             sliver: SliverToBoxAdapter(
-              child: WaveEntrance(
+              child: KatEntrance(
                 index: slot(),
                 rise: 8,
-                child: LWSectionHeader(
+                child: KatSectionHeader(
                   overline: 'Social',
                   title: 'Friends Listening',
                   count: activities.length,
@@ -772,7 +772,7 @@ class WaveHomePage extends ConsumerWidget {
           SliverPadding(
             padding: EdgeInsets.only(left: side, right: side, top: 10),
             sliver: SliverToBoxAdapter(
-              child: WaveEntrance(
+              child: KatEntrance(
                 index: slot(),
                 rise: 10,
                 child: _FriendsStrip(activities: activities),
@@ -790,7 +790,7 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               child: HomeSpotlightHero(track: data.charts.first),
             ),
@@ -803,10 +803,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: 'Charts',
                 title: 'Trending Now',
                 count: charts.length,
@@ -820,7 +820,7 @@ class WaveHomePage extends ConsumerWidget {
           padding: EdgeInsets.only(left: side, right: side, top: 6),
           sliver: SuperSliverList.builder(
             itemCount: charts.length,
-            itemBuilder: (context, i) => WaveEntrance(
+            itemBuilder: (context, i) => KatEntrance(
               index: i,
               rise: 10,
               child: _ChartRow(
@@ -843,10 +843,10 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 8,
-              child: LWSectionHeader(
+              child: KatSectionHeader(
                 overline: 'Discovery',
                 title: 'Fresh Finds',
                 count: fresh.length,
@@ -860,7 +860,7 @@ class WaveHomePage extends ConsumerWidget {
           padding: EdgeInsets.only(left: side, right: side, top: 6),
           sliver: SuperSliverList.builder(
             itemCount: fresh.length,
-            itemBuilder: (context, i) => WaveEntrance(
+            itemBuilder: (context, i) => KatEntrance(
               index: i,
               rise: 10,
               child: _FreshRow(track: fresh[i]),
@@ -870,25 +870,27 @@ class WaveHomePage extends ConsumerWidget {
       );
     }
 
-    // use(HomeShelfId.releases);
-    // gap(26);
-    // sink.add(SliverPadding(
-    //   padding: EdgeInsets.only(left: side, right: side),
-    //   sliver: SliverToBoxAdapter(
-    //     child: WaveEntrance(
-    //       index: slot(),
-    //       rise: 10,
-    //       child: const HomeNewReleasesSection(),
-    //     ),
-    //   ),
-    // ));
+    use(HomeShelfId.releases);
+    gap(26);
+    sink.add(
+      SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: KatEntrance(
+            index: slot(),
+            rise: 10,
+            child: const HomeNewReleasesSection(),
+          ),
+        ),
+      ),
+    );
 
     // use(HomeShelfId.popular);
     // gap(26);
     // sink.add(SliverPadding(
     //   padding: EdgeInsets.only(left: side, right: side),
     //   sliver: SliverToBoxAdapter(
-    //     child: WaveEntrance(
+    //     child: KatEntrance(
     //       index: slot(),
     //       rise: 10,
     //       child: const HomePopularShelvesSection(),
@@ -907,7 +909,7 @@ class WaveHomePage extends ConsumerWidget {
         SliverPadding(
           padding: EdgeInsets.only(left: side, right: side),
           sliver: SliverToBoxAdapter(
-            child: WaveEntrance(
+            child: KatEntrance(
               index: slot(),
               rise: 10,
               child: const PodcastHomeShelf(),
@@ -941,7 +943,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -950,7 +952,7 @@ class _Header extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            boxShadow: WaveElevation.lift(waveIsDark(context)),
+            boxShadow: KatElevation.lift(katIsDark(context)),
           ),
           clipBehavior: Clip.antiAlias,
           child: Image.asset(
@@ -965,15 +967,15 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 'KATMUSIC · LISTENING',
-                style: WaveType.overline.copyWith(
-                  color: waveAccent(context),
+                style: KatType.overline.copyWith(
+                  color: katAccent(context),
                   letterSpacing: 1.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 username.isNotEmpty ? '$greeting, $username' : greeting,
-                style: WaveType.pageTitle.copyWith(
+                style: KatType.pageTitle.copyWith(
                   fontSize: 26,
                   letterSpacing: -0.7,
                 ),
@@ -983,18 +985,18 @@ class _Header extends StatelessWidget {
                 username.isNotEmpty
                     ? 'For $username · $date · shaped by your listening'
                     : '$date · a fresh mix, shaped around you · connect Last.fm for more',
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   color: dark
-                      ? WaveColors.textSecondary
-                      : WaveColors.lightTextSecondary,
+                      ? KatColors.textSecondary
+                      : KatColors.lightTextSecondary,
                 ),
               ),
             ],
           ),
         ),
-        WaveGhostButton(
+        KatGhostButton(
           label: 'Edit home',
-          icon: WaveIcons.edit,
+          icon: KatIcons.edit,
           onPressed: () => context.go('/home-layout'),
         ),
         if (!signedIn) ...[
@@ -1014,7 +1016,7 @@ class _Header extends StatelessWidget {
                 ),
                 child: Text(
                   'Connect',
-                  style: WaveType.label.copyWith(
+                  style: KatType.label.copyWith(
                     color: dark ? Colors.black : Colors.white,
                     fontSize: 12,
                   ),
@@ -1041,7 +1043,7 @@ class _YtShelfRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WaveRail(
+    return KatRail(
       height: 216,
       itemCount: entities.length,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -1049,7 +1051,7 @@ class _YtShelfRow extends StatelessWidget {
         final e = entities[i];
         return SizedBox(
           width: 160,
-          child: WaveMediaCard(
+          child: KatMediaCard(
             title: e.name,
             subtitle: e.subtitle,
             titleFallback: e.name,
@@ -1079,7 +1081,7 @@ class _YtSongCardRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     void play(int i) =>
         playGenerated(ref, context, tracks[i], sourceLabel: sourceLabel);
-    return WaveRail(
+    return KatRail(
       height: 216,
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -1087,7 +1089,7 @@ class _YtSongCardRow extends ConsumerWidget {
         final t = tracks[i];
         return SizedBox(
           width: 160,
-          child: WaveMediaCard(
+          child: KatMediaCard(
             title: t.name,
             subtitle: t.artist,
             titleFallback: t.name,
@@ -1125,7 +1127,7 @@ class _FeaturedHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final width = MediaQuery.sizeOf(context).width;
     final narrow = width < 860;
     final tint = ref.watch(artworkPaletteProvider(track.artworkUrl));
@@ -1163,8 +1165,8 @@ class _FeaturedHero extends ConsumerWidget {
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: palette == null ? 0 : 1,
-                    duration: waveMotion(context, WaveMotion.slow),
-                    curve: WaveMotion.standard,
+                    duration: katMotion(context, KatMotion.slow),
+                    curve: KatMotion.standard,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -1184,14 +1186,14 @@ class _FeaturedHero extends ConsumerWidget {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: WaveRadius.artworkRadius,
-                    boxShadow: WaveElevation.artwork(dark),
+                    borderRadius: KatRadius.artworkRadius,
+                    boxShadow: KatElevation.artwork(dark),
                   ),
-                  child: WaveArtwork(
+                  child: KatArtwork(
                     url: track.artworkUrl,
                     videoId: track.videoId,
                     size: artSize,
-                    radius: WaveRadius.artwork,
+                    radius: KatRadius.artwork,
                     title: track.name,
                     artist: track.artist,
                     label: track.name,
@@ -1210,11 +1212,11 @@ class _FeaturedHero extends ConsumerWidget {
             children: [
               Text(
                 kicker,
-                style: WaveType.overline.copyWith(
+                style: KatType.overline.copyWith(
                   fontSize: 10,
                   color: dark
-                      ? WaveColors.textTertiary
-                      : WaveColors.lightTextTertiary,
+                      ? KatColors.textTertiary
+                      : KatColors.lightTextTertiary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1222,18 +1224,18 @@ class _FeaturedHero extends ConsumerWidget {
                 track.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.pageTitle.copyWith(fontSize: narrow ? 20 : 26),
+                style: KatType.pageTitle.copyWith(fontSize: narrow ? 20 : 26),
               ),
               const SizedBox(height: 4),
               Text(
                 track.artist,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.body.copyWith(
+                style: KatType.body.copyWith(
                   fontSize: 14,
                   color: dark
-                      ? WaveColors.textSecondary
-                      : WaveColors.lightTextSecondary,
+                      ? KatColors.textSecondary
+                      : KatColors.lightTextSecondary,
                 ),
               ),
               if (track.listeners.isNotEmpty)
@@ -1243,15 +1245,15 @@ class _FeaturedHero extends ConsumerWidget {
                     track.listeners,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: WaveType.meta.copyWith(
-                      color: waveTextTertiary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextTertiary(context),
                     ),
                   ),
                 ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  WavePlayPill(
+                  KatPlayPill(
                     onTap: () {
                       if (queueAll.isEmpty) {
                         playGenerated(
@@ -1300,7 +1302,7 @@ class _FeaturedHero extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: panel,
-          borderRadius: WaveRadius.floatingRadius,
+          borderRadius: KatRadius.floatingRadius,
         ),
         child: left,
       );
@@ -1311,7 +1313,7 @@ class _FeaturedHero extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: panel,
-        borderRadius: WaveRadius.floatingRadius,
+        borderRadius: KatRadius.floatingRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1333,9 +1335,9 @@ class _FeaturedHero extends ConsumerWidget {
                 // that name. These three come after Play, not after this song.
                 Text(
                   'MORE FOR YOU',
-                  style: WaveType.overline.copyWith(
+                  style: KatType.overline.copyWith(
                     fontSize: 9.5,
-                    color: waveTextTertiary(context),
+                    color: katTextTertiary(context),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1363,7 +1365,7 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -1381,17 +1383,17 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
             color: _hover
                 ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)
                 : Colors.transparent,
-            borderRadius: WaveRadius.artworkRadius,
+            borderRadius: KatRadius.artworkRadius,
           ),
           child: Row(
             children: [
               Stack(
                 children: [
-                  WaveArtwork(
+                  KatArtwork(
                     url: widget.track.artworkUrl,
                     videoId: widget.track.videoId,
                     size: 44,
-                    radius: WaveRadius.artwork,
+                    radius: KatRadius.artwork,
                     title: widget.track.name,
                     artist: widget.track.artist,
                     label: widget.track.name,
@@ -1401,10 +1403,10 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: WaveRadius.artworkRadius,
+                          borderRadius: KatRadius.artworkRadius,
                         ),
                         child: const Icon(
-                          WaveIcons.play,
+                          KatIcons.play,
                           size: 15,
                           color: Colors.white,
                         ),
@@ -1422,13 +1424,13 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
                       widget.track.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                      style: KatType.trackTitle.copyWith(fontSize: 12.5),
                     ),
                     Text(
                       widget.track.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta.copyWith(fontSize: 11.5),
+                      style: KatType.meta.copyWith(fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -1441,7 +1443,7 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
   }
 }
 
-/// Outlined companion to [WavePlayPill]: same pill geometry, hairline border
+/// Outlined companion to [KatPlayPill]: same pill geometry, hairline border
 /// instead of an accent fill, so the hero's two actions read as one pair
 /// (primary accent + secondary outline) rather than a pill and bare text.
 class _RadioPill extends StatefulWidget {
@@ -1456,7 +1458,7 @@ class _RadioPillState extends State<_RadioPill> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final fg = waveTextSecondary(context);
+    final fg = katTextSecondary(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -1470,23 +1472,23 @@ class _RadioPillState extends State<_RadioPill> {
         onTapCancel: () => setState(() => _pressed = false),
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
           decoration: BoxDecoration(
             color: _pressed
-                ? wavePressedWash(context)
+                ? katPressedWash(context)
                 : _hover
-                ? waveHoverWash(context)
+                ? katHoverWash(context)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: waveDivider(context)),
+            border: Border.all(color: katDivider(context)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(WaveIcons.radio, size: 14, color: fg),
+              Icon(KatIcons.radio, size: 14, color: fg),
               const SizedBox(width: 8),
-              Text('Radio', style: WaveType.label.copyWith(color: fg)),
+              Text('Radio', style: KatType.label.copyWith(color: fg)),
             ],
           ),
         ),
@@ -1507,8 +1509,8 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final playing =
         ref.watch(playbackServiceProvider.select((s) => s.current?.queueKey)) ==
         widget.track.key;
@@ -1542,17 +1544,17 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                 : _hover
                 ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)
                 : Colors.transparent,
-            borderRadius: WaveRadius.artworkRadius,
+            borderRadius: KatRadius.artworkRadius,
           ),
           child: Row(
             children: [
               Stack(
                 children: [
-                  WaveArtwork(
+                  KatArtwork(
                     url: widget.track.artworkUrl,
                     videoId: widget.track.videoId,
                     size: 48,
-                    radius: WaveRadius.artwork,
+                    radius: KatRadius.artwork,
                     title: widget.track.name,
                     artist: widget.track.artist,
                     label: widget.track.name,
@@ -1562,10 +1564,10 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: WaveRadius.artworkRadius,
+                          borderRadius: KatRadius.artworkRadius,
                         ),
                         child: Icon(
-                          playing ? WaveIcons.pause : WaveIcons.play,
+                          playing ? KatIcons.pause : KatIcons.play,
                           size: 16,
                           color: Colors.white,
                         ),
@@ -1583,7 +1585,7 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                       widget.track.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(
+                      style: KatType.trackTitle.copyWith(
                         fontSize: 12.5,
                         color: playing ? accent : null,
                       ),
@@ -1592,7 +1594,7 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                       widget.track.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta.copyWith(fontSize: 11.5),
+                      style: KatType.meta.copyWith(fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -1602,8 +1604,8 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
         ),
       ),
     );
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1629,12 +1631,12 @@ class _CoverShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WaveRail(
+    return KatRail(
       height: 208,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
-      itemBuilder: (context, i) => WaveEntrance(
+      itemBuilder: (context, i) => KatEntrance(
         index: i,
         rise: 10,
         child: _CoverCard(track: tracks[i], source: source),
@@ -1656,11 +1658,11 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     void play() =>
         playGenerated(ref, context, widget.track, sourceLabel: widget.source);
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1687,32 +1689,32 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
               children: [
                 AnimatedScale(
                   scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   curve: Curves.easeOutCubic,
                   child: AnimatedContainer(
-                    duration: waveMotion(context, WaveMotion.normal),
+                    duration: katMotion(context, KatMotion.normal),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      borderRadius: WaveRadius.artworkRadius,
-                      boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                      borderRadius: KatRadius.artworkRadius,
+                      boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                     ),
                     child: Stack(
                       children: [
-                        WaveArtwork(
+                        KatArtwork(
                           url: widget.track.artworkUrl,
                           size: 152,
-                          radius: WaveRadius.artwork,
+                          radius: KatRadius.artwork,
                           title: widget.track.name,
                           artist: widget.track.artist,
                           label: widget.track.name,
                         ),
                         Positioned.fill(
                           child: AnimatedOpacity(
-                            duration: waveMotion(context, WaveMotion.fast),
+                            duration: katMotion(context, KatMotion.fast),
                             opacity: _hover ? 1 : 0,
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius: WaveRadius.artworkRadius,
+                                borderRadius: KatRadius.artworkRadius,
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
@@ -1725,10 +1727,7 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                               child: Center(
                                 child: AnimatedScale(
                                   scale: _hover ? 1.0 : 0.70,
-                                  duration: waveMotion(
-                                    context,
-                                    WaveMotion.fast,
-                                  ),
+                                  duration: katMotion(context, KatMotion.fast),
                                   curve: Curves.easeOutBack,
                                   child: GestureDetector(
                                     onTap: play,
@@ -1737,7 +1736,7 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                                       height: 44,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: waveAccent(context),
+                                        color: katAccent(context),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withValues(
@@ -1748,9 +1747,9 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                                         ],
                                       ),
                                       child: Icon(
-                                        WaveIcons.play,
+                                        KatIcons.play,
                                         size: 18,
-                                        color: waveOnAccent(context),
+                                        color: katOnAccent(context),
                                       ),
                                     ),
                                   ),
@@ -1768,19 +1767,19 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                   widget.track.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.trackTitle.copyWith(fontSize: 12),
+                  style: KatType.trackTitle.copyWith(fontSize: 12),
                 ),
-                WaveArtistLine(
+                KatArtistLine(
                   artist: widget.track.artist,
-                  style: WaveType.meta.copyWith(fontSize: 11),
+                  style: KatType.meta.copyWith(fontSize: 11),
                 ),
                 Text(
                   'Recently played',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 10.5,
-                    color: waveTextTertiary(context),
+                    color: katTextTertiary(context),
                   ),
                 ),
               ],
@@ -1808,14 +1807,14 @@ class _MixShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WaveRail(
+    return KatRail(
       height: 296,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
       itemBuilder: (context, i) {
         final t = tracks[i];
-        return WaveEntrance(
+        return KatEntrance(
           index: i,
           rise: 10,
           child: _MixCard(
@@ -1850,12 +1849,12 @@ class _MixCardState extends ConsumerState<_MixCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     void play() =>
         playGenerated(ref, context, widget.track, sourceLabel: widget.title);
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1882,22 +1881,22 @@ class _MixCardState extends ConsumerState<_MixCard> {
               children: [
                 AnimatedScale(
                   scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   curve: Curves.easeOutCubic,
                   child: AnimatedContainer(
-                    duration: waveMotion(context, WaveMotion.normal),
+                    duration: katMotion(context, KatMotion.normal),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      borderRadius: WaveRadius.artworkRadius,
-                      boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                      borderRadius: KatRadius.artworkRadius,
+                      boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                     ),
                     child: Stack(
                       children: [
-                        WaveArtwork(
+                        KatArtwork(
                           url: widget.track.artworkUrl,
                           videoId: widget.track.videoId,
                           size: 220,
-                          radius: WaveRadius.artwork,
+                          radius: KatRadius.artwork,
                           title: widget.track.name,
                           artist: widget.track.artist,
                           label: widget.track.name,
@@ -1905,7 +1904,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              borderRadius: WaveRadius.artworkRadius,
+                              borderRadius: KatRadius.artworkRadius,
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -1927,7 +1926,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                             children: [
                               Text(
                                 widget.badge,
-                                style: WaveType.overline.copyWith(
+                                style: KatType.overline.copyWith(
                                   fontSize: 9.5,
                                   color: Colors.white.withValues(alpha: 0.75),
                                 ),
@@ -1935,7 +1934,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                               const SizedBox(height: 2),
                               Text(
                                 widget.title,
-                                style: WaveType.trackTitle.copyWith(
+                                style: KatType.trackTitle.copyWith(
                                   fontSize: 16,
                                   color: Colors.white,
                                 ),
@@ -1946,7 +1945,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                         Positioned.fill(
                           child: AnimatedOpacity(
                             opacity: _hover ? 1 : 0,
-                            duration: waveMotion(context, WaveMotion.fast),
+                            duration: katMotion(context, KatMotion.fast),
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -1957,15 +1956,12 @@ class _MixCardState extends ConsumerState<_MixCard> {
                                     Colors.black.withValues(alpha: 0.55),
                                   ],
                                 ),
-                                borderRadius: WaveRadius.artworkRadius,
+                                borderRadius: KatRadius.artworkRadius,
                               ),
                               child: Center(
                                 child: AnimatedScale(
                                   scale: _hover ? 1.0 : 0.70,
-                                  duration: waveMotion(
-                                    context,
-                                    WaveMotion.fast,
-                                  ),
+                                  duration: katMotion(context, KatMotion.fast),
                                   curve: Curves.easeOutBack,
                                   child: GestureDetector(
                                     onTap: play,
@@ -1985,7 +1981,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                                         ],
                                       ),
                                       child: Icon(
-                                        WaveIcons.play,
+                                        KatIcons.play,
                                         size: 18,
                                         color: onAccentFor(accent),
                                       ),
@@ -2005,19 +2001,19 @@ class _MixCardState extends ConsumerState<_MixCard> {
                   widget.blurb,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     color: dark
-                        ? WaveColors.textSecondary
-                        : WaveColors.lightTextSecondary,
+                        ? KatColors.textSecondary
+                        : KatColors.lightTextSecondary,
                   ),
                 ),
                 Text(
                   'Featuring ${widget.track.artist}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 11,
-                    color: waveTextTertiary(context),
+                    color: katTextTertiary(context),
                   ),
                 ),
               ],
@@ -2042,12 +2038,12 @@ class _AlbumShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WaveRail(
+    return KatRail(
       height: 214,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
-      itemBuilder: (context, i) => WaveEntrance(
+      itemBuilder: (context, i) => KatEntrance(
         index: i,
         rise: 10,
         child: _AlbumCard(track: tracks[i], source: source),
@@ -2069,7 +2065,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     void play() =>
         playGenerated(ref, context, widget.track, sourceLabel: widget.source);
     final card = MouseRegion(
@@ -2091,22 +2087,22 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: waveMotion(context, WaveMotion.normal),
+                  duration: katMotion(context, KatMotion.normal),
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
-                    borderRadius: WaveRadius.artworkRadius,
-                    boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                    borderRadius: KatRadius.artworkRadius,
+                    boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                   ),
                   child: Stack(
                     children: [
-                      WaveArtwork(
+                      KatArtwork(
                         url: widget.track.artworkUrl,
                         videoId: widget.track.videoId,
                         size: 152,
-                        radius: WaveRadius.artwork,
+                        radius: KatRadius.artwork,
                         title: widget.track.name,
                         artist: widget.track.artist,
                         label: widget.track.name,
@@ -2114,7 +2110,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                       Positioned.fill(
                         child: AnimatedOpacity(
                           opacity: _hover ? 1 : 0,
-                          duration: waveMotion(context, WaveMotion.fast),
+                          duration: katMotion(context, KatMotion.fast),
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -2125,12 +2121,12 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                   Colors.black.withValues(alpha: 0.55),
                                 ],
                               ),
-                              borderRadius: WaveRadius.artworkRadius,
+                              borderRadius: KatRadius.artworkRadius,
                             ),
                             child: Center(
                               child: AnimatedScale(
                                 scale: _hover ? 1.0 : 0.70,
-                                duration: waveMotion(context, WaveMotion.fast),
+                                duration: katMotion(context, KatMotion.fast),
                                 curve: Curves.easeOutBack,
                                 child: GestureDetector(
                                   onTap: play,
@@ -2139,7 +2135,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                     height: 44,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: waveAccent(context),
+                                      color: katAccent(context),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(
@@ -2150,9 +2146,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                       ],
                                     ),
                                     child: Icon(
-                                      WaveIcons.play,
+                                      KatIcons.play,
                                       size: 18,
-                                      color: waveOnAccent(context),
+                                      color: katOnAccent(context),
                                     ),
                                   ),
                                 ),
@@ -2165,9 +2161,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                         Positioned(
                           right: 6,
                           top: 6,
-                          child: WaveOverflowButton(
+                          child: KatOverflowButton(
                             tooltip: 'More',
-                            items: waveTrackMenuItems(
+                            items: katTrackMenuItems(
                               context: context,
                               ref: ref,
                               title: widget.track.name,
@@ -2186,19 +2182,19 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                 widget.track.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                style: KatType.trackTitle.copyWith(fontSize: 12.5),
               ),
-              WaveArtistLine(
+              KatArtistLine(
                 artist: widget.track.artist,
-                style: WaveType.meta.copyWith(fontSize: 11.5),
+                style: KatType.meta.copyWith(fontSize: 11.5),
               ),
             ],
           ),
         ),
       ),
     );
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -2226,10 +2222,10 @@ class _ChartRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: track.name,
@@ -2257,21 +2253,21 @@ class _ChartRow extends ConsumerWidget {
                   width: 30,
                   child: Text(
                     '$rank',
-                    style: WaveType.numeral.copyWith(
+                    style: KatType.numeral.copyWith(
                       fontSize: 20,
                       color: rank == 1
                           ? accent
                           : (dark
-                                ? WaveColors.textTertiary
-                                : WaveColors.lightTextTertiary),
+                                ? KatColors.textTertiary
+                                : KatColors.lightTextTertiary),
                     ),
                   ),
                 ),
-                WaveArtwork(
+                KatArtwork(
                   url: track.artworkUrl,
                   videoId: track.videoId,
                   size: 42,
-                  radius: WaveRadius.artwork,
+                  radius: KatRadius.artwork,
                   title: track.name,
                   artist: track.artist,
                   label: track.name,
@@ -2285,16 +2281,16 @@ class _ChartRow extends ConsumerWidget {
                         track.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.trackTitle.copyWith(fontSize: 13),
+                        style: KatType.trackTitle.copyWith(fontSize: 13),
                       ),
-                      WaveArtistLine(
+                      KatArtistLine(
                         artist: track.artist,
-                        style: WaveType.meta,
+                        style: KatType.meta,
                         extraTrailingSpans: [
                           if (track.listeners.isNotEmpty)
                             TextSpan(
                               text: ' · ${track.listeners}',
-                              style: WaveType.meta,
+                              style: KatType.meta,
                             ),
                         ],
                       ),
@@ -2330,8 +2326,8 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
         ref.watch(playbackServiceProvider.select((s) => s.current?.queueKey)) ==
         track.key;
     void play() => playGenerated(ref, context, track, sourceLabel: sourceLabel);
-    return WaveContextMenu(
-      items: () => waveTrackMenuItems(
+    return KatContextMenu(
+      items: () => katTrackMenuItems(
         context: context,
         ref: ref,
         title: track.name,
@@ -2352,11 +2348,11 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
               children: [
                 Stack(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: track.artworkUrl,
                       videoId: track.videoId,
                       size: 40,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       title: track.name,
                       artist: track.artist,
                       label: track.name,
@@ -2364,16 +2360,16 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
                     Positioned.fill(
                       child: AnimatedOpacity(
                         opacity: _hover && !playing ? 1 : 0,
-                        duration: waveMotion(context, WaveMotion.fast),
+                        duration: katMotion(context, KatMotion.fast),
                         child: Container(
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.55),
-                            borderRadius: WaveRadius.artworkRadius,
+                            borderRadius: KatRadius.artworkRadius,
                           ),
                           child: GestureDetector(
                             onTap: play,
                             child: const Icon(
-                              WaveIcons.play,
+                              KatIcons.play,
                               size: 16,
                               color: Colors.white,
                             ),
@@ -2392,20 +2388,17 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
                         track.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: WaveType.trackTitle.copyWith(
+                        style: KatType.trackTitle.copyWith(
                           fontSize: 13,
-                          color: playing ? waveAccent(context) : null,
+                          color: playing ? katAccent(context) : null,
                         ),
                       ),
-                      WaveArtistLine(
-                        artist: track.artist,
-                        style: WaveType.meta,
-                      ),
+                      KatArtistLine(artist: track.artist, style: KatType.meta),
                     ],
                   ),
                 ),
                 if (playing)
-                  Icon(WaveIcons.queue, size: 14, color: waveAccent(context)),
+                  Icon(KatIcons.queue, size: 14, color: katAccent(context)),
               ],
             ),
           ),
@@ -2421,13 +2414,13 @@ class _ArtistShelf extends StatelessWidget {
   const _ArtistShelf({required this.tracks});
   @override
   Widget build(BuildContext context) {
-    return WaveRail(
+    return KatRail(
       height: 168,
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 16),
       itemBuilder: (context, i) {
         final t = tracks[i];
-        return WaveEntrance(
+        return KatEntrance(
           index: i,
           rise: 10,
           child: _ArtistTile(track: t),
@@ -2446,7 +2439,7 @@ class _ArtistTile extends StatefulWidget {
 
 class _ArtistTileState extends State<_ArtistTile> {
   /// Cover edge. The resting radius is half of it, which is a circle; the
-  /// hover radius is [WaveRadius.floating] — a rounded square, one rung
+  /// hover radius is [KatRadius.floating] — a rounded square, one rung
   /// below a full circle (12 read as too square at this size).
   static const double _size = 112;
 
@@ -2455,12 +2448,12 @@ class _ArtistTileState extends State<_ArtistTile> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     // Hover reads as the shape relaxing: circle → rounded square (56 → 20
     // on a 112px cover), plus the app's standard ×1.03 lift. No accent
     // ring — accent means "selected/playing" everywhere else in the app.
     final radius = BorderRadius.circular(
-      _hover ? WaveRadius.floating : _size / 2,
+      _hover ? KatRadius.floating : _size / 2,
     );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -2473,7 +2466,7 @@ class _ArtistTileState extends State<_ArtistTile> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () => waveOpen(
+        onTap: () => katOpen(
           context,
           '/artist/${Uri.encodeComponent(widget.track.artist)}',
         ),
@@ -2483,17 +2476,17 @@ class _ArtistTileState extends State<_ArtistTile> {
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: waveMotion(context, WaveMotion.fast),
+                duration: katMotion(context, KatMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: waveMotion(context, WaveMotion.normal),
+                  duration: katMotion(context, KatMotion.normal),
                   curve: Curves.easeOutCubic,
                   // The clip is what animates the shape, so the artwork
                   // itself renders square (radius 0) and lets this own it.
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     borderRadius: radius,
-                    boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+                    boxShadow: [if (_hover) ...KatElevation.lift(dark)],
                   ),
                   // Hairline as a *foreground* decoration: a plain
                   // `border` would inset the cover by 1px (Container pads
@@ -2501,12 +2494,12 @@ class _ArtistTileState extends State<_ArtistTile> {
                   // on the clip edge for both shapes.
                   foregroundDecoration: BoxDecoration(
                     borderRadius: radius,
-                    border: Border.all(color: waveDivider(context)),
+                    border: Border.all(color: katDivider(context)),
                   ),
-                  child: WaveArtwork(
+                  child: KatArtwork(
                     url: widget.track.artworkUrl,
                     size: _size,
-                    radius: WaveRadius.structural,
+                    radius: KatRadius.structural,
                     kind: ArtworkKind.artist,
                     label: widget.track.artist,
                     title: widget.track.artist,
@@ -2520,13 +2513,13 @@ class _ArtistTileState extends State<_ArtistTile> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                style: KatType.trackTitle.copyWith(fontSize: 12.5),
               ),
               Text(
                 'Artist',
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   fontSize: 11,
-                  color: waveTextTertiary(context),
+                  color: katTextTertiary(context),
                 ),
               ),
             ],
@@ -2582,7 +2575,7 @@ class _FriendRow extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              WaveArtwork.circle(
+              KatArtwork.circle(
                 url: avatar,
                 size: 44,
                 label: activity.friend,
@@ -2598,13 +2591,13 @@ class _FriendRow extends ConsumerWidget {
                       '${activity.friend} · ${t.name}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.trackTitle.copyWith(fontSize: 12.5),
+                      style: KatType.trackTitle.copyWith(fontSize: 12.5),
                     ),
                     Text(
                       t.artist,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta.copyWith(fontSize: 11.5),
+                      style: KatType.meta.copyWith(fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -2612,9 +2605,9 @@ class _FriendRow extends ConsumerWidget {
               if (when.isNotEmpty)
                 Text(
                   when,
-                  style: WaveType.meta.copyWith(
+                  style: KatType.meta.copyWith(
                     fontSize: 11,
-                    color: waveTextTertiary(context),
+                    color: katTextTertiary(context),
                   ),
                 ),
             ],
@@ -2629,7 +2622,7 @@ class _HomeSkeleton extends StatelessWidget {
   const _HomeSkeleton();
   @override
   Widget build(BuildContext context) {
-    final bar = waveDivider(context).withValues(alpha: 0.5);
+    final bar = katDivider(context).withValues(alpha: 0.5);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2637,7 +2630,7 @@ class _HomeSkeleton extends StatelessWidget {
           height: 240,
           decoration: BoxDecoration(
             color: bar,
-            borderRadius: WaveRadius.floatingRadius,
+            borderRadius: KatRadius.floatingRadius,
           ),
         ),
         const SizedBox(height: 26),
@@ -2646,7 +2639,7 @@ class _HomeSkeleton extends StatelessWidget {
           height: 14,
           decoration: BoxDecoration(
             color: bar,
-            borderRadius: WaveRadius.tinyRadius,
+            borderRadius: KatRadius.tinyRadius,
           ),
         ),
         const SizedBox(height: 10),
@@ -2660,7 +2653,7 @@ class _HomeSkeleton extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     color: bar,
-                    borderRadius: WaveRadius.artworkRadius,
+                    borderRadius: KatRadius.artworkRadius,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -2673,7 +2666,7 @@ class _HomeSkeleton extends StatelessWidget {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: bar,
-                          borderRadius: WaveRadius.tinyRadius,
+                          borderRadius: KatRadius.tinyRadius,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -2682,7 +2675,7 @@ class _HomeSkeleton extends StatelessWidget {
                         width: 140,
                         decoration: BoxDecoration(
                           color: bar,
-                          borderRadius: WaveRadius.tinyRadius,
+                          borderRadius: KatRadius.tinyRadius,
                         ),
                       ),
                     ],
@@ -2696,7 +2689,7 @@ class _HomeSkeleton extends StatelessWidget {
           height: 140,
           decoration: BoxDecoration(
             color: bar,
-            borderRadius: WaveRadius.artworkRadius,
+            borderRadius: KatRadius.artworkRadius,
           ),
         ),
       ],

@@ -28,7 +28,7 @@ Widget _host(int index, {bool reducedMotion = false}) {
   return FluentApp(
     home: MediaQuery(
       data: MediaQueryData(disableAnimations: reducedMotion),
-      child: WaveBranchSwitcher(
+      child: KatBranchSwitcher(
         currentIndex: index,
         children: const [_KeepAlive('a'), _KeepAlive('b')],
       ),

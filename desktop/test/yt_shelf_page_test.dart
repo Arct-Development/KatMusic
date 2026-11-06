@@ -21,7 +21,7 @@ YtHomeShelf _listenAgain() => YtHomeShelf(
         videoId: 'v$i',
         title: 'Song $i',
         artist: 'Artist $i',
-        // An official CDN URL: WaveArtwork skips the iTunes upgrade for
+        // An official CDN URL: KatArtwork skips the iTunes upgrade for
         // these, so the test never leaves a network timer behind.
         artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/x$i.jpg',
       ),
@@ -53,7 +53,7 @@ Future<void> _pump(
       ],
       child: FluentApp(
         themeMode: ThemeMode.dark,
-        home: WaveYtShelfPage(title: title),
+        home: KatYtShelfPage(title: title),
       ),
     ),
   );

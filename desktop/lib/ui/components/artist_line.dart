@@ -1,12 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../core/audio/artist_parser.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/tokens.dart';
 
 /// Renders an artist credit line, breaking multiple collaborated artists
 /// into separate, distinct clickable names (e.g. "Drake • 21 Savage").
-class WaveArtistLine extends StatelessWidget {
+class KatArtistLine extends StatelessWidget {
   final String artist;
   final TextStyle? style;
   final int maxLines;
@@ -15,7 +15,7 @@ class WaveArtistLine extends StatelessWidget {
   final List<InlineSpan>? extraTrailingSpans;
   final void Function(String artist)? onTapArtist;
 
-  const WaveArtistLine({
+  const KatArtistLine({
     super.key,
     required this.artist,
     this.style,
@@ -30,22 +30,20 @@ class WaveArtistLine extends StatelessWidget {
     if (onTapArtist != null) {
       onTapArtist!(name);
     } else {
-      waveOpen(context, '/artist/${Uri.encodeComponent(name)}');
+      katOpen(context, '/artist/${Uri.encodeComponent(name)}');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final defaultStyle =
         style ??
-        WaveType.meta.copyWith(
-          color: dark
-              ? WaveColors.textSecondary
-              : WaveColors.lightTextSecondary,
+        KatType.meta.copyWith(
+          color: dark ? KatColors.textSecondary : KatColors.lightTextSecondary,
         );
     final dotStyle = defaultStyle.copyWith(
-      color: dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary,
+      color: dark ? KatColors.textTertiary : KatColors.lightTextTertiary,
       fontSize: (defaultStyle.fontSize ?? 12) * 0.9,
     );
 

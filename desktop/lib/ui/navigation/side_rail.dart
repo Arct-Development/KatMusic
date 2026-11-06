@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
-import '../components/buttons.dart' show LWTooltip;
+import '../components/buttons.dart' show KatTooltip;
 import '../theme/haze.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -13,21 +13,21 @@ import 'destinations.dart';
 /// - small 36px rows, no giant rounded rectangles
 /// - selected = subtle wash + 3px accent bar, nothing loud
 /// - bottom: Friends / Settings pinned, history hidden
-class WaveSideRail extends StatefulWidget {
+class KatSideRail extends StatefulWidget {
   final bool expanded;
   final String active;
   final void Function(String) onGo;
-  const WaveSideRail({
+  const KatSideRail({
     super.key,
     required this.expanded,
     required this.active,
     required this.onGo,
   });
   @override
-  State<WaveSideRail> createState() => _WaveSideRailState();
+  State<KatSideRail> createState() => _KatSideRailState();
 }
 
-class _WaveSideRailState extends State<WaveSideRail> {
+class _KatSideRailState extends State<KatSideRail> {
   bool get expanded => widget.expanded;
   String get active => widget.active;
   void Function(String) get onGo => widget.onGo;
@@ -40,16 +40,16 @@ class _WaveSideRailState extends State<WaveSideRail> {
   final Map<String, Widget> _rowCache = {};
 
   @override
-  void didUpdateWidget(covariant WaveSideRail oldWidget) {
+  void didUpdateWidget(covariant KatSideRail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.expanded != widget.expanded) _rowCache.clear();
   }
 
-  Widget _row(WaveDestination destination, int index, {double rise = 6}) {
+  Widget _row(KatDestination destination, int index, {double rise = 6}) {
     final selected = active == destination.path;
     return _rowCache.putIfAbsent(
       '${destination.path}|$expanded|$selected',
-      () => WaveEntrance(
+      () => KatEntrance(
         index: index,
         rise: rise,
         child: _RailItem(
@@ -64,9 +64,7 @@ class _WaveSideRailState extends State<WaveSideRail> {
 
   @override
   Widget build(BuildContext context) {
-    final width = expanded
-        ? WaveDensity.railExpanded
-        : WaveDensity.railCollapsed;
+    final width = expanded ? KatDensity.railExpanded : KatDensity.railCollapsed;
     // Haze Level 1 — subtle tonal navigation material, never a solid slab.
     // The expanded 200px drawer floats over the page (content only reserves
     // the 60px collapsed strip), so it has to frost what it covers; the
@@ -79,16 +77,16 @@ class _WaveSideRailState extends State<WaveSideRail> {
     // parked next to a translucent panel that covers the same page.
     // Fully opaque in both states: the expanded rail is just the collapsed
     // strip grown wider, and the page sits beside it, never under it.
-    return WaveLiquidGlass(
-      base: waveRailTranslucent(context).withValues(alpha: 0.72),
-      border: Border(right: BorderSide(color: waveDivider(context))),
+    return KatLiquidGlass(
+      base: katRailTranslucent(context).withValues(alpha: 0.72),
+      border: Border(right: BorderSide(color: katDivider(context))),
       child: AnimatedContainer(
-        duration: waveMotion(context, WaveMotion.normal),
-        curve: WaveMotion.standard,
+        duration: katMotion(context, KatMotion.normal),
+        curve: KatMotion.standard,
         width: width,
         // The rail persists across navigation, so this group's timeline
         // runs exactly once — a startup cascade for the destinations.
-        child: WaveEntranceGroup(
+        child: KatEntranceGroup(
           child: Column(
             children: [
               const SizedBox(height: 6),
@@ -98,30 +96,30 @@ class _WaveSideRailState extends State<WaveSideRail> {
                   children: [
                     // One-shot startup cascade — standalone entrances run once
                     // on mount; in-place rebuilds (selection/hover) never replay.
-                    for (var i = 0; i < waveListenDestinations.length; i++)
-                      _row(waveListenDestinations[i], i),
-                    WaveEntrance(
-                      index: waveListenDestinations.length,
+                    for (var i = 0; i < katListenDestinations.length; i++)
+                      _row(katListenDestinations[i], i),
+                    KatEntrance(
+                      index: katListenDestinations.length,
                       rise: 4,
                       child: _RailSeparator(expanded: expanded),
                     ),
-                    for (var i = 0; i < waveCollectionDestinations.length; i++)
+                    for (var i = 0; i < katCollectionDestinations.length; i++)
                       _row(
-                        waveCollectionDestinations[i],
-                        waveListenDestinations.length + i,
+                        katCollectionDestinations[i],
+                        katListenDestinations.length + i,
                       ),
-                    WaveEntrance(
+                    KatEntrance(
                       index:
-                          waveListenDestinations.length +
-                          waveCollectionDestinations.length,
+                          katListenDestinations.length +
+                          katCollectionDestinations.length,
                       rise: 4,
                       child: _RailSeparator(expanded: expanded),
                     ),
-                    for (var i = 0; i < waveOfflineDestinations.length; i++)
+                    for (var i = 0; i < katOfflineDestinations.length; i++)
                       _row(
-                        waveOfflineDestinations[i],
-                        waveListenDestinations.length +
-                            waveCollectionDestinations.length +
+                        katOfflineDestinations[i],
+                        katListenDestinations.length +
+                            katCollectionDestinations.length +
                             i,
                       ),
                   ],
@@ -130,16 +128,16 @@ class _WaveSideRailState extends State<WaveSideRail> {
               Container(
                 height: 1,
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                color: waveDivider(context),
+                color: katDivider(context),
               ),
-              for (var i = 0; i < waveSystemDestinations.length; i++)
+              for (var i = 0; i < katSystemDestinations.length; i++)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: _row(
-                    waveSystemDestinations[i],
-                    waveListenDestinations.length +
-                        waveCollectionDestinations.length +
-                        waveOfflineDestinations.length +
+                    katSystemDestinations[i],
+                    katListenDestinations.length +
+                        katCollectionDestinations.length +
+                        katOfflineDestinations.length +
                         i,
                   ),
                 ),
@@ -166,7 +164,7 @@ class _RailSeparator extends StatelessWidget {
           margin: expanded
               ? const EdgeInsets.symmetric(horizontal: 10)
               : EdgeInsets.zero,
-          color: waveDivider(context),
+          color: katDivider(context),
         ),
       ),
     );
@@ -174,7 +172,7 @@ class _RailSeparator extends StatelessWidget {
 }
 
 class _RailItem extends StatefulWidget {
-  final WaveDestination destination;
+  final KatDestination destination;
   final bool expanded;
   final bool selected;
   final VoidCallback onTap;
@@ -201,16 +199,16 @@ class _RailItemState extends State<_RailItem> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final bg = widget.selected
         ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.08)
         : _hover
         ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.04)
         : Colors.transparent;
     final fg = widget.selected
-        ? (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
-        : (dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary);
+        ? (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
+        : (dark ? KatColors.textSecondary : KatColors.lightTextSecondary);
     final hasFocus = _focus.hasFocus;
     final itemHeight = widget.expanded ? 36.0 : 40.0;
 
@@ -237,13 +235,13 @@ class _RailItemState extends State<_RailItem> {
             widget.onTap();
           },
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.fast),
+            duration: katMotion(context, KatMotion.fast),
             height: itemHeight,
             margin: const EdgeInsets.symmetric(vertical: 1.5),
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: WaveRadius.controlsRadius,
+              borderRadius: KatRadius.controlsRadius,
               border: hasFocus
                   ? Border.all(color: accent.withValues(alpha: 0.6), width: 1)
                   : Border.all(color: Colors.transparent, width: 1),
@@ -252,19 +250,19 @@ class _RailItemState extends State<_RailItem> {
               alignment: Alignment.centerLeft,
               children: [
                 AnimatedPositioned(
-                  duration: waveMotion(context, WaveMotion.fast),
+                  duration: katMotion(context, KatMotion.fast),
                   curve: Curves.easeOutCubic,
                   left: widget.selected ? 0 : -4,
                   top: (itemHeight - 16) / 2,
                   height: 16,
                   child: AnimatedOpacity(
-                    duration: waveMotion(context, WaveMotion.fast),
+                    duration: katMotion(context, KatMotion.fast),
                     opacity: widget.selected ? 1.0 : 0.0,
                     child: Container(
                       width: 3,
                       decoration: BoxDecoration(
                         color: accent,
-                        borderRadius: WaveRadius.tinyRadius,
+                        borderRadius: KatRadius.tinyRadius,
                       ),
                     ),
                   ),
@@ -279,7 +277,7 @@ class _RailItemState extends State<_RailItem> {
                         builder: (context, constraints) {
                           // Follow the animating rail width, not the
                           // instant `expanded` flag: the rail container
-                          // animates 60<->200px over WaveMotion.normal
+                          // animates 60<->200px over KatMotion.normal
                           // while the flag flips immediately, which
                           // overflowed the Row mid-flight.
                           final isWide = constraints.maxWidth > 100;
@@ -290,9 +288,9 @@ class _RailItemState extends State<_RailItem> {
                                       scale: widget.selected
                                           ? 1.05
                                           : (_hover ? 1.02 : 1.0),
-                                      duration: waveMotion(
+                                      duration: katMotion(
                                         context,
-                                        WaveMotion.fast,
+                                        KatMotion.fast,
                                       ),
                                       curve: Curves.easeOutCubic,
                                       child: Icon(
@@ -307,7 +305,7 @@ class _RailItemState extends State<_RailItem> {
                                         widget.destination.label,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: WaveType.label.copyWith(
+                                        style: KatType.label.copyWith(
                                           fontSize: 13,
                                           fontWeight: widget.selected
                                               ? FontWeight.w600
@@ -322,10 +320,7 @@ class _RailItemState extends State<_RailItem> {
                                   scale: widget.selected
                                       ? 1.06
                                       : (_hover ? 1.03 : 1.0),
-                                  duration: waveMotion(
-                                    context,
-                                    WaveMotion.fast,
-                                  ),
+                                  duration: katMotion(context, KatMotion.fast),
                                   curve: Curves.easeOutCubic,
                                   child: Icon(
                                     widget.destination.icon,
@@ -353,6 +348,6 @@ class _RailItemState extends State<_RailItem> {
       child: content,
     );
     if (widget.expanded) return labelled;
-    return LWTooltip(message: widget.destination.label, child: labelled);
+    return KatTooltip(message: widget.destination.label, child: labelled);
   }
 }

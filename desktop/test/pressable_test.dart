@@ -6,7 +6,7 @@ import 'package:katmusic_desktop/ui/components/buttons.dart';
 Widget _host({VoidCallback? onTap, double pressedScale = 0.97}) {
   return FluentApp(
     home: Center(
-      child: WavePressable(
+      child: KatPressable(
         onTap: onTap,
         pressedScale: pressedScale,
         child: const SizedBox(width: 80, height: 80),
@@ -18,7 +18,7 @@ Widget _host({VoidCallback? onTap, double pressedScale = 0.97}) {
 double _scale(WidgetTester tester) => tester
     .widget<AnimatedScale>(
       find.descendant(
-        of: find.byType(WavePressable),
+        of: find.byType(KatPressable),
         matching: find.byType(AnimatedScale),
       ),
     )
@@ -28,7 +28,7 @@ MouseCursor _cursor(WidgetTester tester) => tester
     .widget<MouseRegion>(
       find
           .descendant(
-            of: find.byType(WavePressable),
+            of: find.byType(KatPressable),
             matching: find.byType(MouseRegion),
           )
           .last, // the outer region is the focus detector's
@@ -41,7 +41,7 @@ void main() {
     await tester.pumpWidget(_host(onTap: () => taps++));
     expect(_scale(tester), 1.0);
 
-    final centre = tester.getCenter(find.byType(WavePressable));
+    final centre = tester.getCenter(find.byType(KatPressable));
     final gesture = await tester.startGesture(centre);
     await tester.pump(const Duration(milliseconds: 40));
     expect(
@@ -61,7 +61,7 @@ void main() {
   ) async {
     await tester.pumpWidget(_host(onTap: () {}));
     final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(WavePressable)),
+      tester.getCenter(find.byType(KatPressable)),
     );
     await tester.pump(const Duration(milliseconds: 40));
     expect(_scale(tester), lessThan(1.0));
@@ -74,7 +74,7 @@ void main() {
   testWidgets('honours a per-surface dip', (tester) async {
     await tester.pumpWidget(_host(onTap: () {}, pressedScale: 0.985));
     final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(WavePressable)),
+      tester.getCenter(find.byType(KatPressable)),
     );
     await tester.pumpAndSettle();
     expect(_scale(tester), 0.985);
@@ -97,7 +97,7 @@ void main() {
     await tester.pumpWidget(
       FluentApp(
         home: Center(
-          child: WavePressable(
+          child: KatPressable(
             onTap: () => taps++,
             child: const Text('Blinding Lights'),
           ),

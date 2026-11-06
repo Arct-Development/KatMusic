@@ -7,11 +7,11 @@ import 'tokens.dart';
 /// - Dark: midnight-navy surfaces over native Mica (set in app/window.dart).
 /// - Light: cool daylight surfaces.
 /// - Accent: user accent from prefs, defaulting to KatMusic blue
-///   ([WaveColors.defaultAccent]).
-/// - Component radii follow [WaveRadius]: menus/popovers 7px, dialogs 10px
+///   ([KatColors.defaultAccent]).
+/// - Component radii follow [KatRadius]: menus/popovers 7px, dialogs 10px
 ///   max, buttons/controls 5px. No pill buttons — pill shapes are reserved
 ///   for meta chips and the circular transport button.
-/// - Tooltips use a 400ms wait ([WaveState.tooltipDelay]).
+/// - Tooltips use a 400ms wait ([KatState.tooltipDelay]).
 /// - No competing Material/ledger theming inside lib/ui/.
 AccentColor _accentFrom(Color color) {
   // Build a minimal swatch around the user accent so Fluent hover/press
@@ -40,7 +40,7 @@ AccentColor _accentFrom(Color color) {
 
 /// Shape shared by every button/control: 5px, never a pill.
 const _controlShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(WaveRadius.controls)),
+  borderRadius: BorderRadius.all(Radius.circular(KatRadius.controls)),
 );
 
 ButtonThemeData _waveButtonTheme() {
@@ -61,41 +61,41 @@ ContentDialogThemeData _waveDialogTheme({required Color surface}) {
   return ContentDialogThemeData(
     decoration: BoxDecoration(
       color: surface,
-      borderRadius: BorderRadius.circular(WaveRadius.floating), // 10px max.
+      borderRadius: BorderRadius.circular(KatRadius.floating), // 10px max.
     ),
     actionsDecoration: BoxDecoration(
       color: surface,
       borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(WaveRadius.floating),
+        bottom: Radius.circular(KatRadius.floating),
       ),
     ),
   );
 }
 
 const _waveTooltipTheme = TooltipThemeData(
-  waitDuration: WaveState.tooltipDelay, // 400ms.
+  waitDuration: KatState.tooltipDelay, // 400ms.
 );
 
 /// [custom] is the user's Custom theme palette
-/// ([WaveSurfaces.fromCustomBase]). When set it replaces the graphite /
+/// ([KatSurfaces.fromCustomBase]). When set it replaces the graphite /
 /// AMOLED / pearl surfaces; [isLight] must match
-/// [WaveSurfaces.isLightBase] for its base so the text tokens contrast.
+/// [KatSurfaces.isLightBase] for its base so the text tokens contrast.
 FluentThemeData buildWaveFluentTheme({
   required Color accent,
   required bool isLight,
   bool amoled = false,
-  WaveSurfaces? custom,
+  KatSurfaces? custom,
 }) {
-  final safeAccent = accent.a == 0 ? WaveColors.defaultAccent : accent;
+  final safeAccent = accent.a == 0 ? KatColors.defaultAccent : accent;
   final accentColor = _accentFrom(safeAccent);
   final buttonTheme = _waveButtonTheme();
   // AMOLED only ever collapses the *dark* base — light ignores it.
   final surfaces =
       custom ??
-      ((!isLight && amoled) ? WaveSurfaces.amoled : WaveSurfaces.graphite);
+      ((!isLight && amoled) ? KatSurfaces.amoled : KatSurfaces.graphite);
   if (isLight) {
-    final page = custom?.background ?? WaveColors.lightBackground;
-    final card = custom?.surface ?? WaveColors.lightSurface;
+    final page = custom?.background ?? KatColors.lightBackground;
+    final card = custom?.surface ?? KatColors.lightSurface;
     return FluentThemeData(
       brightness: Brightness.light,
       accentColor: accentColor,
@@ -103,15 +103,15 @@ FluentThemeData buildWaveFluentTheme({
       micaBackgroundColor: page,
       cardColor: card,
       menuColor: card,
-      activeColor: WaveColors.lightTextPrimary,
-      inactiveColor: WaveColors.lightTextSecondary,
+      activeColor: KatColors.lightTextPrimary,
+      inactiveColor: KatColors.lightTextSecondary,
       selectionColor: safeAccent.withValues(alpha: 0.25),
       visualDensity: VisualDensity.standard,
       focusTheme: const FocusThemeData(glowFactor: 2.0),
       buttonTheme: buttonTheme,
       dialogTheme: _waveDialogTheme(surface: card),
       tooltipTheme: _waveTooltipTheme,
-      extensions: [custom ?? WaveSurfaces.graphite],
+      extensions: [custom ?? KatSurfaces.graphite],
     );
   }
   return FluentThemeData(
@@ -122,8 +122,8 @@ FluentThemeData buildWaveFluentTheme({
     acrylicBackgroundColor: surfaces.panelTranslucent,
     cardColor: surfaces.surface,
     menuColor: surfaces.surfaceRaised,
-    activeColor: WaveColors.textPrimary,
-    inactiveColor: WaveColors.textSecondary,
+    activeColor: KatColors.textPrimary,
+    inactiveColor: KatColors.textSecondary,
     selectionColor: safeAccent.withValues(alpha: 0.3),
     visualDensity: VisualDensity.standard,
     focusTheme: const FocusThemeData(glowFactor: 2.0),

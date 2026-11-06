@@ -8,18 +8,18 @@ import 'package:katmusic_desktop/ui/theme/haze.dart';
 /// in Solid and at low intensity.
 void main() {
   Widget harness({
-    required WaveMaterialMode material,
-    required WaveHazeIntensity intensity,
+    required KatMaterialMode material,
+    required KatHazeIntensity intensity,
     required LwHazeLevel level,
     bool? enableBlur,
   }) {
     return FluentApp(
       themeMode: ThemeMode.dark,
-      home: WaveHazeScope(
+      home: KatHazeScope(
         material: material,
         intensity: intensity,
         child: Center(
-          child: WaveHaze(
+          child: KatHaze(
             level: level,
             enableBlur: enableBlur,
             child: const SizedBox(width: 120, height: 120),
@@ -42,8 +42,8 @@ void main() {
         await blurred(
           tester,
           harness(
-            material: WaveMaterialMode.solid,
-            intensity: WaveHazeIntensity.high,
+            material: KatMaterialMode.solid,
+            intensity: KatHazeIntensity.high,
             level: level,
             enableBlur: true,
           ),
@@ -59,8 +59,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: WaveMaterialMode.haze,
-          intensity: WaveHazeIntensity.low,
+          material: KatMaterialMode.haze,
+          intensity: KatHazeIntensity.low,
           level: LwHazeLevel.l1,
           enableBlur: true,
         ),
@@ -71,8 +71,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: WaveMaterialMode.haze,
-          intensity: WaveHazeIntensity.low,
+          material: KatMaterialMode.haze,
+          intensity: KatHazeIntensity.low,
           level: LwHazeLevel.l2,
           enableBlur: true,
         ),
@@ -86,8 +86,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: WaveMaterialMode.haze,
-          intensity: WaveHazeIntensity.medium,
+          material: KatMaterialMode.haze,
+          intensity: KatHazeIntensity.medium,
           level: LwHazeLevel.l1,
           enableBlur: true,
         ),
@@ -101,8 +101,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: WaveMaterialMode.haze,
-          intensity: WaveHazeIntensity.high,
+          material: KatMaterialMode.haze,
+          intensity: KatHazeIntensity.high,
           level: LwHazeLevel.l1,
           enableBlur: false,
         ),

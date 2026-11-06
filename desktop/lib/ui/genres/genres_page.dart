@@ -6,20 +6,20 @@ import '../../features/feed/feed_repository.dart';
 import '../../features/feed/genre_source.dart';
 import '../components/states.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// One page of top genres. A row starts a tag mix through Mix Lab's
 /// existing generator.
-class WaveGenresPage extends ConsumerStatefulWidget {
+class KatGenresPage extends ConsumerStatefulWidget {
   /// Drawn inside Stats. The page title and the side-rail route stay off.
   final bool embedded;
-  const WaveGenresPage({super.key, this.embedded = false});
+  const KatGenresPage({super.key, this.embedded = false});
 
   @override
-  ConsumerState<WaveGenresPage> createState() => _WaveGenresPageState();
+  ConsumerState<KatGenresPage> createState() => _KatGenresPageState();
 }
 
-class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
+class _KatGenresPageState extends ConsumerState<KatGenresPage> {
   static const _periods = <(String, String)>[
     ('7day', '7 days'),
     ('1month', '30 days'),
@@ -74,15 +74,15 @@ class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
         if (!widget.embedded) ...[
           Text(
             'GENRES',
-            style: WaveType.overline.copyWith(color: waveAccent(context)),
+            style: KatType.overline.copyWith(color: katAccent(context)),
           ),
           const SizedBox(height: 4),
-          Text('Genres', style: WaveType.pageTitle.copyWith(fontSize: 24)),
+          Text('Genres', style: KatType.pageTitle.copyWith(fontSize: 24)),
           const SizedBox(height: 4),
         ],
         Text(
           'Styles from your Last.fm listening. A tap plays songs in that style, not a track named after it.',
-          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+          style: KatType.meta.copyWith(color: katTextSecondary(context)),
         ),
         const SizedBox(height: 14),
         Wrap(
@@ -102,16 +102,16 @@ class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
         ),
         const SizedBox(height: 8),
         chart.when(
-          loading: () => const WaveLoading(label: 'Loading genres…'),
-          error: (e, _) => WaveError(
+          loading: () => const KatLoading(label: 'Loading genres…'),
+          error: (e, _) => KatError(
             title: 'Could not load genres',
             message: '$e',
             onRetry: () => ref.invalidate(genreChartProvider(_period)),
           ),
           data: (data) {
             if (data.bars.isEmpty) {
-              return WaveEmpty(
-                icon: WaveIcons.genres,
+              return KatEmpty(
+                icon: KatIcons.genres,
                 title: 'No genres yet',
                 subtitle: data.fromLastFm
                     ? 'Last.fm tags for this period were places and labels, not music styles.'
@@ -126,9 +126,7 @@ class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
                   data.fromLastFm
                       ? 'From your Last.fm tags'
                       : 'From track names in your play log',
-                  style: WaveType.meta.copyWith(
-                    color: waveTextTertiary(context),
-                  ),
+                  style: KatType.meta.copyWith(color: katTextTertiary(context)),
                 ),
                 const SizedBox(height: 12),
                 for (final bar in data.bars)
@@ -143,8 +141,8 @@ class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
                   const SizedBox(height: 12),
                   Text(
                     _error!,
-                    style: WaveType.meta.copyWith(
-                      color: waveTextSecondary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextSecondary(context),
                     ),
                   ),
                 ],
@@ -186,7 +184,7 @@ class _GenreRowState extends State<_GenreRow> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     final width = widget.fraction.clamp(0.04, 1.0);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -211,7 +209,7 @@ class _GenreRowState extends State<_GenreRow> {
                     Icon(
                       FluentIcons.play,
                       size: 12,
-                      color: _hover ? accent : waveTextTertiary(context),
+                      color: _hover ? accent : katTextTertiary(context),
                     ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -219,15 +217,15 @@ class _GenreRowState extends State<_GenreRow> {
                       widget.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.body.copyWith(
+                      style: KatType.body.copyWith(
                         color: _hover ? accent : null,
                       ),
                     ),
                   ),
                   Text(
                     '${widget.weight}',
-                    style: WaveType.meta.copyWith(
-                      color: waveTextTertiary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextTertiary(context),
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -237,7 +235,7 @@ class _GenreRowState extends State<_GenreRow> {
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: (waveIsDark(context) ? Colors.white : Colors.black)
+                  color: (katIsDark(context) ? Colors.white : Colors.black)
                       .withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(99),
                 ),

@@ -154,7 +154,7 @@ class _StageScrim extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             (isDark ? Colors.black : Colors.white).withValues(alpha: topAlpha),
-            waveBackground(context).withValues(alpha: bottomAlpha),
+            katBackground(context).withValues(alpha: bottomAlpha),
           ],
         ),
       ),
@@ -961,7 +961,7 @@ final auraImageProvider = FutureProvider.autoDispose.family<ui.Image, String>((
 /// exactly once per (artworkUrl, palette, theme) change, so RSS stays flat
 /// after first paint. The [cinematic] flag selects the static baked-aura
 /// stage vs the static palette-orb stage; both are still images.
-class WaveAmbientMesh extends ConsumerWidget {
+class KatAmbientMesh extends ConsumerWidget {
   final String artworkUrl;
   final bool isFullBleed;
   final double height;
@@ -973,7 +973,7 @@ class WaveAmbientMesh extends ConsumerWidget {
   /// Only meaningful with [cinematic].
   final bool apple;
 
-  const WaveAmbientMesh({
+  const KatAmbientMesh({
     super.key,
     required this.artworkUrl,
     this.isFullBleed = true,
@@ -987,13 +987,13 @@ class WaveAmbientMesh extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reduceTransparency =
         MediaQuery.maybeOf(context)?.highContrast ?? false;
-    final blurEnabled = WaveHazeScope.blurEnabled(context);
+    final blurEnabled = KatHazeScope.blurEnabled(context);
 
     final paletteAsync = ref.watch(artworkPaletteProvider(artworkUrl));
     final palette = paletteAsync.valueOrNull ?? ArtworkPalette.fallback;
 
-    final isDark = waveIsDark(context);
-    final darkBase = waveBackground(context);
+    final isDark = katIsDark(context);
+    final darkBase = katBackground(context);
     final visualizerEnabled = ref.watch(visualizerEnabledProvider);
 
     // Toggle is a hard show/hide: no fade animation, no retained layers.
@@ -1147,7 +1147,7 @@ class _AuraLayersState extends State<_AuraLayers>
     final disableAnimations =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (disableAnimations) return false;
-    return WaveHazeScope.blurEnabled(context);
+    return KatHazeScope.blurEnabled(context);
   }
 
   void _syncTicker(bool animate) {
@@ -1570,16 +1570,16 @@ class _AmbientMeshPainter extends CustomPainter {
 ///
 /// Deliberately the static [AmbientWash], not the mesh: a header band has
 /// to be there whatever the haze/visualizer settings say
-/// ([WaveAmbientMesh] renders nothing when they are off), and its palette
+/// ([KatAmbientMesh] renders nothing when they are off), and its palette
 /// radial fades to zero so title and meta keep their contrast on any
 /// cover without a scrim.
-class WaveAmbientBand extends StatelessWidget {
+class KatAmbientBand extends StatelessWidget {
   final String artworkUrl;
   final Widget child;
 
   /// Forwarded to [AmbientWash] — raise it if the band still reads faint.
   final double strength;
-  const WaveAmbientBand({
+  const KatAmbientBand({
     super.key,
     required this.artworkUrl,
     required this.child,
@@ -1678,7 +1678,7 @@ class AmbientWash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (dynamicMesh) {
-      return WaveAmbientMesh(
+      return KatAmbientMesh(
         artworkUrl: artworkUrl,
         isFullBleed: false,
         height: height,
@@ -1718,8 +1718,8 @@ class AmbientWash extends StatelessWidget {
         return IgnorePointer(
           child: AnimatedOpacity(
             opacity: palette == null ? 0 : 1,
-            duration: waveMotion(context, WaveMotion.slow),
-            curve: WaveMotion.standard,
+            duration: katMotion(context, KatMotion.slow),
+            curve: KatMotion.standard,
             child: ShaderMask(
               blendMode: BlendMode.dstIn,
               // Side fade: without it the glow is cut flat at the band's

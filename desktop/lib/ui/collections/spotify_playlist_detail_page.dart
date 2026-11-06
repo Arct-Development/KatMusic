@@ -9,14 +9,14 @@ import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../../features/spotify/spotify_api.dart';
 import '../components/buttons.dart'
-    show LWTooltip, WaveGhostButton, WavePrimaryButton;
+    show KatTooltip, KatGhostButton, KatPrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Spotify playlist (or Liked Songs, id `liked`) detail: hero + filter +
 /// track table. Read-only. Tracks play through the app's own resolver
@@ -24,11 +24,11 @@ import '../theme/wave_icons.dart';
 ///
 /// These likes live only here: the app's own Liked page never includes
 /// Spotify likes.
-class WaveSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
+class KatSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
   final String playlistId;
   final String title;
   final String artworkUrl;
-  const WaveSpotifyPlaylistDetailPage({
+  const KatSpotifyPlaylistDetailPage({
     super.key,
     required this.playlistId,
     this.title = '',
@@ -36,12 +36,12 @@ class WaveSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveSpotifyPlaylistDetailPage> createState() =>
-      _WaveSpotifyPlaylistDetailPageState();
+  ConsumerState<KatSpotifyPlaylistDetailPage> createState() =>
+      _KatSpotifyPlaylistDetailPageState();
 }
 
-class _WaveSpotifyPlaylistDetailPageState
-    extends ConsumerState<WaveSpotifyPlaylistDetailPage> {
+class _KatSpotifyPlaylistDetailPageState
+    extends ConsumerState<KatSpotifyPlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -56,8 +56,8 @@ class _WaveSpotifyPlaylistDetailPageState
   Widget build(BuildContext context) {
     final async = ref.watch(spotifyPlaylistContentProvider(widget.playlistId));
     return async.when(
-      loading: () => const WaveLoading(label: 'Loading playlist…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading playlist…'),
+      error: (e, _) => KatError(
         title: 'Could not load playlist',
         message: '$e',
         onRetry: () =>
@@ -65,8 +65,8 @@ class _WaveSpotifyPlaylistDetailPageState
       ),
       data: (res) {
         if (res == null || res.tracks.isEmpty) {
-          return WaveEmpty(
-            icon: WaveIcons.playlists,
+          return KatEmpty(
+            icon: KatIcons.playlists,
             title: 'Playlist unavailable',
             subtitle:
                 'It may be private or empty, or the Spotify session expired.',
@@ -152,7 +152,7 @@ class _Body extends ConsumerWidget {
       }
     }
 
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -160,14 +160,14 @@ class _Body extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
-                child: WaveEntrance(
+                child: KatEntrance(
                   rise: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      WaveCollectionHero(
+                      KatCollectionHero(
                         flightKind: 'spotifyplaylist',
                         flightId: playlistId,
                         overline: 'Spotify playlist',
@@ -176,10 +176,10 @@ class _Body extends ConsumerWidget {
                             '${res.tracks.length} tracks'
                             '${query.isNotEmpty ? ' · ${tracks.length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: WaveIcons.playlists,
+                        fallbackIcon: KatIcons.playlists,
                         primaryActions: [
                           if (tracks.isNotEmpty) ...[
-                            WavePrimaryButton(
+                            KatPrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
                               onPressed: () => playGenerated(
@@ -190,9 +190,9 @@ class _Body extends ConsumerWidget {
                                 queueAll: asGenerated(),
                               ),
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Shuffle',
-                              icon: WaveIcons.shuffle,
+                              icon: KatIcons.shuffle,
                               onPressed: () {
                                 final shuffled = asGenerated()..shuffle();
                                 playGenerated(
@@ -206,7 +206,7 @@ class _Body extends ConsumerWidget {
                             ),
                             // A playlist copy only: never saved as, or
                             // merged into, the app's Liked Songs.
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Save to library',
                               icon: FluentIcons.save,
                               onPressed: () async {
@@ -236,25 +236,25 @@ class _Body extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      WaveFilterBar(
+                      KatFilterBar(
                         controller: filter,
                         onChanged: onQuery,
                         hint: 'Filter in playlist…',
                         countLabel: '${tracks.length} tracks',
-                        sortSlot: LWTooltip(
+                        sortSlot: KatTooltip(
                           message: 'Sort (also sortable via table headers)',
-                          child: WaveSelect<String>(
+                          child: KatSelect<String>(
                             value: sort,
                             options: const [
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'default',
                                 label: 'Default order',
                               ),
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'title',
                                 label: 'Title A–Z',
                               ),
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'artist',
                                 label: 'Artist A–Z',
                               ),
@@ -272,8 +272,8 @@ class _Body extends ConsumerWidget {
           ),
           if (tracks.isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
-                icon: WaveIcons.playlists,
+              child: KatEmpty(
+                icon: KatIcons.playlists,
                 title: 'No matches',
                 subtitle: 'Try a different filter.',
               ),
@@ -281,7 +281,7 @@ class _Body extends ConsumerWidget {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: WaveDesktopTable<GeneratedTrack>(
+              sliver: KatDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,

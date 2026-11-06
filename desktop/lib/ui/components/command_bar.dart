@@ -2,9 +2,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../theme/tokens.dart';
 import 'buttons.dart'
-    show LWTooltip, WaveButton, WaveGhostButton, WavePrimaryButton;
+    show KatTooltip, KatButton, KatGhostButton, KatPrimaryButton;
 import 'menus.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// WinUI-inspired command surface for music collections.
 ///
@@ -16,21 +16,21 @@ import '../theme/wave_icons.dart';
 ///
 /// Usage:
 /// ```dart
-/// WaveCommandBar(
+/// KatCommandBar(
 ///   onPlay: ...,
 ///   onShuffle: ...,
 ///   onDownload: ...,
 ///   overflowItems: [...],
 /// )
 /// ```
-class WaveCommandBar extends StatelessWidget {
+class KatCommandBar extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onShuffle;
   final VoidCallback? onDownload;
   final String playLabel;
-  final List<WaveMenuEntry> overflowItems;
+  final List<KatMenuEntry> overflowItems;
   final List<Widget> trailing;
-  const WaveCommandBar({
+  const KatCommandBar({
     super.key,
     this.onPlay,
     this.onShuffle,
@@ -43,37 +43,37 @@ class WaveCommandBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: WaveSpacing.x4,
-      runSpacing: WaveSpacing.x4,
+      spacing: KatSpacing.x4,
+      runSpacing: KatSpacing.x4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         if (onPlay != null)
-          WavePrimaryButton(
+          KatPrimaryButton(
             label: playLabel,
             icon: FluentIcons.play,
             onPressed: onPlay,
           ),
         if (onShuffle != null)
-          WaveGhostButton(
+          KatGhostButton(
             label: 'Shuffle',
-            icon: WaveIcons.shuffle,
+            icon: KatIcons.shuffle,
             onPressed: onShuffle,
           ),
         if (onDownload != null)
-          WaveGhostButton(
+          KatGhostButton(
             label: 'Download',
             icon: FluentIcons.download,
             onPressed: onDownload,
           ),
         if (overflowItems.isNotEmpty)
-          LWTooltip(
+          KatTooltip(
             message: 'More actions',
             child: SizedBox(
-              width: WaveDensity.hitArea,
+              width: KatDensity.hitArea,
               height: 32,
-              child: WaveMenuButton(
+              child: KatMenuButton(
                 entries: overflowItems,
-                buttonBuilder: (context, onOpen) => WaveButton(
+                buttonBuilder: (context, onOpen) => KatButton(
                   onPressed: onOpen,
                   child: const Icon(FluentIcons.more, size: 14),
                 ),
@@ -91,11 +91,11 @@ class WaveCommandBar extends StatelessWidget {
 /// Used by Library / Playlists / Albums / Artists headers so sort,
 /// filter and view controls share one Fluent pattern instead of ad-hoc
 /// DropDownButtons scattered per page.
-class WaveLibraryToolbar extends StatelessWidget {
+class KatLibraryToolbar extends StatelessWidget {
   final Widget? sortSlot;
   final Widget? viewSlot;
   final Widget? filterSlot;
-  const WaveLibraryToolbar({
+  const KatLibraryToolbar({
     super.key,
     this.sortSlot,
     this.viewSlot,

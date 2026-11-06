@@ -6,13 +6,13 @@ import '../../ui/theme/tokens.dart';
 import 'output_path_status.dart';
 
 /// Compact WinUI 3 stream-path summary for Settings.
-class WaveStreamPathPanel extends StatelessWidget {
+class KatStreamPathPanel extends StatelessWidget {
   final OutputPathStatus path;
-  const WaveStreamPathPanel({super.key, required this.path});
+  const KatStreamPathPanel({super.key, required this.path});
 
   @override
   Widget build(BuildContext context) {
-    final secondary = waveTextSecondary(context);
+    final secondary = katTextSecondary(context);
     Widget row(String key, String value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -22,7 +22,7 @@ class WaveStreamPathPanel extends StatelessWidget {
               width: 72,
               child: Text(
                 key,
-                style: WaveType.overline.copyWith(color: secondary),
+                style: KatType.overline.copyWith(color: secondary),
               ),
             ),
             Expanded(
@@ -30,7 +30,7 @@ class WaveStreamPathPanel extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta,
+                style: KatType.meta,
               ),
             ),
           ],
@@ -59,15 +59,15 @@ class WaveStreamPathPanel extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           path.bitPerfect ? 'Bit-Perfect' : path.reason.label,
-          style: WaveType.label.copyWith(
-            color: path.bitPerfect ? WaveColors.success : WaveColors.warn,
+          style: KatType.label.copyWith(
+            color: path.bitPerfect ? KatColors.success : KatColors.warn,
           ),
         ),
         if (path.error != null) ...[
           const SizedBox(height: 4),
           Text(
             path.error!,
-            style: WaveType.meta.copyWith(color: WaveColors.danger),
+            style: KatType.meta.copyWith(color: KatColors.danger),
           ),
         ],
       ],

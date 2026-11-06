@@ -16,17 +16,17 @@ import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// Liked Songs: hero + filter + sort + dense table.
-class WaveLikedPage extends ConsumerStatefulWidget {
-  const WaveLikedPage({super.key});
+class KatLikedPage extends ConsumerStatefulWidget {
+  const KatLikedPage({super.key});
 
   @override
-  ConsumerState<WaveLikedPage> createState() => _WaveLikedPageState();
+  ConsumerState<KatLikedPage> createState() => _KatLikedPageState();
 }
 
-class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
+class _KatLikedPageState extends ConsumerState<KatLikedPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -140,32 +140,30 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: WaveDensity.contentMax),
+            constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'PLAYLIST',
-                  style: WaveType.overline.copyWith(
+                  style: KatType.overline.copyWith(
                     fontSize: 10,
-                    color: waveTextTertiary(context),
+                    color: katTextTertiary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Liked Songs',
-                  style: WaveType.pageTitle.copyWith(fontSize: 28),
+                  style: KatType.pageTitle.copyWith(fontSize: 28),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '0 tracks',
-                  style: WaveType.meta.copyWith(
-                    color: waveTextTertiary(context),
-                  ),
+                  style: KatType.meta.copyWith(color: katTextTertiary(context)),
                 ),
                 const SizedBox(height: 8),
-                const WaveEmpty(
-                  icon: WaveIcons.liked,
+                const KatEmpty(
+                  icon: KatIcons.liked,
                   title: 'No liked songs yet',
                   subtitle: 'Tap the heart on any track to save it here.',
                 ),
@@ -175,7 +173,7 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
         ],
       );
     }
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -183,23 +181,23 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    WaveEntrance(
+                    KatEntrance(
                       rise: 10,
-                      child: WaveCollectionHero(
+                      child: KatCollectionHero(
                         overline: 'Playlist',
                         title: 'Liked Songs',
                         meta:
                             '$mergedTotal tracks${_q.isNotEmpty ? ' · ${asGenerated().length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: WaveIcons.likedFill,
+                        fallbackIcon: KatIcons.likedFill,
                         primaryActions: [
                           if (asGenerated().isNotEmpty)
-                            WavePrimaryButton(
+                            KatPrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
                               onPressed: () => playGenerated(
@@ -210,9 +208,9 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
                                 queueAll: asGenerated(),
                               ),
                             ),
-                          WaveGhostButton(
+                          KatGhostButton(
                             label: 'Shuffle',
-                            icon: WaveIcons.shuffle,
+                            icon: KatIcons.shuffle,
                             onPressed: asGenerated().isEmpty
                                 ? null
                                 : () {
@@ -232,25 +230,22 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    WaveFilterBar(
+                    KatFilterBar(
                       controller: _filter,
                       onChanged: (v) => setState(() => _q = v),
                       hint: 'Filter liked songs…',
                       countLabel: '${asGenerated().length} tracks',
-                      sortSlot: LWTooltip(
+                      sortSlot: KatTooltip(
                         message: 'Sort (also sortable via table headers)',
-                        child: WaveSelect<String>(
+                        child: KatSelect<String>(
                           value: _sort,
                           options: const [
-                            WaveSelectOption(
+                            KatSelectOption(
                               value: 'default',
                               label: 'Default order',
                             ),
-                            WaveSelectOption(
-                              value: 'title',
-                              label: 'Title A–Z',
-                            ),
-                            WaveSelectOption(
+                            KatSelectOption(value: 'title', label: 'Title A–Z'),
+                            KatSelectOption(
                               value: 'artist',
                               label: 'Artist A–Z',
                             ),
@@ -267,8 +262,8 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
           ),
           if (asGenerated().isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
-                icon: WaveIcons.liked,
+              child: KatEmpty(
+                icon: KatIcons.liked,
                 title: 'No liked songs yet',
                 subtitle: 'Tap the heart on any track to save it here.',
               ),
@@ -276,7 +271,7 @@ class _WaveLikedPageState extends ConsumerState<WaveLikedPage> {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: WaveDesktopTable<GeneratedTrack>(
+              sliver: KatDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,

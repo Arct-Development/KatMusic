@@ -53,17 +53,17 @@ import 'diagnostics_actions.dart';
 import 'download_layout_settings.dart';
 import 'library_settings.dart';
 import 'settings_search.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 const _waveSettingsSections = [
   ('general', 'General', FluentIcons.settings),
   ('playback', 'Playback', FluentIcons.play),
   ('audio', 'Audio', FluentIcons.speakers),
   ('downloads', 'Downloads', FluentIcons.download),
-  ('library', 'Library', WaveIcons.library),
+  ('library', 'Library', KatIcons.library),
   ('lyrics', 'Lyrics', FluentIcons.microphone),
   ('appearance', 'Appearance', FluentIcons.brush),
-  ('lastfm', 'Last.fm', WaveIcons.liked),
+  ('lastfm', 'Last.fm', KatIcons.liked),
   ('integrations', 'Integrations', FluentIcons.link),
   ('sources', 'Sources', FluentIcons.cloud),
   ('experimental', 'Experimental', FluentIcons.bug),
@@ -73,19 +73,19 @@ const _waveSettingsSections = [
 /// Fluent settings: left nav list + right form.
 ///
 /// Reuses theme_controller + prefs logic; presentation is Fluent
-/// (ToggleSwitch, Slider, WaveSelect, ContentDialog) — no old ledger
+/// (ToggleSwitch, Slider, KatSelect, ContentDialog) — no old ledger
 /// switches or boxed groups.
-class WaveSettingsPage extends ConsumerStatefulWidget {
+class KatSettingsPage extends ConsumerStatefulWidget {
   /// Deep-link into a section rail entry (e.g. 'lastfm' from the
   /// profile empty state). Falls back to 'general' when unknown.
   final String? initialSection;
-  const WaveSettingsPage({super.key, this.initialSection});
+  const KatSettingsPage({super.key, this.initialSection});
 
   @override
-  ConsumerState<WaveSettingsPage> createState() => _WaveSettingsPageState();
+  ConsumerState<KatSettingsPage> createState() => _KatSettingsPageState();
 }
 
-class _WaveSettingsPageState extends ConsumerState<WaveSettingsPage> {
+class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
   late String _section;
   String? _highlightId;
   Timer? _highlightTimer;
@@ -187,9 +187,9 @@ class _WaveSettingsPageState extends ConsumerState<WaveSettingsPage> {
               children: [
                 Text(
                   'SYSTEM',
-                  style: WaveType.overline.copyWith(color: waveAccent(context)),
+                  style: KatType.overline.copyWith(color: katAccent(context)),
                 ),
-                const Text('Settings', style: WaveType.pageTitle),
+                const Text('Settings', style: KatType.pageTitle),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
@@ -231,16 +231,16 @@ class _WaveSettingsPageState extends ConsumerState<WaveSettingsPage> {
                     children: [
                       Text(
                         'SYSTEM',
-                        style: WaveType.overline.copyWith(
-                          color: waveAccent(context),
+                        style: KatType.overline.copyWith(
+                          color: katAccent(context),
                         ),
                       ),
-                      const Text('Settings', style: WaveType.pageTitle),
+                      const Text('Settings', style: KatType.pageTitle),
                       const SizedBox(height: 12),
                       for (final s in _waveSettingsSections)
                         ListTile.selectable(
                           shape: RoundedRectangleBorder(
-                            borderRadius: WaveRadius.controlsRadius,
+                            borderRadius: KatRadius.controlsRadius,
                           ),
                           selected: _section == s.$1,
                           selectionMode: ListTileSelectionMode.single,
@@ -253,7 +253,7 @@ class _WaveSettingsPageState extends ConsumerState<WaveSettingsPage> {
                 ),
               ),
             ),
-            Container(width: 1, color: waveDivider(context)),
+            Container(width: 1, color: katDivider(context)),
             Expanded(
               child: Scrollbar(
                 controller: _contentScrollController,
@@ -336,11 +336,11 @@ class _SectionSwap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSize(
-      duration: waveMotion(context, WaveMotion.normal),
+      duration: katMotion(context, KatMotion.normal),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topLeft,
       child: AnimatedSwitcher(
-        duration: waveMotion(context, WaveMotion.fast),
+        duration: katMotion(context, KatMotion.fast),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeOutCubic,
         layoutBuilder: (currentChild, previousChildren) {
@@ -401,15 +401,15 @@ class _AccentPreview extends StatelessWidget {
           height: 14,
           decoration: BoxDecoration(
             color: resolution.color,
-            borderRadius: BorderRadius.circular(WaveRadius.tiny),
-            border: Border.all(color: waveDivider(context)),
+            borderRadius: BorderRadius.circular(KatRadius.tiny),
+            border: Border.all(color: katDivider(context)),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
         ),
       ],
@@ -449,19 +449,17 @@ class _Group extends StatelessWidget {
             color: theme.resources.cardBackgroundFillColorDefault,
             border: Border.all(color: stroke),
             borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(WaveRadius.floating),
+              top: Radius.circular(KatRadius.floating),
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: WaveType.sectionTitle),
+              Text(title, style: KatType.sectionTitle),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
             ],
           ),
@@ -477,7 +475,7 @@ class _Group extends StatelessWidget {
               bottom: BorderSide(color: stroke),
             ),
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(WaveRadius.floating),
+              bottom: Radius.circular(KatRadius.floating),
             ),
           ),
           child: child,
@@ -515,7 +513,7 @@ class _Account extends ConsumerWidget {
                       signedIn
                           ? auth.username
                           : (guest ? 'Guest mode' : 'Not connected'),
-                      style: WaveType.trackTitle,
+                      style: KatType.trackTitle,
                     ),
                     Text(
                       signedIn
@@ -523,13 +521,13 @@ class _Account extends ConsumerWidget {
                           : (guest
                                 ? 'Last.fm disabled — save keys below, then connect'
                                 : 'Connect to scrobble and personalize'),
-                      style: WaveType.meta,
+                      style: KatType.meta,
                     ),
                   ],
                 ),
               ),
               signedIn
-                  ? WaveButton(
+                  ? KatButton(
                       onPressed: () => signOutEverywhere(ref),
                       child: const Text('Sign out'),
                     )
@@ -618,10 +616,10 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_error != null) ...[
-          Text(_error!, style: WaveType.meta.copyWith(color: Colors.red)),
+          Text(_error!, style: KatType.meta.copyWith(color: Colors.red)),
           const SizedBox(height: 8),
         ],
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: _busy || !configured ? null : _begin,
           child: _busy && _handshake == null
               ? const Row(
@@ -647,12 +645,12 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
           const SizedBox(height: 6),
           Text(
             'Save your API keys below first.',
-            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+            style: KatType.meta.copyWith(color: katTextTertiary(context)),
           ),
         ],
         if (_handshake != null) ...[
           const SizedBox(height: 8),
-          WaveButton(
+          KatButton(
             onPressed: _busy ? null : _finish,
             child: _busy
                 ? const Row(
@@ -730,14 +728,14 @@ class _Audio extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Normalization', style: WaveType.trackTitle),
+              const Text('Normalization', style: KatType.trackTitle),
               const SizedBox(height: 6),
-              WaveSelect<String>(
+              KatSelect<String>(
                 value: prefs.loudnessMode,
                 options: const [
-                  WaveSelectOption(value: 'off', label: 'Off'),
-                  WaveSelectOption(value: 'track', label: 'Track'),
-                  WaveSelectOption(value: 'album', label: 'Album'),
+                  KatSelectOption(value: 'off', label: 'Off'),
+                  KatSelectOption(value: 'track', label: 'Track'),
+                  KatSelectOption(value: 'album', label: 'Album'),
                 ],
                 onChanged: (mode) async {
                   await onUpdate((p) => p.setLoudnessMode(mode));
@@ -754,12 +752,12 @@ class _Audio extends ConsumerWidget {
           id: 'audio.headphones',
           title: 'Headphone correction',
           subtitle: 'A built-in curve for a few common headphones',
-          child: WaveSelect<String>(
+          child: KatSelect<String>(
             expanded: true,
             value: HeadphoneProfiles.byId(prefs.headphoneProfile).id,
             options: [
               for (final profile in HeadphoneProfiles.all)
-                WaveSelectOption(
+                KatSelectOption(
                   value: profile.id,
                   label: profile.name,
                   hint: profile.isOff ? null : profile.description,
@@ -782,7 +780,7 @@ class _Audio extends ConsumerWidget {
           subtitle: '10-band ISO curves with acoustic & stage compensation',
           child: const SizedBox(
             height: 560,
-            child: WaveEqualizerPanel(embedded: true),
+            child: KatEqualizerPanel(embedded: true),
           ),
         ),
       ],
@@ -847,13 +845,13 @@ class _Appearance extends ConsumerWidget {
                 _CustomThemeEditor(base: theme.customBase),
               ],
               const SizedBox(height: 12),
-              const Text('Accent source', style: WaveType.trackTitle),
+              const Text('Accent source', style: KatType.trackTitle),
               const SizedBox(height: 6),
-              WaveSelect<AccentSource>(
+              KatSelect<AccentSource>(
                 value: AccentSource.fromId(theme.accentSource),
                 options: [
                   for (final source in AccentSource.values)
-                    WaveSelectOption(value: source, label: source.label),
+                    KatSelectOption(value: source, label: source.label),
                 ],
                 onChanged: (v) {
                   // Re-probe the desktop accent on every re-selection: the
@@ -867,7 +865,7 @@ class _Appearance extends ConsumerWidget {
               const SizedBox(height: 8),
               _AccentPreview(resolution: ref.watch(accentResolutionProvider)),
               const SizedBox(height: 10),
-              const Text('Accent colour', style: WaveType.trackTitle),
+              const Text('Accent colour', style: KatType.trackTitle),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -892,8 +890,8 @@ class _Appearance extends ConsumerWidget {
                             color: c,
                             border: Border.all(
                               color: theme.accent.toARGB32() == c.toARGB32()
-                                  ? waveAccent(context)
-                                  : waveDivider(context),
+                                  ? katAccent(context)
+                                  : katDivider(context),
                               width: 2,
                             ),
                           ),
@@ -933,17 +931,17 @@ class _Appearance extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              WaveSelect<String>(
+              KatSelect<String>(
                 value: theme.hazeMaterial,
                 options: const [
-                  WaveSelectOption(value: 'automatic', label: 'Automatic'),
-                  WaveSelectOption(value: 'haze', label: 'Haze'),
-                  WaveSelectOption(value: 'solid', label: 'Solid'),
+                  KatSelectOption(value: 'automatic', label: 'Automatic'),
+                  KatSelectOption(value: 'haze', label: 'Haze'),
+                  KatSelectOption(value: 'solid', label: 'Solid'),
                 ],
                 onChanged: (v) => onUpdate((p) => p.setHazeMaterial(v)),
               ),
               const SizedBox(height: 10),
-              const Text('Haze intensity', style: WaveType.trackTitle),
+              const Text('Haze intensity', style: KatType.trackTitle),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -995,7 +993,7 @@ class _Appearance extends ConsumerWidget {
                           'white text. Looks the same in every theme.'
                     : 'A calm tone from the artwork that follows your '
                           'theme (light in Pearl).',
-                style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+                style: KatType.meta.copyWith(color: katTextTertiary(context)),
               ),
             ],
           ),
@@ -1038,19 +1036,19 @@ class _CustomThemeEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(themeControllerProvider.notifier);
     final argb = base.toARGB32();
-    final isPreset = WaveSurfaces.customPresets.any(
+    final isPreset = KatSurfaces.customPresets.any(
       (p) => p.$2.toARGB32() == argb,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Base colour', style: WaveType.trackTitle),
+        const Text('Base colour', style: KatType.trackTitle),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (name, color) in WaveSurfaces.customPresets)
+            for (final (name, color) in KatSurfaces.customPresets)
               _ColorSwatchButton(
                 color: color,
                 selected: color.toARGB32() == argb,
@@ -1068,14 +1066,14 @@ class _CustomThemeEditor extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         _ThemePreview(
-          surfaces: WaveSurfaces.fromCustomBase(base),
-          light: WaveSurfaces.isLightBase(base),
+          surfaces: KatSurfaces.fromCustomBase(base),
+          light: KatSurfaces.isLightBase(base),
         ),
         const SizedBox(height: 6),
         Text(
           'Dark colours give light text, light colours give dark text. '
           'Very bright or vivid picks are toned down so text stays readable.',
-          style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+          style: KatType.meta.copyWith(color: katTextTertiary(context)),
         ),
       ],
     );
@@ -1101,7 +1099,7 @@ class _ColorSwatchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LWTooltip(
+    return KatTooltip(
       message: tooltip,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -1114,7 +1112,7 @@ class _ColorSwatchButton extends StatelessWidget {
               shape: BoxShape.circle,
               color: color,
               border: Border.all(
-                color: selected ? waveAccent(context) : waveDivider(context),
+                color: selected ? katAccent(context) : katDivider(context),
                 width: 2,
               ),
             ),
@@ -1154,7 +1152,7 @@ class _PickColorSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ColorSwatchButton(
-      color: selected ? current : waveSurfaceOverlay(context),
+      color: selected ? current : katSurfaceOverlay(context),
       selected: selected,
       tooltip: tooltip,
       onTap: () async {
@@ -1167,7 +1165,7 @@ class _PickColorSwatch extends StatelessWidget {
       },
       child: selected
           ? null
-          : Icon(WaveIcons.theme, size: 14, color: waveTextSecondary(context)),
+          : Icon(KatIcons.theme, size: 14, color: katTextSecondary(context)),
     );
   }
 }
@@ -1216,17 +1214,17 @@ Future<Color?> showWaveColorPicker(
 /// Miniature of the generated theme: rail, page, card, raised and hover
 /// tiles, dock, with real text tokens on top.
 class _ThemePreview extends StatelessWidget {
-  final WaveSurfaces surfaces;
+  final KatSurfaces surfaces;
   final bool light;
   const _ThemePreview({required this.surfaces, required this.light});
 
   @override
   Widget build(BuildContext context) {
-    final text = light ? WaveColors.lightTextPrimary : WaveColors.textPrimary;
+    final text = light ? KatColors.lightTextPrimary : KatColors.textPrimary;
     final text2 = light
-        ? WaveColors.lightTextSecondary
-        : WaveColors.textSecondary;
-    final accent = waveAccent(context);
+        ? KatColors.lightTextSecondary
+        : KatColors.textSecondary;
+    final accent = katAccent(context);
     Widget tile(Color fill, String label) => Expanded(
       child: Container(
         height: 28,
@@ -1234,24 +1232,24 @@ class _ThemePreview extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: WaveRadius.controlsRadius,
+          borderRadius: KatRadius.controlsRadius,
         ),
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: WaveType.meta.copyWith(color: text2),
+          style: KatType.meta.copyWith(color: text2),
         ),
       ),
     );
     return ClipRRect(
-      borderRadius: WaveRadius.artworkRadius,
+      borderRadius: KatRadius.artworkRadius,
       child: Container(
         height: 132,
         decoration: BoxDecoration(
           color: surfaces.background,
           border: Border.all(color: surfaces.outlineSoft),
-          borderRadius: WaveRadius.artworkRadius,
+          borderRadius: KatRadius.artworkRadius,
         ),
         child: Column(
           children: [
@@ -1270,11 +1268,11 @@ class _ThemePreview extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        Icon(WaveIcons.home, size: 14, color: accent),
+                        Icon(KatIcons.home, size: 14, color: accent),
                         const SizedBox(height: 12),
-                        Icon(WaveIcons.search, size: 14, color: text2),
+                        Icon(KatIcons.search, size: 14, color: text2),
                         const SizedBox(height: 12),
-                        Icon(WaveIcons.liked, size: 14, color: text2),
+                        Icon(KatIcons.liked, size: 14, color: text2),
                       ],
                     ),
                   ),
@@ -1286,14 +1284,14 @@ class _ThemePreview extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: surfaces.surface,
                           border: Border.all(color: surfaces.outlineSoft),
-                          borderRadius: WaveRadius.controlsRadius,
+                          borderRadius: KatRadius.controlsRadius,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Now playing',
-                              style: WaveType.trackTitle.copyWith(color: text),
+                              style: KatType.trackTitle.copyWith(color: text),
                             ),
                             const Spacer(),
                             Row(
@@ -1334,7 +1332,7 @@ class _ThemePreview extends StatelessWidget {
                       height: 3,
                       decoration: BoxDecoration(
                         color: text2.withValues(alpha: 0.35),
-                        borderRadius: WaveRadius.tinyRadius,
+                        borderRadius: KatRadius.tinyRadius,
                       ),
                     ),
                   ),
@@ -1370,20 +1368,20 @@ class _Lyrics extends ConsumerWidget {
                 'Karaoke word highlight. Off uses Apple Music line lyrics.',
           ),
           const SizedBox(height: 10),
-          const Text('Primary provider', style: WaveType.trackTitle),
+          const Text('Primary provider', style: KatType.trackTitle),
           const SizedBox(height: 6),
-          WaveSelect<String>(
+          KatSelect<String>(
             value: LyricsProviderId.fromId(prefs.lyricsProviderId).id,
             options: [
               for (final provider in LyricsProviderId.values)
-                WaveSelectOption(value: provider.id, label: provider.title),
+                KatSelectOption(value: provider.id, label: provider.title),
             ],
             onChanged: (v) => onUpdate((p) => p.setLyricsProviderId(v)),
           ),
           const SizedBox(height: 4),
           Text(
             LyricsProviderId.fromId(prefs.lyricsProviderId).subtitle,
-            style: WaveType.meta,
+            style: KatType.meta,
           ),
         ],
       ),
@@ -1434,7 +1432,7 @@ class _ScrobblerState extends ConsumerState<_Scrobbler> {
                 Expanded(
                   child: Text(
                     'Scrobble at ${percent.round()}% of track',
-                    style: WaveType.trackTitle,
+                    style: KatType.trackTitle,
                   ),
                 ),
                 SizedBox(
@@ -1482,11 +1480,11 @@ class _SpotifyCard extends ConsumerWidget {
             Expanded(
               child: Text(
                 auth.connected ? 'Connected' : 'Not connected',
-                style: WaveType.trackTitle,
+                style: KatType.trackTitle,
               ),
             ),
             if (auth.connected)
-              WaveButton(
+              KatButton(
                 onPressed: () async {
                   await auth.disconnect();
                   ref.invalidate(spotifyPlaylistsProvider);
@@ -1494,7 +1492,7 @@ class _SpotifyCard extends ConsumerWidget {
                 child: const Text('Disconnect'),
               )
             else ...[
-              WaveFilledButton(
+              KatFilledButton(
                 onPressed: () => spotifyConnectWithCookie(context, ref),
                 child: const Text('Login with cookies'),
               ),
@@ -1557,14 +1555,14 @@ class _Ytm extends ConsumerWidget {
                     const Icon(FluentIcons.video, size: 18),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Not connected', style: WaveType.trackTitle),
+                      child: Text('Not connected', style: KatType.trackTitle),
                     ),
-                    WaveButton(
+                    KatButton(
                       onPressed: () => _ytConnectWithCookies(context, ref),
                       child: const Text('Use cookies'),
                     ),
                     const SizedBox(width: 8),
-                    WaveFilledButton(
+                    KatFilledButton(
                       onPressed: () => _ytConnect(context, ref),
                       child: const Text('Connect'),
                     ),
@@ -1669,7 +1667,7 @@ class _Ytm extends ConsumerWidget {
     return Row(
       children: [
         if (photoUrl.isNotEmpty)
-          WaveArtwork.circle(
+          KatArtwork.circle(
             url: photoUrl,
             size: 40,
             label: name,
@@ -1689,15 +1687,13 @@ class _Ytm extends ConsumerWidget {
                 name.isNotEmpty ? name : 'Connected',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.trackTitle,
+                style: KatType.trackTitle,
               ),
               Text(
                 name.isNotEmpty ? sub : 'Connected$sinceText',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
             ],
           ),
@@ -1752,13 +1748,13 @@ class _Ytm extends ConsumerWidget {
               ],
             ),
             actions: [
-              WaveButton(
+              KatButton(
                 onPressed: () {
                   YtWebLogin.reloadLoginPage();
                 },
                 child: const Text('Reload'),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
@@ -1881,9 +1877,9 @@ class _YtStaleBannerState extends ConsumerState<_YtStaleBanner> {
               child: SizedBox(width: 14, height: 14, child: ProgressRing()),
             )
           else
-            WaveLink(onPressed: _refresh, child: const Text('Refresh')),
+            KatLink(onPressed: _refresh, child: const Text('Refresh')),
           const SizedBox(width: 12),
-          WaveLink(
+          KatLink(
             onPressed: () => _ytConnectWithCookies(context, ref),
             child: const Text('Reconnect'),
           ),
@@ -1911,19 +1907,19 @@ class _CardActions extends ConsumerWidget {
         if (channels >= 2)
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: WaveButton(
+            child: KatButton(
               onPressed: () => _ytSwitch(context, ref),
               child: const Text('Switch'),
             ),
           ),
         Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: WaveButton(
+          child: KatButton(
             onPressed: () => _ytAddMenu(context, ref),
             child: const Text('Add'),
           ),
         ),
-        WaveButton(
+        KatButton(
           onPressed: () async {
             final tube = ref.read(innerTubeProvider);
             await tube.signOut();
@@ -1990,8 +1986,8 @@ class _CardActions extends ConsumerWidget {
             Text(
               'Each identity keeps its own cookie jar, so adding one '
               'never signs the others out.',
-              style: WaveType.meta.copyWith(
-                color: waveTextSecondary(dialogContext),
+              style: KatType.meta.copyWith(
+                color: katTextSecondary(dialogContext),
               ),
             ),
             const SizedBox(height: 14),
@@ -2003,7 +1999,7 @@ class _CardActions extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             _YtAddOption(
-              icon: WaveIcons.friends,
+              icon: KatIcons.friends,
               title: 'Brand channel',
               subtitle:
                   'Add a channel on the current login (needs the '
@@ -2022,7 +2018,7 @@ class _CardActions extends ConsumerWidget {
           ],
         ),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
@@ -2079,13 +2075,13 @@ class _CardActions extends ConsumerWidget {
               ],
             ),
             actions: [
-              WaveButton(
+              KatButton(
                 onPressed: () {
                   YtWebLogin.reloadLoginPage();
                 },
                 child: const Text('Reload'),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
@@ -2163,14 +2159,14 @@ class _CardActions extends ConsumerWidget {
               ],
             ),
             actions: [
-              WaveButton(
+              KatButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
                 },
                 child: const Text('Cancel'),
               ),
-              WaveFilledButton(
+              KatFilledButton(
                 onPressed: () {
                   done = true;
                   Navigator.of(dialogContext).pop();
@@ -2264,14 +2260,12 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                 'Google sees a normal desktop session. Brand channels on '
                 'the same Google login are detected after connecting — '
                 'pick one in the channel chooser.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  WaveButton(
+                  KatButton(
                     onPressed: _openYtInBrowser,
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -2283,7 +2277,7 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  WaveButton(
+                  KatButton(
                     onPressed: () async {
                       final text = await _pickCookieFile();
                       if (text == null || text.isEmpty) return;
@@ -2316,13 +2310,11 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                 '(right-click → Copy value). Paste it below. '
                 'Firefox works the same way; a cookies.txt extension '
                 'export is also accepted.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
               const SizedBox(height: 12),
               TextBox(
-                decoration: waveInputDecoration(),
+                decoration: katInputDecoration(),
                 controller: controller,
                 placeholder: 'SID=...; __Secure-3PAPISID=...; SAPISID=...',
                 maxLines: 7,
@@ -2345,11 +2337,11 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
             ],
           ),
           actions: [
-            WaveButton(
+            KatButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
-            WaveFilledButton(
+            KatFilledButton(
               onPressed: () {
                 final text = controller.text.trim();
                 if (text.isEmpty) {
@@ -2453,7 +2445,7 @@ class _CookieChecklist extends StatelessWidget {
                 ? 'Session markers detected — this jar looks complete.'
                 : 'Not detected yet: ${missing.join(' · ')}. '
                       'YouTube needs these to treat the jar as signed in.',
-            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            style: KatType.meta.copyWith(color: katTextSecondary(context)),
           ),
         ),
       ],
@@ -2478,7 +2470,7 @@ class _YtAddOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: WaveButton(
+      child: KatButton(
         onPressed: onPressed,
         style: const ButtonStyle(
           padding: WidgetStatePropertyAll(
@@ -2499,7 +2491,7 @@ class _YtAddOption extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                    style: WaveType.trackTitle,
+                    style: KatType.trackTitle,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -2507,8 +2499,8 @@ class _YtAddOption extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                    style: WaveType.meta.copyWith(
-                      color: waveTextSecondary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextSecondary(context),
                     ),
                   ),
                 ],
@@ -2656,7 +2648,7 @@ Future<void> _showYtOk(BuildContext context, String title, String message) {
       title: Text(title),
       content: Text(message),
       actions: [
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),
@@ -2672,7 +2664,7 @@ Future<void> _showYtFail(BuildContext context, Object e) {
       title: const Text('Connection failed'),
       content: Text('$e'),
       actions: [
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),
@@ -2742,11 +2734,11 @@ Future<void> _ytSignInFailed(BuildContext context, WidgetRef ref) async {
       title: Text(title),
       content: Text(body),
       actions: [
-        WaveButton(
+        KatButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
           child: const Text('Close'),
         ),
-        WaveFilledButton(
+        KatFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: const Text('Connect with cookies'),
         ),
@@ -2811,7 +2803,7 @@ class _Sources extends ConsumerWidget {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: WaveFilledButton(
+            child: KatFilledButton(
               onPressed: () => _addAddonDialog(context, ref, urls, onUpdate),
               child: const Text('Add addon'),
             ),
@@ -2839,17 +2831,17 @@ class _Sources extends ConsumerWidget {
       builder: (context) => ContentDialog(
         title: const Text('Add addon'),
         content: TextBox(
-          decoration: waveInputDecoration(),
+          decoration: katInputDecoration(),
           controller: controller,
           placeholder: 'https://…/a/<token>/ or https://…',
           maxLines: 2,
         ),
         actions: [
-          WaveButton(
+          KatButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: () => Navigator.of(context).pop(controller.text.trim()),
             child: const Text('Add'),
           ),
@@ -2870,7 +2862,7 @@ class _Sources extends ConsumerWidget {
               'Expected something like https://host/a/<token>/ or https://host/.',
             ),
             actions: [
-              WaveFilledButton(
+              KatFilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 child: const Text('OK'),
               ),
@@ -2897,7 +2889,7 @@ class _Sources extends ConsumerWidget {
             'or wrong URL. Nothing was saved.',
           ),
           actions: [
-            WaveFilledButton(
+            KatFilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('OK'),
             ),
@@ -2943,20 +2935,20 @@ class _AddonRow extends ConsumerWidget {
                   manifest?.name ?? host,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.trackTitle,
+                  style: KatType.trackTitle,
                 ),
                 Text(
                   manifest == null ? '$host · unreachable' : host,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(
-                    color: waveTextSecondary(context),
+                  style: KatType.meta.copyWith(
+                    color: katTextSecondary(context),
                   ),
                 ),
               ],
             ),
           ),
-          WaveButton(onPressed: () => onRemove(), child: const Text('Remove')),
+          KatButton(onPressed: () => onRemove(), child: const Text('Remove')),
         ],
       ),
     );
@@ -3012,7 +3004,7 @@ class _AboutState extends ConsumerState<_About> {
 
   Widget _buildUpdateButton() {
     if (_checking) {
-      return const WaveButton(
+      return const KatButton(
         onPressed: null,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -3030,7 +3022,7 @@ class _AboutState extends ConsumerState<_About> {
     }
 
     if (_updateAvailable != null) {
-      return WaveFilledButton(
+      return KatFilledButton(
         onPressed: () =>
             showUpdateDialog(context, _updateAvailable!, isManualCheck: true),
         child: Row(
@@ -3045,12 +3037,12 @@ class _AboutState extends ConsumerState<_About> {
     }
 
     if (_upToDate) {
-      return WaveButton(
+      return KatButton(
         onPressed: _checkForUpdates,
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(FluentIcons.check_mark, size: 14, color: WaveColors.success),
+            Icon(FluentIcons.check_mark, size: 14, color: KatColors.success),
             SizedBox(width: 6),
             Text('Up to date (check again)'),
           ],
@@ -3058,7 +3050,7 @@ class _AboutState extends ConsumerState<_About> {
       );
     }
 
-    return WaveButton(
+    return KatButton(
       onPressed: _checkForUpdates,
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -3087,7 +3079,7 @@ class _AboutState extends ConsumerState<_About> {
             children: [
               Text(
                 'KatMusic Desktop · v$appVersion',
-                style: WaveType.trackTitle,
+                style: KatType.trackTitle,
               ),
               _buildUpdateButton(),
             ],
@@ -3097,7 +3089,7 @@ class _AboutState extends ConsumerState<_About> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              WaveButton(
+              KatButton(
                 onPressed: () =>
                     _open('https://github.com/Arct-Development/KatMusic'),
                 child: const Row(
@@ -3109,7 +3101,7 @@ class _AboutState extends ConsumerState<_About> {
                   ],
                 ),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () => _open(
                   'https://github.com/Arct-Development/KatMusic/issues',
                 ),
@@ -3122,7 +3114,7 @@ class _AboutState extends ConsumerState<_About> {
                   ],
                 ),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () =>
                     _open('https://github.com/Arct-Development/KatMusic'),
                 child: const Row(
@@ -3134,7 +3126,7 @@ class _AboutState extends ConsumerState<_About> {
                   ],
                 ),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () => _open('https://t.me/clashprojects'),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -3145,7 +3137,7 @@ class _AboutState extends ConsumerState<_About> {
                   ],
                 ),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () => _open('https://discord.com/invite/TMCEPSUNk2'),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -3227,12 +3219,12 @@ class _General extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  WaveFilledButton(
+                  KatFilledButton(
                     onPressed: () => exportDiagnostics(context, ref),
                     child: const Text('Export diagnostic logs'),
                   ),
                   const SizedBox(width: 8),
-                  WaveButton(
+                  KatButton(
                     onPressed: openLogFolder,
                     child: const Text('Open log folder'),
                   ),
@@ -3243,9 +3235,7 @@ class _General extends ConsumerWidget {
                 'Packages the last 5 runs and the crash trail into one zip. '
                 'URLs, cookies and tokens are stripped; track titles are kept '
                 'so a wrong-song report stays actionable.',
-                style: WaveType.meta.copyWith(
-                  color: waveTextSecondary(context),
-                ),
+                style: KatType.meta.copyWith(color: katTextSecondary(context)),
               ),
             ],
           ),
@@ -3311,13 +3301,13 @@ class _PlaybackState extends ConsumerState<_Playback> {
                     children: [
                       const Text(
                         'Crossfade duration',
-                        style: WaveType.trackTitle,
+                        style: KatType.trackTitle,
                       ),
                       const Spacer(),
                       Text(
                         '${currentSeconds.round()}s',
-                        style: WaveType.meta.copyWith(
-                          color: waveAccent(context),
+                        style: KatType.meta.copyWith(
+                          color: katAccent(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -3341,20 +3331,20 @@ class _PlaybackState extends ConsumerState<_Playback> {
                     children: [
                       Text(
                         '3s (Short)',
-                        style: WaveType.meta.copyWith(
-                          color: waveTextSecondary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextSecondary(context),
                         ),
                       ),
                       Text(
                         '7s (Standard)',
-                        style: WaveType.meta.copyWith(
-                          color: waveTextSecondary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextSecondary(context),
                         ),
                       ),
                       Text(
                         '12s (Long)',
-                        style: WaveType.meta.copyWith(
-                          color: waveTextSecondary(context),
+                        style: KatType.meta.copyWith(
+                          color: katTextSecondary(context),
                         ),
                       ),
                     ],
@@ -3408,23 +3398,23 @@ class _Downloads extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Save location', style: WaveType.trackTitle),
+                    Text('Save location', style: KatType.trackTitle),
                     Text(
                       custom.isEmpty ? 'Default location' : custom,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: WaveType.meta,
+                      style: KatType.meta,
                     ),
                   ],
                 ),
               ),
-              WaveButton(
+              KatButton(
                 onPressed: () => _pickDir(ref),
                 child: const Text('Change'),
               ),
               if (custom.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                WaveButton(
+                KatButton(
                   onPressed: () => onUpdate((p) => p.resetDownloadDir()),
                   child: const Text('Reset'),
                 ),
@@ -3551,39 +3541,39 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
                   configured
                       ? 'Keys saved — values never shown here'
                       : 'Not configured — Last.fm is disabled',
-                  style: WaveType.meta,
+                  style: KatType.meta,
                 ),
               ),
               if (configured)
-                WaveButton(
+                KatButton(
                   onPressed: _busy ? null : _clear,
                   child: const Text('Clear'),
                 ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text('API key', style: WaveType.label),
+          const Text('API key', style: KatType.label),
           const SizedBox(height: 4),
           TextBox(
-            decoration: waveInputDecoration(),
+            decoration: katInputDecoration(),
             controller: _key,
             placeholder: '32-character hex key',
           ),
           const SizedBox(height: 8),
-          const Text('Shared secret', style: WaveType.label),
+          const Text('Shared secret', style: KatType.label),
           const SizedBox(height: 4),
           TextBox(
-            decoration: waveInputDecoration(),
+            decoration: katInputDecoration(),
             controller: _secret,
             placeholder: 'Shared secret',
             obscureText: true,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: WaveType.meta.copyWith(color: Colors.red)),
+            Text(_error!, style: KatType.meta.copyWith(color: Colors.red)),
           ],
           const SizedBox(height: 10),
-          WaveFilledButton(
+          KatFilledButton(
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const Row(
@@ -3605,7 +3595,7 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
           Text(
             'Saving different keys signs you out — sessions belong '
             'to their API key. Reconnect afterwards.',
-            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+            style: KatType.meta.copyWith(color: katTextTertiary(context)),
           ),
         ],
       ),
@@ -3684,12 +3674,12 @@ class _TimedMixSettingsState extends ConsumerState<_TimedMixSettings> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Text('Transition length', style: WaveType.trackTitle),
+                const Text('Transition length', style: KatType.trackTitle),
                 const Spacer(),
                 Text(
                   '${seconds.round()}s',
-                  style: WaveType.meta.copyWith(
-                    color: waveAccent(context),
+                  style: KatType.meta.copyWith(
+                    color: katAccent(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -3713,14 +3703,14 @@ class _TimedMixSettingsState extends ConsumerState<_TimedMixSettings> {
               children: [
                 Text(
                   '12s',
-                  style: WaveType.meta.copyWith(
-                    color: waveTextSecondary(context),
+                  style: KatType.meta.copyWith(
+                    color: katTextSecondary(context),
                   ),
                 ),
                 Text(
                   '18s',
-                  style: WaveType.meta.copyWith(
-                    color: waveTextSecondary(context),
+                  style: KatType.meta.copyWith(
+                    color: katTextSecondary(context),
                   ),
                 ),
               ],
@@ -3757,15 +3747,15 @@ class _WasapiOutputSettings extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Device', style: WaveType.trackTitle),
+        const Text('Device', style: KatType.trackTitle),
         const SizedBox(height: 6),
-        WaveSelect<String>(
+        KatSelect<String>(
           expanded: true,
           value: devices.any((d) => d.id == selected) ? selected : '',
           options: [
-            const WaveSelectOption(value: '', label: 'System Default'),
+            const KatSelectOption(value: '', label: 'System Default'),
             for (final d in devices)
-              WaveSelectOption(
+              KatSelectOption(
                 value: d.id,
                 label: d.displayName,
                 hint: d.isDefault ? 'default' : null,
@@ -3796,10 +3786,10 @@ class _WasapiOutputSettings extends ConsumerWidget {
           output.selected == null
               ? 'Probe the DAC after connecting it to see exclusive PCM rates.'
               : output.selected!.supportedSummary,
-          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+          style: KatType.meta.copyWith(color: katTextSecondary(context)),
         ),
         const SizedBox(height: 12),
-        WaveStreamPathPanel(path: output.path),
+        KatStreamPathPanel(path: output.path),
       ],
     );
   }
@@ -3823,21 +3813,21 @@ class _QualityRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: WaveType.trackTitle),
-              Text(AudioQualityTiers.label(value), style: WaveType.meta),
+              Text(title, style: KatType.trackTitle),
+              Text(AudioQualityTiers.label(value), style: KatType.meta),
             ],
           ),
         ),
-        WaveSelect<int>(
+        KatSelect<int>(
           value: value,
           options: const [
-            WaveSelectOption(value: 28, label: 'Dolby Atmos'),
-            WaveSelectOption(value: 27, label: 'Hi-Res · 24/192'),
-            WaveSelectOption(value: 7, label: 'Hi-Res · 24/96'),
-            WaveSelectOption(value: 6, label: 'Lossless · 16/44.1'),
-            WaveSelectOption(value: 5, label: '320k MP3'),
-            WaveSelectOption(value: -1, label: 'Opus · YouTube'),
-            WaveSelectOption(value: 4, label: 'Data saver'),
+            KatSelectOption(value: 28, label: 'Dolby Atmos'),
+            KatSelectOption(value: 27, label: 'Hi-Res · 24/192'),
+            KatSelectOption(value: 7, label: 'Hi-Res · 24/96'),
+            KatSelectOption(value: 6, label: 'Lossless · 16/44.1'),
+            KatSelectOption(value: 5, label: '320k MP3'),
+            KatSelectOption(value: -1, label: 'Opus · YouTube'),
+            KatSelectOption(value: 4, label: 'Data saver'),
           ],
           onChanged: onChanged,
         ),
@@ -3870,12 +3860,12 @@ class _SwitchRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: WaveType.trackTitle),
+                Text(title, style: KatType.trackTitle),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: WaveType.meta.copyWith(
-                      color: waveTextSecondary(context),
+                    style: KatType.meta.copyWith(
+                      color: katTextSecondary(context),
                     ),
                   ),
               ],

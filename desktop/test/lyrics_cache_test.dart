@@ -44,7 +44,7 @@ class _Repo extends LyricsRepository {
         null,
         db,
       ) {
-    waveGap = Duration.zero;
+    katGap = Duration.zero;
   }
 
   @override

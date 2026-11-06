@@ -13,15 +13,15 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../core/audio/stream_models.dart';
 import '../../core/error/fatal_crumbs.dart';
 import '../../core/storage/prefs.dart';
-import '../../ui/components/buttons.dart' show LWTooltip;
+import '../../ui/components/buttons.dart' show KatTooltip;
 import '../../ui/components/menus.dart'
-    show WaveMenuAction, WaveMenuButton, WaveMenuSeparator, WaveMenuSubmenu;
+    show KatMenuAction, KatMenuButton, KatMenuSeparator, KatMenuSubmenu;
 import '../../ui/components/states.dart';
 import '../../ui/lyrics/lyrics_panel.dart';
 import '../../ui/lyrics/lyrics_share_card.dart';
 import '../../ui/theme/haze.dart';
 import '../../ui/theme/tokens.dart';
-import '../../ui/theme/wave_icons.dart';
+import '../../ui/theme/kat_icons.dart';
 import '../player/playback_service.dart';
 import 'lyrics_models.dart';
 import 'lyrics_providers.dart';
@@ -98,7 +98,7 @@ String formatOffsetDisplay(int offsetMs) {
 /// - Transliteration / Romaji toggle.
 /// - Smooth auto-scrolling with manual scroll detection and "Return to current" pill.
 /// - Interactive tap-to-seek on any lyric line.
-class WaveKaraokeLyricsView extends ConsumerStatefulWidget {
+class KatKaraokeLyricsView extends ConsumerStatefulWidget {
   final PlayableTrack track;
   final bool compact;
   final bool showHeaderControls;
@@ -111,7 +111,7 @@ class WaveKaraokeLyricsView extends ConsumerStatefulWidget {
   /// toolbar up with its top action bar and must not run under it).
   final double toolbarRightInset;
 
-  const WaveKaraokeLyricsView({
+  const KatKaraokeLyricsView({
     super.key,
     required this.track,
     this.compact = false,
@@ -124,11 +124,11 @@ class WaveKaraokeLyricsView extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveKaraokeLyricsView> createState() =>
-      _WaveKaraokeLyricsViewState();
+  ConsumerState<KatKaraokeLyricsView> createState() =>
+      _KatKaraokeLyricsViewState();
 }
 
-class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
+class _KatKaraokeLyricsViewState extends ConsumerState<KatKaraokeLyricsView>
     with SingleTickerProviderStateMixin {
   late final LyricController _lyricController;
   bool _following = true;
@@ -279,7 +279,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   }
 
   @override
-  void didUpdateWidget(WaveKaraokeLyricsView oldWidget) {
+  void didUpdateWidget(KatKaraokeLyricsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive != widget.isActive) {
       _updateTickerState();
@@ -546,7 +546,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     final autoHide = ref.watch(
       prefsProvider.select((p) => p.lyricsAutoHideSeconds),
     );
-    final async = ref.watch(waveLyricsProvider(widget.track));
+    final async = ref.watch(katLyricsProvider(widget.track));
     final lyricFontSize =
         (widget.fontSize ?? (widget.compact ? 28.0 : 36.0)) * textScale;
     if (autoHide != _armedAutoHide) {
@@ -564,14 +564,14 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     return async.when(
       loading: () => ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 200),
-        child: const WaveLoading(label: 'Finding lyrics…'),
+        child: const KatLoading(label: 'Finding lyrics…'),
       ),
       error: (e, _) => ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 200),
-        child: WaveError(
+        child: KatError(
           title: 'Lyrics unavailable',
           message: 'Check your connection and try again.',
-          onRetry: () => ref.invalidate(waveLyricsProvider(widget.track)),
+          onRetry: () => ref.invalidate(katLyricsProvider(widget.track)),
         ),
       ),
       data: (result) {
@@ -616,7 +616,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
 
         if (effectiveResult.isInstrumental) {
           return withHeader(
-            const WaveEmpty(
+            const KatEmpty(
               icon: FluentIcons.music_note,
               title: 'Instrumental',
               subtitle: 'No lyrics for this track.',
@@ -625,12 +625,12 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
         }
         if (effectiveResult.isEmpty) {
           return withHeader(
-            WaveEmpty(
+            KatEmpty(
               icon: FluentIcons.microphone,
               title: 'No lyrics found',
               subtitle: 'Pick another source, or check back later.',
               actionLabel: 'Try again',
-              onAction: () => ref.invalidate(waveLyricsProvider(widget.track)),
+              onAction: () => ref.invalidate(katLyricsProvider(widget.track)),
             ),
           );
         }
@@ -844,7 +844,7 @@ List<KaraokeWordGroup> groupSyllablesIntoWords(
 
 /// Single Lyric Line rendering with Apple Music Karaoke progressive wipe,
 /// blur falloff, and Segoe UI typography.
-class WaveKaraokeLyricLine extends StatefulWidget {
+class KatKaraokeLyricLine extends StatefulWidget {
   final LyricLine line;
   final int positionMs;
   final ValueListenable<int>? positionListenable;
@@ -859,7 +859,7 @@ class WaveKaraokeLyricLine extends StatefulWidget {
   final double lineOpacity;
   final double blurSigma;
 
-  const WaveKaraokeLyricLine({
+  const KatKaraokeLyricLine({
     super.key,
     required this.line,
     required this.positionMs,
@@ -877,10 +877,10 @@ class WaveKaraokeLyricLine extends StatefulWidget {
   });
 
   @override
-  State<WaveKaraokeLyricLine> createState() => _WaveKaraokeLyricLineState();
+  State<KatKaraokeLyricLine> createState() => _KatKaraokeLyricLineState();
 }
 
-class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
+class _KatKaraokeLyricLineState extends State<KatKaraokeLyricLine> {
   bool _isHovered = false;
   int _lastPos = 0;
   int _seekGen = 0;
@@ -897,7 +897,7 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
   }
 
   @override
-  void didUpdateWidget(covariant WaveKaraokeLyricLine oldWidget) {
+  void didUpdateWidget(covariant KatKaraokeLyricLine oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.positionListenable != widget.positionListenable) {
       oldWidget.positionListenable?.removeListener(_onLineTick);
@@ -927,8 +927,8 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
 
     final baseFontSize = widget.fontSize ?? (widget.compact ? 28.0 : 36.0);
     // Negative tracking tightens Latin type, but in joined scripts (the
@@ -1057,7 +1057,7 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
     }
 
     final Widget body = AnimatedDefaultTextStyle(
-      duration: waveMotion(context, WaveMotion.fast),
+      duration: katMotion(context, KatMotion.fast),
       style: widget.isActive ? activeStyle : idleStyle,
       child: Column(
         crossAxisAlignment: widget.line.isRtl
@@ -1104,13 +1104,13 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
     );
 
     final double targetBlur =
-        (widget.isActive || _isHovered || !WaveHazeScope.blurEnabled(context))
+        (widget.isActive || _isHovered || !KatHazeScope.blurEnabled(context))
         ? 0.0
         : widget.blurSigma.clamp(0.0, 12.0);
 
     final Widget blurredBody = TweenAnimationBuilder<double>(
       tween: Tween<double>(end: targetBlur),
-      duration: waveMotion(context, const Duration(milliseconds: 240)),
+      duration: katMotion(context, const Duration(milliseconds: 240)),
       curve: Curves.easeOutCubic,
       builder: (context, sigma, child) {
         if (sigma <= 0.05) return child!;
@@ -1129,7 +1129,7 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
     return IgnorePointer(
       ignoring: widget.lineOpacity < 0.05,
       child: AnimatedOpacity(
-        duration: waveMotion(context, const Duration(milliseconds: 220)),
+        duration: katMotion(context, const Duration(milliseconds: 220)),
         curve: Curves.easeOutCubic,
         opacity: widget.lineOpacity.clamp(0.0, 1.0),
         child: RepaintBoundary(
@@ -1137,7 +1137,7 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
             onEnter: (_) => setState(() => _isHovered = true),
             onExit: (_) => setState(() => _isHovered = false),
             child: AnimatedContainer(
-              duration: waveMotion(context, WaveMotion.normal),
+              duration: katMotion(context, KatMotion.normal),
               curve: Curves.easeOutCubic,
               transform: Matrix4.diagonal3Values(
                 widget.isActive ? 1.025 : 1.0,
@@ -1562,33 +1562,33 @@ class _SourceMenu extends ConsumerWidget {
         ref.read(lyricsExcludedProvidersProvider(queueKey).notifier).state =
             next.excludes;
       }
-      ref.invalidate(waveLyricsProvider(track));
+      ref.invalidate(katLyricsProvider(track));
     }
 
-    return LWTooltip(
+    return KatTooltip(
       message: result.source.isNotEmpty
           ? 'Source: ${result.source} · Change'
           : 'Change lyrics source',
-      child: WaveMenuButton(
+      child: KatMenuButton(
         placement: FlyoutPlacementMode.bottomRight,
         entries: [
           for (final provider in LyricsProviderId.values)
-            WaveMenuAction(
+            KatMenuAction(
               leading: effective == provider.id
                   ? const Icon(FluentIcons.check_mark, size: 13)
                   : const SizedBox(width: 13),
               label: provider.title,
               onPressed: () => apply(provider.id),
             ),
-          const WaveMenuSeparator(),
-          WaveMenuAction(
+          const KatMenuSeparator(),
+          KatMenuAction(
             leading: const Icon(FluentIcons.refresh, size: 13),
             label: 'Try another source',
             onPressed: () => apply(null),
           ),
         ],
         buttonBuilder: (context, onOpen) =>
-            _MiniIconButton(icon: WaveIcons.lyrics, onTap: onOpen),
+            _MiniIconButton(icon: KatIcons.lyrics, onTap: onOpen),
       ),
     );
   }
@@ -1633,8 +1633,8 @@ class _KaraokeToolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final textScale = ref.watch(prefsProvider.select((p) => p.lyricsTextScale));
     final translationLang = ref.watch(
       prefsProvider.select((p) => p.lyricsTranslationLang),
@@ -1665,9 +1665,9 @@ class _KaraokeToolbar extends ConsumerWidget {
         (compact ? 8 : 4) + rightInset,
         8,
       ),
-      child: WaveGlass(
+      child: KatGlass(
         blur: false,
-        borderRadius: WaveRadius.menuRadius,
+        borderRadius: KatRadius.menuRadius,
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 10 : 14,
           vertical: 6,
@@ -1691,9 +1691,9 @@ class _KaraokeToolbar extends ConsumerWidget {
                     : 'Lyrics',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: WaveType.meta.copyWith(
+                style: KatType.meta.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: waveTextPrimary(context),
+                  color: katTextPrimary(context),
                 ),
               ),
             ),
@@ -1710,7 +1710,7 @@ class _KaraokeToolbar extends ConsumerWidget {
                   color: (dark ? Colors.white : Colors.black).withValues(
                     alpha: 0.10,
                   ),
-                  borderRadius: BorderRadius.circular(WaveRadius.controls),
+                  borderRadius: BorderRadius.circular(KatRadius.controls),
                   border: Border.all(
                     color: (dark ? Colors.white : Colors.black).withValues(
                       alpha: 0.12,
@@ -1720,31 +1720,31 @@ class _KaraokeToolbar extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    LWTooltip(
+                    KatTooltip(
                       message: 'Lyrics earlier (-0.5s)',
                       child: _MiniIconButton(
                         icon: FluentIcons.remove,
                         onTap: () => offsetNotifier.adjust(-500),
                       ),
                     ),
-                    LWTooltip(
+                    KatTooltip(
                       message: 'Timing offset for this track',
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Text(
                           offsetDisplay,
-                          style: WaveType.meta.copyWith(
+                          style: KatType.meta.copyWith(
                             fontFeatures: const [FontFeature.tabularFigures()],
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
                             color: offsetMs != 0
                                 ? accent
-                                : waveTextPrimary(context),
+                                : katTextPrimary(context),
                           ),
                         ),
                       ),
                     ),
-                    LWTooltip(
+                    KatTooltip(
                       message: 'Lyrics later (+0.5s)',
                       child: _MiniIconButton(
                         icon: FluentIcons.add,
@@ -1752,7 +1752,7 @@ class _KaraokeToolbar extends ConsumerWidget {
                       ),
                     ),
                     if (offsetMs != 0)
-                      LWTooltip(
+                      KatTooltip(
                         message: 'Reset offset to 0.0s',
                         child: _MiniIconButton(
                           icon: FluentIcons.reset,
@@ -1764,23 +1764,23 @@ class _KaraokeToolbar extends ConsumerWidget {
               ),
             if (hasLyrics && result.isSynced) const SizedBox(width: 8),
             if (hasLyrics)
-              LWTooltip(
+              KatTooltip(
                 message: 'More',
-                child: WaveMenuButton(
+                child: KatMenuButton(
                   placement: FlyoutPlacementMode.bottomRight,
                   entries: [
-                    WaveMenuAction(
+                    KatMenuAction(
                       leading: menuMark(showTransliteration),
                       label: 'Romanisation',
                       onPressed: transliterationNotifier.toggle,
                     ),
                     if (onPrefsChanged != null) ...[
-                      WaveMenuSubmenu(
+                      KatMenuSubmenu(
                         leading: const Icon(FluentIcons.font_size, size: 13),
                         label: 'Text size',
                         items: () => [
                           for (final entry in Prefs.lyricsTextScales)
-                            WaveMenuAction(
+                            KatMenuAction(
                               leading: menuMark(textScale == entry.$1),
                               label: entry.$2,
                               onPressed: () async {
@@ -1792,7 +1792,7 @@ class _KaraokeToolbar extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      WaveMenuSubmenu(
+                      KatMenuSubmenu(
                         leading: const Icon(
                           FluentIcons.locale_language,
                           size: 13,
@@ -1801,7 +1801,7 @@ class _KaraokeToolbar extends ConsumerWidget {
                         items: () => [
                           for (final entry
                               in Prefs.lyricsTranslationOptions.entries)
-                            WaveMenuAction(
+                            KatMenuAction(
                               leading: menuMark(translationLang == entry.key),
                               label: entry.value,
                               onPressed: () async {
@@ -1813,13 +1813,13 @@ class _KaraokeToolbar extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      WaveMenuSubmenu(
+                      KatMenuSubmenu(
                         leading: const Icon(FluentIcons.clock, size: 13),
                         label: 'Auto-hide',
                         items: () => [
                           for (final entry
                               in Prefs.lyricsAutoHideOptions.entries)
-                            WaveMenuAction(
+                            KatMenuAction(
                               leading: menuMark(autoHide == entry.key),
                               label: entry.value,
                               onPressed: () async {
@@ -1831,10 +1831,10 @@ class _KaraokeToolbar extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      const WaveMenuSeparator(),
+                      const KatMenuSeparator(),
                     ],
                     if (onToggleSelectMode != null)
-                      WaveMenuAction(
+                      KatMenuAction(
                         leading: const Icon(
                           FluentIcons.bulleted_list,
                           size: 13,
@@ -1844,13 +1844,13 @@ class _KaraokeToolbar extends ConsumerWidget {
                             : 'Select lines',
                         onPressed: onToggleSelectMode,
                       ),
-                    WaveMenuAction(
+                    KatMenuAction(
                       leading: const Icon(FluentIcons.share, size: 13),
                       label: 'Share song card',
                       onPressed: onShareSong,
                     ),
                     if (onToggleSelectMode != null)
-                      WaveMenuAction(
+                      KatMenuAction(
                         leading: const Icon(FluentIcons.share, size: 13),
                         label: selectedCount == 0
                             ? 'Share selected lines'
@@ -1861,7 +1861,7 @@ class _KaraokeToolbar extends ConsumerWidget {
                       ),
                   ],
                   buttonBuilder: (context, onOpen) => _MiniIconButton(
-                    icon: WaveIcons.more,
+                    icon: KatIcons.more,
                     active: selectMode,
                     onTap: onOpen,
                   ),
@@ -1869,7 +1869,7 @@ class _KaraokeToolbar extends ConsumerWidget {
               ),
             if (hasLyrics && result.isSynced) const SizedBox(width: 4),
             if (hasLyrics && result.isSynced)
-              LWTooltip(
+              KatTooltip(
                 message: following
                     ? 'Pause automatic scrolling'
                     : 'Return to the line being sung',
@@ -1881,9 +1881,9 @@ class _KaraokeToolbar extends ConsumerWidget {
               ),
             if (onClose != null) ...[
               const SizedBox(width: 6),
-              LWTooltip(
+              KatTooltip(
                 message: 'Close panel',
-                child: _MiniIconButton(icon: WaveIcons.close, onTap: onClose!),
+                child: _MiniIconButton(icon: KatIcons.close, onTap: onClose!),
               ),
             ],
           ],
@@ -1913,13 +1913,13 @@ class _MiniIconButtonState extends State<_MiniIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = waveIsDark(context);
-    final accent = waveAccent(context);
+    final dark = katIsDark(context);
+    final accent = katAccent(context);
     final color = widget.active
         ? accent
         : _hover
-        ? (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
-        : (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
+        ? (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
+        : (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
               .withValues(alpha: 0.88);
 
     return MouseRegion(
@@ -1936,7 +1936,7 @@ class _MiniIconButtonState extends State<_MiniIconButton> {
             color: _hover
                 ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.08)
                 : Colors.transparent,
-            borderRadius: WaveRadius.controlsRadius,
+            borderRadius: KatRadius.controlsRadius,
           ),
           child: Center(child: Icon(widget.icon, size: 13, color: color)),
         ),
@@ -1959,13 +1959,13 @@ class _SelectBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 6, 8, 0),
       padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.16),
-        borderRadius: WaveRadius.controlsRadius,
+        borderRadius: KatRadius.controlsRadius,
         border: Border.all(color: accent.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -1979,7 +1979,7 @@ class _SelectBanner extends StatelessWidget {
                   : count == 1
                   ? '1 line selected'
                   : '$count lines selected',
-              style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+              style: KatType.meta.copyWith(color: katTextSecondary(context)),
             ),
           ),
           Button(
@@ -2001,13 +2001,13 @@ class _ReturnToCurrentPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = waveAccent(context);
+    final accent = katAccent(context);
 
-    return WaveHaze(
+    return KatHaze(
       level: LwHazeLevel.l2,
-      base: waveSurfaceRaised(context).withValues(alpha: 0.85),
-      borderRadius: WaveRadius.heroRadius,
-      border: Border.all(color: waveDivider(context)),
+      base: katSurfaceRaised(context).withValues(alpha: 0.85),
+      borderRadius: KatRadius.heroRadius,
+      border: Border.all(color: katDivider(context)),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -2021,7 +2021,7 @@ class _ReturnToCurrentPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   'Return to current',
-                  style: WaveType.label.copyWith(fontSize: 12),
+                  style: KatType.label.copyWith(fontSize: 12),
                 ),
               ],
             ),
@@ -2118,9 +2118,9 @@ class _AppleLineLyricsViewState extends State<_AppleLineLyricsView> {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: selected
-                  ? waveAccent(context).withValues(alpha: 0.16)
+                  ? katAccent(context).withValues(alpha: 0.16)
                   : const Color(0x00000000),
-              borderRadius: WaveRadius.artworkRadius,
+              borderRadius: KatRadius.artworkRadius,
             ),
             child: child,
           ),
@@ -2174,7 +2174,7 @@ class _AppleLineLyricsViewState extends State<_AppleLineLyricsView> {
           _scroll.scrollTo(
             index: index,
             alignment: alignment,
-            duration: waveMotion(context, WaveMotion.normal),
+            duration: katMotion(context, KatMotion.normal),
             curve: Curves.easeOutCubic,
           );
         } else {
@@ -2230,7 +2230,7 @@ class _AppleLineLyricsViewState extends State<_AppleLineLyricsView> {
                 index: i,
                 seekable: canSeek,
                 onSeek: () => widget.onSeekLineMs(line.timeMs),
-                child: WaveKaraokeLyricLine(
+                child: KatKaraokeLyricLine(
                   line: line,
                   positionMs: 0,
                   isActive: false,
@@ -2325,7 +2325,7 @@ class _AppleLineLyricsViewState extends State<_AppleLineLyricsView> {
                 index: i,
                 seekable: true,
                 onSeek: () => widget.onSeekLineMs(line.timeMs),
-                child: WaveKaraokeLyricLine(
+                child: KatKaraokeLyricLine(
                   line: line,
                   positionMs: 0,
                   positionListenable: isActive

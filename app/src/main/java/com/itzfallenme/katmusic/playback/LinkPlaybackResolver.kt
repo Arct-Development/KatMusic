@@ -62,13 +62,16 @@ class LinkPlaybackResolver @Inject constructor(
 
         try {
             when {
-                // 1. YouTube & YouTube Music URLs
+                // 1. KatMusic cross-device share link
+                isKatMusicTrackUrl(clean) -> resolveKatMusicTrack(clean)
+
+                // 2. YouTube & YouTube Music URLs
                 isYouTubeUrl(clean) -> resolveYouTube(clean)
 
-                // 2. Spotify URLs
+                // 3. Spotify URLs
                 isSpotifyUrl(clean) -> resolveSpotify(clean)
 
-                // 3. Plain search query shared to app
+                // 4. Plain search query shared to app
                 clean.isNotBlank() -> resolveGenericQuery(clean)
 
                 else -> Unit
@@ -80,6 +83,18 @@ class LinkPlaybackResolver @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to resolve link for playback: $clean", e)
         }
+    }
+
+    private fun isKatMusicTrackUrl(url: String): Boolean {
+        val parsed = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        return parsed.scheme == "katmusic" && parsed.host == "track" &&
+            !parsed.getQueryParameter("v").isNullOrBlank()
+    }
+
+    private suspend fun resolveKatMusicTrack(url: String) {
+        val videoId = Uri.parse(url).getQueryParameter("v").orEmpty().trim()
+        if (videoId.isBlank()) return
+        resolveYouTube("https://music.youtube.com/watch?v=$videoId")
     }
 
     private fun isYouTubeUrl(url: String): Boolean {

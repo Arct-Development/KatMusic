@@ -11,13 +11,13 @@ import '../../features/lastfm/auth_repository.dart' show lastFmApiProvider;
 import '../../features/player/playback_service.dart';
 import '../../features/search/shared_providers.dart' show prefsApiKeyProvider;
 import '../components/artwork.dart';
-import '../components/buttons.dart' show LWTooltip;
+import '../components/buttons.dart' show KatTooltip;
 import '../components/menus.dart';
 import '../components/states.dart';
-import '../navigation/wave_nav.dart';
+import '../navigation/kat_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 class _Album {
   final String title;
@@ -92,46 +92,46 @@ String _img(Object? images) {
 
 /// Albums — premium responsive grid (max180/extent218, 160px art radius 6,
 /// hover quick-play 44px + more + playing indicator).
-class WaveAlbumsPage extends ConsumerWidget {
-  const WaveAlbumsPage({super.key});
+class KatAlbumsPage extends ConsumerWidget {
+  const KatAlbumsPage({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final albums = ref.watch(_waveAlbumsProvider);
     return albums.when(
-      loading: () => const WaveLoading(label: 'Loading albums…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading albums…'),
+      error: (e, _) => KatError(
         title: 'Could not load albums',
         message: '$e',
         onRetry: () => ref.invalidate(_waveAlbumsProvider),
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const WaveEmpty(
+          return const KatEmpty(
             icon: FluentIcons.music_note,
             title: 'No albums yet',
             subtitle:
                 'Your most-played records will appear here once you scrobble.',
           );
         }
-        return WaveEntranceGroup(
+        return KatEntranceGroup(
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(28, 22, 28, 12),
-                  child: WaveEntrance(
+                  child: KatEntrance(
                     rise: 10,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Albums',
-                          style: WaveType.pageTitle.copyWith(fontSize: 24),
+                          style: KatType.pageTitle.copyWith(fontSize: 24),
                         ),
                         Text(
                           '${list.length} records',
-                          style: WaveType.meta.copyWith(
-                            color: waveTextSecondary(context),
+                          style: KatType.meta.copyWith(
+                            color: katTextSecondary(context),
                           ),
                         ),
                       ],
@@ -150,7 +150,7 @@ class WaveAlbumsPage extends ConsumerWidget {
                   ),
                   delegate: SliverChildBuilderDelegate((context, i) {
                     final a = list[i];
-                    return WaveEntrance(
+                    return KatEntrance(
                       index: i,
                       rise: 10,
                       child: _AlbumCard(album: a),
@@ -195,9 +195,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
       context.go('/search?q=${Uri.encodeComponent('${a.artist} ${a.title}')}');
       return;
     }
-    waveOpen(
+    katOpen(
       context,
-      waveAlbumLocation(
+      katAlbumLocation(
         browseId: bid,
         title: a.title,
         artist: a.artist,
@@ -248,7 +248,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
   @override
   Widget build(BuildContext context) {
     final a = widget.album;
-    final dark = waveIsDark(context);
+    final dark = katIsDark(context);
     final playing = ref.watch(
       playbackServiceProvider.select(
         (s) =>
@@ -274,18 +274,18 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
         onTap: play,
         child: AnimatedScale(
           scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-          duration: waveMotion(context, WaveMotion.fast),
+          duration: katMotion(context, KatMotion.fast),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: waveMotion(context, WaveMotion.normal),
+            duration: katMotion(context, KatMotion.normal),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               color: _hover
-                  ? (waveIsDark(context) ? Colors.white : Colors.black)
+                  ? (katIsDark(context) ? Colors.white : Colors.black)
                         .withValues(alpha: 0.05)
                   : Colors.transparent,
-              borderRadius: WaveRadius.artworkRadius,
-              boxShadow: [if (_hover) ...WaveElevation.lift(dark)],
+              borderRadius: KatRadius.artworkRadius,
+              boxShadow: [if (_hover) ...KatElevation.lift(dark)],
             ),
             padding: const EdgeInsets.all(4),
             child: Column(
@@ -293,10 +293,10 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
               children: [
                 Stack(
                   children: [
-                    WaveArtwork(
+                    KatArtwork(
                       url: a.artwork,
                       size: 160,
-                      radius: WaveRadius.artwork,
+                      radius: KatRadius.artwork,
                       label: a.title,
                       title: a.title,
                       artist: a.artist,
@@ -305,7 +305,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                     Positioned.fill(
                       child: AnimatedOpacity(
                         opacity: _hover ? 1 : 0,
-                        duration: waveMotion(context, WaveMotion.fast),
+                        duration: katMotion(context, KatMotion.fast),
                         child: Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -316,17 +316,17 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                 Colors.black.withValues(alpha: 0.55),
                               ],
                             ),
-                            borderRadius: WaveRadius.artworkRadius,
+                            borderRadius: KatRadius.artworkRadius,
                           ),
                           child: Center(
                             child: AnimatedScale(
                               scale: _hover ? 1.0 : 0.70,
-                              duration: waveMotion(context, WaveMotion.fast),
+                              duration: katMotion(context, KatMotion.fast),
                               curve: Curves.easeOutBack,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  LWTooltip(
+                                  KatTooltip(
                                     message: 'Play ${a.title}',
                                     child: GestureDetector(
                                       onTap: quickPlay,
@@ -346,9 +346,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  WaveOverflowButton(
+                                  KatOverflowButton(
                                     tooltip: 'More',
-                                    items: waveTrackMenuItems(
+                                    items: katTrackMenuItems(
                                       context: context,
                                       ref: ref,
                                       title: a.title,
@@ -380,7 +380,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                WaveIcons.queue,
+                                KatIcons.queue,
                                 size: 11,
                                 color: Colors.white,
                               ),
@@ -405,16 +405,16 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                   a.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.trackTitle.copyWith(
+                  style: KatType.trackTitle.copyWith(
                     fontSize: 12.5,
-                    color: playing ? waveAccent(context) : null,
+                    color: playing ? katAccent(context) : null,
                   ),
                 ),
                 Text(
                   a.artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: WaveType.meta.copyWith(fontSize: 11.5),
+                  style: KatType.meta.copyWith(fontSize: 11.5),
                 ),
               ],
             ),

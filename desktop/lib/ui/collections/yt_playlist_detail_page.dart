@@ -11,25 +11,25 @@ import '../../features/innertube/yt_library_providers.dart';
 import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../components/buttons.dart'
-    show LWTooltip, WaveGhostButton, WavePrimaryButton;
+    show KatTooltip, KatGhostButton, KatPrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/wave_icons.dart';
+import '../theme/kat_icons.dart';
 
 /// YouTube Music playlist detail: artwork hero + filter + track table.
 ///
-/// Read-only mirror of [WavePlaylistDetailPage] for account playlists —
+/// Read-only mirror of [KatPlaylistDetailPage] for account playlists —
 /// no pin/rename/delete/remove. [title]/[artworkUrl] are instant-hero
 /// hints from the shelf; tracks load via [ytPlaylistDetailProvider].
-class WaveYtPlaylistDetailPage extends ConsumerStatefulWidget {
+class KatYtPlaylistDetailPage extends ConsumerStatefulWidget {
   final String playlistId;
   final String title;
   final String artworkUrl;
-  const WaveYtPlaylistDetailPage({
+  const KatYtPlaylistDetailPage({
     super.key,
     required this.playlistId,
     this.title = '',
@@ -37,12 +37,12 @@ class WaveYtPlaylistDetailPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<WaveYtPlaylistDetailPage> createState() =>
-      _WaveYtPlaylistDetailPageState();
+  ConsumerState<KatYtPlaylistDetailPage> createState() =>
+      _KatYtPlaylistDetailPageState();
 }
 
-class _WaveYtPlaylistDetailPageState
-    extends ConsumerState<WaveYtPlaylistDetailPage> {
+class _KatYtPlaylistDetailPageState
+    extends ConsumerState<KatYtPlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -57,8 +57,8 @@ class _WaveYtPlaylistDetailPageState
   Widget build(BuildContext context) {
     final async = ref.watch(ytPlaylistDetailProvider(widget.playlistId));
     return async.when(
-      loading: () => const WaveLoading(label: 'Loading playlist…'),
-      error: (e, _) => WaveError(
+      loading: () => const KatLoading(label: 'Loading playlist…'),
+      error: (e, _) => KatError(
         title: 'Could not load playlist',
         message: '$e',
         onRetry: () =>
@@ -66,8 +66,8 @@ class _WaveYtPlaylistDetailPageState
       ),
       data: (res) {
         if (res == null || res.tracks.isEmpty) {
-          return WaveEmpty(
-            icon: WaveIcons.playlists,
+          return KatEmpty(
+            icon: KatIcons.playlists,
             title: 'Playlist unavailable',
             subtitle: 'It may be private, deleted, or offline.',
             actionLabel: 'Back to playlists',
@@ -153,7 +153,7 @@ class _Body extends ConsumerWidget {
       }
     }
 
-    return WaveEntranceGroup(
+    return KatEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -161,14 +161,14 @@ class _Body extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: WaveDensity.contentMax,
+                  maxWidth: KatDensity.contentMax,
                 ),
-                child: WaveEntrance(
+                child: KatEntrance(
                   rise: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      WaveCollectionHero(
+                      KatCollectionHero(
                         flightKind: 'ytplaylist',
                         flightId: playlistId,
                         overline: 'YouTube Music playlist',
@@ -176,10 +176,10 @@ class _Body extends ConsumerWidget {
                         meta:
                             '${res.tracks.length} tracks${query.isNotEmpty ? ' · ${tracks.length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: WaveIcons.playlists,
+                        fallbackIcon: KatIcons.playlists,
                         primaryActions: [
                           if (tracks.isNotEmpty) ...[
-                            WavePrimaryButton(
+                            KatPrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
                               onPressed: () => playGenerated(
@@ -190,9 +190,9 @@ class _Body extends ConsumerWidget {
                                 queueAll: asGenerated(),
                               ),
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Shuffle',
-                              icon: WaveIcons.shuffle,
+                              icon: KatIcons.shuffle,
                               onPressed: () {
                                 final shuffled = asGenerated()..shuffle();
                                 playGenerated(
@@ -204,7 +204,7 @@ class _Body extends ConsumerWidget {
                                 );
                               },
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Save to library',
                               icon: FluentIcons.save,
                               onPressed: () async {
@@ -231,7 +231,7 @@ class _Body extends ConsumerWidget {
                                 }
                               },
                             ),
-                            WaveGhostButton(
+                            KatGhostButton(
                               label: 'Download',
                               icon: FluentIcons.download,
                               onPressed: () {
@@ -251,25 +251,25 @@ class _Body extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      WaveFilterBar(
+                      KatFilterBar(
                         controller: filter,
                         onChanged: onQuery,
                         hint: 'Filter in playlist…',
                         countLabel: '${tracks.length} tracks',
-                        sortSlot: LWTooltip(
+                        sortSlot: KatTooltip(
                           message: 'Sort (also sortable via table headers)',
-                          child: WaveSelect<String>(
+                          child: KatSelect<String>(
                             value: sort,
                             options: const [
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'default',
                                 label: 'Default order',
                               ),
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'title',
                                 label: 'Title A–Z',
                               ),
-                              WaveSelectOption(
+                              KatSelectOption(
                                 value: 'artist',
                                 label: 'Artist A–Z',
                               ),
@@ -287,8 +287,8 @@ class _Body extends ConsumerWidget {
           ),
           if (tracks.isEmpty)
             const SliverToBoxAdapter(
-              child: WaveEmpty(
-                icon: WaveIcons.playlists,
+              child: KatEmpty(
+                icon: KatIcons.playlists,
                 title: 'No matches',
                 subtitle: 'Try a different filter.',
               ),
@@ -296,7 +296,7 @@ class _Body extends ConsumerWidget {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: WaveDesktopTable<GeneratedTrack>(
+              sliver: KatDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,

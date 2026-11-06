@@ -3,39 +3,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:katmusic_desktop/ui/app_shell/branch_switcher.dart';
 import 'package:katmusic_desktop/ui/navigation/route_origin.dart';
-import 'package:katmusic_desktop/ui/navigation/wave_nav.dart';
+import 'package:katmusic_desktop/ui/navigation/kat_nav.dart';
 import 'package:katmusic_desktop/ui/theme/tokens.dart';
 
-/// Why [waveOpen] exists.
+/// Why [katOpen] exists.
 ///
 /// These tests replicate the app's navigation shape — a `StatefulShellRoute`
-/// whose branch container is the real [WaveBranchSwitcher], the shell's single
-/// pointer listener feeding [WaveRouteOrigin], and page builders shaped like
+/// whose branch container is the real [KatBranchSwitcher], the shell's single
+/// pointer listener feeding [KatRouteOrigin], and page builders shaped like
 /// `lib/app/router.dart`'s. The app's detail routes are *siblings* of their
 /// lists (`/albums` and `/album/:id`), so `context.go` hands go_router a
 /// rewritten page list: the destination is mounted as a fresh page with
 /// nothing underneath, which means no transition at all and no source left to
-/// close back over. `waveOpen` pushes instead, which is what makes the anchored
+/// close back over. `katOpen` pushes instead, which is what makes the anchored
 /// entrance play — and the last test pins that difference down.
 Page<void> _plain(Widget child) => CustomTransitionPage(
   child: child,
   transitionsBuilder: (context, animation, secondary, child) => FadeTransition(
-    opacity: CurvedAnimation(parent: animation, curve: WaveMotion.standard),
+    opacity: CurvedAnimation(parent: animation, curve: KatMotion.standard),
     child: child,
   ),
-  transitionDuration: WaveMotion.fast,
+  transitionDuration: KatMotion.fast,
 );
 
 /// Shape of `lib/app/router.dart`'s `_anchoredPage`.
 Page<void> _anchored(Widget child) {
-  final origin = WaveRouteOrigin.consume();
+  final origin = KatRouteOrigin.consume();
   if (origin == null) return _plain(child);
   return CustomTransitionPage(
     child: child,
     transitionsBuilder: (context, animation, secondary, child) {
       final curved = CurvedAnimation(
         parent: animation,
-        curve: WaveMotion.standard,
+        curve: KatMotion.standard,
       );
       return FadeTransition(
         opacity: curved,
@@ -46,7 +46,7 @@ Page<void> _anchored(Widget child) {
         ),
       );
     },
-    transitionDuration: WaveMotion.normal,
+    transitionDuration: KatMotion.normal,
   );
 }
 
@@ -61,7 +61,7 @@ class _ListPage extends StatelessWidget {
 
   final String title;
 
-  /// Opened with [waveOpen] — stacked, so the entrance can play.
+  /// Opened with [katOpen] — stacked, so the entrance can play.
   final List<(String, String)> pushLinks;
 
   /// Opened with `context.go` — the branch's page list is rewritten.
@@ -74,7 +74,7 @@ class _ListPage extends StatelessWidget {
       Text(title),
       for (final (label, path) in pushLinks)
         GestureDetector(
-          onTap: () => waveOpen(context, path),
+          onTap: () => katOpen(context, path),
           child: Text(label),
         ),
       for (final (label, path) in goLinks)
@@ -85,8 +85,8 @@ class _ListPage extends StatelessWidget {
 
 Widget _detail() => const Center(child: Text('the detail', key: _detailKey));
 
-/// The shell chrome: one pointer listener (as in `WaveShell`) plus a back
-/// affordance wired exactly like `WaveShell._goBack`.
+/// The shell chrome: one pointer listener (as in `KatShell`) plus a back
+/// affordance wired exactly like `KatShell._goBack`.
 Widget _chrome(Widget shell) => Column(
   children: [
     Builder(
@@ -100,7 +100,7 @@ Widget _chrome(Widget shell) => Column(
     Expanded(
       child: Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerUp: (event) => WaveRouteOrigin.record(event.position),
+        onPointerUp: (event) => KatRouteOrigin.record(event.position),
         child: shell,
       ),
     ),
@@ -112,7 +112,7 @@ GoRouter _router() => GoRouter(
   routes: [
     StatefulShellRoute(
       navigatorContainerBuilder: (context, shell, children) =>
-          WaveBranchSwitcher(
+          KatBranchSwitcher(
             currentIndex: shell.currentIndex,
             children: children,
           ),
@@ -177,7 +177,7 @@ double? _detailScale(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('waveOpen stacks the page so its entrance can play', (
+  testWidgets('katOpen stacks the page so its entrance can play', (
     tester,
   ) async {
     await tester.pumpWidget(FluentApp.router(routerConfig: _router()));
@@ -235,7 +235,7 @@ void main() {
   });
 
   testWidgets('go still mounts a sibling route complete, with nothing '
-      'to shrink back over — the case waveOpen avoids', (tester) async {
+      'to shrink back over — the case katOpen avoids', (tester) async {
     await tester.pumpWidget(FluentApp.router(routerConfig: _router()));
     await tester.pumpAndSettle();
 
@@ -280,9 +280,9 @@ void main() {
     expect(find.text('albums list'), findsOneWidget);
   });
 
-  group('waveAlbumLocation', () {
+  group('katAlbumLocation', () {
     test('carries the pressed card\'s metadata to the album page', () {
-      final location = waveAlbumLocation(
+      final location = katAlbumLocation(
         browseId: 'MPREb_p1',
         title: 'Rumours',
         artist: 'Fleetwood Mac',
@@ -302,7 +302,7 @@ void main() {
 
     test('escapes ids and titles that would break the path', () {
       final uri = Uri.parse(
-        waveAlbumLocation(browseId: 'MPREb/a b', title: 'Live & Loud #2'),
+        katAlbumLocation(browseId: 'MPREb/a b', title: 'Live & Loud #2'),
       );
       expect(uri.path, '/album/MPREb%2Fa%20b');
       expect(uri.queryParameters['title'], 'Live & Loud #2');
@@ -311,7 +311,7 @@ void main() {
     });
 
     test('is a plain path when nothing is known', () {
-      expect(waveAlbumLocation(browseId: 'MPREb_p1'), '/album/MPREb_p1');
+      expect(katAlbumLocation(browseId: 'MPREb_p1'), '/album/MPREb_p1');
     });
   });
 }
