@@ -15,12 +15,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/main.js" defer></script>
+<script src="js/report.js" defer></script>
 </head>
 <body>
 <i class="progress" aria-hidden="true"></i><i class="glow g1" aria-hidden="true"></i><i class="glow g2" aria-hidden="true"></i>
 <header class="nav glass" id="nav">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="30" height="30">KatMusic</a>
-  <nav class="links" id="links"><a href="#features">Features</a><a href="#together">Together</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="share.html">Share</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
+  <nav class="links" id="links"><a href="#features">Features</a><a href="#together">Together</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="#report">Report</a><a href="share.html">Share</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
   <span class="dlpill" title="Total downloads"><i>↓</i><b data-count>0</b></span>
   <a class="btn mag" href="#download">Download</a>
   <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
@@ -141,6 +142,45 @@
   </div>
 </div></section>
 
+<section id="report"><div class="wrap split">
+  <div class="rv">
+    <span class="chip glass"><span class="dot"></span>Help us fix it</span>
+    <h2 style="margin-top:18px">Found a bug? <em class="grad">Tell us.</em></h2>
+    <p class="lead">Something skipped, stuttered or simply looked wrong? Describe it here and we'll send it straight to the KatMusic team.</p>
+    <ul class="ticks">
+      <li><b>Be specific.</b> The steps that led to it matter more than anything else.</li>
+      <li><b>Include your version.</b> Settings → About shows it in the app.</li>
+      <li><b>You stay in control.</b> Nothing is sent until you press Send report.</li>
+    </ul>
+    <div class="rp-links" style="margin-top:26px"><a href="https://github.com/Arct-Development/KatMusic/issues" target="_blank" rel="noopener noreferrer">Browse existing issues</a><a href="#faq">Read the FAQ first</a></div>
+  </div>
+  <div class="glass rp rv">
+    <form id="rpForm" novalidate autocomplete="off">
+      <div class="rp-f"><label for="rpTitle">Short title <small id="rpTitleN">0/100</small></label><input type="text" id="rpTitle" maxlength="100" placeholder="e.g. Lyrics stop syncing after pausing" aria-describedby="rpTitleErr" required><p class="rp-err" id="rpTitleErr" role="alert"></p></div>
+      <div class="rp-row">
+        <div class="rp-f"><label for="rpArea">Where did it happen?</label><select id="rpArea"><option>Playback</option><option>Lyrics</option><option>Listen Together</option><option>Group Blend</option><option>Downloads</option><option>Audio / Equalizer</option><option>Login / Account</option><option>Interface</option><option>Website</option><option>Other</option></select></div>
+        <div class="rp-f"><label for="rpPlat">Platform</label><select id="rpPlat"><option>Android</option><option>Windows</option><option>macOS</option><option>Linux</option></select></div>
+      </div>
+      <div class="rp-f"><label for="rpVer">App version <small>optional</small></label><input type="text" id="rpVer" maxlength="40" placeholder="e.g. 2.6.0"></div>
+      <fieldset class="rp-f"><legend>How bad is it?</legend>
+        <div class="rp-sev" role="radiogroup">
+          <label><input type="radio" name="rpSev" value="Minor" checked><span>Minor</span></label>
+          <label><input type="radio" name="rpSev" value="Annoying"><span>Annoying</span></label>
+          <label><input type="radio" name="rpSev" value="Broken feature"><span>Broken feature</span></label>
+          <label><input type="radio" name="rpSev" value="Crash"><span>Crash</span></label>
+        </div>
+      </fieldset>
+      <div class="rp-f"><label for="rpSteps">What happened? <small id="rpStepsN">0/2000</small></label><textarea id="rpSteps" maxlength="2000" placeholder="1. Open a song&#10;2. Tap lyrics&#10;3. Pause, then resume — lyrics freeze" aria-describedby="rpStepsErr" required></textarea><p class="rp-err" id="rpStepsErr" role="alert"></p></div>
+      <div class="rp-f"><label for="rpExp">What did you expect? <small>optional</small></label><textarea id="rpExp" maxlength="1000" style="min-height:76px" placeholder="Lyrics should keep following the song."></textarea></div>
+      <label class="rp-chk"><input type="checkbox" id="rpDev" checked><span><b>Attach browser info.</b> Adds your browser, language and screen size to the report. Remove it anytime by unticking this.</span></label>
+      <input type="text" name="_honey" id="rpHoney" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <p class="rp-prev" id="rpPrev" hidden></p>
+      <div class="rp-act"><button class="btn mag" type="submit" id="rpGo">Send report</button><button class="btn ghost mag" type="button" id="rpCopy">Copy report</button></div>
+      <p class="rp-status" id="rpStatus" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</div></section>
+
 <section><div class="wrap">
   <div class="head rv"><h2>Built with <em class="grad">purpose.</em></h2><p class="lead">No analytics or advertising-tracking SDK, according to the project documentation.</p></div>
   <div class="stack">
@@ -173,7 +213,7 @@
 <footer><div class="wrap">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="26" height="26">KatMusic</a>
   <span>Independent music player · Android · Windows · macOS · Linux · GPL-3.0 · © <span id="yr"></span> <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">ArctDevelopments</a></span>
-  <span>Made with 💗 by <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">Arct Developments</a> · <a href="share.html">Share a track</a></span>
+  <span>Made with 💗 by <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">Arct Developments</a> · <a href="share.html">Share a track</a> · <a href="#report">Report a bug</a></span>
 </div></footer>
 </body>
 </html>
