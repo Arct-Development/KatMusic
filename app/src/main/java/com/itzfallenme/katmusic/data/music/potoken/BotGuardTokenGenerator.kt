@@ -28,6 +28,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -152,9 +153,13 @@ object BotGuardTokenGenerator {
         val (eng, sessionTok, wasNew) = getOrCreateEngine(ctx, sessionId, forceNewEngine)
         val playerTok = try {
             eng.mint(videoId)
-        } catch (e: Throwable) {
+        } catch (cancellation: CancellationException) {
+            // Cancellation belongs to the caller (for example, a track change).
+            // Do not interpret it as a broken WebView and rebuild the engine.
+            throw cancellation
+        } catch (e: Exception) {
             if (wasNew) throw e
-            Log.w(TAG, "Mint failed on existing engine; retrying with fresh engine")
+            Log.w(TAG, "Mint failed on existing engine; retrying with fresh engine", e)
             return mintTokenInternal(ctx, videoId, sessionId, forceNewEngine = true)
         }
         return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
@@ -260,13 +265,30 @@ object BotGuardTokenGenerator {
             }
         }
 
+        /**
+         * Read only successful JSON responses. Error bodies can contain session
+         * material or server diagnostics, so report the HTTP status and body
+         * length without logging or interpolating the body into an exception.
+         */
+        private fun executeJsonResponse(request: Request, endpoint: String): String =
+            httpClient.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    throw IOException("$endpoint returned HTTP ${response.code} (bodyLength=${body.length})")
+                }
+                if (body.isBlank()) {
+                    throw IOException("$endpoint returned an empty response (HTTP ${response.code})")
+                }
+                body
+            }
+
         @JavascriptInterface
         fun onPageLoaded() {
             scope.launch(Dispatchers.IO) {
                 runCatching {
                     val requestBody = "[ \"$REQUEST_KEY\" ]".toRequestBody("application/json".toMediaType())
                     val request = Request.Builder().url(CREATE_URL).post(requestBody).build()
-                    val response = httpClient.newCall(request).execute().use { it.body?.string().orEmpty() }
+                    val response = executeJsonResponse(request, "Create")
                     val challengeJson = parseCreateChallenge(response)
 
                     withContext(Dispatchers.Main) {
@@ -299,9 +321,13 @@ object BotGuardTokenGenerator {
                     val safeResponse = botguardResponse.replace("\\", "\\\\").replace("\"", "\\\"")
                     val requestBody = "[ \"$REQUEST_KEY\", \"$safeResponse\" ]".toRequestBody("application/json".toMediaType())
                     val request = Request.Builder().url(GENERATE_IT_URL).post(requestBody).build()
-                    val response = httpClient.newCall(request).execute().use { it.body?.string().orEmpty() }
+                    val response = executeJsonResponse(request, "GenerateIT")
                     val (tokenU8, lifetimeSec) = parseIntegrityToken(response)
-                    expiresAtMs = System.currentTimeMillis() + (lifetimeSec - 300L) * 1000L
+                    // Keep the same 5-minute safety margin as the desktop
+                    // minter, but never create an already-expired engine when
+                    // YouTube returns a short (yet valid) token lifetime.
+                    val usableLifetimeSec = (lifetimeSec - 300L).coerceAtLeast(1L)
+                    expiresAtMs = System.currentTimeMillis() + usableLifetimeSec * 1000L
 
                     withContext(Dispatchers.Main) {
                         webView.evaluateJavascript(
