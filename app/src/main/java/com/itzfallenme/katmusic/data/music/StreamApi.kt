@@ -120,8 +120,35 @@ data class YouTubeAudioStream(
     val expiresAtEpochMs: Long? = null,
     val userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0",
 ) {
+    /**
+     * Stable across restarts and across signed URLs.
+     *
+     * The bytes for one video at one itag are the same audio no matter which
+     * client minted the URL, so the client, auth scope and expiry do not
+     * belong in the cache identity. They used to be in it, which meant every
+     * renewed URL pointed at a brand-new empty cache resource — the audio a
+     * listener had already streamed could never be served again, and nothing
+     * was playable offline afterwards.
+     */
     val mediaCacheKey: String
-        get() = "youtube:$videoId:$clientProfile:${itag ?: -1}:$authScope:${expiresAtEpochMs ?: 0L}"
+        get() = "youtube:$videoId:${itag ?: -1}:${mimeType.cacheKeySuffix()}"
+}
+
+/**
+ * Container family for a stream, as a short stable token for [YouTubeAudioStream.mediaCacheKey].
+ *
+ * Only the family matters after the fact: cache-only playback rebuilds an
+ * ExoPlayer format from the key without a network round trip, and the three
+ * families span every audio itag YouTube serves.
+ */
+internal fun String?.cacheKeySuffix(): String = when {
+    this == null -> "audio"
+    contains("webm", ignoreCase = true) || contains("opus", ignoreCase = true) ||
+        contains("ogg", ignoreCase = true) -> "webm"
+    contains("mp4", ignoreCase = true) || contains("m4a", ignoreCase = true) ||
+        contains("aac", ignoreCase = true) -> "mp4"
+    contains("mpeg", ignoreCase = true) || contains("mp3", ignoreCase = true) -> "mp3"
+    else -> "audio"
 }
 
 data class YtMusicTasteSignals(
