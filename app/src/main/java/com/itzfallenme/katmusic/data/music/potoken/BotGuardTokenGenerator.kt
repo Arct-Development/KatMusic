@@ -152,9 +152,13 @@ object BotGuardTokenGenerator {
         val (eng, sessionTok, wasNew) = getOrCreateEngine(ctx, sessionId, forceNewEngine)
         val playerTok = try {
             eng.mint(videoId)
-        } catch (e: Throwable) {
+        } catch (cancellation: CancellationException) {
+            // Cancellation belongs to the caller (for example, a track change).
+            // Do not interpret it as a broken WebView and rebuild the engine.
+            throw cancellation
+        } catch (e: Exception) {
             if (wasNew) throw e
-            Log.w(TAG, "Mint failed on existing engine; retrying with fresh engine")
+            Log.w(TAG, "Mint failed on existing engine; retrying with fresh engine", e)
             return mintTokenInternal(ctx, videoId, sessionId, forceNewEngine = true)
         }
         return PoTokenResult(playerToken = playerTok, sessionToken = sessionTok)
@@ -301,7 +305,11 @@ object BotGuardTokenGenerator {
                     val request = Request.Builder().url(GENERATE_IT_URL).post(requestBody).build()
                     val response = httpClient.newCall(request).execute().use { it.body?.string().orEmpty() }
                     val (tokenU8, lifetimeSec) = parseIntegrityToken(response)
-                    expiresAtMs = System.currentTimeMillis() + (lifetimeSec - 300L) * 1000L
+                    // Keep the same 5-minute safety margin as the desktop
+                    // minter, but never create an already-expired engine when
+                    // YouTube returns a short (yet valid) token lifetime.
+                    val usableLifetimeSec = (lifetimeSec - 300L).coerceAtLeast(60L)
+                    expiresAtMs = System.currentTimeMillis() + usableLifetimeSec * 1000L
 
                     withContext(Dispatchers.Main) {
                         webView.evaluateJavascript(
