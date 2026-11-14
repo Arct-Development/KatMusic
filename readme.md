@@ -8,7 +8,7 @@
 
 A native Android music player built around YouTube Music, with synced lyrics, offline downloads, a powerful audio engine and a highly customisable player.
 
-<p><strong>Hi, I'm <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.</strong> I build Android apps, web projects and practical tools — KatMusic is my home for the music-player ideas I want to use every day.</p>
+<p><strong>Hi, We are <a href="https://github.com/Arct-Development">Arct-Developments</a>.</strong> WE build Android apps, web projects and practical tools — KatMusic is my home for the music-player ideas We want to use every day.</p>
 
 <p>
   <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.2"><strong>Download v2.6.2</strong></a>
