@@ -326,7 +326,7 @@ object BotGuardTokenGenerator {
                     // Keep the same 5-minute safety margin as the desktop
                     // minter, but never create an already-expired engine when
                     // YouTube returns a short (yet valid) token lifetime.
-                    val usableLifetimeSec = (lifetimeSec - 300L).coerceAtLeast(60L)
+                    val usableLifetimeSec = (lifetimeSec - 300L).coerceAtLeast(1L)
                     expiresAtMs = System.currentTimeMillis() + usableLifetimeSec * 1000L
 
                     withContext(Dispatchers.Main) {
