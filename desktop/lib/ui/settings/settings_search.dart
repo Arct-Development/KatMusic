@@ -221,7 +221,8 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'about',
     title: 'About KatMusic',
     subtitle: 'Build and project links',
-    keywords: 'version update check updates github links',
+    keywords:
+        'version update check updates github links bug report issue feedback',
   ),
 ];
 

@@ -2946,15 +2946,13 @@ class _AboutState extends ConsumerState<_About> {
                 ),
               ),
               KatButton(
-                onPressed: () => _open(
-                  'https://github.com/Arct-Development/KatMusic/issues',
-                ),
+                onPressed: () => _open('https://katmusic.pages.dev/#report'),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(FluentIcons.error, size: 14),
                     SizedBox(width: 6),
-                    Text('Report an issue'),
+                    Text('Report a bug'),
                   ],
                 ),
               ),
