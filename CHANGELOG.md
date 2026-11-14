@@ -4,6 +4,18 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.4] - 2026-11-14
+
+### Fixed
+
+- Lossless addon resolution now preserves coroutine cancellation instead of swallowing cancellation as an ordinary resolver failure.
+- A normal no-match result no longer counts as a backend outage or starts the resolver cooldown.
+- Transient backend failures must occur three times consecutively before the 30-second lossless resolver cooldown is activated; successful resolution resets the failure count.
+
+### Notes
+
+- This release candidate contains Android resolver reliability changes. Seek/rebuffer behaviour, skipped UI frames and Atmos decoder availability still require device-level validation and are not claimed as fixed.
+
 ## [2.6.3] - 2026-11-14
 
 ### Added
