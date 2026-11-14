@@ -6,29 +6,22 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.6.0'
+        default: '2.6.1'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.6.0'
+        default: 'KatMusic 2.6.1'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.6.0
+          ## KatMusic 2.6.1
 
           ### Added
-          - KatMusic Cover: an artwork-first 1×1 and 2×1 home-screen widget with one-tap play/pause.
-          - Animated Group Blend match gauge and corrected cloud member scoring.
-          - A more cinematic alternate-player motion system with ambient colour, breathing/rotating covers, lyric crossfades and a pulsing timeline.
-          - Polished startup handoff from the final logo-video frame into the wordmark lockup.
-
-          ### Changed
-          - Refined Group Blend cloud flows, release documentation and current app screenshots.
+          - Report a bug: a new Settings action (Android and desktop) that opens the KatMusic report form.
 
           ### Fixed
-          - Cloud Blend members now populate the compatibility list; leaving a Blend restores the local group.
-          - Tagged release signing now uses the same key contract as the manual release workflow.
+          - Playback no longer changes quality in the middle of a song. The stream chosen when a track starts now stays in use until the track ends.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.

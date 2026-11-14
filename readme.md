@@ -11,7 +11,7 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 <p><strong>Hi, I'm <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.</strong> I build Android apps, web projects and practical tools — KatMusic is my home for the music-player ideas I want to use every day.</p>
 
 <p>
-  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.0"><strong>Download v2.6.0</strong></a>
+  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.1"><strong>Download v2.6.1</strong></a>
   &nbsp;·&nbsp;
   <a href="https://katmusic.pages.dev">Project website</a>
   &nbsp;·&nbsp;
@@ -186,22 +186,22 @@ architecture and troubleshooting.
 
 ## Download and install
 
-**Latest stable release: [KatMusic 2.6.0](https://github.com/Arct-Development/KatMusic/releases/tag/2.6.0)**
+**Latest stable release: [KatMusic 2.6.1](https://github.com/Arct-Development/KatMusic/releases/tag/2.6.1)**
 
 Choose the package that matches your device:
 
 | Package | Android version | Recommended for |
 | --- | --- | --- |
-| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
-| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
-| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
-| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/KatMusic-v2.6.0-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
+| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.1/KatMusic-v2.6.1-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
+| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.1/KatMusic-v2.6.1-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
+| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.1/KatMusic-v2.6.1-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
+| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.1/KatMusic-v2.6.1-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
 
 1. Download the APK that matches your device.
 2. Open the downloaded file and approve installation when Android asks.
 3. Launch KatMusic and configure account access or optional integrations from Settings.
 
-You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.6.0/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
+You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.6.1/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
 
 ## Build from source
 
