@@ -6,25 +6,24 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.6.3'
+        default: '2.6.4'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.6.3'
+        default: 'KatMusic 2.6.4'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.6.3
-
-          ### Added
-          - Audio that has already been streamed keeps playing when the network goes away. A partly buffered song plays from the stream cache and ends cleanly where its audio ends; a song that has played through once starts straight from cache without resolving or spending data.
-          - The stream cache now survives re-resolves, because entries are keyed by video, codec family and stream id instead of the signed URL.
+          ## KatMusic 2.6.4
 
           ### Fixed
-          - Playback no longer stops around a minute into a song. The signed stream URL is renewed inside the data source at every 1 MiB chunk boundary, and again on a failed chunk, rather than waiting for the player to give up on an expired URL.
-          - A dead stream URL is retried at once (0 ms, 300 ms, 900 ms, up to five attempts) instead of sitting out the default one-second-then-doubling backoff against the same expired link.
-          - A cached resource counts as complete only when its whole byte range is on disk, so a truncated file can no longer surface as an unreadable-position error.
+          - Lossless addon resolution preserves coroutine cancellation instead of swallowing it as an ordinary failure.
+          - A normal no-match result no longer counts as a backend outage or starts a cooldown.
+          - The resolver waits for three consecutive backend failures before applying its 30-second cooldown; a successful resolution resets the failure count.
+
+          ### Validation note
+          - Seek/rebuffer behaviour, skipped UI frames and Atmos decoder availability still require device-level validation and are not claimed as fixed.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.
