@@ -2,7 +2,9 @@ package com.itzfallenme.katmusic.playback.resolve
 
 import android.util.Log
 import com.itzfallenme.katmusic.data.music.YouTubeAudioStream
+import com.itzfallenme.katmusic.data.music.audioCodecFamily
 import com.itzfallenme.katmusic.data.music.containedAudioResolutionFailure
+import com.itzfallenme.katmusic.data.music.normalizeCodecFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
 class StreamExtraction(
     parent: CoroutineScope,
     private val cache: PlaybackStreamCache,
-    private val extract: suspend (youtubeVideoId: String) -> YouTubeAudioStream,
+    private val extract: suspend (youtubeVideoId: String, preferredCodec: String?) -> YouTubeAudioStream,
 ) {
     // Independent of the caller's job. Cancelling prefetch or playback
     // must not cancel an extract that is about to write the URL.
@@ -36,34 +38,53 @@ class StreamExtraction(
     private val flights = ConcurrentHashMap<String, Deferred<YouTubeAudioStream>>()
     private val lock = Any()
 
-    suspend fun await(youtubeVideoId: String): YouTubeAudioStream {
+    suspend fun await(
+        youtubeVideoId: String,
+        preferredCodec: String? = null,
+    ): YouTubeAudioStream {
+        // A flight pinned to a codec family must not be satisfied by one that
+        // was started without it (or with the other family): the caller would
+        // receive a different rendition than the one it is trying to keep.
+        val flightKey = preferredCodec
+            ?.let { normalizeCodecFamily(it) }
+            ?.let { family -> "$youtubeVideoId|$family" }
+            ?: youtubeVideoId
         val flight = synchronized(lock) {
-            val current = flights[youtubeVideoId]
+            val current = flights[flightKey]
             if (current != null && current.isActive) {
                 Log.i(TAG, "[EXTRACT_JOIN] youtubeVideoId=$youtubeVideoId")
                 current
             } else {
-                val created = scope.async { execute(youtubeVideoId) }
-                flights[youtubeVideoId] = created
-                created.invokeOnCompletion { flights.remove(youtubeVideoId, created) }
+                val created = scope.async { execute(youtubeVideoId, preferredCodec) }
+                flights[flightKey] = created
+                created.invokeOnCompletion { flights.remove(flightKey, created) }
                 created
             }
         }
         return flight.await()
     }
 
-    private suspend fun execute(youtubeVideoId: String): YouTubeAudioStream {
+    private suspend fun execute(
+        youtubeVideoId: String,
+        preferredCodec: String?,
+    ): YouTubeAudioStream {
         val started = System.nanoTime()
         Log.i(TAG, "[EXTRACT_START] youtubeVideoId=$youtubeVideoId")
         try {
             cache.get(TrackIdentity(youtubeVideoId, youtubeVideoId))?.let { hit ->
-                Log.i(
-                    TAG,
-                    "[EXTRACT_END] youtubeVideoId=$youtubeVideoId elapsedMs=${elapsedSince(started)} cached=true",
-                )
-                return hit.toYouTubeAudioStream()
+                val hitStream = hit.toYouTubeAudioStream()
+                val wanted = normalizeCodecFamily(preferredCodec)
+                val matches = wanted == null ||
+                    audioCodecFamily(hitStream.mimeType, hitStream.codec) == wanted
+                if (matches) {
+                    Log.i(
+                        TAG,
+                        "[EXTRACT_END] youtubeVideoId=$youtubeVideoId elapsedMs=${elapsedSince(started)} cached=true",
+                    )
+                    return hitStream
+                }
             }
-            val stream = extract(youtubeVideoId)
+            val stream = extract(youtubeVideoId, preferredCodec)
             if (stream.videoId == youtubeVideoId && stream.url.isNotBlank()) {
                 cache.putIfAbsent(stream.toStreamCache(TrackIdentity(youtubeVideoId, youtubeVideoId)))
             }

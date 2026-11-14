@@ -2866,13 +2866,15 @@ class StreamApi @Inject constructor(
     }
 
     /** Instant in-memory stream peek for 0ms playback (Desktop way). Returns null if not cached/fresh. */
-    fun peekCachedStream(videoId: String): YouTubeAudioStream? {
+    fun peekCachedStream(videoId: String, preferredCodec: String? = null): YouTubeAudioStream? {
         if (videoId.isBlank()) return null
         val now = System.currentTimeMillis()
         val authScope = playbackAuthScope()
+        val preferFamily = normalizeCodecFamily(preferredCodec)
         val entry = streamCache.entries
             .asSequence()
             .filter { it.key.videoId == videoId && it.key.authScope == authScope }
+            .filter { preferFamily == null || it.value.stream.matchesCodecFamily(preferFamily) }
             .sortedByDescending { it.value.cachedAtEpochMs }
             .firstOrNull() ?: return null
         val cached = entry.value
@@ -2883,12 +2885,22 @@ class StreamApi @Inject constructor(
         }
     }
 
-    /** Resolves and byte-probes an expiring googlevideo URL immediately before use. */
-    suspend fun resolveAudioStream(videoId: String): YouTubeAudioStream = withContext(Dispatchers.IO) {
+    /**
+     * Resolves and byte-probes an expiring googlevideo URL immediately before use.
+     *
+     * [preferredCodec] pins the codec family ("OPUS" / "AAC") a mid-track
+     * re-resolve must land on. Without it a retry can be served by a different
+     * provider than the first resolve and silently change the song's codec
+     * while it plays.
+     */
+    suspend fun resolveAudioStream(
+        videoId: String,
+        preferredCodec: String? = null,
+    ): YouTubeAudioStream = withContext(Dispatchers.IO) {
         require(videoId.isNotBlank()) { "Missing YouTube Music video id" }
         val startedAt = SystemClock.elapsedRealtime()
         logStage(videoId, "start")
-        peekCachedStream(videoId)?.let { stream ->
+        peekCachedStream(videoId, preferredCodec)?.let { stream ->
             val authScope = playbackAuthScope()
             lastResolvedStreams[resolutionKey(videoId, authScope)] = stream
             logStreamEvent("cache-hit", stream)
@@ -2896,10 +2908,12 @@ class StreamApi @Inject constructor(
         }
         val now = System.currentTimeMillis()
         val authScope = playbackAuthScope()
+        val preferFamily = normalizeCodecFamily(preferredCodec)
 
         streamCache.entries
             .asSequence()
             .filter { it.key.videoId == videoId && it.key.authScope == authScope }
+            .filter { preferFamily == null || it.value.stream.matchesCodecFamily(preferFamily) }
             .sortedByDescending { it.value.cachedAtEpochMs }
             .firstOrNull()
             ?.let { entry ->
@@ -2918,12 +2932,15 @@ class StreamApi @Inject constructor(
                 logStreamEvent("cache-rejected", stream)
             }
 
-        val requestKey = resolutionKey(videoId, authScope)
+        // A codec-pinned resolve must never join a shared request that was
+        // started without the pin: it would receive the other rendition.
+        val requestKey = resolutionKey(videoId, authScope) +
+            (preferFamily?.let { "|$it" } ?: "")
         val shared = activeStreamRequests.computeIfAbsent(requestKey) {
             lateinit var request: SharedStreamRequest
             val deferred = apiScope.async(start = CoroutineStart.LAZY) {
                 kotlinx.coroutines.withTimeout(STREAM_RESOLVE_TOTAL_TIMEOUT_MS) {
-                    resolveAudioStreamInternal(videoId, authScope, startedAt)
+                    resolveAudioStreamInternal(videoId, authScope, startedAt, preferredCodec)
                 }
             }
             request = SharedStreamRequest(deferred)
@@ -2977,6 +2994,7 @@ class StreamApi @Inject constructor(
     private suspend fun resolveDirectUrlFastPath(
         videoId: String,
         authScope: String,
+        preferredCodec: String? = null,
     ): YouTubeAudioStream? {
         // Visitor data is mandatory, not best-effort: VISIONOS/ANDROID_VR
         // answer LOGIN_REQUIRED with zero formats when it is missing, so a
@@ -3054,6 +3072,7 @@ class StreamApi @Inject constructor(
                         probeCandidates = true,
                         allowCipherFormats = client.name == "TVHTML5_SIMPLY_EMBEDDED_PLAYER" || client.name == "WEB_REMIX",
                         maxAttempts = 1,
+                        preferredCodec = preferredCodec,
                     )
                 }
             } catch (cancellation: kotlinx.coroutines.CancellationException) {
@@ -3078,6 +3097,7 @@ class StreamApi @Inject constructor(
         videoId: String,
         authScope: String,
         startedAt: Long,
+        preferredCodec: String? = null,
     ): YouTubeAudioStream = kotlinx.coroutines.withContext(ResolutionAttemptLog()) {
         kotlinx.coroutines.coroutineScope {
         val now = System.currentTimeMillis()
@@ -3086,8 +3106,8 @@ class StreamApi @Inject constructor(
         // NewPipe URL must not wait for every authenticated client to miss.
         val resolved = try {
             racePlaybackCandidates(
-                first = { resolveDirectUrlFastPath(videoId, authScope) },
-                second = { racePlayableFallback(videoId, authScope, now, startedAt) },
+                first = { resolveDirectUrlFastPath(videoId, authScope, preferredCodec) },
+                second = { racePlayableFallback(videoId, authScope, now, startedAt, preferredCodec) },
             )
         } catch (error: Throwable) {
             if (error.isCooperativeCancellation()) throw error
@@ -3113,7 +3133,14 @@ class StreamApi @Inject constructor(
         authScope: String,
         now: Long,
         startedAt: Long,
+        preferredCodec: String? = null,
     ): YouTubeAudioStream? = kotlinx.coroutines.coroutineScope {
+        val preferFamily = normalizeCodecFamily(preferredCodec)
+        // Held back from the normal race, used only when nothing else lands:
+        // adaptive (HLS) manifests can re-pick an audio rendition mid-track,
+        // and a pinned codec that the other provider is already fetching must
+        // win. Playing a held-back URL beats playing nothing.
+        val lastResort = java.util.concurrent.atomic.AtomicReference<YouTubeAudioStream?>(null)
         val channel = kotlinx.coroutines.channels.Channel<YouTubeAudioStream>(2)
         val jobs = listOf(
             launch(Dispatchers.IO) {
@@ -3152,13 +3179,29 @@ class StreamApi @Inject constructor(
                     )
                     return@launch
                 }
+                val isHls = candidate.mimeType?.contains("mpegurl", true) == true ||
+                    candidate.url.substringBefore('?').endsWith(".m3u8", true) ||
+                    candidate.codec?.equals("hls", true) == true
+                val family = audioCodecFamily(candidate.mimeType, candidate.codec)
+                if (isHls || (preferFamily != null && family != null && family != preferFamily)) {
+                    noteAttempt(
+                        "client=INNERTUBEX outcome=deferred hls=$isHls itag=${candidate.itag ?: -1} " +
+                            "family=$family want=${preferFamily ?: "-"}",
+                    )
+                    lastResort.compareAndSet(null, candidate)
+                    return@launch
+                }
                 if (probeStream(candidate, "innertubex-probe")) channel.trySend(candidate)
             },
             launch(Dispatchers.IO) {
                 var failed = false
                 val stream = try {
                     kotlinx.coroutines.withTimeoutOrNull(NEWPIPE_FALLBACK_TIMEOUT_MS) {
-                        streamExtractor.resolveAudioStream(videoId)
+                        streamExtractor.resolveAudioStream(
+                            videoId,
+                            preferM4a = preferFamily == CODEC_FAMILY_AAC,
+                            preferOpus = preferFamily == CODEC_FAMILY_OPUS,
+                        )
                     }
                 } catch (cancellation: kotlinx.coroutines.CancellationException) {
                     throw cancellation
@@ -3186,7 +3229,8 @@ class StreamApi @Inject constructor(
         try {
             val winner = kotlinx.coroutines.withTimeoutOrNull(NEWPIPE_FALLBACK_TIMEOUT_MS) {
                 channel.receiveCatching().getOrNull()
-            } ?: return@coroutineScope null
+            } ?: lastResort.get()?.takeIf { probeStream(it, "last-resort-probe") }
+            ?: return@coroutineScope null
             cacheResolvedStream(winner, now)
             lastResolvedStreams[resolutionKey(videoId, authScope)] = winner
             val stage = if (winner.clientProfile == NEWPIPE_SOURCE) "newpipe" else "innertubex"
@@ -3236,6 +3280,7 @@ class StreamApi @Inject constructor(
         probeCandidates: Boolean = true,
         allowCipherFormats: Boolean = true,
         maxAttempts: Int = MAX_PLAYER_REQUEST_ATTEMPTS,
+        preferredCodec: String? = null,
     ): YouTubeAudioStream {
         val playerContext = buildJsonObject {
             put("client", buildJsonObject {
@@ -3387,7 +3432,13 @@ class StreamApi @Inject constructor(
             }
             .filter(::isCompatibleAudioCandidate)
             .sortedWith(
-                compareBy<YouTubeAudioStream> { it.isAdaptive }
+                // A pinned codec family wins before adaptive/bitrate ordering so
+                // a mid-track retry re-resolves the same rendition family.
+                compareBy<YouTubeAudioStream> {
+                    val family = normalizeCodecFamily(preferredCodec)
+                    if (family == null || it.matchesCodecFamily(family)) 0 else 1
+                }
+                    .thenBy { it.isAdaptive }
                     .thenByDescending { it.bitrate },
             )
         noteAttempt("client=${client.name} compatibleCandidates=${candidates.size} cipherAllowed=$allowCipherFormats")
@@ -3522,6 +3573,9 @@ class StreamApi @Inject constructor(
         ?.getOrNull(1)
         ?.substringBefore(',')
         ?.trim()
+
+    private fun YouTubeAudioStream.matchesCodecFamily(family: String): Boolean =
+        audioCodecFamily(mimeType, codec) == family
 
     private fun isCompatibleAudioCandidate(stream: YouTubeAudioStream): Boolean {
         val mime = stream.mimeType.orEmpty().lowercase()
@@ -5312,6 +5366,33 @@ class StreamApi @Inject constructor(
                 userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
             ),
         )
+    }
+}
+
+internal const val CODEC_FAMILY_OPUS = "OPUS"
+internal const val CODEC_FAMILY_AAC = "AAC"
+
+/** "OPUS" / "AAC" for a stream, null when the rendition is neither (HLS, unknown). */
+internal fun audioCodecFamily(mimeType: String?, codec: String?): String? {
+    val mime = mimeType.orEmpty().lowercase()
+    val name = codec.orEmpty().lowercase()
+    return when {
+        name.contains("opus") || name.contains("vorbis") -> CODEC_FAMILY_OPUS
+        name.contains("mp4a") || name.contains("aac") -> CODEC_FAMILY_AAC
+        mime == "audio/webm" || mime == "audio/ogg" -> CODEC_FAMILY_OPUS
+        mime == "audio/mp4" || mime == "audio/m4a" -> CODEC_FAMILY_AAC
+        else -> null
+    }
+}
+
+/** Normalizes a UI/player codec label ("OPUS", "AAC", "WEBM", "MP4A") to a family. */
+internal fun normalizeCodecFamily(label: String?): String? {
+    val value = label?.uppercase().orEmpty()
+    return when {
+        value.isBlank() -> null
+        value.contains("OPUS") || value.contains("VORBIS") || value.contains("WEBM") -> CODEC_FAMILY_OPUS
+        value.contains("AAC") || value.contains("MP4") || value.contains("M4A") -> CODEC_FAMILY_AAC
+        else -> null
     }
 }
 

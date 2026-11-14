@@ -11,7 +11,7 @@ import java.io.File
 class StreamResolveCoordinator(
     cacheDir: File,
     private val scope: CoroutineScope,
-    private val extract: suspend (youtubeVideoId: String) -> YouTubeAudioStream,
+    private val extract: suspend (youtubeVideoId: String, preferredCodec: String?) -> YouTubeAudioStream,
     private val logger: ResolverLogger = AndroidResolverLogger,
 ) {
     val cache = PlaybackStreamCache(cacheDir)
@@ -30,11 +30,21 @@ class StreamResolveCoordinator(
      * Resolves [identity] for the user-selected track.
      * Joins an in-flight resolve of the same identity. Any other identity is stale.
      */
-    suspend fun resolvePlayback(identity: TrackIdentity, durationMs: Long?): StreamCache {
+    suspend fun resolvePlayback(
+        identity: TrackIdentity,
+        durationMs: Long?,
+        preferredCodec: String? = null,
+    ): StreamCache {
         val active = playback.requested
         val token = playback.claim(identity)
         if (active == null) prefetch.cancel()
-        return playback.resolve(token, identity, durationMs, extraction::await)
+        return playback.resolve(
+            token = token,
+            identity = identity,
+            durationMs = durationMs,
+            preferredCodec = preferredCodec,
+            extract = { videoId, preferred -> extraction.await(videoId, preferred) },
+        )
     }
 
     /**
@@ -62,7 +72,7 @@ class StreamResolveCoordinator(
             identity = identity,
             durationMs = durationMs,
             activePlayback = playback::requested,
-            extract = extraction::await,
+            extract = { videoId -> extraction.await(videoId) },
             onReady = onReady,
         )
     }

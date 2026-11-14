@@ -95,9 +95,9 @@ class StreamResolveTest {
         resolver.begin(idB)
         var extracted = false
         try {
-            resolver.resolve(first, idA, 1_000L) {
+            resolver.resolve(first, idA, 1_000L) { videoId, _ ->
                 extracted = true
-                stream(it)
+                stream(videoId)
             }
             throw AssertionError("stale resolve was applied")
         } catch (error: StaleResolveException) {
@@ -114,7 +114,7 @@ class StreamResolveTest {
         val token = resolver.begin(idA)
         var calls = 0
         try {
-            resolver.resolve(token, idA, 3_000L) {
+            resolver.resolve(token, idA, 3_000L) { _, _ ->
                 calls++
                 stream("zzzzzzzzzzz")
             }
@@ -133,9 +133,9 @@ class StreamResolveTest {
         val resolver = PlaybackResolver(cache, noopLogger)
         val token = resolver.begin(idA)
         var calls = 0
-        val resolved = resolver.resolve(token, idA, 4_000L) {
+        val resolved = resolver.resolve(token, idA, 4_000L) { videoId, _ ->
             calls++
-            stream(it)
+            stream(videoId)
         }
         assertEquals(0, calls)
         assertEquals("https://cdn.example/cached", resolved.streamUrl)
@@ -151,10 +151,10 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = dir,
             scope = this,
-            extract = {
+            extract = { videoId, _ ->
                 started.complete(Unit)
                 release.await()
-                stream(it)
+                stream(videoId)
             },
             logger = noopLogger,
         )
@@ -182,7 +182,7 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = this,
-            extract = { videoId ->
+            extract = { videoId, _ ->
                 delay(20)
                 stream(videoId)
             },
@@ -219,10 +219,10 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = this,
-            extract = {
+            extract = { videoId, _ ->
                 if (calls.incrementAndGet() == 1) started.complete(Unit)
                 release.await()
-                stream(it)
+                stream(videoId)
             },
             logger = noopLogger,
         )
@@ -245,10 +245,10 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = this,
-            extract = {
+            extract = { videoId, _ ->
                 started.complete(Unit)
                 release.await()
-                stream(it)
+                stream(videoId)
             },
             logger = noopLogger,
         )
@@ -270,11 +270,11 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = this,
-            extract = {
+            extract = { videoId, _ ->
                 calls.incrementAndGet()
                 started.complete(Unit)
                 release.await()
-                stream(it)
+                stream(videoId)
             },
             logger = noopLogger,
         )
@@ -300,7 +300,7 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = scope,
-            extract = {
+            extract = { _, _ ->
                 threw.complete(Unit)
                 throw IOException("Unable to resolve a playable audio stream for video")
             },
@@ -319,7 +319,7 @@ class StreamResolveTest {
         val coordinator = StreamResolveCoordinator(
             cacheDir = tempDir(),
             scope = this,
-            extract = { withTimeout(1) { delay(10_000); stream(it) } },
+            extract = { videoId, _ -> withTimeout(1) { delay(10_000); stream(videoId) } },
             logger = noopLogger,
         )
         try {

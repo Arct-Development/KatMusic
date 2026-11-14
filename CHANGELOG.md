@@ -4,6 +4,13 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.2] - 2026-11-14
+
+### Fixed
+
+- A song now keeps a single codec for its whole length. When a stream has to be re-resolved mid-track (a throttled or rotated YouTube URL, a transient network failure), the retry asks for the rendition that is already playing instead of taking whichever provider answers first, so OPUS no longer switches to AAC about a minute into a song.
+- Adaptive (HLS) audio manifests are held back to a last resort, because they can re-pick an audio rendition while the track plays.
+
 ## [2.6.1] - 2026-11-14
 
 ### Added

@@ -71,7 +71,8 @@ class PlaybackResolver(
         token: Long,
         identity: TrackIdentity,
         durationMs: Long?,
-        extract: suspend (youtubeVideoId: String) -> YouTubeAudioStream,
+        preferredCodec: String? = null,
+        extract: suspend (youtubeVideoId: String, preferredCodec: String?) -> YouTubeAudioStream,
     ): StreamCache {
         val started = System.nanoTime()
         logger.event(ResolveEvent.START, identity, 0L, durationMs, "playback")
@@ -98,7 +99,7 @@ class PlaybackResolver(
             val extracted = try {
                 PlaybackStartupLog.extractStart()
                 try {
-                    extract(identity.youtubeVideoId)
+                    extract(identity.youtubeVideoId, preferredCodec)
                 } finally {
                     PlaybackStartupLog.extractEnd()
                 }

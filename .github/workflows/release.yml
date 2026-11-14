@@ -6,22 +6,23 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.6.1'
+        default: '2.6.2'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.6.1'
+        default: 'KatMusic 2.6.2'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.6.1
+          ## KatMusic 2.6.2
 
           ### Added
           - Report a bug: a new Settings action (Android and desktop) that opens the KatMusic report form.
 
           ### Fixed
-          - Playback no longer changes quality in the middle of a song. The stream chosen when a track starts now stays in use until the track ends.
+          - A song keeps one codec for its whole length. If a stream has to be re-resolved mid-track (throttled or rotated YouTube URL), the retry now asks for the rendition already playing instead of accepting whatever provider answers first, so OPUS no longer turns into AAC halfway through a song.
+          - Adaptive (HLS) audio manifests are only used when no progressive stream exists, because they can re-pick an audio rendition while the track plays.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.

@@ -78,6 +78,8 @@ import com.itzfallenme.katmusic.data.music.StreamApi
 import com.itzfallenme.katmusic.data.music.ConfirmedUnplayableMediaException
 import com.itzfallenme.katmusic.data.music.YouTubeAudioStream
 import com.itzfallenme.katmusic.data.music.YouTubeMusicTrack
+import com.itzfallenme.katmusic.data.music.audioCodecFamily
+import com.itzfallenme.katmusic.data.music.normalizeCodecFamily
 import com.itzfallenme.katmusic.data.music.YOUTUBE_WEB_USER_AGENT
 import com.itzfallenme.katmusic.data.playlist.PlaylistRepository
 import com.itzfallenme.katmusic.data.repository.RelatedGraphRepository
@@ -279,7 +281,12 @@ class MusicPlayer @Inject constructor(
     private val streamResolver = StreamResolveCoordinator(
         cacheDir = File(appContext.cacheDir, "playback_stream_cache"),
         scope = applicationScope,
-        extract = { videoId -> innerTube.resolveAudioStream(videoId) },
+        extract = { videoId, preferredCodec ->
+            // A mid-track retry must re-resolve the codec family the song is
+            // already playing, or the same track audibly changes OPUS -> AAC
+            // halfway through.
+            innerTube.resolveAudioStream(videoId, preferredCodec = preferredCodec)
+        },
     )
     private val streamResolutionWakeLock by lazy {
         (appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.newWakeLock(
@@ -1166,6 +1173,10 @@ class MusicPlayer @Inject constructor(
                             track = updated,
                             allowLocalDownloads = false,
                             videoId = videoId,
+                            // Keep the rendition the song was already playing:
+                            // a retry served by the other provider used to swap
+                            // OPUS for AAC halfway through the track.
+                            preferredCodec = rejectedStream?.audioCodec ?: _state.value.audioCodec,
                             allowLossless = failedMediaId !in losslessBypassMediaIds,
                             excludedLosslessUrls = if (failedLosslessStream) {
                                 setOfNotNull(rejectedStream?.url)
@@ -1233,6 +1244,7 @@ class MusicPlayer @Inject constructor(
                                 resumePositionMs = currentPos,
                                 failedLosslessStream = failedLosslessStream,
                                 rejectedUrl = rejectedStream?.url,
+                                preferredCodec = rejectedStream?.audioCodec ?: _state.value.audioCodec,
                             )
                             return@withContext
                         }
@@ -1269,6 +1281,7 @@ class MusicPlayer @Inject constructor(
                     resumePositionMs = currentPos,
                     failedLosslessStream = failedLosslessStream,
                     rejectedUrl = rejectedStream?.url,
+                    preferredCodec = rejectedStream?.audioCodec ?: _state.value.audioCodec,
                 )
                 return
             }
@@ -5280,6 +5293,8 @@ class MusicPlayer @Inject constructor(
                                 resumePositionMs = player.currentPosition.coerceAtLeast(0L),
                                 failedLosslessStream = false,
                                 rejectedUrl = null,
+                                // The item never stopped playing: keep its codec.
+                                preferredCodec = _state.value.audioCodec,
                             )
                             return@withContext
                         }
@@ -6668,6 +6683,7 @@ class MusicPlayer @Inject constructor(
         resumePositionMs: Long,
         failedLosslessStream: Boolean,
         rejectedUrl: String?,
+        preferredCodec: String? = null,
     ) {
         ensureForegroundService()
         _state.update { it.copy(isBuffering = true, error = null) }
@@ -6703,6 +6719,7 @@ class MusicPlayer @Inject constructor(
                         track = track,
                         videoId = videoId,
                         allowLocalDownloads = false,
+                        preferredCodec = preferredCodec,
                         allowLossless = !failedLosslessStream && failedMediaId !in losslessBypassMediaIds,
                         excludedLosslessUrls = if (failedLosslessStream) setOfNotNull(rejectedUrl) else emptySet(),
                         losslessBudget = LosslessBudget.Disabled,
@@ -7266,12 +7283,16 @@ class MusicPlayer @Inject constructor(
         allowLocalDownloads: Boolean = true,
         losslessBudget: LosslessBudget = LosslessBudget.Interactive,
         claimPlayback: Boolean = true,
+        preferredCodec: String? = null,
     ): ResolvedStream = withContext(Dispatchers.IO) {
         val identityKey = track.playbackIdentity()?.cacheKey
             ?: track.internalTrackId?.takeIf { it.isNotBlank() }
             ?: videoId?.takeIf { it.isNotBlank() }
             ?: track.playbackUrl
-        val key = listOf(identityKey, videoId, allowLossless, excludedLosslessUrls, allowLocalDownloads, losslessBudget, claimPlayback)
+        val key = listOf(
+            identityKey, videoId, allowLossless, excludedLosslessUrls, allowLocalDownloads,
+            losslessBudget, claimPlayback, normalizeCodecFamily(preferredCodec),
+        )
         val now = SystemClock.elapsedRealtime()
         resolutionRequests.entries.removeIf { now - it.value.first > 60_000L }
         if (resolutionRequests.size >= 64) {
@@ -7287,6 +7308,7 @@ class MusicPlayer @Inject constructor(
                     excludedLosslessUrls = excludedLosslessUrls,
                     losslessBudget = losslessBudget,
                     claimPlayback = claimPlayback,
+                    preferredCodec = preferredCodec,
                 )
             }
         }
@@ -7318,6 +7340,7 @@ class MusicPlayer @Inject constructor(
         excludedLosslessUrls: Set<String> = emptySet(),
         losslessBudget: LosslessBudget = LosslessBudget.Interactive,
         claimPlayback: Boolean = true,
+        preferredCodec: String? = null,
     ): ResolvedStream {
         val directId = videoId?.takeIf { it.isNotBlank() } ?: track.videoId?.takeIf { it.isNotBlank() }
         val identity = directId?.let { id ->
@@ -7386,7 +7409,13 @@ class MusicPlayer @Inject constructor(
         }
 
         PlaybackStartupLog.cacheLookupStart()
-        val cached = identity?.let { streamResolver.cache.get(it) }?.takeIf { it.matches(identity) }
+        val wantedFamily = normalizeCodecFamily(preferredCodec)
+        val cached = identity?.let { streamResolver.cache.get(it) }
+            ?.takeIf { it.matches(identity) }
+            ?.takeIf { entry ->
+                wantedFamily == null ||
+                    audioCodecFamily(entry.mimeType, entry.rawCodec ?: entry.audioCodec) == wantedFamily
+            }
         PlaybackStartupLog.cacheLookupEnd(hit = cached != null)
         if (cached != null && identity != null) {
             if (claimPlayback) {
@@ -7400,7 +7429,12 @@ class MusicPlayer @Inject constructor(
                 else runCatching { resolveLocalDownloadedAudioStream(track, deepScan = true) }.getOrNull()
             }
             val youtube = async(Dispatchers.IO) {
-                resolveYoutubeTrackAudioStream(track, videoId, claimPlayback = claimPlayback)
+                resolveYoutubeTrackAudioStream(
+                    track,
+                    videoId,
+                    claimPlayback = claimPlayback,
+                    preferredCodec = preferredCodec,
+                )
             }
             while (true) {
                 ensureActive()
@@ -7675,6 +7709,7 @@ class MusicPlayer @Inject constructor(
         track: PlayableTrack,
         videoId: String?,
         claimPlayback: Boolean = true,
+        preferredCodec: String? = null,
     ): ResolvedStream {
         val directId = videoId?.takeIf { it.isNotBlank() } ?: track.videoId?.takeIf { it.isNotBlank() }
         if (directId != null) {
@@ -7684,7 +7719,7 @@ class MusicPlayer @Inject constructor(
             )
             val entry = try {
                 if (claimPlayback) {
-                    streamResolver.resolvePlayback(identity, track.durationMs)
+                    streamResolver.resolvePlayback(identity, track.durationMs, preferredCodec)
                 } else {
                     streamResolver.resolveTrackStream(identity, track.durationMs)
                 }
