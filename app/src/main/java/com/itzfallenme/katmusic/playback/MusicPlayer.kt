@@ -672,6 +672,9 @@ class MusicPlayer @Inject constructor(
     private val resolvingMediaIds = ConcurrentHashMap<String, Long>()
     private val preparedStreams = ConcurrentHashMap<String, ResolvedStream>()
 
+    /** Last mid-track URL renewal per cache key, so a broken URL cannot storm the resolver. */
+    private val chunkUrlRefreshes = ConcurrentHashMap<String, Long>()
+
     /**
      * Stream resolved for a track we are about to hand over to ExoPlayer, plus
      * the mediaId it belongs to.
@@ -754,7 +757,12 @@ class MusicPlayer @Inject constructor(
     private val cacheDataSourceFactory: CacheDataSource.Factory by lazy {
         val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(appContext, httpUpstreamFactory)
         val chunkedUpstreamFactory = androidx.media3.datasource.DataSource.Factory {
-            ChunkedRangeDataSource(defaultDataSourceFactory.createDataSource())
+            ChunkedRangeDataSource(
+                upstream = defaultDataSourceFactory.createDataSource(),
+                urlRefresher = StreamUrlRefresher { dataSpec, position, force ->
+                    refreshStreamUrlForChunk(dataSpec, position, force)
+                },
+            )
         }
         CacheDataSource.Factory()
             .setCache(mediaCache)
@@ -776,6 +784,195 @@ class MusicPlayer @Inject constructor(
             put("User-Agent", ua)
         }
         httpUpstreamFactory.setDefaultRequestProperties(headers)
+    }
+
+    /**
+     * Renews the signed URL for the chunk at [position] of the stream cached
+     * under [dataSpec]'s key, or returns null while that URL is still good.
+     *
+     * YouTube signs each `googlevideo` URL for a limited lifetime and can start
+     * answering 403 well before it expires once the transfer is throttled or
+     * the URL is rotated. Playback used to resolve once per track and then read
+     * every 1 MiB chunk through that same URL, so the first dead chunk surfaced
+     * as a load error and the song stopped roughly a minute in. Renewing inside
+     * the data source keeps the identity (same cache key, same codec) and lets
+     * the next range succeed before the player ever sees an error.
+     *
+     * Runs on the loader thread, which is why the resolve is blocking here: the
+     * alternative is a gap of seconds while ExoPlayer fails and the recovery
+     * loop restarts the track.
+     */
+    private fun refreshStreamUrlForChunk(
+        dataSpec: DataSpec,
+        position: Long,
+        force: Boolean,
+    ): DataSpec? {
+        val key = dataSpec.key ?: return null
+        val current = preparedStreams[key] ?: return null
+        if (!current.url.startsWith("https://", ignoreCase = true)) return null
+        // Only the item that is actually playing may spend a resolve: the next
+        // track is prefetched through this same data source, and its chunks
+        // must never be renewed with the current track's identity.
+        val playingKey = runCatching {
+            if (playerDelegate.isInitialized()) {
+                player.currentMediaItem?.localConfiguration?.customCacheKey
+            } else {
+                null
+            }
+        }.getOrNull()
+        if (playingKey != null && playingKey != key) return null
+        if (!force && !current.isExpired(System.currentTimeMillis() + CHUNK_URL_REFRESH_LEEWAY_MS)) return null
+        val track = _state.value.current ?: return null
+        if (track.isLocalTrack()) return null
+        val videoId = track.videoId?.takeIf { it.isNotBlank() } ?: return null
+
+        // A dead URL is a provider-side failure, not a bad track: drop the
+        // cached resolution so the re-resolve below cannot hand back the same
+        // dead URL, and let the extractor rotate clients.
+        val now = android.os.SystemClock.elapsedRealtime()
+        val lastRefresh = chunkUrlRefreshes[key]
+        if (lastRefresh != null && now - lastRefresh < CHUNK_URL_REFRESH_MIN_INTERVAL_MS) return null
+        chunkUrlRefreshes[key] = now
+        if (chunkUrlRefreshes.size > MAX_KNOWN_DURATIONS) {
+            chunkUrlRefreshes.entries.removeIf { now - it.value > 5 * 60_000L }
+        }
+        track.playbackIdentity()?.let { streamResolver.cache.invalidate(it) }
+        innerTube.reportPlaybackFailure(videoId)
+
+        val refreshed = runCatching {
+            runBlocking(Dispatchers.IO) {
+                resolveTrackAudioStream(
+                    track = track,
+                    videoId = videoId,
+                    allowLocalDownloads = false,
+                    allowLossless = !current.isLossless,
+                    losslessBudget = LosslessBudget.Disabled,
+                    claimPlayback = false,
+                    preferredCodec = current.audioCodec ?: _state.value.audioCodec,
+                )
+            }
+        }.onFailure { error ->
+            logResolutionFailure(track, "chunk-refresh", 0, error)
+        }.getOrNull() ?: return null
+        android.util.Log.w(
+            "MusicPlayer",
+            "Renewed chunk URL at ${position}ms for '${track.title}' (force=$force) codec=${refreshed.audioCodec}",
+        )
+
+        // CacheDataSource owns this span under the key it already claimed. A
+        // re-resolve that lands on another itag would splice two different
+        // encodings into one cached resource, so refuse it and let the
+        // player-level recovery restart the track cleanly.
+        if (refreshed.cacheKey != current.cacheKey) return null
+
+        updateHttpDataSourceHeaders(refreshed)
+        preparedStreams[key] = refreshed
+        val expectedMediaId = _state.value.current?.mediaIdKey()
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            publishResolvedQuality(refreshed, expectedMediaId = expectedMediaId)
+        }
+        return dataSpec.buildUpon().setUri(Uri.parse(refreshed.url)).build()
+    }
+
+    /**
+     * Whether the device currently has a usable network.
+     *
+     * Fails open: anything the connectivity service cannot answer counts as
+     * online, so an OEM that hides capabilities, or a missing permission, can
+     * never push playback onto the cache-only path by accident.
+     */
+    private fun hasNetworkConnection(): Boolean = runCatching {
+        val manager = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return@runCatching true
+        val network = manager.activeNetwork ?: return@runCatching false
+        manager.getNetworkCapabilities(network)
+            ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    }.getOrDefault(true)
+
+    /**
+     * Builds a stream that reads only from [mediaCache] for a track whose audio
+     * was streamed there earlier, so it can play with no network at all.
+     *
+     * The cache key is the stable `youtube:<videoId>:<itag>:<family>` identity,
+     * which is what makes this work after a restart or after the signed URL was
+     * rotated: the bytes on disk no longer depend on a URL that has since died.
+     * Playback ends where the cached audio ends — a partly played song is
+     * partly playable rather than unplayable.
+     */
+    private fun resolveStreamCacheFallback(track: PlayableTrack, videoId: String?): ResolvedStream? {
+        val id = videoId?.takeIf { it.isNotBlank() }
+            ?: track.videoId?.takeIf { it.isNotBlank() }
+            ?: return null
+        val key = cachedStreamKey(id, completeOnly = false, family = null) ?: return null
+        return cacheOnlyStream(key, track)
+    }
+
+    /**
+     * A track whose entire audio file is already in [mediaCache], i.e. it played
+     * through once. Served instead of resolving again, so a provider outage or a
+     * slow extractor cannot delay — or interrupt — a song that is already home.
+     */
+    private fun resolveCompleteCachedStream(
+        track: PlayableTrack,
+        videoId: String?,
+        family: String?,
+    ): ResolvedStream? {
+        val id = videoId?.takeIf { it.isNotBlank() }
+            ?: track.videoId?.takeIf { it.isNotBlank() }
+            ?: return null
+        val key = cachedStreamKey(id, completeOnly = true, family = family) ?: return null
+        return cacheOnlyStream(key, track)
+    }
+
+    /** Stable stream-cache key for [videoId], honouring completeness and codec family. */
+    private fun cachedStreamKey(videoId: String, completeOnly: Boolean, family: String?): String? =
+        runCatching {
+            mediaCache.keys.firstOrNull { candidate ->
+                candidate.startsWith("youtube:$videoId:") &&
+                    (family == null || cachedCodecFamily(candidate) == family) &&
+                    (
+                        if (completeOnly) {
+                            // Every byte is on disk: playback never needs upstream.
+                            mediaCache.isFullyCached(candidate, 0L)
+                        } else {
+                            // A partly played song still plays, as long as its
+                            // opening stretch is contiguous — a span further in
+                            // is unreadable without the bytes before it.
+                            mediaCache.isCached(candidate, 0L, MIN_CACHE_OFFLINE_BYTES)
+                        }
+                    )
+            }
+        }.getOrNull()
+
+    private fun cachedCodecFamily(key: String): String =
+        if (cacheKeyMimeType(key) == "audio/webm") "OPUS" else "AAC"
+
+    /** Builds a stream whose bytes come only from [mediaCache] under [key]. */
+    private fun cacheOnlyStream(key: String, track: PlayableTrack): ResolvedStream {
+        val mimeType = cacheKeyMimeType(key)
+        return ResolvedStream(
+            url = "${ChunkedRangeDataSource.OFFLINE_CACHE_SCHEME}://$key",
+            mimeType = mimeType,
+            bitrateKbps = null,
+            audioCodec = if (mimeType.contains("mp4")) "AAC" else "OPUS",
+            cacheKey = key,
+            durationMs = track.durationMs ?: findKnownDuration(track),
+        )
+    }
+
+    /** Rebuilds the container type from the cache key's family token. */
+    private fun cacheKeyMimeType(key: String): String {
+        val suffix = key.substringAfterLast(':')
+        return when (suffix) {
+            "webm" -> "audio/webm"
+            "mp4" -> "audio/mp4"
+            "mp3" -> "audio/mpeg"
+            // Keys written before the family token existed end in their itag.
+            else -> when (suffix.toIntOrNull()) {
+                139, 140, 141, 256, 258 -> "audio/mp4"
+                else -> "audio/webm"
+            }
+        }
     }
 
     /**
@@ -1595,6 +1792,10 @@ class MusicPlayer @Inject constructor(
         return ExoPlayer.Builder(appContext, renderersFactory)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(appContext, extractorsFactory).setDataSourceFactory(resolving)
+                    // Retry a dead signed URL at once (the data source mints a
+                    // fresh one on the next open) instead of the default
+                    // one-second-then-doubling schedule.
+                    .setLoadErrorHandlingPolicy(PlaybackLoadErrorPolicy())
                     // Module-resolved items carry their Widevine session in
                     // the prepared stream; the session manager (and license
                     // envelope) comes from the module via ModuleDrmFactory.
@@ -7320,6 +7521,18 @@ class MusicPlayer @Inject constructor(
             if (error !is CancellationException || request.second.isCancelled) {
                 resolutionRequests.remove(key, request)
             }
+            if (error !is CancellationException) {
+                // The network went away mid-session (or the extractor got a
+                // timeout): whatever of this song is already on disk keeps the
+                // music going instead of ending the track.
+                resolveStreamCacheFallback(track, videoId)?.let { cached ->
+                    logStreamEvent("cache-offline-fallback", cached, retry = 0, error = error)
+                    if (claimPlayback) {
+                        track.playbackIdentity()?.let { streamResolver.playback.begin(it) }
+                    }
+                    return@withContext cached
+                }
+            }
             throw error
         }
     }
@@ -7352,6 +7565,17 @@ class MusicPlayer @Inject constructor(
             val localQuick = runCatching { resolveLocalDownloadedAudioStream(track, deepScan = false) }.getOrNull()
             if (localQuick != null) {
                 return localQuick
+            }
+        }
+
+        // 1b. No network: a song whose audio is already in the stream cache
+        // (played, or partly played, earlier) still starts — from disk. Asking
+        // YouTube here can only end in a timeout, so skip straight to the cache.
+        if (!hasNetworkConnection()) {
+            resolveStreamCacheFallback(track, directId)?.let { cached ->
+                registerPreparedStream(cached)
+                logStreamEvent("cache-offline-start", cached, retry = 0)
+                return cached
             }
         }
 
@@ -7410,6 +7634,15 @@ class MusicPlayer @Inject constructor(
 
         PlaybackStartupLog.cacheLookupStart()
         val wantedFamily = normalizeCodecFamily(preferredCodec)
+        // The whole track is already on disk from an earlier play: serve it from
+        // cache instead of resolving again. Instant start, no data spent, and a
+        // YouTube outage cannot interrupt it. A differently encoded copy is
+        // skipped so the song keeps one codec.
+        resolveCompleteCachedStream(track, directId, wantedFamily)?.let { cached ->
+            registerPreparedStream(cached)
+            logStreamEvent("cache-complete", cached, retry = 0)
+            return cached
+        }
         val cached = identity?.let { streamResolver.cache.get(it) }
             ?.takeIf { it.matches(identity) }
             ?.takeIf { entry ->
@@ -8848,6 +9081,12 @@ class MusicPlayer @Inject constructor(
         /** Cap for the explicit shuffle-Previous listening history. */
         const val MAX_PLAY_HISTORY = 100
         const val RESOLVED_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000L
+        /** Renew a chunk URL this long before its signed expiry. */
+        const val CHUNK_URL_REFRESH_LEEWAY_MS = 2 * 60 * 1000L
+        /** Floor between two mid-track URL renewals for one track. */
+        const val CHUNK_URL_REFRESH_MIN_INTERVAL_MS = 1_500L
+        /** Cached audio a track needs before it can play with no network (~30s). */
+        const val MIN_CACHE_OFFLINE_BYTES = 512L * 1024L
         /** Offline license renewal attempt before giving up to streaming. */
         const val OFFLINE_LICENSE_RENEW_TIMEOUT_MS = 8_000L
         val PERMANENT_PLAYBACK_ERROR_CODES = setOf(
