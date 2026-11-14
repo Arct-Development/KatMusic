@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.BubbleChart
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudSync
@@ -1343,6 +1344,23 @@ object SettingsSearchIndex {
                     icon = Icons.Filled.Code,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
+                    parentTab = SettingsTab.ABOUT,
+                    section = "About & Community",
+                    type = EntryType.ACTION,
+                )
+            )
+            add(
+                SettingsEntry(
+                    id = "about.report_bug",
+                    title = "Report a bug",
+                    subtitle = "Open the KatMusic bug report form",
+                    keywords = listOf(
+                        "bug", "report a bug", "bug report", "issue", "feedback",
+                        "problem", "something is broken", "report issue"
+                    ),
+                    icon = Icons.Filled.BugReport,
+                    iconContainer = { MaterialTheme.colorScheme.errorContainer },
+                    iconTint = { MaterialTheme.colorScheme.onErrorContainer },
                     parentTab = SettingsTab.ABOUT,
                     section = "About & Community",
                     type = EntryType.ACTION,

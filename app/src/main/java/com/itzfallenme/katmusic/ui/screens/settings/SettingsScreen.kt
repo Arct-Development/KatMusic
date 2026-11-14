@@ -87,6 +87,7 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import com.itzfallenme.katmusic.util.BatteryOptimizationHelper
 import androidx.compose.material.icons.filled.Code
@@ -986,6 +987,16 @@ fun SettingsScreen(
                             }
                         },
                         isHighlighted = (highlightedSettingId == "about.website"),
+                    )
+
+                    SettingsActionCard(
+                        icon = Icons.Filled.BugReport,
+                        iconContainer = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.onErrorContainer,
+                        title = "Report a bug",
+                        subtitle = "Tell us what went wrong",
+                        onClick = { openBugReportPage(context, viewModel) },
+                        isHighlighted = highlightedSettingId == "about.report_bug",
                     )
 
                 }
@@ -2274,7 +2285,7 @@ fun SettingsScreen(
                                 }
                                 SectionLabel("About & Community")
                                 AboutCard(versionName = appVersionName(context))
-                                SettingsGroup(rowCount = 4) { index, position ->
+                                SettingsGroup(rowCount = 5) { index, position ->
                                     when (index) {
                                         0 -> SettingsActionCard(
                                             icon = Icons.Filled.CloudDownload,
@@ -2305,6 +2316,16 @@ fun SettingsScreen(
                                             isHighlighted = highlightedSettingId == "about.diagnostics",
                                         )
                                         2 -> SettingsActionCard(
+                                            icon = Icons.Filled.BugReport,
+                                            iconContainer = MaterialTheme.colorScheme.errorContainer,
+                                            iconTint = MaterialTheme.colorScheme.onErrorContainer,
+                                            title = "Report a bug",
+                                            subtitle = "Tell us what went wrong",
+                                            onClick = { openBugReportPage(context, viewModel) },
+                                            position = position,
+                                            isHighlighted = highlightedSettingId == "about.report_bug",
+                                        )
+                                        3 -> SettingsActionCard(
                                             icon = Icons.Filled.Code,
                                             iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -4746,6 +4767,15 @@ private fun startActivitySafely(context: android.content.Context, intent: Intent
     }
 }
 
+private const val REPORT_A_BUG_URL = "https://katmusic.pages.dev/#report"
+
+private fun openBugReportPage(context: android.content.Context, viewModel: SettingsViewModel) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(REPORT_A_BUG_URL))
+    if (!startActivitySafely(context, intent)) {
+        viewModel.showToast(context.getString(R.string.toast_no_browser_plain))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ColorWheelSheet(onDismiss: () -> Unit, onApply: (Color) -> Unit) {
@@ -6226,4 +6256,3 @@ private fun ClarityPresetDialog(
         },
     )
 }
-

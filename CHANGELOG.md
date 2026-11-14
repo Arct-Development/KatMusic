@@ -4,6 +4,16 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A **Report a bug** action in Android and desktop Settings that opens the KatMusic report form.
+
+### Fixed
+
+- Playback now keeps the stream and quality selected at track start for the full song. Late lossless resolutions no longer replace the active stream mid-track; the configured quality fallback is chosen before playback instead.
+
 ## [2.6.0] - 2026-11-06
 
 ### Added
