@@ -77,8 +77,8 @@ android {
         applicationId = "com.itzfallenme.katmusic"
         minSdk = (project.findProperty("minSdk") as? String)?.toIntOrNull() ?: 29
         targetSdk = 35
-        versionCode = 2602
-        versionName = "2.6.2"
+        versionCode = 2603
+        versionName = "2.6.3"
 
         (project.findProperty("targetAbis") as? String)?.let { prop ->
             ndk {
