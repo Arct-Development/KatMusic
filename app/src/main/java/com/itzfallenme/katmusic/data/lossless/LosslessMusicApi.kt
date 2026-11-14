@@ -138,7 +138,7 @@ class LosslessMusicApi @Inject constructor(
          * Consecutive backend misses before the chain is treated as down and
          * every resolve falls through to YouTube directly.
          */
-        private const val FAILURE_COOLDOWN_THRESHOLD = 1
+        private const val FAILURE_COOLDOWN_THRESHOLD = 2
 
         /** How long a backed-off backend stays out of the resolve path. */
         private const val FAILURE_COOLDOWN_MS = 30_000L
@@ -703,7 +703,7 @@ class LosslessMusicApi @Inject constructor(
 
         if (allCreds.size == 1) {
             Log.i(TAG, "resolveStream starting for '$title' by '$artist' via addon (preferredQuality=$preferredQuality, isDownload=$isDownload)")
-            val resolved = runCatching {
+            val resolved = try {
                 resolveFromAddon(
                     title = title,
                     artist = artist,
@@ -714,7 +714,12 @@ class LosslessMusicApi @Inject constructor(
                     excludedUrls = excludedUrls,
                     isDownload = isDownload,
                 )
-            }.getOrNull()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                Log.w(TAG, "Lossless addon resolution failed", error)
+                null
+            }
             if (resolved != null) return resolved
 
             // Atmos fallback: if Dolby Atmos was selected but not found on the track,
@@ -741,7 +746,7 @@ class LosslessMusicApi @Inject constructor(
         val candidates = coroutineScope {
             allCreds.map { creds ->
                 async {
-                    runCatching {
+                    try {
                         resolveFromAddon(
                             title = title,
                             artist = artist,
@@ -752,7 +757,12 @@ class LosslessMusicApi @Inject constructor(
                             excludedUrls = excludedUrls,
                             isDownload = isDownload,
                         )
-                    }.getOrNull()
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (error: Exception) {
+                        Log.w(TAG, "Lossless addon resolution failed for ${creds.baseUrl}", error)
+                        null
+                    }
                 }
             }.awaitAll().filterNotNull()
         }
