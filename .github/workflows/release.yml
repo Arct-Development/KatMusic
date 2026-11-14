@@ -6,23 +6,25 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.6.2'
+        default: '2.6.3'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.6.2'
+        default: 'KatMusic 2.6.3'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.6.2
+          ## KatMusic 2.6.3
 
           ### Added
-          - Report a bug: a new Settings action (Android and desktop) that opens the KatMusic report form.
+          - Audio that has already been streamed keeps playing when the network goes away. A partly buffered song plays from the stream cache and ends cleanly where its audio ends; a song that has played through once starts straight from cache without resolving or spending data.
+          - The stream cache now survives re-resolves, because entries are keyed by video, codec family and stream id instead of the signed URL.
 
           ### Fixed
-          - A song keeps one codec for its whole length. If a stream has to be re-resolved mid-track (throttled or rotated YouTube URL), the retry now asks for the rendition already playing instead of accepting whatever provider answers first, so OPUS no longer turns into AAC halfway through a song.
-          - Adaptive (HLS) audio manifests are only used when no progressive stream exists, because they can re-pick an audio rendition while the track plays.
+          - Playback no longer stops around a minute into a song. The signed stream URL is renewed inside the data source at every 1 MiB chunk boundary, and again on a failed chunk, rather than waiting for the player to give up on an expired URL.
+          - A dead stream URL is retried at once (0 ms, 300 ms, 900 ms, up to five attempts) instead of sitting out the default one-second-then-doubling backoff against the same expired link.
+          - A cached resource counts as complete only when its whole byte range is on disk, so a truncated file can no longer surface as an unreadable-position error.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.

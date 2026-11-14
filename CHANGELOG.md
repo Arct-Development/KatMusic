@@ -4,6 +4,23 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.3] - 2026-11-14
+
+### Added
+
+- Audio that has already been streamed keeps playing when the network goes away. A partly buffered song now plays from the stream cache and ends cleanly where its audio ends, and a song that has played through once starts straight from cache without resolving or spending data.
+- The stream cache survives re-resolves. Entries are keyed by video, codec family and stream id instead of the signed URL, so cached audio is still found after YouTube rotates a link.
+
+### Fixed
+
+- Playback no longer stops around a minute into a song. The signed stream URL is renewed inside the data source at every 1 MiB chunk boundary, and again on a failed chunk, instead of waiting for the player to give up on an expired URL.
+- A dead stream URL is retried at once — 0 ms, 300 ms, then 900 ms, up to five attempts — rather than sitting out Media3's one-second-then-doubling backoff against the same expired link.
+- A cached resource is only treated as fully available when its whole byte range is on disk, not merely when a length was recorded, so a truncated file can no longer surface as an unreadable-position error.
+
+### Changed
+
+- Failures that no retry can fix, such as a container the codec rejects, are surfaced immediately instead of consuming retries.
+
 ## [2.6.2] - 2026-11-14
 
 ### Fixed
