@@ -255,58 +255,42 @@ jobs:
         include:
           - name: Windows
             os: windows-latest
-            build: flutter build windows --release
-            artifact: build/windows/x64/runner/Release
+            artifact: desktop/build/compose/binaries/main/app
             package: windows-x64.zip
           - name: Linux
             os: ubuntu-22.04
-            build: flutter build linux --release
-            artifact: build/linux/x64/release/bundle
+            artifact: desktop/build/compose/binaries/main/app
             package: linux-x64.tar.gz
           - name: macOS
             os: macos-latest
-            build: flutter build macos --release
-            artifact: build/macos/Build/Products/Release
+            artifact: desktop/build/compose/binaries/main/app
             package: macos.zip
-    defaults:
-      run:
-        working-directory: desktop
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Install Linux build dependencies
+      - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
-        working-directory: .
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-            libstdc++-12-dev libayatana-appindicator3-dev libasound2-dev \
-            libmpv-dev libkeybinder-3.0-dev libwebkit2gtk-4.1-dev \
-            libsecret-1-dev libjsoncpp-dev
+          sudo apt-get install -y libasound2-dev fakeroot
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          flutter-version: "3.47.9"
-          channel: stable
-          cache: true
+          distribution: temurin
+          java-version: "17"
 
-      - name: Install Dart dependencies
-        run: flutter pub get
+      # :shared targets Android and desktop, so Gradle needs the Android SDK
+      # to configure the build even when only packaging the desktop app.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Generate secret module
-        run: dart tool/obfuscate_secrets.dart
+      - name: Shared logic tests
+        run: ./gradlew :shared:desktopTest
 
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test --exclude-tags golden,live
-
-      - name: Build
-        run: ${{ matrix.build }}
+      - name: Build desktop app
+        run: ./gradlew :desktop:createDistributable
 
       - name: Package
         shell: bash

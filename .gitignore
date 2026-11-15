@@ -109,11 +109,7 @@ website/node_modules/
 website/.next/
 website/.env.local
 
-# Desktop Flutter outputs and local secrets
-desktop/.dart_tool/
-desktop/.flutter-plugins-dependencies
-desktop/.flutter-sdk/
-desktop/.pub/
-desktop/AppDir/
-desktop/*.AppImage
-desktop/lib/core/env/secrets.g.dart
+# Desktop (Compose Multiplatform) build output and local secrets
+desktop/build/
+desktop/.gradle/
+.env

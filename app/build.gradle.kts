@@ -231,6 +231,9 @@ android {
 }
 
 dependencies {
+    // Shared Compose UI, design system, models, queue logic and settings
+    // contracts used by both Android and the desktop app.
+    implementation(project(":shared"))
     implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation(libs.androidx.core.ktx)
