@@ -113,3 +113,8 @@ website/.env.local
 desktop/build/
 desktop/.gradle/
 .env
+
+# iOS (deferred; kept locally, not part of the current KMP delivery)
+iosApp/
+shared/src/iosMain/
+.github/workflows/ios.yml

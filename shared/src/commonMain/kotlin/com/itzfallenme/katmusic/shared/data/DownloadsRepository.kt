@@ -52,10 +52,25 @@ interface DownloadsRepository {
     /** Removes every downloaded track. */
     suspend fun clearAll(): Result<Unit>
 
-    fun formatBytes(bytes: Long): String = when {
-        bytes >= 1L shl 30 -> "%.1f GB".format(bytes / (1L shl 30).toDouble())
-        bytes >= 1L shl 20 -> "%.1f MB".format(bytes / (1L shl 20).toDouble())
-        bytes >= 1L shl 10 -> "%.0f KB".format(bytes / (1L shl 10).toDouble())
-        else -> "$bytes B"
-    }
+    fun formatBytes(bytes: Long): String = formatByteCount(bytes)
 }
+
+/**
+ * Kilo/mega/giga formatting for download sizes, shared by every platform.
+ *
+ * Implemented with plain arithmetic instead of `String.format` so the exact
+ * same result compiles on JVM, Android and Kotlin/Native (iOS).
+ */
+fun formatByteCount(bytes: Long): String = when {
+    bytes >= 1L shl 30 -> "${oneDecimal(bytes / (1L shl 30).toDouble())} GB"
+    bytes >= 1L shl 20 -> "${oneDecimal(bytes / (1L shl 20).toDouble())} MB"
+    bytes >= 1L shl 10 -> "${whole(bytes / (1L shl 10).toDouble())} KB"
+    else -> "$bytes B"
+}
+
+private fun oneDecimal(value: Double): String {
+    val tenths = kotlin.math.round(value * 10.0).toLong()
+    return "${tenths / 10}.${tenths % 10}"
+}
+
+private fun whole(value: Double): String = kotlin.math.round(value).toLong().toString()

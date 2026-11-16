@@ -2,7 +2,9 @@ package com.itzfallenme.katmusic.desktop.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Offline tests for the extraction result selection: which itag becomes the
@@ -40,5 +42,26 @@ class NewPipeStreamResolverTest {
     @Test
     fun `blank audio urls are rejected`() {
         assertNull(pickAudioUrl(listOf(251 to "   ")))
+    }
+
+    @Test
+    fun `account cookies are scoped to youtube and google hosts`() {
+        assertTrue(sendsYoutubeCookies("https://www.youtube.com/watch?v=jNQXAC9IVRw"))
+        assertTrue(sendsYoutubeCookies("https://music.youtube.com/watch?v=jNQXAC9IVRw"))
+        assertTrue(sendsYoutubeCookies("https://youtubei.googleapis.com/youtubei/v1/player"))
+        assertFalse(sendsYoutubeCookies("https://api.pipepipe.dev/decoder/decode"))
+        assertFalse(sendsYoutubeCookies("https://pipedapi.example.com/streams/x"))
+        assertFalse(sendsYoutubeCookies("https://not-youtube.com/watch"))
+    }
+
+    @Test
+    fun `extractor and session cookies merge without duplicate names`() {
+        val merged = mergeCookieHeaders(
+            "SAPISID=session; SID=session-id",
+            listOf("CONSENT=YES+; SAPISID=stale"),
+        )
+        assertEquals("SAPISID=session; SID=session-id; CONSENT=YES+", merged)
+        assertEquals("A=1", mergeCookieHeaders(null, listOf("A=1")))
+        assertNull(mergeCookieHeaders("  ", null))
     }
 }

@@ -39,14 +39,22 @@ import java.util.concurrent.TimeUnit
  * that look fine and play nothing. Provider-side blocks (bot checks) are not
  * bypassed by extraction; the provider's own reason is returned as the error.
  */
-class NewPipeStreamResolver {
+class NewPipeStreamResolver(
+    /**
+     * The signed-in YouTube `Cookie` header, when the desktop has been paired
+     * with the phone. PipePipe consumes it through
+     * `ServiceList.YouTube.tokens` (the exact hook SimpMusic uses); the
+     * downloader adds it to BravePipe requests.
+     */
+    private val cookieHeader: () -> String? = { null },
+) {
     private val headClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
 
-    private val pipePipeDownloader = PipePipeDownloaderImpl()
-    private val braveDownloader = BraveDownloaderImpl()
+    private val pipePipeDownloader = PipePipeDownloaderImpl(cookieHeader)
+    private val braveDownloader = BraveDownloaderImpl(cookieHeader)
 
     @Volatile
     private var initialized = false
@@ -68,6 +76,10 @@ class NewPipeStreamResolver {
      */
     fun resolveAudioUrl(videoId: String): Result<String> {
         init()
+        // Signed-in extraction: PipePipe reads this global exactly like
+        // SimpMusic's desktop Extractor.logIn(cookie). Clearing it on sign-out
+        // is handled by the provider returning null.
+        ServiceList.YouTube.tokens = cookieHeader().orEmpty()
         val errors = mutableListOf<String>()
         for ((tier, extract) in listOf(
             "PipePipe" to { pipePipeStreams(videoId) },
@@ -144,7 +156,9 @@ internal fun pickAudioUrl(streams: List<Pair<Int, String>>): String? =
 internal val AUDIO_ITAGS = setOf(140, 141, 250, 251, 774)
 
 /** OkHttp-backed downloader for the PipePipe extractor. */
-private class PipePipeDownloaderImpl : Downloader() {
+private class PipePipeDownloaderImpl(
+    private val cookieHeader: () -> String?,
+) : Downloader() {
     private val client = OkHttpClient.Builder().build()
 
     @Throws(IOException::class, ReCaptchaException::class)
@@ -220,7 +234,19 @@ private class PipePipeDownloaderImpl : Downloader() {
                 builder.header(name, values[0])
             }
         }
+        attachSessionCookies(builder, request.url(), request.headers()["Cookie"])
         return builder.build()
+    }
+
+    private fun attachSessionCookies(
+        builder: okhttp3.Request.Builder,
+        url: String,
+        existing: List<String>?,
+    ) {
+        val session = cookieHeader()?.takeIf { it.isNotBlank() } ?: return
+        if (!sendsYoutubeCookies(url)) return
+        // Keep the extractor's consent cookie, prepend the account session.
+        mergeCookieHeaders(session, existing)?.let { builder.header("Cookie", it) }
     }
 
     private companion object {
@@ -229,7 +255,9 @@ private class PipePipeDownloaderImpl : Downloader() {
 }
 
 /** OkHttp-backed downloader for the BravePipe extractor. */
-private class BraveDownloaderImpl : BraveDownloader() {
+private class BraveDownloaderImpl(
+    private val cookieHeader: () -> String?,
+) : BraveDownloader() {
     private val client = OkHttpClient.Builder().build()
 
     @Throws(IOException::class, BraveReCaptchaException::class)
@@ -262,10 +290,46 @@ private class BraveDownloaderImpl : BraveDownloader() {
                 builder.header(name, values[0])
             }
         }
+        val sessionCookies = cookieHeader()?.takeIf { it.isNotBlank() }
+        if (sessionCookies != null && sendsYoutubeCookies(request.url())) {
+            val extractorCookies = request.headers()["Cookie"].orEmpty().filter { it.isNotBlank() }
+            mergeCookieHeaders(sessionCookies, extractorCookies)?.let {
+                builder.header("Cookie", it)
+            }
+        }
         return builder.build()
     }
 
     private companion object {
         const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) KatMusic/2.6"
     }
+}
+
+/**
+ * Account cookies belong to YouTube/Google hosts only — never to the hosted
+ * cipher decoder or any other extractor endpoint.
+ */
+internal fun sendsYoutubeCookies(url: String): Boolean = runCatching {
+    val host = java.net.URI(url).host?.lowercase() ?: return@runCatching false
+    host == "youtube.com" || host.endsWith(".youtube.com") ||
+        host == "google.com" || host.endsWith(".google.com") ||
+        host == "googleapis.com" || host.endsWith(".googleapis.com")
+}.getOrDefault(false)
+
+/**
+ * Merges the session header with whatever the extractor already attached,
+ * keeping the first value for each cookie name. The result is one `Cookie`
+ * header instead of two overlapping ones.
+ */
+internal fun mergeCookieHeaders(session: String?, extractor: List<String>?): String? {
+    val pairs = LinkedHashMap<String, String>()
+    (listOfNotNull(session) + extractor.orEmpty()).forEach { header ->
+        header.split(';').forEach { part ->
+            val pair = part.trim()
+            if (pair.isEmpty()) return@forEach
+            val name = pair.substringBefore('=')
+            if (name.isNotEmpty() && !pairs.containsKey(name)) pairs[name] = pair
+        }
+    }
+    return pairs.values.joinToString("; ").ifBlank { null }
 }

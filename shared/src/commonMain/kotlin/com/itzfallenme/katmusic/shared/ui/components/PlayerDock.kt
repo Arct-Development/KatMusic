@@ -2,6 +2,7 @@ package com.itzfallenme.katmusic.shared.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,10 +27,14 @@ import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.shared.player.PlayerController
 import com.itzfallenme.katmusic.shared.player.PlayerState
 import com.itzfallenme.katmusic.ui.theme.ExpressivePillShape
+import com.itzfallenme.katmusic.ui.theme.liquidGlassSurface
 
 /**
  * The compact player bar. Shown on both platforms above the navigation
  * surface; tapping it opens the full now-playing screen.
+ *
+ * The pill uses the shared liquid-glass material when the theme enables it, so
+ * desktop and iOS get the same frosted chrome Android renders with Backdrop.
  */
 @Composable
 fun PlayerDock(
@@ -41,12 +45,10 @@ fun PlayerDock(
     onOpenQueue: (() -> Unit)? = null,
 ) {
     val current = state.current ?: return
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = ExpressivePillShape,
-        tonalElevation = 4.dp,
-        shadowElevation = 6.dp,
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .liquidGlassSurface(shape = ExpressivePillShape, shadowElevation = 10.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             LinearProgressIndicator(

@@ -157,9 +157,4 @@ private fun itemSubtitle(item: DownloadedTrack): String = buildList {
 }.joinToString(" · ")
 
 /** Kilo/mega/giga formatting for download sizes, shared by rows and headers. */
-fun formatBytes(bytes: Long): String = when {
-    bytes >= 1L shl 30 -> "%.1f GB".format(bytes / (1L shl 30).toDouble())
-    bytes >= 1L shl 20 -> "%.1f MB".format(bytes / (1L shl 20).toDouble())
-    bytes >= 1L shl 10 -> "%.0f KB".format(bytes / (1L shl 10).toDouble())
-    else -> "$bytes B"
-}
+fun formatBytes(bytes: Long): String = com.itzfallenme.katmusic.shared.data.formatByteCount(bytes)

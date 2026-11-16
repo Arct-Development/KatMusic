@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -20,6 +21,28 @@ kotlin {
         }
     }
 
+    // The iOS app shell in `iosApp` hosts the exact same Compose UI through
+    // the framework below. Kotlin/Native targets compile the shared screens,
+    // view models and models for iPhone, iPad and the simulator.
+    //
+    // iosX64 is intentionally absent: the JetBrains navigation/lifecycle
+    // artifacts this UI uses no longer publish an x86_64 iOS variant. Device
+    // builds (iosArm64) and Apple Silicon simulators (iosSimulatorArm64) are
+    // fully supported.
+    iosArm64()
+    iosSimulatorArm64()
+
+    targets.withType<KotlinNativeTarget>().configureEach {
+        compilerOptions {
+            // UIKit/AVFoundation/F filesystem calls are C interop by nature.
+            optIn.add("kotlinx.cinterop.ExperimentalForeignApi")
+        }
+        binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             api(compose.runtime)
@@ -31,18 +54,21 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.coil.compose3)
-            implementation(libs.coil.network.okhttp3)
             implementation(libs.androidx.navigation.compose.multiplatform)
             implementation(libs.androidx.lifecycle.viewmodel.compose.multiplatform)
             implementation(libs.androidx.lifecycle.runtime.compose.multiplatform)
         }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
+            // Coil 3 network fetching stays on the JVM/Android side; iOS loads
+            // local artwork only (the iOS build has no online catalogue).
+            implementation(libs.coil.network.okhttp3)
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.coil.network.okhttp3)
             }
         }
         commonTest.dependencies {

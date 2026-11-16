@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -70,6 +71,7 @@ import com.itzfallenme.katmusic.ui.components.MotionSpec
 import com.itzfallenme.katmusic.ui.components.WindowSizeClass
 import com.itzfallenme.katmusic.ui.components.rememberWindowSizeClass
 import com.itzfallenme.katmusic.ui.theme.KatMusicTheme
+import com.itzfallenme.katmusic.ui.theme.liquidGlassSurface
 import kotlinx.coroutines.launch
 
 /** The shared top-level destinations. One navigation graph for both platforms. */
@@ -120,6 +122,8 @@ fun KatMusicApp(
     downloads: DownloadsRepository? = null,
     playlists: PlaylistsRepository? = null,
     homeFeed: HomeFeedRepository? = null,
+    /** Optional platform-only settings section, rendered above About. */
+    settingsExtra: (@Composable ColumnScope.() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val settings by settingsStore.settings.collectAsState()
@@ -189,6 +193,7 @@ fun KatMusicApp(
                 downloads = downloads,
                 playlists = playlists,
                 homeFeed = homeFeed,
+                settingsExtra = settingsExtra,
                 onOpenHolderCollection = { target ->
                     holderCollection = target
                     collection = CollectionTarget(target.title, target.subtitle, target.artwork, target.tracks)
@@ -203,7 +208,16 @@ fun KatMusicApp(
                     modifier = Modifier
                         .width(104.dp)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .then(
+                            if (themeState.liquidGlass) {
+                                Modifier.liquidGlassSurface(
+                                    shape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+                                    shadowElevation = 12.dp,
+                                )
+                            } else {
+                                Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            },
+                        )
                         .padding(vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -244,7 +258,19 @@ fun KatMusicApp(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                 )
                 if (!themeState.hideNavTabs) {
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                    val glassNav = themeState.liquidGlass && !themeState.md3NavBar
+                    NavigationBar(
+                        modifier = Modifier.liquidGlassSurface(
+                            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                            enabled = glassNav,
+                            shadowElevation = 12.dp,
+                        ),
+                        containerColor = if (glassNav) {
+                            Color.Transparent
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        },
+                    ) {
                         visibleTabs.forEach { tab ->
                             NavigationBarItem(
                                 selected = currentRoute == tab.route,
@@ -279,6 +305,7 @@ private fun AppNavHost(
     downloads: DownloadsRepository?,
     playlists: PlaylistsRepository?,
     homeFeed: HomeFeedRepository?,
+    settingsExtra: (@Composable ColumnScope.() -> Unit)?,
     onOpenHolderCollection: (com.itzfallenme.katmusic.shared.ui.screens.CollectionTargetHolder) -> Unit,
 ) {
     NavHost(
@@ -339,7 +366,11 @@ private fun AppNavHost(
             SearchScreen(tracks = tracks, playerState = playerState, onPlay = onPlay)
         }
         composable(KatMusicTab.Settings.route) {
-            SettingsScreen(settings = settings, settingsStore = settingsStore)
+            SettingsScreen(
+                settings = settings,
+                settingsStore = settingsStore,
+                extraContent = settingsExtra,
+            )
         }
         composable(NOW_PLAYING_ROUTE) {
             NowPlayingScreen(

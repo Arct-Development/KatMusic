@@ -7,7 +7,7 @@ parts that intentionally stay platform-specific.
 ## Module layout
 
 ```
-:shared     Kotlin Multiplatform (androidTarget + jvm("desktop")) — Compose Multiplatform
+:shared     Kotlin Multiplatform (androidTarget + jvm("desktop"))
   commonMain   UI, design system, models, queue logic, search, settings contracts, platform expect declarations
   androidMain  Android actuals (system bars, dynamic colour) + shared AAR for :app
   desktopMain  Desktop actuals (no system bars / no wallpaper palette)
@@ -63,7 +63,7 @@ and replaced by `:desktop`.
 
 | Area | Android (`:app`) | Desktop (`:desktop`) |
 | --- | --- | --- |
-| Playback | Media3/ExoPlayer, MediaSession, audio focus, FFmpeg decoder, USB exclusive output, native DSP/AutoMix engine (`app/src/main/cpp`) | `JavaSoundPlayer` on `javax.sound.sampled` with mp3spi/vorbisspi PCM decoders |
+| Playback | Media3/ExoPlayer, MediaSession, audio focus, FFmpeg decoder, USB exclusive output, native DSP/AutoMix engine (`app/src/main/cpp`) | `JavaSoundPlayer` on `javax.sound.sampled` with mp3spi/vorbisspi PCM decoders, or libmpv for streams |
 | Library source | MediaStore, download database (Room), MediaStore permission flow | Folders chosen with a file chooser, tags via jaudiotagger, folder cover art |
 | Settings storage | DataStore | `java.util.prefs` |
 | System integration | home-screen widgets (Glance), Android Auto, notifications, share intents, splash video, dynamic colour/wallpaper, app locale | window management, `JFileChooser` |
@@ -73,6 +73,18 @@ Audio playback, Media3, native processing, file access and system integrations
 were deliberately **not** moved into common code: none of them exist on the
 other platform, and shimming them would mean removing working Android
 behaviour.
+
+## Liquid glass on desktop
+
+`ui/theme/LiquidGlass.kt` in `:shared` provides the portable glass material used
+by the shared chrome. Android keeps Kyant Backdrop for true background
+refraction; desktop gets a Compose-drawn equivalent with the same
+translucent frost, diagonal specular band, bright rim and shadow. It is applied
+to the player dock, the compact navigation bar and the wide navigation rail,
+and follows the existing **Liquid glass chrome** switch (the Material 3 switch
+turns it off for the navigation bar). No platform-specific code is needed at
+call sites: `Modifier.liquidGlassSurface(...)` is a no-op when the switch is
+off.
 
 ## Migration status of the UI
 
@@ -203,7 +215,7 @@ has, with a working desktop build. Its layout, read from the source:
 | InnerTube client | `:kotlinYtmusicScraper` (`common/` submodule), Ktor with OkHttp (Android/JVM) and Darwin (iOS) engines, `models/YouTubeClient.kt` holding a client table (ANDROID_MUSIC 7.27.52/kx21, ANDROID 21.26.364, WEB, WEB_REMIX, IOS, MWEB, TVHTML5, each with its own API key and user agent) | Android `StreamApi` (Android-only, OkHttp); desktop resolves through the extractors below, Piped for feed/search |
 | Signature/cipher | **PipePipe** extractor fork + **Brave NewPipeExtractor**, with a QuickJS engine (`cipher/QuickJsEngine.kt`, `FaradayCipherEngine.kt`) for local solving and a **hosted tier** (`api.pipepipe.dev`) used when the local decode is rejected | **Ported**: `NewPipeStreamResolver` — PipePipe with the hosted decode tier (their tier 2), BravePipe on-device decode (their tier 3), HEAD-checked URLs, Piped `/streams` as final fallback. Their local QuickJS tier is not ported |
 | Desktop playback | **libmpv via JNA** (`media-jvm/.../mpv/MpvPlayerAdapter.kt`, 159 KB; `libmpv` bundled, DASH streams, crossfade, EQ filters) | **Ported (lean)**: `MpvPlayer` (libmpv via JNA, `loadfile` of the resolved URL) with Java Sound fallback for local files |
-| Sign-in | QR "login sync": desktop runs a temporary Ktor HTTP server, phone scans the QR and transfers YouTube/Spotify/Discord/Last.fm credentials (`:loginSync`, AES-256-GCM sealed, key in the QR) | Android has YouTube login; no transfer path to desktop |
+| Sign-in | QR "login sync": desktop runs a temporary Ktor HTTP server, phone scans the QR and transfers YouTube/Spotify/Discord/Last.fm credentials (`:loginSync`, AES-256-GCM sealed, key in the QR) | **Ported (YouTube)**: the Android app already ships the sender (`YtDesktopPairingClient` + camera scanner); desktop `YtPhonePairing` implements the matching v1 receiver — LAN-only HTTP, five-minute one-use QR, explicit phone approval, AES-256-GCM envelope. `YouTubeSessionStore` persists the cookies and `NewPipeStreamResolver` applies them through `ServiceList.YouTube.tokens`, SimpMusic's own hook |
 
 The key takeaway: **SimpMusic did not write a small JSON resolver.** It ported a
 full extractor, added a JS engine for ciphers plus a hosted decode service as
@@ -225,6 +237,49 @@ The local QuickJS cipher tier (their tier 1) remains unported: it is
 (~1,400 lines plus the `quickjs-kt` native binding). Without it PipePipe calls
 `api.pipepipe.dev` for every challenge — functional, but dependent on that
 hosted service.
+
+### QR YouTube login handoff (phone → desktop)
+
+The Android app already had the sending half of this flow
+(`YtDesktopPairingClient`, `YtDesktopPairingViewModel`, camera scanner under
+Settings → YouTube). The KMP desktop now implements the receiving half in
+`desktop/data/YtPhonePairing.kt`, matching that protocol exactly:
+
+- Desktop binds a random LAN port and shows a QR containing
+  `{type: "katmusic-youtube-pair", v: 1, hosts, port, path, code, key, expiresAt}`.
+  The key is a 32-byte AES key; the code is a one-use secret; the QR lives five
+  minutes.
+- Phone `GET /v1/yt-pair/request?code&device&client` → `requestId`; a second
+  phone is refused with 409 while a request is pending.
+- The desktop user must press **Allow phone**; until then the transfer endpoint
+  answers 403. Declining is terminal and requires a fresh QR.
+- Phone `POST /v1/yt-pair/transfer?code&requestId` with
+  `{nonce, ciphertext}` (AES-256-GCM, 12-byte nonce). The desktop decrypts,
+  verifies a SAPISID-family cookie is present, accepts the payload once, and
+  sets `received`.
+- `YouTubeSessionStore` writes `~/KatMusic/youtube-session.json` with
+  owner-only POSIX permissions and applies the cookie header immediately.
+- `NewPipeStreamResolver` sends `ServiceList.YouTube.tokens = cookies` before
+  each extraction (PipePipe then derives both `Cookie` and
+  `Authorization: SAPISIDHASH …`, exactly as SimpMusic does) and adds the same
+  cookies to BravePipe requests, scoped to YouTube/Google hosts only — never to
+  the hosted decoder. Playback and downloads share one resolver instance.
+
+Settings → YouTube account shows the connected name/handle/photo, allows
+re-linking another phone, and signs out by deleting the stored session.
+
+Tests: `YtPhonePairingTest` (QR shape, request → approval → encrypted transfer,
+replay refusal, second-phone conflict, wrong code/expiry) and
+`YouTubeSessionStoreTest` (round-trip, restart reload, SAPISID validation,
+corrupt file).
+
+## iOS (deferred)
+
+An iOS host (`iosApp` Xcode project plus `iosMain` actuals) was prototyped on
+the same shared UI, but it is not part of this delivery. The `iosApp/` directory,
+the `iosMain` sources and the iOS workflow are ignored by git (see
+`.gitignore`) so the Android/desktop release stays independent of an unfinished
+platform; they can be resumed and committed as their own slice later.
 
 ## Verification performed
 

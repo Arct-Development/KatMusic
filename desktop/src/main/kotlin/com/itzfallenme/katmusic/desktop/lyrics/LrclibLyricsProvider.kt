@@ -81,7 +81,7 @@ class LrclibLyricsProvider(
             }
         val request = HttpRequest.newBuilder(URI.create("$baseUrl$path?$query"))
             .timeout(Duration.ofSeconds(12))
-            .header("User-Agent", "KatMusic/2.6.4 (https://github.com/Arct-Development/KatMusic)")
+            .header("User-Agent", "KatMusic/2.6.5 (https://github.com/Arct-Development/KatMusic)")
             .header("Accept", "application/json")
             .GET()
             .build()

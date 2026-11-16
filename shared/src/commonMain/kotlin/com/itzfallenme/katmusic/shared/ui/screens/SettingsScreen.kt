@@ -2,6 +2,7 @@ package com.itzfallenme.katmusic.shared.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,11 @@ import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
 fun SettingsScreen(
     settings: AppSettings,
     settingsStore: SettingsStore,
+    /**
+     * Platform-only settings section rendered above About. Desktop uses it
+     * for the YouTube account QR pairing; Android has its own full settings.
+     */
+    extraContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -116,10 +122,15 @@ fun SettingsScreen(
             onCheckedChange = { value -> settingsStore.update { it.copy(hideNavTabs = value) } },
         )
 
+        extraContent?.let { content ->
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            content()
+        }
+
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
         SettingsSection("About")
         Text(
-            text = "KatMusic 2.6.4 · ${platformDisplayName()}",
+            text = "KatMusic 2.6.5 · ${platformDisplayName()}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 24.dp),

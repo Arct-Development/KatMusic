@@ -14,10 +14,13 @@ import com.itzfallenme.katmusic.desktop.data.DesktopDownloadsRepository
 import com.itzfallenme.katmusic.desktop.data.DesktopHomeFeedRepository
 import com.itzfallenme.katmusic.desktop.data.M3uPlaylistsRepository
 import com.itzfallenme.katmusic.desktop.data.MpvPlayer
+import com.itzfallenme.katmusic.desktop.data.NewPipeStreamResolver
+import com.itzfallenme.katmusic.desktop.data.YouTubeSessionStore
 import com.itzfallenme.katmusic.desktop.library.DesktopMediaLibrary
 import com.itzfallenme.katmusic.desktop.library.DesktopPlatformActions
 import com.itzfallenme.katmusic.desktop.lyrics.DesktopLyricsProvider
 import com.itzfallenme.katmusic.desktop.playback.JavaSoundPlayer
+import com.itzfallenme.katmusic.desktop.ui.YouTubeLoginSection
 import com.itzfallenme.katmusic.shared.player.PlayerController
 import com.itzfallenme.katmusic.shared.ui.KatMusicApp
 
@@ -36,9 +39,15 @@ fun main() = application {
     val library = remember { DesktopMediaLibrary(settingsStore) }
     val platformActions = remember { DesktopPlatformActions(settingsStore, library) }
     val lyrics = remember { DesktopLyricsProvider() }
-    val downloads = remember { DesktopDownloadsRepository() }
+    val youtubeSession = remember { YouTubeSessionStore() }
+    // One resolver shared by playback and downloads so both use the same
+    // signed-in session (or anonymous access when no phone is paired).
+    val streamResolver = remember {
+        NewPipeStreamResolver(cookieHeader = youtubeSession::cookieHeader)
+    }
+    val downloads = remember { DesktopDownloadsRepository(resolver = streamResolver) }
     val playlists = remember { M3uPlaylistsRepository() }
-    val homeFeed = remember { DesktopHomeFeedRepository() }
+    val homeFeed = remember { DesktopHomeFeedRepository(resolver = streamResolver) }
 
     // Streaming (Opus/AAC/HLS) needs libmpv; when it is not installed the app
     // falls back to the Java Sound engine, which covers local MP3/Ogg/WAV/AIFF.
@@ -71,6 +80,7 @@ fun main() = application {
             downloads = downloads,
             playlists = playlists,
             homeFeed = homeFeed,
+            settingsExtra = { YouTubeLoginSection(youtubeSession) },
         )
     }
 }

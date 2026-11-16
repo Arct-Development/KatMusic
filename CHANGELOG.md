@@ -4,6 +4,25 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.5] - 2026-11-16
+
+### Added
+
+- A desktop application for Windows, Linux and macOS, built on the same Kotlin Multiplatform Compose UI as Android: local library with Songs/Albums/Artists views, search, now playing, queue, playlists, downloads, home feed, lyrics and settings.
+- Desktop YouTube playback through the NewPipe-fork extractors, with real stream URLs validated before playback; the home feed and music search use the Piped API with instance failover.
+- Phone → desktop YouTube sign-in: the desktop shows a QR code, the Android app approves the request and transfers the session encrypted over the local network; the stored session is applied to extraction and survives restarts.
+- Portable liquid-glass chrome on desktop for the player dock and navigation surfaces, drawn with Compose primitives while Android keeps Kyant Backdrop refraction.
+- Desktop installers in the release workflow: MSI, DMG for Apple silicon and Intel Macs, DEB, plus portable archives.
+- A shared download-size formatter that produces identical output on Android, desktop and Kotlin/Native.
+
+### Changed
+
+- Desktop packaging now carries a stable Windows upgrade identity, bundle identifier, vendor and menu metadata.
+
+### Notes
+
+- Anonymous desktop streaming depends on YouTube accepting the extractor requests; when a provider refuses, the player shows the provider's own reason instead of failing silently.
+
 ## [2.6.4] - 2026-11-14
 
 ### Fixed

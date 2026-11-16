@@ -21,6 +21,7 @@ java {
 dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
+    implementation(compose.materialIconsExtended)
     // Coil 3 is used by the shared Artwork composable; the desktop app owns
     // its image loader setup, so it needs the dependency on its own classpath.
     implementation(libs.coil.compose3)
@@ -41,6 +42,8 @@ dependencies {
     // resolve real googlevideo URLs (signature + n-challenge decoding).
     implementation(libs.pipepipe.extractor)
     implementation(libs.brave.extractor)
+    // QR generation for the Android → desktop YouTube session pairing.
+    implementation(libs.zxing.core)
 
     configurations.all {
         // PipePipe bundles protobuf-java (full) while BravePipe brings
@@ -67,7 +70,28 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb,
             )
             packageName = "KatMusic"
-            packageVersion = "2.6.4"
+            packageVersion = "2.6.5"
+            description = "KatMusic - local music and YouTube playback for desktop"
+            vendor = "KatMusic"
+            copyright = "(c) 2026 KatMusic"
+
+            macOS {
+                bundleID = "com.itzfallenme.katmusic"
+                dockName = "KatMusic"
+            }
+            windows {
+                menuGroup = "KatMusic"
+                // Stable identity so a newer MSI upgrades the existing install
+                // instead of creating a second KatMusic entry.
+                upgradeUuid = "3f1b5c9e-6d2a-4f7b-9a1c-2e8d4b6f0a13"
+                shortcut = true
+            }
+            linux {
+                packageName = "katmusic"
+                debMaintainer = "KatMusic <katmusic@users.noreply.github.com>"
+                menuGroup = "Audio"
+                appCategory = "AudioVideo"
+            }
         }
     }
 }
