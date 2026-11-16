@@ -5646,6 +5646,17 @@ class MusicPlayer @Inject constructor(
         setPlaybackParameters(speed, currentPitch)
     }
 
+    /**
+     * Master output volume, 0f..1f, applied to the engine that is actually
+     * emitting audio (the crossfade deck when AutoMix is active, otherwise the
+     * main player). Audio focus ducking still scales this value, so a volume
+     * set here is the user's level, not a focus override.
+     */
+    fun setOutputVolume(level: Float) = onMain {
+        val clamped = level.coerceIn(0f, 1f)
+        runCatching { (activeDeck ?: player).volume = clamped }
+    }
+
     fun setPitch(pitch: Float) = onMain {
         val currentSpeed = runCatching { player.playbackParameters.speed }.getOrDefault(_state.value.speed)
         setPlaybackParameters(currentSpeed, pitch)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +38,7 @@ fun PlayerDock(
     player: PlayerController,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenQueue: (() -> Unit)? = null,
 ) {
     val current = state.current ?: return
     Surface(
@@ -87,6 +89,11 @@ fun PlayerDock(
                 }
                 IconButton(onClick = { player.next() }) {
                     Icon(Icons.Rounded.SkipNext, contentDescription = "Next")
+                }
+                if (onOpenQueue != null) {
+                    IconButton(onClick = onOpenQueue) {
+                        Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = "Queue")
+                    }
                 }
             }
         }

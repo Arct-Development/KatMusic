@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -55,6 +56,7 @@ fun NowPlayingScreen(
     state: PlayerState,
     player: PlayerController,
     onBack: () -> Unit,
+    onOpenLyrics: (() -> Unit)? = null,
 ) {
     val current = state.current
     if (current == null) {
@@ -86,7 +88,13 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.size(48.dp))
+            if (onOpenLyrics != null) {
+                IconButton(onClick = onOpenLyrics) {
+                    Icon(Icons.Rounded.Lyrics, contentDescription = "Lyrics")
+                }
+            } else {
+                Spacer(Modifier.size(48.dp))
+            }
         }
 
         Spacer(Modifier.height(8.dp))
