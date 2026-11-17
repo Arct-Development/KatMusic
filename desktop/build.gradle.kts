@@ -79,6 +79,19 @@ compose.desktop {
             vendor = "KatMusic"
             copyright = "(c) 2026 KatMusic"
 
+            // The trimmed jlink runtime omits these by default. HTTP clients
+            // power lyrics/providers/Last.fm, the embedded callback server
+            // authorizes Last.fm, EC crypto is needed for HTTPS handshakes,
+            // java.util.prefs stores Desktop settings, and java.xml parses
+            // provider responses.
+            modules(
+                "java.net.http",
+                "jdk.httpserver",
+                "jdk.crypto.ec",
+                "java.prefs",
+                "java.xml",
+            )
+
             macOS {
                 bundleID = "com.itzfallenme.katmusic"
                 dockName = "KatMusic"

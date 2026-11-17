@@ -31,37 +31,6 @@ import javax.inject.Inject
 import com.itzfallenme.katmusic.data.local.ThemeMode
 import javax.inject.Singleton
 
-data class ThemeUiState(
-    val darkColorScheme: ColorScheme,
-    val lightColorScheme: ColorScheme,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val colorScheme: ColorScheme,
-    val amoled: Boolean,
-    val mode: AccentMode,
-    /** Raw hex of the manually-picked accent (preset or custom), independent
-     *  of [colorScheme] — colorScheme.primary is a generated M3 tone of this
-     *  seed, not the seed itself, so it can't be compared back against a
-     *  preset's hex to know which one is selected. This can. */
-    val accentColorHex: String,
-    /** Settings' "Use Application Font" toggle — see ui/theme/Type.kt for
-     *  what turning it off falls back to. */
-    val useCustomFont: Boolean = true,
-    val useBoldFont: Boolean = false,
-    /** Experimental liquid-glass materials (Settings → Experimental). When
-     *  true, container roles in [colorScheme] are semi-translucent and the
-     *  chrome surfaces get specular glass dressing. */
-    val liquidGlass: Boolean = true,
-    val md3NavBar: Boolean = false,
-    val hideNavTabs: Boolean = false,
-    /** True when the "Dynamic Now Playing" artwork override is currently
-     *  driving the schemes. KatMusicTheme uses this so S+ system dynamic
-     *  (wallpaper) only takes over when no now-playing color is active:
-     *  now-playing wins, wallpaper-dynamic is next, manual/mono last. */
-    val isNowPlayingThemed: Boolean = false,
-    /** Dedicated KatMusic Signature Theme inspired by the app logo icon (#C9FB00 & #012226). */
-    val isKatMusicTheme: Boolean = false,
-)
-
 @Singleton
 class ThemeRepository @Inject constructor(
     @ApplicationContext private val context: Context,
