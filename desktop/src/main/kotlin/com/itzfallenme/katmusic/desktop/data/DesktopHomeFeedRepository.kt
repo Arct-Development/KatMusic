@@ -25,24 +25,40 @@ import kotlinx.coroutines.withContext
 class DesktopHomeFeedRepository(
     private val piped: PipedClient = PipedClient(),
     private val resolver: NewPipeStreamResolver = NewPipeStreamResolver(),
+    private val spotifyPlaylists: DesktopSpotifyPlaylistClient = DesktopSpotifyPlaylistClient(),
+    private val applePlaylists: DesktopAppleMusicPlaylistClient = DesktopAppleMusicPlaylistClient(),
 ) : HomeFeedRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(HomeFeedState())
     override val state: StateFlow<HomeFeedState> = _state.asStateFlow()
 
+    /** Region currently driving the trending row (ISO 3166-1 alpha-2). */
+    var activeRegion: String = "US"
+        private set
+
     init {
         scope.launch { refreshAsync() }
     }
 
     override suspend fun refresh() {
+        refreshRegion(activeRegion)
+    }
+
+    /**
+     * Rebuilds the online rows for [region]. Piped's trending endpoint is
+     * region-aware, so this is Desktop's real equivalent of Android's
+     * regional release/discovery feed rather than a static "global" list.
+     */
+    suspend fun refreshRegion(region: String) {
+        activeRegion = region.trim().uppercase().takeIf { it.length == 2 } ?: activeRegion
         _state.value = HomeFeedState(isLoading = true)
-        piped.trending()
+        piped.trending(activeRegion)
             .onSuccess { tracks ->
                 _state.value = HomeFeedState(
                     sections = listOf(
                         HomeSection(
-                            title = "Trending",
+                            title = "Regional chart",
                             cards = tracks.map { it.toCard() },
                         ),
                     ),
@@ -55,6 +71,45 @@ class DesktopHomeFeedRepository(
 
     override suspend fun searchMusic(query: String): Result<List<HomeCard>> =
         piped.searchMusic(query).map { tracks -> tracks.map { it.toCard() } }
+
+    suspend fun fetchPlaylist(input: String): Result<PipedClient.PlaylistInfo> = piped.playlist(input)
+
+    suspend fun fetchSpotifyPlaylist(input: String): Result<SpotifyPlaylistInfo> =
+        spotifyPlaylists.fetchPlaylist(input)
+
+    suspend fun fetchAppleMusicPlaylist(input: String): Result<AppleMusicPlaylistInfo> =
+        applePlaylists.fetchPlaylist(input)
+
+    suspend fun searchAlbums(query: String): Result<List<PipedClient.PlaylistSummary>> =
+        piped.searchAlbums(query)
+
+    suspend fun searchArtists(query: String): Result<List<PipedClient.ArtistSummary>> =
+        piped.searchArtists(query)
+
+    suspend fun fetchArtist(channelId: String): Result<PipedClient.ArtistInfo> =
+        piped.artist(channelId)
+
+    /**
+     * Artist radio: provider-recommended tracks around a seed video. Used by
+     * the artist page so desktop users get the same endless "more like this"
+     * flow Android exposes from artists and tracks. Tracks keep the video id
+     * as their source so the player resolves a fresh URL on playback.
+     */
+    suspend fun radio(seedVideoId: String): Result<List<Track>> =
+        piped.radio(seedVideoId).map { tracks ->
+            tracks.map { item ->
+                Track(
+                    id = item.videoId,
+                    title = item.title,
+                    artist = item.artist,
+                    durationMs = item.durationMs,
+                    source = item.videoId,
+                    artwork = item.thumbnail,
+                    isLocal = false,
+                    videoId = item.videoId,
+                )
+            }
+        }
 
     /**
      * Playback resolution uses SimpMusic's desktop method first — NewPipe-fork

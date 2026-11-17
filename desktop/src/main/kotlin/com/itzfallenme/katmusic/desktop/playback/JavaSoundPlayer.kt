@@ -49,6 +49,15 @@ class JavaSoundPlayer : PlayerController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = _state.asStateFlow()
+    private val sleepTimer = DesktopSleepTimer(
+        scope = scope,
+        onRemainingChanged = { remaining ->
+            _state.update { it.copy(sleepTimerRemainingMs = remaining) }
+        },
+        onExpire = {
+            if (_state.value.isPlaying) togglePlayPause()
+        },
+    )
 
     private var streamJob: Job? = null
     private var line: SourceDataLine? = null
@@ -122,6 +131,8 @@ class JavaSoundPlayer : PlayerController {
     override fun cycleRepeatMode() {
         _state.update { it.copy(repeatMode = QueueNavigator.cycle(it.repeatMode)) }
     }
+
+    override fun setSleepTimerMinutes(minutes: Int) = sleepTimer.setMinutes(minutes)
 
     override fun setShuffle(enabled: Boolean) {
         _state.update { it.copy(shuffle = enabled) }

@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +54,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import android.graphics.Bitmap
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import com.itzfallenme.katmusic.shared.jam.JamDefaults
 import com.itzfallenme.katmusic.ui.components.ScreenHeader
+import com.itzfallenme.katmusic.util.ShareLinks
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -74,7 +77,11 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
     val sharedQueue by client.sharedQueue.collectAsState()
     val suggestions by client.suggestions.collectAsState()
     val clipboard = LocalClipboardManager.current
-    var endpoint by rememberSaveable { mutableStateOf("wss://katmusic.onrender.com/ws") }
+    val context = LocalContext.current
+    val inviteUrl = remember(roomCode) {
+        ShareLinks.jamUrl(roomCode).orEmpty()
+    }
+    var endpoint by rememberSaveable { mutableStateOf(JamDefaults.SERVER_ENDPOINT) }
     var displayName by rememberSaveable { mutableStateOf("") }
     var joinCode by rememberSaveable { mutableStateOf("") }
     var collaborative by rememberSaveable { mutableStateOf(false) }
@@ -200,13 +207,28 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                     }
                                     OutlinedButton(
                                         onClick = {
-                                            clipboard.setText(AnnotatedString("https://katmusic.onrender.com/?code=$roomCode"))
+                                            clipboard.setText(AnnotatedString(inviteUrl))
                                         },
                                     ) { Text("Copy invite link") }
                                 }
+                                OutlinedButton(
+                                    onClick = {
+                                        ShareLinks.send(
+                                            context,
+                                            "Join my KatMusic Jam: $inviteUrl\n\nJam code: $roomCode",
+                                            "Join KatMusic Jam $roomCode",
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Share jam invite") }
                                 if (showQr) {
-                                    val invite = "https://katmusic.onrender.com/?code=$roomCode"
-                                    val qr = remember(roomCode, showQr) { jamQrBitmap(invite) }
+                                    Text(
+                                        "SCAN TO JOIN · $roomCode",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    val qr = remember(inviteUrl, showQr) { jamQrBitmap(inviteUrl) }
                                     if (qr != null) {
                                         Image(
                                             bitmap = qr.asImageBitmap(),

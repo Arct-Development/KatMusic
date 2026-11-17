@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -84,21 +85,56 @@ class M3uPlaylistsRepositoryTest {
     }
 
     @Test
-    fun `rejects adding a stream track to a local m3u playlist`() = kotlinx.coroutines.runBlocking {
+    fun `stream tracks persist as portable youtube urls and reload with metadata`() = kotlinx.coroutines.runBlocking {
         val repo = M3uPlaylistsRepository(dir.toPath())
         kotlinx.coroutines.delay(200)
-        val playlist = repo.create("Local only").getOrThrow()
+        val playlist = repo.create("Mixed sources").getOrThrow()
         val stream = Track(
-            id = "abc12345678",
-            title = "Stream",
-            artist = "Artist",
-            source = "abc12345678",
+            id = "dQw4w9WgXcQ",
+            title = "Never Gonna Give You Up",
+            artist = "Rick Astley",
+            album = "Whenever You Need Somebody",
+            genre = "Pop",
+            durationMs = 213_000,
+            source = "https://rr.googlevideo.com/expired-signature",
+            artwork = "https://img.example/cover.jpg",
             isLocal = false,
+            videoId = "dQw4w9WgXcQ",
         )
 
-        val result = repo.addToPlaylist(playlist.id, stream)
+        repo.addToPlaylist(playlist.id, stream).getOrThrow()
+        repo.addToPlaylist(playlist.id, stream).getOrThrow()
 
-        assertTrue(result.isFailure)
-        assertEquals(0, repo.playlists.value.first { it.id == playlist.id }.trackCount)
+        val fileContents = File(playlist.id).readText()
+        assertTrue(fileContents.contains("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals(1, fileContents.lines().count { it == "https://www.youtube.com/watch?v=dQw4w9WgXcQ" })
+        assertFalse(fileContents.contains("googlevideo"))
+        val reloaded = M3uPlaylistsRepository.parseM3u(fileContents, dir).single().second
+        assertEquals("dQw4w9WgXcQ", reloaded?.videoId)
+        assertEquals("dQw4w9WgXcQ", reloaded?.source)
+        assertEquals(stream.title, reloaded?.title)
+        assertEquals(stream.artist, reloaded?.artist)
+        assertEquals(stream.album, reloaded?.album)
+        assertEquals(stream.genre, reloaded?.genre)
+        assertEquals(stream.durationMs, reloaded?.durationMs)
+        assertEquals(stream.artwork, reloaded?.artwork)
+        assertFalse(reloaded?.isLocal ?: true)
+    }
+
+    @Test
+    fun `ordinary youtube m3u entries recover video id and extinf tags`() {
+        val content = """
+            #EXTM3U
+            #EXTINF:201,Example Artist - Example Song
+            https://www.youtube.com/watch?v=abcdefghijk
+        """.trimIndent()
+
+        val track = M3uPlaylistsRepository.parseM3u(content, dir).single().second
+
+        assertEquals("abcdefghijk", track?.videoId)
+        assertEquals("Example Song", track?.title)
+        assertEquals("Example Artist", track?.artist)
+        assertEquals(201_000L, track?.durationMs)
+        assertFalse(track?.isLocal ?: true)
     }
 }

@@ -119,6 +119,7 @@ import com.itzfallenme.katmusic.ui.screens.player.LyricsOffsetDialog
 import com.itzfallenme.katmusic.ui.screens.player.LyricsSizeDialog
 import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStyle
 import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStylePreferences
+import com.itzfallenme.katmusic.ui.screens.player.PlayerStylePreview
 import androidx.compose.material.icons.filled.FormatSize
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.filled.Timer
@@ -2360,7 +2361,7 @@ fun SettingsScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Now playing")
                                 Text(
-                                    "Choose between the original Mochy-inspired Poster, Timeline and Lyrics layouts, plus KatMusic Artwork and Canvas styles. Your choice is saved for the next time you open Now Playing.",
+                                    "Classic stays exactly as it is. Vinyl and Cassette add two fully custom decks; the other presets keep their focused artwork, timeline, lyrics, and Canvas presentations.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 4.dp),
@@ -2395,6 +2396,11 @@ fun SettingsScreen(
                                                 },
                                             )
                                             Spacer(Modifier.width(10.dp))
+                                            PlayerStylePreview(
+                                                style = style,
+                                                modifier = Modifier.size(width = 76.dp, height = 54.dp),
+                                            )
+                                            Spacer(Modifier.width(12.dp))
                                             Column(Modifier.weight(1f)) {
                                                 Text(
                                                     style.label,

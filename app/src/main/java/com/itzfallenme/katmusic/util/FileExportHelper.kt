@@ -205,13 +205,15 @@ class FileExportHelper @Inject constructor(
     }
 
     /**
-     * Exports a rendered bitmap to cacheDir/shared/lyrics_cards and triggers the system
-     * share sheet via FileProvider with image/png and ClipData uri grant.
+     * Exports a rendered bitmap to the app's share-card cache and triggers the
+     * system share sheet via FileProvider with an image/png URI grant.
      */
     suspend fun shareImage(
         activityContext: Context,
         bitmap: Bitmap,
         title: String,
+        filePrefix: String = "lyrics",
+        shareLabel: String = "Share lyrics",
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             cleanLyricsCardCache(context.cacheDir)
@@ -220,7 +222,7 @@ class FileExportHelper @Inject constructor(
 
             val sanitized = sanitizeFilename(title)
             val timestamp = System.currentTimeMillis()
-            val file = File(dir, "lyrics_${sanitized}_$timestamp.png")
+            val file = File(dir, "${sanitizeFilename(filePrefix)}_${sanitized}_$timestamp.png")
 
             file.outputStream().use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -233,11 +235,11 @@ class FileExportHelper @Inject constructor(
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newRawUri("Lyrics Card", uri)
+                clipData = ClipData.newRawUri(shareLabel, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            val chooser = Intent.createChooser(intent, "Share lyrics").apply {
+            val chooser = Intent.createChooser(intent, shareLabel).apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

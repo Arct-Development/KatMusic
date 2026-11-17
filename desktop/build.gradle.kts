@@ -46,6 +46,8 @@ dependencies {
     implementation(libs.brave.extractor)
     // QR generation for the Android → desktop YouTube session pairing.
     implementation(libs.zxing.core)
+    // OS-level media keys (play/pause, next, previous) through a native hook.
+    implementation(libs.jnativehook)
 
     configurations.all {
         // PipePipe bundles protobuf-java (full) while BravePipe brings

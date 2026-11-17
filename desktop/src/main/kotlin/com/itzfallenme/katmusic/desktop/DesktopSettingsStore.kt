@@ -60,6 +60,23 @@ class DesktopSettingsStore : SettingsStore {
         runCatching { prefs.flush() }
     }
 
+    fun removeLibraryFolder(path: String) {
+        prefs.put("libraryFolders", libraryFolders().filterNot { it == path }.joinToString("\n"))
+        runCatching { prefs.flush() }
+    }
+
+    /** Persisted ISO 3166-1 alpha-2 region for the Discover chart. */
+    fun trendingRegion(): String =
+        prefs.get("trendingRegion", "US")
+            .uppercase()
+            .takeIf { it.matches(Regex("[A-Z]{2}")) } ?: "US"
+
+    fun setTrendingRegion(region: String) {
+        val code = region.trim().uppercase().takeIf { it.matches(Regex("[A-Z]{2}")) } ?: return
+        prefs.put("trendingRegion", code)
+        runCatching { prefs.flush() }
+    }
+
     private companion object {
         const val EQUALIZER_BAND_COUNT = 10
     }

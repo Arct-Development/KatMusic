@@ -9,8 +9,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +25,7 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import com.itzfallenme.katmusic.desktop.jam.DesktopJamManager
 import com.itzfallenme.katmusic.desktop.jam.JamEvent
+import com.itzfallenme.katmusic.shared.jam.JamDefaults
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -38,10 +41,16 @@ fun DesktopJamSection(jam: DesktopJamManager) {
     val members by jam.client.members.collectAsState()
     val playback by jam.client.playback.collectAsState()
     val isHost by jam.client.isHost.collectAsState()
+    val isCoHost by jam.client.isCoHost.collectAsState()
+    val memberId by jam.client.memberId.collectAsState()
+    val coHostId by jam.client.coHostId.collectAsState()
+    val sharedQueue by jam.client.sharedQueue.collectAsState()
+    val suggestions by jam.client.suggestions.collectAsState()
     val events by jam.client.events.collectAsState()
     val error by jam.error.collectAsState()
+    val mainHost = isHost && !isCoHost
 
-    var endpoint by remember { mutableStateOf("wss://katmusic.onrender.com/ws") }
+    var endpoint by remember { mutableStateOf(JamDefaults.SERVER_ENDPOINT) }
     var displayName by remember { mutableStateOf("Desktop listener") }
     var joinCode by remember { mutableStateOf("") }
     var collaborative by remember { mutableStateOf(false) }
@@ -80,7 +89,7 @@ fun DesktopJamSection(jam: DesktopJamManager) {
         )
         OutlinedTextField(
             value = joinCode,
-            onValueChange = { joinCode = it.uppercase().take(8) },
+            onValueChange = { joinCode = it.uppercase().filter(Char::isLetterOrDigit).take(8) },
             singleLine = true,
             label = { Text("Room code") },
             modifier = Modifier.weight(0.7f),
@@ -99,7 +108,7 @@ fun DesktopJamSection(jam: DesktopJamManager) {
         }
         OutlinedButton(
             onClick = { jam.joinRoom(endpoint, joinCode, displayName) },
-            enabled = roomCode.isBlank() && joinCode.isNotBlank() && displayName.isNotBlank(),
+            enabled = roomCode.isBlank() && joinCode.length >= 4 && displayName.isNotBlank(),
         ) {
             Text("Join room")
         }
@@ -122,26 +131,27 @@ fun DesktopJamSection(jam: DesktopJamManager) {
     }
 
     if (roomCode.isNotBlank()) {
-        Text(
-            text = "Room $roomCode · ${if (isHost) "host" else "guest"} · $roomMode",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 10.dp),
-        )
-        Text(
-            text = members.joinToString(" · ") { member ->
-                "${member.displayName} (${member.role})"
-            }.ifBlank { "Waiting for listeners…" },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        playback?.let { shared ->
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
             Text(
-                text = "Playing: ${shared.title} — ${shared.artist}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
+                text = "Room $roomCode · ${when {
+                    mainHost -> "host"
+                    isCoHost -> "co-host"
+                    else -> "listener"
+                }} · $roomMode",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
             )
+            OutlinedButton(
+                onClick = {
+                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(roomCode), null)
+                },
+            ) { Text("Copy code") }
         }
-        val invite = "https://katmusic.onrender.com/?code=$roomCode"
+        val invite = JamDefaults.inviteUrl(roomCode).orEmpty()
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -164,13 +174,152 @@ fun DesktopJamSection(jam: DesktopJamManager) {
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        if (isHost) {
+        if (mainHost) {
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Switch(
                     checked = roomMode == "collaborative",
                     onCheckedChange = jam.client::setCollaborative,
                 )
                 Text("Let everyone control playback", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("Listeners · ${members.size}", style = MaterialTheme.typography.titleSmall)
+                members.forEach { member ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                member.displayName + if (member.id == memberId) " · You" else "",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                when {
+                                    member.role == "host" -> "Host"
+                                    member.role == "cohost" -> "Co-host"
+                                    else -> "Listener"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (mainHost && member.id != memberId) {
+                            when {
+                                member.id == coHostId ->
+                                    TextButton(onClick = { jam.client.revokeCoHost(member.id) }) {
+                                        Text("Remove co-host")
+                                    }
+                                coHostId.isBlank() ->
+                                    TextButton(onClick = { jam.client.grantCoHost(member.id) }) {
+                                        Text("Make co-host")
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text("Now playing together", style = MaterialTheme.typography.titleSmall)
+                if (playback == null || playback?.videoId.isNullOrBlank()) {
+                    Text("Waiting for the host to start a track.", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text(playback!!.title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        playback!!.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        if (playback!!.isPlaying) "Playing" else "Paused",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (!isHost) {
+                    OutlinedButton(
+                        onClick = jam::suggestCurrentTrack,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Suggest my current track") }
+                }
+            }
+        }
+
+        if (sharedQueue.isNotEmpty()) {
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text("Shared queue · ${sharedQueue.size}", style = MaterialTheme.typography.titleSmall)
+                    sharedQueue.take(5).forEachIndexed { index, track ->
+                        Text(
+                            "${index + 1}. ${track.title} — ${track.artist}",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (mainHost && suggestions.isNotEmpty()) {
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("Listeners' suggestions", style = MaterialTheme.typography.titleSmall)
+                    suggestions.forEach { suggestion ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(suggestion.title, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    "${suggestion.artist} · ${suggestion.displayName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { jam.client.approveSuggestion(suggestion.suggestionId) }) {
+                                Text("Add")
+                            }
+                            TextButton(onClick = { jam.client.rejectSuggestion(suggestion.suggestionId) }) {
+                                Text("Dismiss")
+                            }
+                        }
+                    }
+                }
             }
         }
 

@@ -81,6 +81,8 @@ class Media3PlayerController @Inject constructor(
 
     override fun cycleRepeatMode() = player.cycleRepeatMode()
 
+    override fun setSleepTimerMinutes(minutes: Int) = player.setSleepTimerMinutes(minutes)
+
     override fun stop() = player.stopAndClear()
 }
 
@@ -115,6 +117,7 @@ private fun com.itzfallenme.katmusic.playback.MusicPlayerState.toSharedState(vol
         },
         shuffle = shuffleEnabled,
         error = error,
+        sleepTimerRemainingMs = sleepTimerRemainingMs,
     )
 
 private fun PlayableTrack.toSharedTrack(): Track = Track(

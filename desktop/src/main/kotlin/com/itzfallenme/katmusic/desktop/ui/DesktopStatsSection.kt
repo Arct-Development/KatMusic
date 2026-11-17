@@ -14,14 +14,16 @@ import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.desktop.data.DesktopListeningStats
 
 @Composable
-fun DesktopStatsSection(stats: DesktopListeningStats) {
+fun DesktopStatsSection(stats: DesktopListeningStats, showTitle: Boolean = true) {
     val state by stats.state.collectAsState()
 
-    Text(
-        text = "Listening stats",
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
+    if (showTitle) {
+        Text(
+            text = "Listening stats",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
     if (state.totalPlays == 0) {
         Text(
             text = "Play a few tracks to build your local listening history.",

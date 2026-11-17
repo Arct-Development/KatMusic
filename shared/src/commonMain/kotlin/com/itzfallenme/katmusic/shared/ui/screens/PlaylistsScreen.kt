@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FileOpen
@@ -64,13 +67,20 @@ fun PlaylistsScreen(
     onOpenCollection: (CollectionTargetHolder) -> Unit = {},
     /** Optional platform file import; hidden when the platform has none. */
     onImport: (() -> Unit)? = null,
+    /** Optional provider-backed playlist import; remains platform-owned. */
+    onImportOnlinePlaylist: (() -> Unit)? = null,
 ) {
     val playlists by repository.playlists.collectAsState()
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf<Playlist?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
+    var createError by remember { mutableStateOf<String?>(null) }
+    var addCurrentAfterCreate by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<Playlist?>(null) }
+    var showAddCurrent by remember { mutableStateOf(false) }
+    var actionMessage by remember { mutableStateOf<String?>(null) }
+    var playlistDialogError by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -88,14 +98,47 @@ fun PlaylistsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            playerState.current?.let { current ->
+                IconButton(
+                    onClick = {
+                        actionMessage = null
+                        showAddCurrent = true
+                    },
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.QueueMusic,
+                        contentDescription = "Add ${current.title} to a playlist",
+                    )
+                }
+            }
             onImport?.let { import ->
                 IconButton(onClick = import) {
                     Icon(Icons.Rounded.FileOpen, contentDescription = "Import M3U playlist")
                 }
             }
-            IconButton(onClick = { showCreate = true }) {
+            onImportOnlinePlaylist?.let { import ->
+                IconButton(onClick = import) {
+                    Icon(Icons.Filled.Link, contentDescription = "Import public online playlist")
+                }
+            }
+            IconButton(onClick = {
+                createError = null
+                actionMessage = null
+                addCurrentAfterCreate = false
+                showCreate = true
+            }) {
                 Icon(Icons.Rounded.Add, contentDescription = "New playlist")
             }
+        }
+
+        actionMessage?.let { message ->
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (message.startsWith("Couldn't")) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
 
         if (playlists.isEmpty()) {
@@ -112,7 +155,10 @@ fun PlaylistsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .expressiveBounceClickable { open = playlist }
+                            .expressiveBounceClickable {
+                                playlistDialogError = null
+                                open = playlist
+                            }
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -146,17 +192,69 @@ fun PlaylistsScreen(
 
     open?.let { playlist ->
         AlertDialog(
-            onDismissRequest = { open = null },
+            onDismissRequest = {
+                open = null
+                playlistDialogError = null
+            },
             title = { Text(playlist.title) },
             text = {
                 if (playlist.tracks.isEmpty()) {
                     Text("This playlist is empty.")
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        playlist.tracks.take(6).forEach { t ->
-                            Text("• ${t.title} — ${t.artist}", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Tracks · ${playlist.trackCount}", style = MaterialTheme.typography.labelMedium)
+                        playlistDialogError?.let { message ->
+                            Text(
+                                message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
-                        if (playlist.tracks.size > 6) Text("…and ${playlist.tracks.size - 6} more")
+                        LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                            items(playlist.tracks, key = { it.id }) { track ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(vertical = 4.dp)) {
+                                        Text(
+                                            track.title,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        Text(
+                                            track.artist,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                repository.removeFromPlaylist(playlist.id, track.id)
+                                                    .onSuccess {
+                                                        open = playlist.copy(
+                                                            tracks = playlist.tracks.filterNot { it.id == track.id },
+                                                        )
+                                                        playlistDialogError = null
+                                                    }
+                                                    .onFailure {
+                                                        playlistDialogError = it.message ?: "Couldn't remove this track"
+                                                    }
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Delete,
+                                            contentDescription = "Remove ${track.title} from playlist",
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -164,6 +262,7 @@ fun PlaylistsScreen(
                 TextButton(onClick = {
                     onOpenCollection(CollectionTargetHolder(playlist.title, "${playlist.trackCount} tracks", playlist.tracks.firstOrNull()?.artwork, playlist.tracks))
                     open = null
+                    playlistDialogError = null
                 }) { Text("Open") }
             },
             dismissButton = {
@@ -172,41 +271,147 @@ fun PlaylistsScreen(
                         TextButton(onClick = {
                             onPlay(playlist.tracks, 0)
                             open = null
+                            playlistDialogError = null
                         }) { Text("Play") }
                     }
-                    TextButton(onClick = { open = null }) { Text("Close") }
+                    TextButton(onClick = {
+                        open = null
+                        playlistDialogError = null
+                    }) { Text("Close") }
                 }
+            },
+        )
+    }
+
+    if (showAddCurrent) {
+        val current = playerState.current
+        AlertDialog(
+            onDismissRequest = { showAddCurrent = false },
+            title = { Text("Add to playlist") },
+            text = {
+                if (current == null) {
+                    Text("Nothing is playing.")
+                } else if (playlists.isEmpty()) {
+                    Text("Create a playlist first, then add the current track.")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            current.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                            items(playlists, key = { it.id }) { playlist ->
+                                TextButton(
+                                    onClick = {
+                                        scope.launch {
+                                            repository.addToPlaylist(playlist.id, current)
+                                                .onSuccess {
+                                                    actionMessage = "Added to “${playlist.title}”"
+                                                    showAddCurrent = false
+                                                }
+                                                .onFailure {
+                                                    actionMessage = "Couldn't add this track: ${it.message.orEmpty()}"
+                                                }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        "${playlist.title} · ${playlist.trackCount} tracks",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAddCurrent = false
+                        createError = null
+                        actionMessage = null
+                        addCurrentAfterCreate = current != null
+                        showCreate = true
+                    },
+                ) { Text("New playlist") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCurrent = false }) { Text("Close") }
             },
         )
     }
 
     if (showCreate) {
         AlertDialog(
-            onDismissRequest = { showCreate = false },
+            onDismissRequest = {
+                showCreate = false
+                addCurrentAfterCreate = false
+                createError = null
+            },
             title = { Text("New playlist") },
             text = {
-                OutlinedTextField(
-                    value = newTitle,
-                    onValueChange = { newTitle = it },
-                    placeholder = { Text("Playlist name") },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = newTitle,
+                        onValueChange = { newTitle = it },
+                        placeholder = { Text("Playlist name") },
+                        singleLine = true,
+                    )
+                    createError?.let { message ->
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         if (newTitle.isNotBlank()) {
                             scope.launch {
-                                repository.create(newTitle.trim())
-                                newTitle = ""
-                                showCreate = false
+                                val result = repository.create(newTitle.trim())
+                                result.onSuccess { created ->
+                                    val current = playerState.current.takeIf { addCurrentAfterCreate }
+                                    if (current != null) {
+                                        repository.addToPlaylist(created.id, current)
+                                            .onSuccess {
+                                                actionMessage = "Created “${created.title}” and added the current track"
+                                            }
+                                            .onFailure {
+                                                actionMessage = "Created “${created.title}”, but couldn't add the track: ${it.message.orEmpty()}"
+                                            }
+                                    } else {
+                                        actionMessage = "Created “${created.title}”"
+                                    }
+                                    newTitle = ""
+                                    showCreate = false
+                                    addCurrentAfterCreate = false
+                                    createError = null
+                                }.onFailure {
+                                    createError = it.message ?: "Couldn't create the playlist"
+                                }
                             }
                         }
                     },
                     enabled = newTitle.isNotBlank(),
                 ) { Text("Create") }
             },
-            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCreate = false
+                        addCurrentAfterCreate = false
+                        createError = null
+                    },
+                ) { Text("Cancel") }
+            },
         )
     }
 

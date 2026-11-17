@@ -75,6 +75,13 @@ class DesktopJamManager(
         client.joinRoom(endpoint, code, displayName)
     }
 
+    /** Ask the host to add this device's current YouTube-backed track. */
+    fun suggestCurrentTrack() {
+        val track = player.state.value.current ?: return
+        val videoId = track.videoId?.takeIf(String::isNotBlank) ?: return
+        client.suggestTrack(track.title, track.artist, videoId, track.artwork.orEmpty())
+    }
+
     fun leaveRoom() {
         client.leaveRoom()
         lastRemoteTrackId = null

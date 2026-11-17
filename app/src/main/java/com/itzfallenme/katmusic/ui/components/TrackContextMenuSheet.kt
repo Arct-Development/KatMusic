@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -44,7 +45,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QueuePlayNext
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sell
@@ -387,6 +387,7 @@ fun TrackContextMenuSheet(
                 artist = target.artist,
                 url = shareUrl,
                 code = code,
+                album = playable.album,
                 onDismiss = {
                     showCodeDialog = false
                     onDismiss()
@@ -713,23 +714,13 @@ fun TrackContextMenuSheet(
                     }
                     com.itzfallenme.katmusic.util.ShareLinks.trackCode(playable.videoId)?.let { code ->
                         add { pos ->
-                            MenuActionRow(Icons.Filled.QrCode2, "Show KatMusic code", position = pos) {
+                            MenuActionRow(Icons.Filled.GraphicEq, "Share KatMusic Code", position = pos) {
                                 showCodeDialog = true
                             }
                         }
                         add { pos ->
                             MenuActionRow(Icons.Filled.ContentCopy, "Copy KatMusic code", position = pos) {
                                 clipboard.setText(AnnotatedString(code))
-                                onDismiss()
-                            }
-                        }
-                        add { pos ->
-                            MenuActionRow(Icons.Filled.Share, "Share code image", position = pos) {
-                                com.itzfallenme.katmusic.util.ShareLinks.send(
-                                    context,
-                                    com.itzfallenme.katmusic.util.ShareLinks.codeImageUrl(code),
-                                    "${t.name} — ${t.artist} · KatMusic code",
-                                )
                                 onDismiss()
                             }
                         }

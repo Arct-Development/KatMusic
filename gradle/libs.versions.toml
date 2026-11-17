@@ -30,6 +30,7 @@ newPipeExtractor = "v0.26.5"
 innerTubeX = "0.11.2"
 jsoup = "1.18.3"
 zxing = "3.5.3"
+jnativehook = "2.2.2"
 junit = "5.11.4"
 
 [libraries]
@@ -58,6 +59,7 @@ jna = { module = "net.java.dev.jna:jna", version = "5.17.0" }
 pipepipe-extractor = { module = "com.github.maxrave-dev.PipePipeExtractor:extractor", version = "bba8d84453" }
 brave-extractor = { module = "com.github.maxrave-dev:BravePipeExtractor", version = "991b158fee" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativehook" }
 jaudiotagger = { module = "net.jthink:jaudiotagger", version = "3.0.1" }
 mp3spi = { module = "com.googlecode.soundlibs:mp3spi", version = "1.9.5.4" }
 vorbisspi = { module = "com.googlecode.soundlibs:vorbisspi", version = "1.0.3.3" }

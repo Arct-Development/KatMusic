@@ -22,6 +22,8 @@ on:
           - Desktop YouTube playback through the NewPipe-fork extractors, with Piped powering the home feed and music search.
           - Phone → desktop YouTube sign-in by scanning a QR code with the Android app; the session transfers encrypted over the local network and survives restarts.
           - Portable liquid-glass chrome for the desktop player dock and navigation.
+          - Distinct Android Vinyl and Cassette decks plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas players; Classic is unchanged.
+          - Desktop Jam controls, Code 128 KatMusic Codes, Last.fm, regional Discover, artist radio/albums, public playlist imports, media keys, tray controls and PNG lyric cards.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.

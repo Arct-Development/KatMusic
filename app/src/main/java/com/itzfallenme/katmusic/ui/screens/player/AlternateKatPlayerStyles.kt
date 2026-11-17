@@ -24,6 +24,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -45,6 +46,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
@@ -84,7 +89,9 @@ enum class KatPlayerStyle(val label: String, val description: String) {
     TIMELINE("Timeline", "A colour-split playhead layout with oversized elapsed and total time"),
     LYRICS("Lyrics", "Mochy-inspired expressive lyrics using KatMusic's synced lyric engine"),
     ARTWORK("Artwork", "Large album artwork with focused playback controls"),
-    VIDEO("Canvas", "Immersive animated Canvas artwork as the player background");
+    VIDEO("Canvas", "Immersive animated Canvas artwork as the player background"),
+    VINYL("Vinyl", "A rotating record deck with a progress-etched LP and physical controls"),
+    CASSETTE("Cassette", "A tactile tape deck with animated reels and a printed track label");
 
     companion object {
         fun fromStored(value: String?): KatPlayerStyle = when (value) {
@@ -119,10 +126,81 @@ internal fun AlternateKatPlayerScreen(
     onSelectLyricsProvider: (com.itzfallenme.katmusic.data.local.LyricsProvider) -> Unit,
     onTryAnotherLyricsSource: () -> Unit,
 ) {
+    if (state.current == null) return
+    if (style == KatPlayerStyle.VINYL) {
+        VinylDeckPlayer(
+            state = state,
+            player = player,
+            onCollapse = onCollapse,
+        )
+        return
+    }
+    if (style == KatPlayerStyle.CASSETTE) {
+        CassetteDeckPlayer(
+            state = state,
+            player = player,
+            onCollapse = onCollapse,
+        )
+        return
+    }
+    when (style) {
+        KatPlayerStyle.POSTER -> {
+            PosterStylePlayer(
+                state = state,
+                player = player,
+                lyricsState = lyricsState,
+                lyricsOffsetMs = lyricsOffsetMs,
+                onCollapse = onCollapse,
+            )
+            return
+        }
+        KatPlayerStyle.TIMELINE -> {
+            TimelineStylePlayer(state, player, onCollapse)
+            return
+        }
+        KatPlayerStyle.LYRICS -> {
+            LyricsStylePlayer(
+                state = state,
+                player = player,
+                lyricsState = lyricsState,
+                lyricsOffsetMs = lyricsOffsetMs,
+                onCollapse = onCollapse,
+            )
+            return
+        }
+        KatPlayerStyle.ARTWORK -> {
+            GalleryStylePlayer(state, player, onCollapse)
+            return
+        }
+        KatPlayerStyle.VIDEO -> {
+            CanvasStylePlayer(
+                state = state,
+                player = player,
+                canvas = canvas,
+                canvasEnabled = canvasEnabled,
+                onCollapse = onCollapse,
+            )
+            return
+        }
+        KatPlayerStyle.DEFAULT, KatPlayerStyle.VINYL, KatPlayerStyle.CASSETTE -> Unit
+    }
+    // Classic is rendered by PlayerHost; this surface only owns alternate styles.
+
+}
+
+@Composable
+private fun PosterStylePlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    lyricsState: LyricsUiState,
+    lyricsOffsetMs: Long,
+    onCollapse: () -> Unit,
+) {
     val track = state.current ?: return
-    val duration = max(state.durationMs, 1L)
-    val progress = (state.positionMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-    val dark = Color(0xFF090A0E)
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
 
     Box(Modifier.fillMaxSize()) {
         AmbientBackdrop(
@@ -130,168 +208,1568 @@ internal fun AlternateKatPlayerScreen(
             secondary = MaterialTheme.colorScheme.tertiary,
             isPlaying = state.isPlaying,
         )
-        if (style == KatPlayerStyle.VIDEO) {
-            if (canvasEnabled && canvas != null) {
-                CanvasArtworkPlayer(
-                    canvas = canvas,
-                    isPlaying = state.isPlaying,
-                    modifier = Modifier.fillMaxSize(),
-                    bottomFade = 0.22f,
-                )
-            } else {
-                Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
-            }
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.24f), Color.Transparent, dark.copy(.96f)))))
-        }
-
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp),
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                IconButton(onClick = onCollapse) { Icon(Icons.Filled.ArrowBack, "Collapse player", tint = Color.White) }
-                Text(style.label.uppercase(), color = Color.White.copy(.78f), style = MaterialTheme.typography.labelMedium, letterSpacing = 2.sp)
-                Spacer(Modifier.size(48.dp))
-            }
-            Spacer(Modifier.height(14.dp))
-            AnimatedContent(
-                targetState = style,
-                transitionSpec = {
-                    (fadeIn(tween(260)) + slideInVertically(tween(320)) { it / 18 }) togetherWith
-                        (fadeOut(tween(180)) + slideOutVertically(tween(220)) { -it / 24 })
-                },
-                label = "player-style",
-            ) { target ->
-                when (target) {
-                    KatPlayerStyle.DEFAULT -> Unit
-                    KatPlayerStyle.POSTER -> PosterPresentation(
-                        artwork = track.artworkUrl,
-                        title = track.title,
-                        artist = track.artist,
-                        lyricsState = lyricsState,
-                        positionMs = state.positionMs,
-                        lyricsOffsetMs = lyricsOffsetMs,
-                        progress = progress,
-                        isPlaying = state.isPlaying,
-                    )
-                    KatPlayerStyle.TIMELINE -> TimelinePresentation(
-                        artwork = track.artworkUrl,
-                        title = track.title,
-                        artist = track.artist,
-                        positionMs = state.positionMs,
-                        durationMs = duration,
-                        progress = progress,
-                    )
-                    KatPlayerStyle.ARTWORK -> ArtworkPresentation(track.artworkUrl)
-                    KatPlayerStyle.LYRICS -> LyricsStagePresentation(
-                        artwork = track.artworkUrl,
-                        title = track.title,
-                        artist = track.artist,
-                        lyricsState = lyricsState,
-                        positionMs = state.positionMs,
-                        lyricsOffsetMs = lyricsOffsetMs,
-                        progress = progress,
-                    )
-                    KatPlayerStyle.VIDEO -> VideoPresentation()
-                }
-            }
-            if (style != KatPlayerStyle.VIDEO && style != KatPlayerStyle.POSTER && style != KatPlayerStyle.TIMELINE && style != KatPlayerStyle.LYRICS) {
-                Spacer(Modifier.height(18.dp))
-                Text(track.title, color = Color.White, fontSize = if (style == KatPlayerStyle.LYRICS) 30.sp else 23.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = Color.White.copy(.66f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            } else if (style == KatPlayerStyle.VIDEO) {
-                Spacer(Modifier.height(14.dp))
-                Text(track.title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = Color.White.copy(.72f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Spacer(Modifier.height(18.dp))
-            var dragProgress by remember(state.current?.videoId, state.durationMs) { mutableFloatStateOf(progress) }
-            Slider(
-                value = dragProgress.coerceIn(0f, 1f),
-                onValueChange = { dragProgress = it },
-                onValueChangeFinished = { player.seekTo((dragProgress * duration).toLong().coerceIn(0L, duration)) },
-                modifier = Modifier.fillMaxWidth(),
+            PlayerStyleHeader("POSTER", onCollapse)
+            Spacer(Modifier.height(6.dp))
+            PosterPresentation(
+                artwork = track.artworkUrl,
+                title = track.title,
+                artist = track.artist,
+                lyricsState = lyricsState,
+                positionMs = state.positionMs,
+                lyricsOffsetMs = lyricsOffsetMs,
+                progress = progress,
+                isPlaying = state.isPlaying,
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatPlayerTime(state.positionMs), color = Color.White.copy(.65f), style = MaterialTheme.typography.labelSmall)
-                Text(formatPlayerTime(state.durationMs), color = Color.White.copy(.65f), style = MaterialTheme.typography.labelSmall)
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                IconButton(
-                    onClick = player::previous,
-                    modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.06f), CircleShape),
-                ) {
-                    Icon(Icons.Filled.SkipPrevious, "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        (track.album ?: "").ifBlank { "SINGLE" }.uppercase(),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 2.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "COVER STORY",
+                        color = Color.White.copy(alpha = 0.46f),
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.5.sp,
+                    )
                 }
-                val playControlScale by animateFloatAsState(
-                    targetValue = if (state.isPlaying) 1.06f else 1f,
-                    animationSpec = spring(dampingRatio = 0.58f, stiffness = 420f),
-                    label = "play-control-scale",
+                Text(
+                    "${state.currentIndex + 1} / ${state.queue.size.coerceAtLeast(1)}",
+                    color = Color.White.copy(alpha = 0.60f),
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 1.sp,
                 )
-                val playElevation by animateDpAsState(
-                    targetValue = if (state.isPlaying) 18.dp else 7.dp,
-                    animationSpec = tween(320),
-                    label = "play-control-elevation",
+            }
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
+            PosterTransport(state, player)
+            Spacer(Modifier.height(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun TimelineStylePlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+    val accent = MaterialTheme.colorScheme.primary
+
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = accent,
+            secondary = Color(0xFF69D6FF),
+            isPlaying = state.isPlaying,
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerStyleHeader("TIMELINE", onCollapse)
+            Spacer(Modifier.height(12.dp))
+            TimelinePresentation(
+                artwork = track.artworkUrl,
+                title = track.title,
+                artist = track.artist,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                progress = progress,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 4.dp, top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "PLAYHEAD",
+                    color = accent,
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.weight(1f),
                 )
-                val controlMotion = rememberInfiniteTransition(label = "transport-glow")
-                val controlGlow by controlMotion.animateFloat(
-                    initialValue = 0.35f,
-                    targetValue = 0.85f,
-                    animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                    label = "transport-glow-pulse",
+                Text(
+                    (track.album ?: "").ifBlank { "NOW PLAYING" }.uppercase(),
+                    color = Color.White.copy(alpha = 0.50f),
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+            }
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = accent,
+            )
+            Spacer(Modifier.height(14.dp))
+            TimelineTransport(state, player, accent)
+            Spacer(Modifier.height(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun LyricsStylePlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    lyricsState: LyricsUiState,
+    lyricsOffsetMs: Long,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = Color(0xFFAA8CFF),
+            secondary = MaterialTheme.colorScheme.primary,
+            isPlaying = state.isPlaying,
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerStyleHeader("LYRIC STAGE", onCollapse)
+            Spacer(Modifier.height(12.dp))
+            LyricsStagePresentation(
+                artwork = track.artworkUrl,
+                title = track.title,
+                artist = track.artist,
+                lyricsState = lyricsState,
+                positionMs = state.positionMs,
+                lyricsOffsetMs = lyricsOffsetMs,
+                progress = progress,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(7.dp)
+                        .background(Color(0xFFAA8CFF), CircleShape),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (lyricsState is LyricsUiState.Success) "LYRICS SYNCED" else "LYRIC STAGE",
+                    color = Color.White.copy(alpha = 0.68f),
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.8.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    track.title,
+                    color = Color.White.copy(alpha = 0.52f),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = Color(0xFFAA8CFF),
+            )
+            Spacer(Modifier.height(6.dp))
+            LyricsTransport(state, player)
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun GalleryStylePlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = Color(0xFFFFC978),
+            secondary = MaterialTheme.colorScheme.primary,
+            isPlaying = state.isPlaying,
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerStyleHeader("ARTWORK", onCollapse)
+            Spacer(Modifier.height(14.dp))
+            GalleryArtworkPresentation(
+                artwork = track.artworkUrl,
+                title = track.title,
+                artist = track.artist,
+                album = track.album.orEmpty(),
+                isPlaying = state.isPlaying,
+            )
+            Spacer(Modifier.height(20.dp))
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = Color(0xFFFFC978),
+            )
+            Spacer(Modifier.height(10.dp))
+            GalleryTransport(state, player)
+            Spacer(Modifier.height(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun CanvasStylePlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    canvas: CanvasArtwork?,
+    canvasEnabled: Boolean,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+    val accent = MaterialTheme.colorScheme.primary
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (canvasEnabled && canvas != null) {
+            CanvasArtworkPlayer(
+                canvas = canvas,
+                isPlaying = state.isPlaying,
+                modifier = Modifier.fillMaxSize(),
+                bottomFade = 0.34f,
+            )
+        } else {
+            Artwork(track.artworkUrl, Modifier.fillMaxSize(), false)
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.22f),
+                        0.38f to Color.Transparent,
+                        0.62f to Color(0xFF080A0F).copy(alpha = 0.44f),
+                        1f to Color(0xFF080A0F).copy(alpha = 0.98f),
+                    ),
+                ),
+        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+        ) {
+            PlayerStyleHeader("CANVAS", onCollapse)
+            Spacer(Modifier.height(this@BoxWithConstraints.maxHeight * 0.28f))
+            Text(
+                if (canvasEnabled && canvas != null) "VISUALIZER ACTIVE" else "ARTWORK MOTION",
+                color = accent,
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 2.2.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.8).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                listOfNotNull(track.artist, track.album).filter { it.isNotBlank() }.joinToString("  ·  "),
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(12.dp))
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = accent,
+            )
+            Spacer(Modifier.height(8.dp))
+            CanvasTransport(state, player, accent)
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun PosterTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(Color(0xFF0A0C11).copy(alpha = 0.72f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+            Icon(
+                Icons.Filled.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.58f),
+            )
+        }
+        IconButton(onClick = player::previous, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", tint = Color.White)
+        }
+        FilledIconButton(
+            onClick = player::togglePlayPause,
+            modifier = Modifier.size(68.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = Color.White,
+                contentColor = Color(0xFF10131A),
+            ),
+        ) {
+            Icon(
+                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                modifier = Modifier.size(34.dp),
+            )
+        }
+        IconButton(onClick = player::next, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Filled.SkipNext, contentDescription = "Next", tint = Color.White)
+        }
+        IconButton(onClick = player::cycleRepeatMode) {
+            Icon(
+                if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Cycle repeat mode",
+                tint = if (state.repeatMode != 0) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.58f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    accent: Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF101722).copy(alpha = 0.92f),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    if (state.isPlaying) "LIVE PLAYHEAD" else "PLAYBACK PAUSED",
+                    color = accent,
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.5.sp,
+                )
+                Text(
+                    "${state.currentIndex + 1} / ${state.queue.size.coerceAtLeast(1)}",
+                    color = Color.White.copy(alpha = 0.48f),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+                    Icon(
+                        Icons.Filled.Shuffle,
+                        contentDescription = "Shuffle",
+                        tint = if (state.shuffleEnabled) accent else Color.White.copy(alpha = 0.56f),
+                    )
+                }
+                IconButton(onClick = player::previous, modifier = Modifier.size(50.dp)) {
+                    Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", tint = Color.White)
+                }
+                FilledIconButton(
+                    onClick = player::togglePlayPause,
+                    modifier = Modifier.size(62.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = accent,
+                        contentColor = Color(0xFF071116),
+                    ),
+                ) {
+                    Icon(
+                        if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+                IconButton(onClick = player::next, modifier = Modifier.size(50.dp)) {
+                    Icon(Icons.Filled.SkipNext, contentDescription = "Next", tint = Color.White)
+                }
+                IconButton(onClick = player::cycleRepeatMode) {
+                    Icon(
+                        if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                        contentDescription = "Cycle repeat mode",
+                        tint = if (state.repeatMode != 0) accent else Color.White.copy(alpha = 0.56f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LyricsTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF171322).copy(alpha = 0.90f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+            Icon(
+                Icons.Filled.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (state.shuffleEnabled) Color(0xFFAA8CFF) else Color.White.copy(alpha = 0.55f),
+            )
+        }
+        IconButton(onClick = player::previous, modifier = Modifier.size(46.dp)) {
+            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", tint = Color.White)
+        }
+        FilledIconButton(
+            onClick = player::togglePlayPause,
+            modifier = Modifier.size(58.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = Color(0xFFAA8CFF),
+                contentColor = Color(0xFF151020),
+            ),
+        ) {
+            Icon(
+                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                modifier = Modifier.size(30.dp),
+            )
+        }
+        IconButton(onClick = player::next, modifier = Modifier.size(46.dp)) {
+            Icon(Icons.Filled.SkipNext, contentDescription = "Next", tint = Color.White)
+        }
+        IconButton(onClick = player::cycleRepeatMode) {
+            Icon(
+                if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Cycle repeat mode",
+                tint = if (state.repeatMode != 0) Color(0xFFAA8CFF) else Color.White.copy(alpha = 0.55f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFFF4E7CC))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+            Icon(
+                Icons.Filled.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (state.shuffleEnabled) Color(0xFF168BFF) else Color(0xFF5B5D5E),
+            )
+        }
+        IconButton(onClick = player::previous, modifier = Modifier.size(44.dp)) {
+            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", tint = Color(0xFF141820))
+        }
+        FilledIconButton(
+            onClick = player::togglePlayPause,
+            modifier = Modifier.size(62.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = Color(0xFF168BFF),
+                contentColor = Color.White,
+            ),
+        ) {
+            Icon(
+                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                modifier = Modifier.size(32.dp),
+            )
+        }
+        IconButton(onClick = player::next, modifier = Modifier.size(44.dp)) {
+            Icon(Icons.Filled.SkipNext, contentDescription = "Next", tint = Color(0xFF141820))
+        }
+        IconButton(onClick = player::cycleRepeatMode) {
+            Icon(
+                if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Cycle repeat mode",
+                tint = if (state.repeatMode != 0) Color(0xFF168BFF) else Color(0xFF5B5D5E),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CanvasTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(Color.Black.copy(alpha = 0.42f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+            Icon(
+                Icons.Filled.Shuffle,
+                contentDescription = "Shuffle",
+                tint = if (state.shuffleEnabled) accent else Color.White.copy(alpha = 0.68f),
+            )
+        }
+        IconButton(onClick = player::previous, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", tint = Color.White)
+        }
+        Surface(
+            onClick = player::togglePlayPause,
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.94f),
+            contentColor = Color(0xFF10131A),
+            modifier = Modifier.size(66.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                    modifier = Modifier.size(34.dp),
+                )
+            }
+        }
+        IconButton(onClick = player::next, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Filled.SkipNext, contentDescription = "Next", tint = Color.White)
+        }
+        IconButton(onClick = player::cycleRepeatMode) {
+            Icon(
+                if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Cycle repeat mode",
+                tint = if (state.repeatMode != 0) accent else Color.White.copy(alpha = 0.68f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GalleryArtworkPresentation(
+    artwork: String?,
+    title: String,
+    artist: String,
+    album: String,
+    isPlaying: Boolean,
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.015f else 1f,
+        animationSpec = spring(dampingRatio = 0.86f, stiffness = 110f),
+        label = "gallery-artwork-lift",
+    )
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .widthIn(max = 360.dp)
+            .aspectRatio(0.84f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    listOf(Color(0xFFFFD990), Color(0xFFF1B85D), Color(0xFFB7783F)),
+                ),
+                cornerRadius = CornerRadius(25.dp.toPx()),
+            )
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.33f),
+                topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+                size = Size(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
+                cornerRadius = CornerRadius(25.dp.toPx()),
+                style = Stroke(width = 1.dp.toPx()),
+            )
+        }
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(10.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFFF7F0DE),
+            shadowElevation = 20.dp,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "KATMUSIC ARCHIVE",
+                        color = Color(0xFF34363B),
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.8.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "A / 01",
+                        color = Color(0xFF168BFF),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                    )
+                }
+                Artwork(
+                    artwork,
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp)),
+                    true,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            title,
+                            color = Color(0xFF17191E),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            artist,
+                            color = Color(0xFF5F6265),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        album.takeIf(String::isNotBlank)?.uppercase() ?: "SIDE A",
+                        color = Color(0xFF5F6265),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 8.dp, bottom = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VinylDeckPlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    val rotation = remember(trackKey) { Animatable(0f) }
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+    val accent = Color(0xFF25DCE8)
+
+    LaunchedEffect(trackKey, state.isPlaying) {
+        if (state.isPlaying) {
+            while (true) {
+                rotation.animateTo(
+                    targetValue = rotation.value + 360f,
+                    animationSpec = tween(durationMillis = 12_000, easing = LinearEasing),
+                )
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = MaterialTheme.colorScheme.primary,
+            secondary = accent,
+            isPlaying = state.isPlaying,
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerStyleHeader("VINYL DECK", onCollapse)
+            Spacer(Modifier.height(10.dp))
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 390.dp)
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                val discSize = maxWidth * 0.92f
+                Box(Modifier.size(discSize), contentAlignment = Alignment.Center) {
+                    Canvas(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { rotationZ = rotation.value },
+                    ) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val radius = size.minDimension / 2f
+                        drawCircle(Color(0xFF090B10), radius = radius)
+                        repeat(22) { index ->
+                            val grooveRadius = radius * (0.43f + index * 0.025f)
+                            drawCircle(
+                                color = Color.White.copy(alpha = if (index % 3 == 0) 0.13f else 0.07f),
+                                radius = grooveRadius,
+                                center = center,
+                                style = Stroke(width = 1.dp.toPx()),
+                            )
+                        }
+                        repeat(72) { index ->
+                            val angle = index * (360f / 72f) - 90f
+                            val radians = Math.toRadians(angle.toDouble())
+                            val inner = radius * 0.94f
+                            val outer = radius * 0.985f
+                            val start = Offset(
+                                center.x + kotlin.math.cos(radians).toFloat() * inner,
+                                center.y + kotlin.math.sin(radians).toFloat() * inner,
+                            )
+                            val end = Offset(
+                                center.x + kotlin.math.cos(radians).toFloat() * outer,
+                                center.y + kotlin.math.sin(radians).toFloat() * outer,
+                            )
+                            drawLine(
+                                color = if (index / 72f < progress) accent.copy(alpha = 0.82f)
+                                else Color.White.copy(alpha = 0.18f),
+                                start = start,
+                                end = end,
+                                strokeWidth = if (index % 6 == 0) 2.dp.toPx() else 1.dp.toPx(),
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                        drawArc(
+                            color = accent.copy(alpha = 0.20f),
+                            startAngle = -90f,
+                            sweepAngle = 360f * progress,
+                            useCenter = false,
+                            topLeft = Offset(radius * 0.025f, radius * 0.025f),
+                            size = Size(size.width * 0.95f, size.height * 0.95f),
+                            style = Stroke(width = 2.dp.toPx()),
+                        )
+                        // The tonearm is a fixed part of the deck, not the rotating record.
+                    }
+                    Artwork(
+                        track.artworkUrl,
+                        Modifier
+                            .size(discSize * 0.38f)
+                            .graphicsLayer { rotationZ = rotation.value }
+                            .clip(CircleShape),
+                        false,
+                    )
                     Box(
                         Modifier
-                            .size(84.dp * (0.92f + controlGlow * 0.08f))
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f * controlGlow),
-                                        Color.Transparent,
-                                    ),
-                                ),
-                                CircleShape,
-                            ),
+                            .size(8.dp)
+                            .background(Color(0xFF12151B), CircleShape)
+                            .align(Alignment.Center),
                     )
-                    Surface(
-                        onClick = player::togglePlayPause,
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        shadowElevation = playElevation,
-                        modifier = Modifier.size(70.dp).graphicsLayer {
-                            scaleX = playControlScale
-                            scaleY = playControlScale
-                        },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AnimatedContent(
-                                targetState = state.isPlaying,
-                                transitionSpec = {
-                                    (fadeIn(tween(140)) + scaleIn(tween(180), initialScale = 0.62f)) togetherWith
-                                        (fadeOut(tween(120)) + scaleOut(tween(160), targetScale = 0.62f))
-                                },
-                                label = "play-pause-glyph",
-                            ) { playing ->
-                                Icon(
-                                    if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                    if (playing) "Pause" else "Play",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(38.dp),
+                    Canvas(Modifier.fillMaxSize()) {
+                        val start = Offset(size.width * 0.86f, size.height * 0.12f)
+                        val elbow = Offset(size.width * 0.77f, size.height * 0.18f)
+                        val needle = Offset(size.width * 0.70f, size.height * 0.32f)
+                        drawCircle(Color(0xFFBBC4CE), radius = 8.dp.toPx(), center = start)
+                        drawLine(
+                            Color(0xFFBBC4CE),
+                            start = start,
+                            end = elbow,
+                            strokeWidth = 5.dp.toPx(),
+                            cap = StrokeCap.Round,
+                        )
+                        drawLine(
+                            Color(0xFFBBC4CE),
+                            start = elbow,
+                            end = needle,
+                            strokeWidth = 3.dp.toPx(),
+                            cap = StrokeCap.Round,
+                        )
+                        drawCircle(accent, radius = 4.dp.toPx(), center = needle)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Box(Modifier.size(6.dp).background(accent, CircleShape))
+                Text(
+                    if (state.isPlaying) "SIDE A · SPINNING" else "SIDE A · PAUSED",
+                    color = Color.White.copy(alpha = 0.72f),
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.6.sp,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 29.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.7).sp,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                listOfNotNull(track.artist, track.album).filter { it.isNotBlank() }.joinToString("  /  "),
+                color = Color.White.copy(alpha = 0.62f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(12.dp))
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = accent,
+            )
+            Spacer(Modifier.height(8.dp))
+            VinylTransport(
+                state = state,
+                player = player,
+                accent = accent,
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun CassetteDeckPlayer(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    onCollapse: () -> Unit,
+) {
+    val track = state.current ?: return
+    val duration = max(state.durationMs, track.durationMs ?: 0L).coerceAtLeast(1L)
+    val progress = (state.positionMs.toFloat() / duration).coerceIn(0f, 1f)
+    val trackKey = track.videoId ?: "${track.artist}|${track.title}"
+    val reelRotation = remember(trackKey) { Animatable(0f) }
+    var scrubPosition by remember(trackKey) { mutableStateOf<Float?>(null) }
+    val shell = Color(0xFF168BFF)
+    val ink = Color(0xFF111820)
+
+    LaunchedEffect(trackKey, state.isPlaying) {
+        if (state.isPlaying) {
+            while (true) {
+                reelRotation.animateTo(
+                    targetValue = reelRotation.value + 360f,
+                    animationSpec = tween(durationMillis = 2_400, easing = LinearEasing),
+                )
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        AmbientBackdrop(
+            accent = Color(0xFF25DCE8),
+            secondary = Color(0xFFFF9D69),
+            isPlaying = state.isPlaying,
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            PlayerStyleHeader("TAPE DECK", onCollapse)
+            Spacer(Modifier.height(20.dp))
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 440.dp)
+                    .aspectRatio(1.42f)
+                    .clip(RoundedCornerShape(28.dp)),
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val corner = CornerRadius(26.dp.toPx())
+                    drawRoundRect(
+                        color = shell,
+                        cornerRadius = corner,
+                    )
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = 0.20f),
+                        topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),
+                        size = Size(size.width - 4.dp.toPx(), size.height - 4.dp.toPx()),
+                        cornerRadius = corner,
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                    drawRoundRect(
+                        color = Color(0xFFF4E8C7),
+                        topLeft = Offset(size.width * 0.07f, size.height * 0.08f),
+                        size = Size(size.width * 0.86f, size.height * 0.30f),
+                        cornerRadius = CornerRadius(12.dp.toPx()),
+                    )
+                    drawRoundRect(
+                        color = Color(0xFF101820),
+                        topLeft = Offset(size.width * 0.08f, size.height * 0.44f),
+                        size = Size(size.width * 0.84f, size.height * 0.39f),
+                        cornerRadius = CornerRadius(14.dp.toPx()),
+                    )
+                    val reelY = size.height * 0.63f
+                    val reelRadius = size.minDimension * 0.115f
+                    val leftReel = Offset(size.width * 0.32f, reelY)
+                    val rightReel = Offset(size.width * 0.68f, reelY)
+                    listOf(leftReel, rightReel).forEach { center ->
+                        drawCircle(Color(0xFFB7C4CB), radius = reelRadius, center = center)
+                        drawCircle(Color(0xFF202B32), radius = reelRadius * 0.72f, center = center)
+                        drawCircle(Color(0xFFD2D8D3), radius = reelRadius * 0.20f, center = center)
+                        rotate(reelRotation.value, pivot = center) {
+                            repeat(6) { spoke ->
+                                val radians = Math.toRadians(spoke * 60.0)
+                                val innerRadius = reelRadius * 0.30f
+                                val outerRadius = reelRadius * 0.65f
+                                drawLine(
+                                    color = Color(0xFFB7C4CB),
+                                    start = Offset(
+                                        center.x + kotlin.math.cos(radians).toFloat() * innerRadius,
+                                        center.y + kotlin.math.sin(radians).toFloat() * innerRadius,
+                                    ),
+                                    end = Offset(
+                                        center.x + kotlin.math.cos(radians).toFloat() * outerRadius,
+                                        center.y + kotlin.math.sin(radians).toFloat() * outerRadius,
+                                    ),
+                                    strokeWidth = 3.dp.toPx(),
+                                    cap = StrokeCap.Round,
                                 )
                             }
                         }
                     }
+                    drawLine(
+                        color = Color(0xFFDA8F55),
+                        start = Offset(leftReel.x + reelRadius * 0.88f, reelY),
+                        end = Offset(rightReel.x - reelRadius * 0.88f, reelY),
+                        strokeWidth = 3.dp.toPx(),
+                    )
+                    // Tape-window markings and the little pressure pad make the object read as a cassette.
+                    drawRoundRect(
+                        color = Color(0xFFE7E9E2),
+                        topLeft = Offset(size.width * 0.46f, size.height * 0.75f),
+                        size = Size(size.width * 0.08f, size.height * 0.055f),
+                        cornerRadius = CornerRadius(3.dp.toPx()),
+                    )
+                    repeat(5) { mark ->
+                        val x = size.width * (0.18f + mark * 0.16f)
+                        drawLine(
+                            color = Color(0xFF6CA1C4),
+                            start = Offset(x, size.height * 0.89f),
+                            end = Offset(x, size.height * 0.95f),
+                            strokeWidth = 2.dp.toPx(),
+                        )
+                    }
                 }
-                IconButton(
-                    onClick = player::next,
-                    modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.06f), CircleShape),
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .fillMaxWidth()
+                        .padding(
+                            start = maxWidth * 0.12f,
+                            end = maxWidth * 0.12f,
+                            top = maxHeight * 0.105f,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Icon(Icons.Filled.SkipNext, "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
+                    Text(
+                        track.title,
+                        color = ink,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        track.artist.uppercase(),
+                        color = ink.copy(alpha = 0.70f),
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 1.1.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    if (state.isPlaying) "KATMUSIC  •  PLAYING" else "KATMUSIC  •  PAUSED",
+                    color = Color.White.copy(alpha = 0.88f),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = maxHeight * 0.055f),
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 440.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "NOW ON THE DECK",
+                        color = Color(0xFF25DCE8),
+                        style = MaterialTheme.typography.labelSmall,
+                        letterSpacing = 2.4.sp,
+                    )
+                    Text(
+                        track.title,
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        track.artist,
+                        color = Color.White.copy(alpha = 0.64f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    if (state.isPlaying) "SIDE A" else "PAUSED",
+                    color = Color.White.copy(alpha = 0.58f),
+                    style = MaterialTheme.typography.labelSmall,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            PlayerStyleSeekbar(
+                progress = progress,
+                positionMs = state.positionMs,
+                durationMs = duration,
+                scrubPosition = scrubPosition,
+                onScrub = { scrubPosition = it },
+                onSeek = {
+                    scrubPosition?.let { player.seekTo((it * duration).toLong().coerceIn(0L, duration)) }
+                    scrubPosition = null
+                },
+                accent = Color(0xFF25DCE8),
+            )
+            Spacer(Modifier.height(8.dp))
+            CassetteTransport(
+                state = state,
+                player = player,
+                accent = Color(0xFF25DCE8),
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlayerStyleHeader(
+    label: String,
+    onCollapse: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onCollapse) {
+            Icon(Icons.Filled.ArrowBack, contentDescription = "Collapse player", tint = Color.White)
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                "KATMUSIC",
+                color = Color.White.copy(alpha = 0.42f),
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 2.2.sp,
+            )
+            Text(
+                label,
+                color = Color.White.copy(alpha = 0.86f),
+                style = MaterialTheme.typography.labelMedium,
+                letterSpacing = 2.4.sp,
+            )
+        }
+        Spacer(Modifier.size(48.dp))
+    }
+}
+
+@Composable
+private fun PlayerStyleSeekbar(
+    progress: Float,
+    positionMs: Long,
+    durationMs: Long,
+    scrubPosition: Float?,
+    onScrub: (Float?) -> Unit,
+    onSeek: () -> Unit,
+    accent: Color,
+) {
+    val seekProgress = scrubPosition ?: progress
+    Slider(
+        value = seekProgress.coerceIn(0f, 1f),
+        onValueChange = { onScrub(it) },
+        onValueChangeFinished = onSeek,
+        modifier = Modifier.fillMaxWidth(),
+        colors = SliderDefaults.colors(
+            thumbColor = accent,
+            activeTrackColor = accent,
+            inactiveTrackColor = Color.White.copy(alpha = 0.16f),
+        ),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            formatPlayerTime((scrubPosition?.times(durationMs)?.toLong()) ?: positionMs),
+            color = Color.White.copy(alpha = 0.62f),
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Text(
+            formatPlayerTime(durationMs),
+            color = Color.White.copy(alpha = 0.62f),
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
+private fun VinylTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier.padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        IconButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+            Icon(
+                Icons.Filled.Shuffle,
+                contentDescription = if (state.shuffleEnabled) "Disable shuffle" else "Enable shuffle",
+                tint = if (state.shuffleEnabled) accent else Color.White.copy(alpha = 0.55f),
+            )
+        }
+        IconButton(
+            onClick = player::previous,
+            modifier = Modifier
+                .size(54.dp)
+                .background(Color.White.copy(alpha = 0.07f), CircleShape),
+        ) {
+            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = Color.White, modifier = Modifier.size(30.dp))
+        }
+        FilledIconButton(
+            onClick = player::togglePlayPause,
+            modifier = Modifier.size(76.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = accent,
+                contentColor = Color(0xFF071116),
+            ),
+        ) {
+            Icon(
+                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                modifier = Modifier.size(40.dp),
+            )
+        }
+        IconButton(
+            onClick = player::next,
+            modifier = Modifier
+                .size(54.dp)
+                .background(Color.White.copy(alpha = 0.07f), CircleShape),
+        ) {
+            Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = Color.White, modifier = Modifier.size(30.dp))
+        }
+        IconButton(onClick = player::cycleRepeatMode) {
+            Icon(
+                if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                contentDescription = "Cycle repeat mode",
+                tint = if (state.repeatMode != 0) accent else Color.White.copy(alpha = 0.55f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CassetteTransport(
+    state: MusicPlayerState,
+    player: MusicPlayer,
+    accent: Color,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 440.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TapeTransportKey(
+                label = "REW",
+                icon = Icons.Filled.SkipPrevious,
+                onClick = player::previous,
+                modifier = Modifier.weight(1f),
+                accent = accent,
+            )
+            TapeTransportKey(
+                label = if (state.isPlaying) "PAUSE" else "PLAY",
+                icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                onClick = player::togglePlayPause,
+                modifier = Modifier.weight(1.2f),
+                accent = accent,
+                prominent = true,
+            )
+            TapeTransportKey(
+                label = "F.FWD",
+                icon = Icons.Filled.SkipNext,
+                onClick = player::next,
+                modifier = Modifier.weight(1f),
+                accent = accent,
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { player.setShuffleEnabled(!state.shuffleEnabled) }) {
+                Icon(
+                    Icons.Filled.Shuffle,
+                    contentDescription = null,
+                    tint = if (state.shuffleEnabled) accent else Color.White.copy(alpha = 0.58f),
+                )
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    if (state.shuffleEnabled) "SHUFFLE ON" else "SHUFFLE",
+                    color = if (state.shuffleEnabled) accent else Color.White.copy(alpha = 0.64f),
+                    letterSpacing = 1.2.sp,
+                )
+            }
+            TextButton(onClick = player::cycleRepeatMode) {
+                Icon(
+                    if (state.repeatMode == 1) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                    contentDescription = null,
+                    tint = if (state.repeatMode != 0) accent else Color.White.copy(alpha = 0.58f),
+                )
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    if (state.repeatMode != 0) "REPEAT ON" else "REPEAT",
+                    color = if (state.repeatMode != 0) accent else Color.White.copy(alpha = 0.64f),
+                    letterSpacing = 1.2.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TapeTransportKey(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color,
+    prominent: Boolean = false,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(if (prominent) 18.dp else 13.dp),
+        color = if (prominent) accent else Color(0xFF202C38),
+        contentColor = if (prominent) Color(0xFF071116) else Color.White,
+        tonalElevation = if (prominent) 4.dp else 0.dp,
+        modifier = modifier.height(58.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = label, modifier = Modifier.size(21.dp))
+            Spacer(Modifier.size(5.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Small, genuinely different silhouettes for the settings style picker. */
+@Composable
+internal fun PlayerStylePreview(
+    style: KatPlayerStyle,
+    modifier: Modifier = Modifier,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Canvas(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF10141B)),
+    ) {
+        val w = size.width
+        val h = size.height
+        when (style) {
+            KatPlayerStyle.DEFAULT -> {
+                drawRoundRect(
+                    color = accent.copy(alpha = 0.74f),
+                    topLeft = Offset(w * 0.12f, h * 0.14f),
+                    size = Size(w * 0.76f, h * 0.72f),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                drawCircle(Color.White, radius = h * 0.13f, center = Offset(w * 0.50f, h * 0.50f))
+            }
+            KatPlayerStyle.POSTER -> {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        listOf(accent.copy(alpha = 0.85f), Color(0xFF10141B)),
+                    ),
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.70f),
+                    radius = h * 0.25f,
+                    center = Offset(w * 0.50f, h * 0.35f),
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.52f),
+                    topLeft = Offset(w * 0.16f, h * 0.74f),
+                    size = Size(w * 0.68f, h * 0.04f),
+                )
+            }
+            KatPlayerStyle.VIDEO -> {
+                drawRect(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFF102348),
+                            accent.copy(alpha = 0.82f),
+                            Color(0xFF18203A),
+                        ),
+                    ),
+                )
+                repeat(3) { ring ->
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.16f - ring * 0.035f),
+                        radius = h * (0.17f + ring * 0.10f),
+                        center = Offset(w * 0.69f, h * 0.34f),
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                }
+                drawRoundRect(
+                    color = Color(0xFF080B12).copy(alpha = 0.72f),
+                    topLeft = Offset(w * 0.08f, h * 0.69f),
+                    size = Size(w * 0.84f, h * 0.20f),
+                    cornerRadius = CornerRadius(7.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.72f),
+                    topLeft = Offset(w * 0.14f, h * 0.76f),
+                    size = Size(w * 0.46f, h * 0.035f),
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                )
+            }
+            KatPlayerStyle.TIMELINE -> {
+                drawRect(Color(0xFF131B27))
+                drawRect(
+                    color = accent.copy(alpha = 0.72f),
+                    size = Size(w * 0.52f, h),
+                )
+                drawLine(
+                    color = Color.White,
+                    start = Offset(w * 0.52f, 0f),
+                    end = Offset(w * 0.52f, h),
+                    strokeWidth = 2.dp.toPx(),
+                )
+            }
+            KatPlayerStyle.LYRICS -> {
+                drawRoundRect(
+                    color = accent.copy(alpha = 0.18f),
+                    topLeft = Offset(w * 0.1f, h * 0.12f),
+                    size = Size(w * 0.80f, h * 0.76f),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                repeat(3) { line ->
+                    val lineWidth = if (line == 1) 0.70f else 0.48f
+                    drawRoundRect(
+                        color = if (line == 1) Color.White else Color.White.copy(alpha = 0.42f),
+                        topLeft = Offset(w * 0.16f, h * (0.30f + line * 0.18f)),
+                        size = Size(w * lineWidth, h * 0.055f),
+                        cornerRadius = CornerRadius(4.dp.toPx()),
+                    )
                 }
             }
-            Spacer(Modifier.height(28.dp))
+            KatPlayerStyle.ARTWORK -> {
+                drawRoundRect(
+                    color = accent.copy(alpha = 0.18f),
+                    topLeft = Offset(w * 0.18f, h * 0.07f),
+                    size = Size(w * 0.64f, h * 0.66f),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(listOf(accent, Color(0xFF10141B))),
+                    radius = h * 0.26f,
+                    center = Offset(w * 0.50f, h * 0.38f),
+                )
+            }
+            KatPlayerStyle.VINYL -> {
+                drawCircle(
+                    color = Color(0xFF080A0D),
+                    radius = h * 0.40f,
+                    center = Offset(w * 0.50f, h * 0.50f),
+                )
+                repeat(4) { ring ->
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.20f),
+                        radius = h * (0.20f + ring * 0.055f),
+                        center = Offset(w * 0.50f, h * 0.50f),
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                }
+                drawCircle(accent, radius = h * 0.13f, center = Offset(w * 0.50f, h * 0.50f))
+            }
+            KatPlayerStyle.CASSETTE -> {
+                drawRoundRect(
+                    color = Color(0xFF168BFF),
+                    topLeft = Offset(w * 0.10f, h * 0.13f),
+                    size = Size(w * 0.80f, h * 0.72f),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color(0xFF101820),
+                    topLeft = Offset(w * 0.18f, h * 0.46f),
+                    size = Size(w * 0.64f, h * 0.28f),
+                    cornerRadius = CornerRadius(5.dp.toPx()),
+                )
+                drawCircle(Color(0xFFB7C4CB), h * 0.10f, Offset(w * 0.36f, h * 0.60f))
+                drawCircle(Color(0xFFB7C4CB), h * 0.10f, Offset(w * 0.64f, h * 0.60f))
+            }
         }
     }
 }

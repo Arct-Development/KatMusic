@@ -77,6 +77,7 @@ class AndroidHomeFeedRepository @Inject constructor(
                 source = videoId,
                 artwork = card.artworkUrl,
                 isLocal = false,
+                videoId = videoId,
             ),
         )
     }

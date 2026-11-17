@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import com.itzfallenme.katmusic.data.music.StreamApi
 import com.itzfallenme.katmusic.data.music.YouTubeMusicTrack
+import com.itzfallenme.katmusic.shared.share.KatMusicCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,6 +64,11 @@ class LinkPlaybackResolver @Inject constructor(
 
         try {
             when {
+                // A plain human-readable KatMusic Code can be pasted/shared
+                // directly to the app and resolves without an internet lookup.
+                KatMusicCode.decode(clean) != null ->
+                    resolveYouTube("https://music.youtube.com/watch?v=${KatMusicCode.decode(clean)}")
+
                 // 1. KatMusic cross-device share link
                 isKatMusicTrackUrl(clean) -> resolveKatMusicTrack(clean)
 
@@ -95,11 +101,15 @@ class LinkPlaybackResolver @Inject constructor(
         val webShare = (scheme == "http" || scheme == "https") &&
             (host == "katmusic.pages.dev" || host.endsWith(".katmusic.pages.dev"))
         val videoId = parsed.getQueryParameter("v").orEmpty().trim()
-        return (customTrack || webShare) && videoIdPattern.matches(videoId)
+        val code = parsed.getQueryParameter("code")
+        return (customTrack || webShare) &&
+            (videoIdPattern.matches(videoId) || KatMusicCode.decode(code) != null)
     }
 
     private suspend fun resolveKatMusicTrack(url: String) {
-        val videoId = Uri.parse(url).getQueryParameter("v").orEmpty().trim()
+        val parsed = Uri.parse(url)
+        val videoId = parsed.getQueryParameter("v").orEmpty().trim()
+            .ifBlank { KatMusicCode.decode(parsed.getQueryParameter("code")).orEmpty() }
         if (!videoIdPattern.matches(videoId)) return
         resolveYouTube("https://music.youtube.com/watch?v=$videoId")
     }

@@ -15,10 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.QueueMusic
@@ -80,7 +84,12 @@ import kotlinx.coroutines.launch
 
 /** The shared top-level destinations. One navigation graph for both platforms. */
 enum class KatMusicTab(val route: String, val label: String, val icon: ImageVector) {
+    Discover("discover", "Discover", Icons.Filled.Explore),
+    NewReleases("new_releases", "Releases", Icons.Filled.NewReleases),
+    Artists("artists", "Artists", Icons.Rounded.Mic),
+    Social("social", "Social", Icons.Filled.People),
     Home("home", "Home", Icons.Rounded.Home),
+    Stats("stats", "Stats", Icons.Rounded.BarChart),
     Library("library", "Library", Icons.Rounded.LibraryMusic),
     Search("search", "Search", Icons.Rounded.Search),
     Podcasts("podcasts", "Podcasts", Icons.Rounded.Mic),
@@ -133,8 +142,24 @@ fun KatMusicApp(
     jamContent: (@Composable () -> Unit)? = null,
     /** Optional platform file import for the shared Playlists screen. */
     onImportPlaylist: (() -> Unit)? = null,
+    /** Optional provider-backed playlist import for platforms with a catalog client. */
+    onImportOnlinePlaylist: (() -> Unit)? = null,
     /** Optional platform-only settings section, rendered above About. */
     settingsExtra: (@Composable ColumnScope.() -> Unit)? = null,
+    /** Optional platform-provided listening statistics screen. */
+    statsContent: (@Composable () -> Unit)? = null,
+    /** Optional platform-specific Discover destination. */
+    discoverContent: (@Composable () -> Unit)? = null,
+    /** Optional provider-backed new release/album destination. */
+    newReleasesContent: (@Composable () -> Unit)? = null,
+    /** Optional platform Last.fm/social destination. */
+    socialContent: (@Composable () -> Unit)? = null,
+    /** Optional provider-backed artist browsing destination. */
+    artistsContent: (@Composable () -> Unit)? = null,
+    /** Desktop-native (or shared) song-code share surface for the current track. */
+    onShareSongCode: ((Track) -> Unit)? = null,
+    /** Optional platform renderer for a lyrics share card. */
+    onShareLyrics: ((Track, com.itzfallenme.katmusic.shared.lyrics.Lyrics) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val settings by settingsStore.settings.collectAsState()
@@ -152,9 +177,23 @@ fun KatMusicApp(
         var collection by remember { mutableStateOf<CollectionTarget?>(null) }
         var holderCollection by remember { mutableStateOf<com.itzfallenme.katmusic.shared.ui.screens.CollectionTargetHolder?>(null) }
 
-        val visibleTabs = remember(homeFeed, podcasts, jamContent) {
+        val visibleTabs = remember(
+            homeFeed,
+            podcasts,
+            jamContent,
+            statsContent,
+            discoverContent,
+            newReleasesContent,
+            socialContent,
+            artistsContent,
+        ) {
             KatMusicTab.entries.filter { tab ->
+                (tab != KatMusicTab.Discover || discoverContent != null) &&
+                    (tab != KatMusicTab.NewReleases || newReleasesContent != null) &&
+                    (tab != KatMusicTab.Social || socialContent != null) &&
+                    (tab != KatMusicTab.Artists || artistsContent != null) &&
                 (tab != KatMusicTab.Home || homeFeed != null) &&
+                    (tab != KatMusicTab.Stats || statsContent != null) &&
                     (tab != KatMusicTab.Podcasts || podcasts != null) &&
                     (tab != KatMusicTab.Jam || jamContent != null)
             }
@@ -197,6 +236,21 @@ fun KatMusicApp(
                     navController.navigate(COLLECTION_ROUTE) { launchSingleTop = true }
                 },
                 onPlay = playQueue,
+                onPlayCode = { videoId ->
+                    val card = com.itzfallenme.katmusic.shared.data.HomeCard(
+                        id = videoId,
+                        title = "Shared song",
+                        subtitle = "YouTube Music",
+                        videoId = videoId,
+                    )
+                    homeFeed?.resolvePlayback(card)
+                        ?: Result.success(
+                            card.toTrack()
+                                ?: error("KatMusic Code did not contain a playable song"),
+                        )
+                },
+                onShareSongCode = onShareSongCode,
+                onShareLyrics = onShareLyrics,
                 canChooseFolder = platform.canChooseFolder,
                 onRefresh = { scope.launch { library.refresh() } },
                 onChooseFolder = {
@@ -211,7 +265,13 @@ fun KatMusicApp(
                 podcasts = podcasts,
                 jamContent = jamContent,
                 onImportPlaylist = onImportPlaylist,
+                onImportOnlinePlaylist = onImportOnlinePlaylist,
                 settingsExtra = settingsExtra,
+                statsContent = statsContent,
+                discoverContent = discoverContent,
+                newReleasesContent = newReleasesContent,
+                socialContent = socialContent,
+                artistsContent = artistsContent,
                 onOpenHolderCollection = { target ->
                     holderCollection = target
                     collection = CollectionTarget(target.title, target.subtitle, target.artwork, target.tracks)
@@ -320,13 +380,22 @@ private fun AppNavHost(
     onRefresh: () -> Unit,
     onChooseFolder: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
+    onPlayCode: suspend (String) -> Result<Track>,
+    onShareSongCode: ((Track) -> Unit)?,
+    onShareLyrics: ((Track, com.itzfallenme.katmusic.shared.lyrics.Lyrics) -> Unit)?,
     downloads: DownloadsRepository?,
     playlists: PlaylistsRepository?,
     homeFeed: HomeFeedRepository?,
     podcasts: PodcastsRepository?,
     jamContent: (@Composable () -> Unit)?,
     onImportPlaylist: (() -> Unit)?,
+    onImportOnlinePlaylist: (() -> Unit)?,
     settingsExtra: (@Composable ColumnScope.() -> Unit)?,
+    statsContent: (@Composable () -> Unit)?,
+    discoverContent: (@Composable () -> Unit)?,
+    newReleasesContent: (@Composable () -> Unit)?,
+    socialContent: (@Composable () -> Unit)?,
+    artistsContent: (@Composable () -> Unit)?,
     onOpenHolderCollection: (com.itzfallenme.katmusic.shared.ui.screens.CollectionTargetHolder) -> Unit,
 ) {
     NavHost(
@@ -338,12 +407,52 @@ private fun AppNavHost(
         popEnterTransition = { MotionSpec.backEnter() },
         popExitTransition = { MotionSpec.backExit() },
     ) {
+        composable(KatMusicTab.Discover.route) {
+            val content = discoverContent
+            if (content == null) {
+                navController.popBackStack()
+            } else {
+                content()
+            }
+        }
+        composable(KatMusicTab.NewReleases.route) {
+            val content = newReleasesContent
+            if (content == null) {
+                navController.popBackStack()
+            } else {
+                content()
+            }
+        }
+        composable(KatMusicTab.Social.route) {
+            val content = socialContent
+            if (content == null) {
+                navController.popBackStack()
+            } else {
+                content()
+            }
+        }
+        composable(KatMusicTab.Artists.route) {
+            val content = artistsContent
+            if (content == null) {
+                navController.popBackStack()
+            } else {
+                content()
+            }
+        }
         composable(KatMusicTab.Home.route) {
             val feed = homeFeed
             if (feed == null) {
                 navController.popBackStack()
             } else {
                 HomeScreen(repository = feed, playerQueue = onPlay)
+            }
+        }
+        composable(KatMusicTab.Stats.route) {
+            val content = statsContent
+            if (content == null) {
+                navController.popBackStack()
+            } else {
+                content()
             }
         }
         composable(KatMusicTab.Library.route) {
@@ -394,7 +503,13 @@ private fun AppNavHost(
             )
         }
         composable(KatMusicTab.Search.route) {
-            SearchScreen(tracks = tracks, playerState = playerState, onPlay = onPlay)
+            SearchScreen(
+                tracks = tracks,
+                playerState = playerState,
+                onPlay = onPlay,
+                homeFeed = homeFeed,
+                onPlayCode = onPlayCode,
+            )
         }
         composable(KatMusicTab.Podcasts.route) {
             val repository = podcasts
@@ -423,6 +538,7 @@ private fun AppNavHost(
                 state = playerState,
                 player = player,
                 onBack = { navController.popBackStack() },
+                onShareSongCode = onShareSongCode,
                 onOpenLyrics = lyrics?.let { provider ->
                     { navController.navigate(LYRICS_ROUTE) { launchSingleTop = true } }
                 },
@@ -433,6 +549,7 @@ private fun AppNavHost(
                 state = playerState,
                 provider = lyrics,
                 onBack = { navController.popBackStack() },
+                onShareLyrics = onShareLyrics,
             )
         }
         composable(QUEUE_ROUTE) {
@@ -485,6 +602,7 @@ private fun AppNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenCollection = onOpenHolderCollection,
                     onImport = onImportPlaylist,
+                    onImportOnlinePlaylist = onImportOnlinePlaylist,
                 )
             }
         }

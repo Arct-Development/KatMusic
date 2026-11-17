@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -23,16 +24,21 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,12 +46,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.shared.player.PlayerController
 import com.itzfallenme.katmusic.shared.player.PlayerState
 import com.itzfallenme.katmusic.shared.player.RepeatMode
+import com.itzfallenme.katmusic.shared.share.KatMusicCode
 import com.itzfallenme.katmusic.shared.ui.components.Artwork
 import com.itzfallenme.katmusic.shared.ui.components.formatDuration
 import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
@@ -57,6 +65,7 @@ fun NowPlayingScreen(
     player: PlayerController,
     onBack: () -> Unit,
     onOpenLyrics: (() -> Unit)? = null,
+    onShareSongCode: ((com.itzfallenme.katmusic.shared.models.Track) -> Unit)? = null,
 ) {
     val current = state.current
     if (current == null) {
@@ -67,6 +76,10 @@ fun NowPlayingScreen(
     }
 
     var scrubPosition by remember(current.id) { mutableStateOf<Float?>(null) }
+    var showSleepTimer by remember { mutableStateOf(false) }
+    var customTimerMinutes by remember { mutableStateOf("") }
+    val shareVideoId = current.videoId ?: current.id.takeUnless { current.isLocal }
+    val canShareSongCode = onShareSongCode != null && KatMusicCode.encode(shareVideoId) != null
     val duration = state.durationMs.coerceAtLeast(current.durationMs).coerceAtLeast(1L)
     val sliderValue = (scrubPosition ?: state.positionMs.toFloat()).coerceIn(0f, duration.toFloat())
 
@@ -88,12 +101,32 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
-            if (onOpenLyrics != null) {
-                IconButton(onClick = onOpenLyrics) {
-                    Icon(Icons.Rounded.Lyrics, contentDescription = "Lyrics")
+            Row {
+                IconButton(onClick = { showSleepTimer = true }) {
+                    Icon(
+                        Icons.Rounded.Timer,
+                        contentDescription = if (state.sleepTimerRemainingMs == null) {
+                            "Set sleep timer"
+                        } else {
+                            "Sleep timer ${formatSleepTimer(state.sleepTimerRemainingMs)} remaining"
+                        },
+                        tint = if (state.sleepTimerRemainingMs != null) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
                 }
-            } else {
-                Spacer(Modifier.size(48.dp))
+                if (canShareSongCode) {
+                    IconButton(onClick = { onShareSongCode.invoke(current) }) {
+                        Icon(Icons.Rounded.Share, contentDescription = "Share KatMusic Code")
+                    }
+                }
+                if (onOpenLyrics != null) {
+                    IconButton(onClick = onOpenLyrics) {
+                        Icon(Icons.Rounded.Lyrics, contentDescription = "Lyrics")
+                    }
+                }
             }
         }
 
@@ -237,4 +270,79 @@ fun NowPlayingScreen(
             }
         }
     }
+
+    if (showSleepTimer) {
+        val activeTime = state.sleepTimerRemainingMs?.let(::formatSleepTimer)
+        AlertDialog(
+            onDismissRequest = {
+                customTimerMinutes = ""
+                showSleepTimer = false
+            },
+            title = { Text("Sleep timer") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    activeTime?.let {
+                        Text(
+                            "$it remaining",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    listOf(15, 30, 60).forEach { minutes ->
+                        TextButton(
+                            onClick = {
+                                player.setSleepTimerMinutes(minutes)
+                                customTimerMinutes = ""
+                                showSleepTimer = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("$minutes minutes") }
+                    }
+                    OutlinedTextField(
+                        value = customTimerMinutes,
+                        onValueChange = { value ->
+                            customTimerMinutes = value.filter(Char::isDigit).take(4)
+                        },
+                        label = { Text("Custom minutes") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            player.setSleepTimerMinutes(0)
+                            customTimerMinutes = ""
+                            showSleepTimer = false
+                        },
+                    ) { Text("Turn off") }
+                    val customMinutes = customTimerMinutes.toIntOrNull()?.takeIf { it > 0 }
+                    TextButton(
+                        onClick = {
+                            customMinutes?.let(player::setSleepTimerMinutes)
+                            customTimerMinutes = ""
+                            showSleepTimer = false
+                        },
+                        enabled = customMinutes != null,
+                    ) { Text("Set") }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        customTimerMinutes = ""
+                        showSleepTimer = false
+                    },
+                ) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+private fun formatSleepTimer(remainingMs: Long): String {
+    val seconds = (remainingMs / 1_000L).coerceAtLeast(0L)
+    return "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
 }

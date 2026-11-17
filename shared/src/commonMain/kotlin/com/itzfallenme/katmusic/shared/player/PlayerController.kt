@@ -18,6 +18,7 @@ data class PlayerState(
     val repeatMode: RepeatMode = RepeatMode.OFF,
     val shuffle: Boolean = false,
     val error: String? = null,
+    val sleepTimerRemainingMs: Long? = null,
 ) {
     val current: Track? get() = queue.getOrNull(index)
     val hasNext: Boolean get() = queue.isNotEmpty()
@@ -42,6 +43,8 @@ interface PlayerController {
     fun setRepeatMode(mode: RepeatMode)
     fun setShuffle(enabled: Boolean)
     fun cycleRepeatMode()
+    /** Stop playback after the selected number of minutes; zero cancels. */
+    fun setSleepTimerMinutes(minutes: Int)
     fun stop()
 }
 

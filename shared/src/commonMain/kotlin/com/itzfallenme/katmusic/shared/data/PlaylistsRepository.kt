@@ -31,5 +31,14 @@ interface PlaylistsRepository {
     suspend fun create(title: String): Result<Playlist>
     suspend fun delete(playlistId: String): Result<Unit>
     suspend fun addToPlaylist(playlistId: String, track: Track): Result<Unit>
+    /** Add several tracks as one repository operation where the platform supports batching. */
+    suspend fun addTracksToPlaylist(playlistId: String, tracks: List<Track>): Result<Unit> {
+        for (track in tracks) {
+            val result = addToPlaylist(playlistId, track)
+            val error = result.exceptionOrNull()
+            if (error != null) return Result.failure(error)
+        }
+        return Result.success(Unit)
+    }
     suspend fun removeFromPlaylist(playlistId: String, trackId: String): Result<Unit>
 }

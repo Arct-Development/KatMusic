@@ -13,10 +13,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
+import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.Base64
 
 /** A track's playable local path (or null when the source is a stream). */
 internal fun Track.toLocalPath(): String? = when {
@@ -27,8 +32,9 @@ internal fun Track.toLocalPath(): String? = when {
 
 /**
  * Desktop playlists as real, portable `.m3u` files (with `#EXTM3U` /
- * `#EXTINF` headers) inside `~/KatMusic/Playlists`. Any other desktop player
- * can open them; KatMusic reads them back with tags refreshed from disk.
+ * `#EXTINF` headers) inside `~/KatMusic/Playlists`. Local files are portable
+ * paths; online tracks are standard YouTube watch URLs with optional KatMusic
+ * metadata comments so signed, expiring media URLs are never persisted.
  */
 class M3uPlaylistsRepository(
     baseDir: Path = Paths.get(System.getProperty("user.home"), "KatMusic", "Playlists"),
@@ -104,17 +110,25 @@ class M3uPlaylistsRepository(
     }
 
     override suspend fun addToPlaylist(playlistId: String, track: Track): Result<Unit> =
+        addTracksToPlaylist(playlistId, listOf(track))
+
+    override suspend fun addTracksToPlaylist(playlistId: String, tracks: List<Track>): Result<Unit> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 runCatching {
                     val file = File(playlistId)
                     require(file.isFile) { "Playlist file is missing" }
                     val existing = parseM3u(file.readText(), baseDir.toFile())
-                    val path = track.toLocalPath()
-                        ?: error("“${track.title}” is a stream — desktop playlists hold local files")
-                    if (existing.any { it.first == path }) return@runCatching Unit
-                    file.appendText(m3uEntry(track, path))
-                    reloadOne(file)
+                    val locations = existing.mapTo(mutableSetOf()) { it.first }
+                    val additions = tracks.mapNotNull { track ->
+                        val path = track.toLocalPath() ?: track.toM3uStreamUrl()
+                            ?: error("“${track.title}” has no portable playlist location")
+                        if (locations.add(path)) m3uEntry(track, path) else null
+                    }
+                    if (additions.isNotEmpty()) {
+                        file.appendText(additions.joinToString(separator = ""))
+                        reloadOne(file)
+                    }
                     Unit
                 }
             }
@@ -175,19 +189,43 @@ class M3uPlaylistsRepository(
     }
 
     companion object {
+        private const val KATMUSIC_METADATA_PREFIX = "#KATMUSIC:1:"
+        private val metadataJson = Json { ignoreUnknownKeys = true }
+
+        @Serializable
+        private data class StreamMetadata(
+            val videoId: String,
+            val title: String,
+            val artist: String,
+            val album: String,
+            val genre: String,
+            val durationMs: Long,
+            val artwork: String?,
+            val trackNumber: Int,
+            val year: Int,
+        )
+
         /**
-         * Parses M3U content into (path, track) pairs. The first entry of each
-         * `#EXTINF` pair is the resolved absolute file path; the track carries
-         * tags refreshed from the file when it still exists on disk.
+         * Parses M3U content into (location, track) pairs. Local paths are
+         * resolved against [baseDir]; public YouTube URLs become unresolved
+         * tracks that the Desktop player can resolve on demand.
          */
         internal fun parseM3u(content: String, baseDir: File): List<Pair<String, Track?>> {
             val entries = mutableListOf<Pair<String, Track?>>()
             var pendingTitle: String? = null
             var pendingArtist: String? = null
             var pendingDurationMs = 0L
+            var pendingStreamMetadata: StreamMetadata? = null
             content.lines().forEach { raw ->
                 val line = raw.trim()
                 when {
+                    line.startsWith(KATMUSIC_METADATA_PREFIX) -> {
+                        val encoded = line.removePrefix(KATMUSIC_METADATA_PREFIX)
+                        pendingStreamMetadata = runCatching {
+                            val bytes = Base64.getUrlDecoder().decode(encoded)
+                            metadataJson.decodeFromString<StreamMetadata>(bytes.toString(StandardCharsets.UTF_8))
+                        }.getOrNull()
+                    }
                     line.startsWith("#EXTINF:") -> {
                         val meta = line.removePrefix("#EXTINF:")
                         val comma = meta.indexOf(',')
@@ -200,34 +238,95 @@ class M3uPlaylistsRepository(
                             ?: label.trim().takeIf { it.isNotBlank() }
                     }
                     line.isNotEmpty() && !line.startsWith("#") -> {
-                        val resolved = resolvePath(line, baseDir)
-                        val file = File(resolved)
-                        val track = if (file.isFile) {
-                            Track(
-                                id = file.absolutePath,
-                                title = pendingTitle ?: file.nameWithoutExtension,
-                                artist = pendingArtist ?: "Unknown artist",
-                                source = file.toURI().toString(),
-                                durationMs = pendingDurationMs,
-                                isLocal = true,
+                        val stream = pendingStreamMetadata
+                        val videoId = stream?.videoId ?: videoIdFromPlaylistUrl(line)
+                        val (resolved, track) = if (videoId != null) {
+                            line to Track(
+                                id = videoId,
+                                title = stream?.title ?: pendingTitle ?: "YouTube track",
+                                artist = stream?.artist ?: pendingArtist ?: "Unknown artist",
+                                album = stream?.album.orEmpty(),
+                                genre = stream?.genre.orEmpty(),
+                                durationMs = stream?.durationMs?.takeIf { it > 0L } ?: pendingDurationMs,
+                                source = videoId,
+                                artwork = stream?.artwork,
+                                trackNumber = stream?.trackNumber ?: 0,
+                                year = stream?.year ?: 0,
+                                isLocal = false,
+                                videoId = videoId,
                             )
-                        } else null
+                        } else {
+                            val resolvedPath = resolvePath(line, baseDir)
+                            val file = File(resolvedPath)
+                            val localTrack = if (file.isFile) {
+                                Track(
+                                    id = file.absolutePath,
+                                    title = pendingTitle ?: file.nameWithoutExtension,
+                                    artist = pendingArtist ?: "Unknown artist",
+                                    source = file.toURI().toString(),
+                                    durationMs = pendingDurationMs,
+                                    isLocal = true,
+                                )
+                            } else null
+                            resolvedPath to localTrack
+                        }
                         entries.add(resolved to track)
                         pendingTitle = null
                         pendingArtist = null
                         pendingDurationMs = 0L
+                        pendingStreamMetadata = null
                     }
                 }
             }
             return entries
         }
 
-        internal fun m3uEntry(track: Track, absolutePath: String): String {
+        internal fun m3uEntry(track: Track, location: String): String {
             val seconds = (track.durationMs / 1000L).coerceAtLeast(0L)
             val label = listOf(track.artist, track.title)
                 .filter { it.isNotBlank() }
                 .joinToString(" - ")
-            return "#EXTINF:$seconds,$label\n$absolutePath\n"
+            val streamId = track.videoId ?: track.id.takeIf { it.matches(YOUTUBE_ID) }
+            val metadata = if (!track.isLocal && streamId != null) {
+                val encoded = metadataJson.encodeToString(
+                    StreamMetadata.serializer(),
+                    StreamMetadata(
+                        videoId = streamId,
+                        title = track.title,
+                        artist = track.artist,
+                        album = track.album,
+                        genre = track.genre,
+                        durationMs = track.durationMs,
+                        artwork = track.artwork,
+                        trackNumber = track.trackNumber,
+                        year = track.year,
+                    ),
+                ).toByteArray(StandardCharsets.UTF_8)
+                KATMUSIC_METADATA_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(encoded) + "\n"
+            } else {
+                ""
+            }
+            return metadata + "#EXTINF:$seconds,$label\n$location\n"
+        }
+
+        private val YOUTUBE_ID = Regex("[A-Za-z0-9_-]{11}")
+
+        private fun videoIdFromPlaylistUrl(value: String): String? {
+            val uri = runCatching { URI(value) }.getOrNull() ?: return null
+            val host = uri.host?.lowercase() ?: return null
+            val validHost = host == "youtu.be" ||
+                host == "youtube.com" || host.endsWith(".youtube.com") ||
+                host == "youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com")
+            if (!validHost) return null
+            val id = if (host == "youtu.be") {
+                uri.path.orEmpty().trim('/').substringBefore('/')
+            } else {
+                uri.rawQuery.orEmpty()
+                    .split('&')
+                    .firstOrNull { it.startsWith("v=") }
+                    ?.substringAfter("v=")
+            }
+            return id?.takeIf { YOUTUBE_ID.matches(it) }
         }
 
         private fun resolvePath(line: String, baseDir: File): String {
@@ -240,4 +339,10 @@ class M3uPlaylistsRepository(
         private fun safeFileName(name: String): String =
             name.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim().take(120)
     }
+}
+
+private fun Track.toM3uStreamUrl(): String? {
+    if (isLocal) return null
+    val id = (videoId ?: id).takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) } ?: return null
+    return "https://www.youtube.com/watch?v=$id"
 }

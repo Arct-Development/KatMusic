@@ -5,6 +5,7 @@ import com.itzfallenme.katmusic.shared.player.PlayerController
 import com.itzfallenme.katmusic.shared.player.PlayerState
 import com.itzfallenme.katmusic.shared.player.QueueNavigator
 import com.itzfallenme.katmusic.shared.player.RepeatMode
+import com.itzfallenme.katmusic.desktop.playback.DesktopSleepTimer
 import com.sun.jna.Callback
 import com.sun.jna.Library
 import com.sun.jna.Native
@@ -96,11 +97,20 @@ class MpvPlayer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = _state.asStateFlow()
+    private val sleepTimer = DesktopSleepTimer(
+        scope = scope,
+        onRemainingChanged = { remaining ->
+            _state.update { it.copy(sleepTimerRemainingMs = remaining) }
+        },
+        onExpire = {
+            if (_state.value.isPlaying) togglePlayPause()
+        },
+    )
 
     private var handle: Pointer? = null
     private val eventThreadRunning = AtomicBoolean(false)
     private val shutdown = AtomicBoolean(false)
-    private var generation = 0
+    @Volatile private var generation = 0
     private var refreshAttempts = 0
     private var pendingStartPositionMs = 0L
     private var equalizerEnabled = false
@@ -191,6 +201,8 @@ class MpvPlayer(
 
     override fun cycleRepeatMode() = _state.update { it.copy(repeatMode = QueueNavigator.cycle(it.repeatMode)) }
 
+    override fun setSleepTimerMinutes(minutes: Int) = sleepTimer.setMinutes(minutes)
+
     override fun stop() {
         generation++
         handle?.let { lib?.mpv_command(it, arrayOf("stop")) }
@@ -239,7 +251,50 @@ class MpvPlayer(
     private fun loadCurrent() {
         val track = _state.value.current ?: return
         val h = handle ?: return
-        val source = track.source
+        val expectedGeneration = generation
+        val unresolvedVideoId = track.videoId?.takeIf { track.source == it }
+        if (unresolvedVideoId != null) {
+            val resolver = freshUrl
+            if (resolver == null) {
+                _state.update {
+                    it.copy(
+                        isPlaying = false,
+                        isBuffering = false,
+                        error = "This saved stream needs a YouTube playback resolver",
+                    )
+                }
+                return
+            }
+            _state.update { it.copy(isBuffering = true, error = null) }
+            scope.launch {
+                val streamUrl = runCatching { resolver(unresolvedVideoId) }.getOrNull()
+                if (expectedGeneration != generation || handle !== h) return@launch
+                if (streamUrl.isNullOrBlank()) {
+                    _state.update {
+                        it.copy(
+                            isPlaying = false,
+                            isBuffering = false,
+                            error = "Couldn't resolve the saved YouTube track. Check your connection and try again.",
+                        )
+                    }
+                    return@launch
+                }
+                val updated = track.copy(source = streamUrl)
+                _state.update { state ->
+                    val queue = state.queue.toMutableList().apply {
+                        if (state.index in indices) set(state.index, updated)
+                    }
+                    state.copy(queue = queue)
+                }
+                loadResolvedSource(h, streamUrl, expectedGeneration)
+            }
+            return
+        }
+        loadResolvedSource(h, track.source, expectedGeneration)
+    }
+
+    private fun loadResolvedSource(h: Pointer, source: String, expectedGeneration: Int) {
+        if (expectedGeneration != generation || handle !== h) return
         val fileArg = when {
             source.startsWith("file:") -> java.net.URI(source).path ?: source
             else -> source

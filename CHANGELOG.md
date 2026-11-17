@@ -4,7 +4,7 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [2.6.5] - 2026-11-16
+## [2.6.5] - 2026-11-17
 
 ### Added
 
@@ -14,10 +14,18 @@ All notable changes to KatMusic are documented here. The format follows
 - Portable liquid-glass chrome on desktop for the player dock and navigation surfaces, drawn with Compose primitives while Android keeps Kyant Backdrop refraction.
 - Desktop installers in the release workflow: MSI, DMG for Apple silicon and Intel Macs, DEB, plus portable archives.
 - A shared download-size formatter that produces identical output on Android, desktop and Kotlin/Native.
+- Android player styles with genuinely different decks: rotating Vinyl and animated Cassette players, plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas layouts. Classic remains unchanged.
+- Player-style previews in Settings so each deck can be compared before opening Now Playing.
+- Desktop parity features: Jam room controls, displayable/enterable Code 128 KatMusic Codes, local listening stats, album browsing, streamed M3U playlists, sleep timer and lyrics copy.
+- Desktop Last.fm support with bring-your-own API credentials, browser authorization, scrobbling, now-playing updates, recent tracks, top artists and public friend profiles.
+- Public playlist import on desktop for YouTube, Spotify and Apple Music, matching external tracks to YouTube Music without account cookies.
+- Desktop regional Discover charts with a persisted country choice, local-history mixes, artist album browsing and provider-recommended artist radio.
+- Desktop system-wide media keys with a focused-window fallback, a system tray with playback controls and track-change notifications, and PNG lyric-card export.
 
 ### Changed
 
 - Desktop packaging now carries a stable Windows upgrade identity, bundle identifier, vendor and menu metadata.
+- Settings explains that Classic is unchanged while Vinyl and Cassette add custom decks.
 
 ### Notes
 

@@ -14,11 +14,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,12 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalClipboardManager
 import com.itzfallenme.katmusic.shared.lyrics.LrcParser
 import com.itzfallenme.katmusic.shared.lyrics.Lyrics
 import com.itzfallenme.katmusic.shared.lyrics.LyricsProvider
 import com.itzfallenme.katmusic.shared.lyrics.LyricsResult
+import com.itzfallenme.katmusic.shared.models.Track
 import com.itzfallenme.katmusic.shared.player.PlayerState
 import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
 
@@ -49,11 +56,14 @@ fun LyricsScreen(
     state: PlayerState,
     provider: LyricsProvider?,
     onBack: () -> Unit,
+    onShareLyrics: ((Track, Lyrics) -> Unit)? = null,
 ) {
     val track = state.current
     var lyrics by remember(track?.id) { mutableStateOf<Lyrics?>(null) }
     var error by remember(track?.id) { mutableStateOf<String?>(null) }
     var loading by remember(track?.id) { mutableStateOf(provider != null) }
+    var copyMessage by remember(track?.id) { mutableStateOf<String?>(null) }
+    val clipboard = LocalClipboardManager.current
 
     LaunchedEffect(track?.id, provider) {
         if (track == null || provider == null) {
@@ -93,6 +103,44 @@ fun LyricsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (lyrics != null && !lyrics!!.isEmpty) {
+                IconButton(
+                    onClick = {
+                        val currentLyrics = lyrics ?: return@IconButton
+                        val currentTrack = track ?: return@IconButton
+                        onShareLyrics?.invoke(currentTrack, currentLyrics)
+                    },
+                ) {
+                    Icon(Icons.Rounded.Share, contentDescription = "Share lyrics card")
+                }
+                IconButton(
+                    onClick = {
+                        val currentLyrics = lyrics ?: return@IconButton
+                        clipboard.setText(
+                            AnnotatedString(
+                                buildString {
+                                    appendLine(track?.title.orEmpty())
+                                    track?.artist?.takeIf(String::isNotBlank)?.let { appendLine(it) }
+                                    appendLine()
+                                    currentLyrics.lines.forEach { line -> appendLine(line.text) }
+                                }.trim(),
+                            ),
+                        )
+                        copyMessage = "Lyrics copied"
+                    },
+                ) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy lyrics")
+                }
+            }
+        }
+
+        copyMessage?.let { message ->
+            Text(
+                message,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
         }
 
         when {
