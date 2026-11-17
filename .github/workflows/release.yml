@@ -315,7 +315,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # :shared targets Android and desktop, so Gradle needs the Android SDK
       # to configure the build even when only packaging the desktop app.
