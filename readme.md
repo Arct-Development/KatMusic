@@ -129,7 +129,6 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
   <img src="website/assets/img/player.jpg" width="31%" alt="Full player" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/lyrics.jpg" width="31%" alt="Synced lyrics" style="border-radius: 14px; margin: 4px;" />
   <br/>
-  <img src="website/assets/img/group-blend.jpg" width="31%" alt="Group Blend compatibility" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/listen-together.jpg" width="31%" alt="Listen Together room" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/library.jpg" width="31%" alt="Library screen" style="border-radius: 14px; margin: 4px;" />
   <br/>

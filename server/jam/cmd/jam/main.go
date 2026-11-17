@@ -35,9 +35,7 @@ func main() {
 
 	hub := rooms.NewHub()
 
-	// Jam uses its own Supabase project, separate from Group Blend, so each
-	// project stays inside its own free-tier quota. The service-role key never
-	// leaves this process.
+	// The service-role key never leaves this process.
 	serviceKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
 	if serviceKey == "" {
 		serviceKey = os.Getenv("SUPABASE_SECRET_KEY")

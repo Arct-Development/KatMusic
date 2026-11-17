@@ -67,7 +67,7 @@ and replaced by `:desktop`.
 | Library source | MediaStore, download database (Room), MediaStore permission flow | Folders chosen with a file chooser, tags via jaudiotagger, folder cover art |
 | Settings storage | DataStore | `java.util.prefs` |
 | System integration | home-screen widgets (Glance), Android Auto, notifications, share intents, splash video, dynamic colour/wallpaper, app locale | window management, `JFileChooser` |
-| Feature screens | feed, discover, jam/listen-together, group blend, lyrics page, downloads, podcast, artist/album, YouTube import, Spotify login, update prompt, stats | shared screens only |
+| Feature screens | feed, discover, jam/listen-together, lyrics page, downloads, podcast, artist/album, YouTube import, Spotify login, update prompt, stats | shared screens only |
 
 Audio playback, Media3, native processing, file access and system integrations
 were deliberately **not** moved into common code: none of them exist on the
@@ -97,7 +97,7 @@ off.
 - The **desktop application runs the full shared UI** (`KatMusicApp`) with real
   platform implementations.
 - **Not yet ported:** Android's individual feature screens (Home feed, artist,
-  album, playlist, jam, blend, lyrics, downloads, podcast, settings sub-pages)
+  album, playlist, jam, lyrics, downloads, podcast, settings sub-pages)
   still live in `:app` because they are bound to Hilt view models, Media3
   controller state, Room/DataStore repositories and Android resources
   (`stringResource`, `LocalContext`). Moving them requires converting each
