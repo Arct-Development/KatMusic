@@ -17,8 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -49,6 +51,7 @@ import androidx.navigation.compose.rememberNavController
 import com.itzfallenme.katmusic.shared.data.DownloadsRepository
 import com.itzfallenme.katmusic.shared.data.HomeFeedRepository
 import com.itzfallenme.katmusic.shared.data.PlaylistsRepository
+import com.itzfallenme.katmusic.shared.data.PodcastsRepository
 import com.itzfallenme.katmusic.shared.library.MediaLibrary
 import com.itzfallenme.katmusic.shared.library.PlatformActions
 import com.itzfallenme.katmusic.shared.lyrics.LyricsProvider
@@ -64,6 +67,7 @@ import com.itzfallenme.katmusic.shared.ui.screens.LibraryScreen
 import com.itzfallenme.katmusic.shared.ui.screens.LyricsScreen
 import com.itzfallenme.katmusic.shared.ui.screens.NowPlayingScreen
 import com.itzfallenme.katmusic.shared.ui.screens.PlaylistsScreen
+import com.itzfallenme.katmusic.shared.ui.screens.PodcastsScreen
 import com.itzfallenme.katmusic.shared.ui.screens.QueueScreen
 import com.itzfallenme.katmusic.shared.ui.screens.SearchScreen
 import com.itzfallenme.katmusic.shared.ui.screens.SettingsScreen
@@ -79,6 +83,8 @@ enum class KatMusicTab(val route: String, val label: String, val icon: ImageVect
     Home("home", "Home", Icons.Rounded.Home),
     Library("library", "Library", Icons.Rounded.LibraryMusic),
     Search("search", "Search", Icons.Rounded.Search),
+    Podcasts("podcasts", "Podcasts", Icons.Rounded.Mic),
+    Jam("jam", "Jam", Icons.Rounded.Groups),
     Settings("settings", "Settings", Icons.Rounded.Settings),
 }
 
@@ -122,6 +128,11 @@ fun KatMusicApp(
     downloads: DownloadsRepository? = null,
     playlists: PlaylistsRepository? = null,
     homeFeed: HomeFeedRepository? = null,
+    podcasts: PodcastsRepository? = null,
+    /** Optional platform Jam screen; hidden when the platform has no room client. */
+    jamContent: (@Composable () -> Unit)? = null,
+    /** Optional platform file import for the shared Playlists screen. */
+    onImportPlaylist: (() -> Unit)? = null,
     /** Optional platform-only settings section, rendered above About. */
     settingsExtra: (@Composable ColumnScope.() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -141,8 +152,12 @@ fun KatMusicApp(
         var collection by remember { mutableStateOf<CollectionTarget?>(null) }
         var holderCollection by remember { mutableStateOf<com.itzfallenme.katmusic.shared.ui.screens.CollectionTargetHolder?>(null) }
 
-        val visibleTabs = remember(homeFeed) {
-            if (homeFeed != null) KatMusicTab.entries else KatMusicTab.entries.filter { it != KatMusicTab.Home }
+        val visibleTabs = remember(homeFeed, podcasts, jamContent) {
+            KatMusicTab.entries.filter { tab ->
+                (tab != KatMusicTab.Home || homeFeed != null) &&
+                    (tab != KatMusicTab.Podcasts || podcasts != null) &&
+                    (tab != KatMusicTab.Jam || jamContent != null)
+            }
         }
 
         val selectTab: (KatMusicTab) -> Unit = { tab ->
@@ -193,6 +208,9 @@ fun KatMusicApp(
                 downloads = downloads,
                 playlists = playlists,
                 homeFeed = homeFeed,
+                podcasts = podcasts,
+                jamContent = jamContent,
+                onImportPlaylist = onImportPlaylist,
                 settingsExtra = settingsExtra,
                 onOpenHolderCollection = { target ->
                     holderCollection = target
@@ -305,6 +323,9 @@ private fun AppNavHost(
     downloads: DownloadsRepository?,
     playlists: PlaylistsRepository?,
     homeFeed: HomeFeedRepository?,
+    podcasts: PodcastsRepository?,
+    jamContent: (@Composable () -> Unit)?,
+    onImportPlaylist: (() -> Unit)?,
     settingsExtra: (@Composable ColumnScope.() -> Unit)?,
     onOpenHolderCollection: (com.itzfallenme.katmusic.shared.ui.screens.CollectionTargetHolder) -> Unit,
 ) {
@@ -360,10 +381,35 @@ private fun AppNavHost(
                         ),
                     )
                 },
+                onOpenGenre = { genre, genreTracks ->
+                    onOpenCollection(
+                        CollectionTarget(
+                            title = genre,
+                            subtitle = "${genreTracks.size} songs",
+                            artwork = genreTracks.firstOrNull()?.artwork,
+                            tracks = genreTracks,
+                        ),
+                    )
+                },
             )
         }
         composable(KatMusicTab.Search.route) {
             SearchScreen(tracks = tracks, playerState = playerState, onPlay = onPlay)
+        }
+        composable(KatMusicTab.Podcasts.route) {
+            val repository = podcasts
+            if (repository == null) {
+                navController.popBackStack()
+            } else {
+                PodcastsScreen(repository = repository, onPlay = onPlay)
+            }
+        }
+        composable(KatMusicTab.Jam.route) {
+            if (jamContent == null) {
+                navController.popBackStack()
+            } else {
+                jamContent()
+            }
         }
         composable(KatMusicTab.Settings.route) {
             SettingsScreen(
@@ -438,6 +484,7 @@ private fun AppNavHost(
                     onPlay = onPlay,
                     onBack = { navController.popBackStack() },
                     onOpenCollection = onOpenHolderCollection,
+                    onImport = onImportPlaylist,
                 )
             }
         }

@@ -56,7 +56,7 @@ class JavaSoundPlayer : PlayerController {
     /** Bumped on every (re)start so a superseded render loop exits quietly. */
     private var generation = 0
 
-    override fun play(tracks: List<Track>, startIndex: Int) {
+    override fun play(tracks: List<Track>, startIndex: Int, startPositionMs: Long) {
         if (tracks.isEmpty()) return
         val index = startIndex.coerceIn(0, tracks.lastIndex)
         _state.update {
@@ -65,12 +65,12 @@ class JavaSoundPlayer : PlayerController {
                 index = index,
                 isPlaying = true,
                 isBuffering = true,
-                positionMs = 0L,
+                positionMs = startPositionMs.coerceAtLeast(0L),
                 durationMs = tracks[index].durationMs,
                 error = null,
             )
         }
-        startStreaming(0L)
+        startStreaming(startPositionMs.coerceAtLeast(0L))
     }
 
     override fun togglePlayPause() {

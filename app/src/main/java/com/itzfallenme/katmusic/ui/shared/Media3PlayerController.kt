@@ -45,7 +45,7 @@ class Media3PlayerController @Inject constructor(
             initialValue = player.state.value.toSharedState(lastVolume),
         )
 
-    override fun play(tracks: List<Track>, startIndex: Int) {
+    override fun play(tracks: List<Track>, startIndex: Int, startPositionMs: Long) {
         if (tracks.isEmpty()) return
         val queue = tracks.map { it.toPlayableTrack() }
         player.playQueue(
@@ -53,6 +53,7 @@ class Media3PlayerController @Inject constructor(
             startIndex = startIndex.coerceIn(0, queue.lastIndex),
             sourceLabel = "KatMusic",
         )
+        if (startPositionMs > 0L) player.seekTo(startPositionMs.coerceAtLeast(0L))
     }
 
     override fun togglePlayPause() = player.togglePlayPause()

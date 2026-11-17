@@ -13,23 +13,11 @@ type Room struct {
 	Code      string
 	Mode      string
 	CreatedAt time.Time
-	// Permanent rooms (INDIA, WORLD) are never removed from the hub and apply
-	// the per-user command cooldown.
-	Permanent bool
-	// Name is the friendly title of a public room ("India"); empty otherwise.
-	Name string
-	// Radio rooms are 24/7 stations driven by the server: no host, no listener control.
-	Radio bool
-	// RadioKey is the contribution-site station feeding a radio room ("india").
-	RadioKey string
 
 	mu                 sync.RWMutex
 	host               *Client
-	coHost             *Client // at most one co-host, granted by the host
-	cooldowns          map[string]time.Time
-	seen               []string      // everyone who joined (admin panel history)
-	radioManual        bool          // radio room run by a station admin (auto radio paused)
-	radioWake          chan struct{} // nudges the radio loop on mode changes
+	coHost             *Client  // at most one co-host, granted by the host
+	seen               []string // everyone who joined (admin panel history)
 	now                func() time.Time
 	participants       map[string]*Client
 	joinedOrder        []string
@@ -53,8 +41,6 @@ func NewRoom(code string, host *Client, mode string) *Room {
 		joinedOrder:        make([]string, 0),
 		chat:               NewChatBuffer(DefaultChatHistoryLimit),
 		pendingSuggestions: make(map[string]*wire.SuggestionReceivedPayload),
-		cooldowns:          make(map[string]time.Time),
-		radioWake:          make(chan struct{}, 1),
 		now:                time.Now,
 		state: wire.PlaybackState{
 			Queue:        make([]wire.TrackInfo, 0),
@@ -150,11 +136,6 @@ func (r *Room) Join(c *Client, rawName string) error {
 		return err
 	}
 
-	if r.Permanent && IsDefaultName(name) {
-		c.SendError("default_name", "Pick your own display name to join this public room")
-		return errors.New("default display name not allowed in public room")
-	}
-
 	r.mu.RLock()
 	full := len(r.participants) >= maxRoomParticipants
 	r.mu.RUnlock()
@@ -171,8 +152,8 @@ func (r *Room) Join(c *Client, rawName string) error {
 	r.joinedOrder = append(r.joinedOrder, c.ID)
 	r.noteSeenLocked(name)
 
-	// Promote as host if room currently has no host (radio stations never have one)
-	if r.host == nil && !r.Radio {
+	// Promote as host if the room currently has no host.
+	if r.host == nil {
 		r.host = c
 	}
 
@@ -207,10 +188,6 @@ func (r *Room) Join(c *Client, rawName string) error {
 		IsHost:       isHost,
 		HostID:       hostID,
 		CoHostID:     coHostID,
-		Permanent:    r.Permanent,
-		RoomName:     r.Name,
-		Radio:        r.Radio,
-		StationAuto:  r.Radio && !r.radioManual,
 		RoomMode:     r.Mode,
 		Playback:     playbackSnapshot,
 		Participants: participants,
@@ -247,27 +224,6 @@ func (r *Room) Leave(c *Client) {
 		}
 	}
 
-	delete(r.cooldowns, c.ID)
-
-	if r.Radio {
-		adminLeft := r.stationAdminLeftLocked(c)
-		totalUsers := len(r.participants)
-		userName := c.Name()
-		r.mu.Unlock()
-		r.Broadcast(wire.MsgTypeUserLeft, map[string]any{
-			"user_id":     c.ID,
-			"name":        userName,
-			"is_host":     false,
-			"total_users": totalUsers,
-		})
-		if adminLeft {
-			r.announceStationMode(nil)
-			r.postSystemChat(userName + " left. The station is back on auto.")
-			r.wakeRadio()
-		}
-		return
-	}
-
 	var newHost *Client
 	coHostCleared := false
 	queueCleared := false
@@ -282,9 +238,6 @@ func (r *Room) Leave(c *Client) {
 			newHost = r.coHost
 			r.coHost = nil
 			coHostCleared = true
-		case len(r.joinedOrder) > 0 && r.Permanent:
-			// Always-active rooms: the most recent joiner becomes admin.
-			newHost = r.participants[r.joinedOrder[len(r.joinedOrder)-1]]
 		case len(r.joinedOrder) > 0:
 			// Normal rooms: the longest-tenured member becomes host.
 			newHost = r.participants[r.joinedOrder[0]]
@@ -294,10 +247,6 @@ func (r *Room) Leave(c *Client) {
 		r.state.Queue = make([]wire.TrackInfo, 0)
 		r.state.Revision++
 		queueCleared = true
-	}
-
-	if len(r.participants) == 0 && r.Permanent && !r.Radio {
-		r.resetLocked()
 	}
 
 	totalUsers := len(r.participants)
@@ -333,18 +282,6 @@ func (r *Room) Leave(c *Client) {
 			"cohost_id": coHostID,
 		})
 	}
-}
-
-// resetLocked clears playback, queue and suggestions. Used when an
-// always-active room empties so the next visitor starts fresh.
-func (r *Room) resetLocked() {
-	r.state = wire.PlaybackState{
-		Queue:        make([]wire.TrackInfo, 0),
-		ServerTimeMs: r.now().UnixMilli(),
-		Revision:     r.state.Revision + 1,
-	}
-	r.pendingSuggestions = make(map[string]*wire.SuggestionReceivedPayload)
-	r.cooldowns = make(map[string]time.Time)
 }
 
 // Broadcast sends a message to all connected participants in the room,
@@ -421,31 +358,10 @@ func (r *Room) HandlePlayback(c *Client, p wire.PlaybackActionPayload) {
 	defer r.mu.Unlock()
 
 	isHost := r.isHostLocked(c)
-	if r.Radio && !(r.radioManual && isHost) {
-		msg := "This is a live 24/7 station. Playback can't be controlled."
-		if r.radioManual {
-			msg = "Only the station admin can control playback."
-		}
-		c.SendError("live_station", msg)
-		r.resyncLocked(c)
-		return
-	}
 
 	if r.Mode == wire.RoomModeHostOnly && !isHost {
 		c.SendError("unauthorized", "Only the host can control playback in host-only mode")
 		return
-	}
-
-	if r.Permanent && !r.Radio && isCooldownAction(p.Action) {
-		if wait := r.cooldownRemainingLocked(c.ID); wait > 0 {
-			r.rejectRateLimitedLocked(c, wait)
-			return
-		}
-		r.cooldowns[c.ID] = r.now()
-		_ = c.Send(wire.MsgTypeCooldown, map[string]any{
-			"retry_at_ms": r.now().Add(CooldownWindow).UnixMilli(),
-			"window_ms":   CooldownWindow.Milliseconds(),
-		})
 	}
 
 	nowMs := time.Now().UnixMilli()
@@ -580,7 +496,7 @@ func (r *Room) HandleSuggestTrack(c *Client, track *wire.TrackInfo) {
 // HandleApproveSuggestion allows the host to approve a suggested track into the queue.
 func (r *Room) HandleApproveSuggestion(c *Client, suggestionID string) {
 	r.mu.Lock()
-	if r.host == nil || r.isHostLocked(c) {
+	if r.host != nil && r.isHostLocked(c) {
 		sug, exists := r.pendingSuggestions[suggestionID]
 		if !exists || sug == nil {
 			r.mu.Unlock()

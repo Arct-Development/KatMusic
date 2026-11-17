@@ -24,7 +24,6 @@ func TestChatBuffer_KeepsADayButAppsGetTheLatest(t *testing.T) {
 	if h := buf.History(); len(h) != 50 || h[49].ID != "m119" {
 		t.Fatalf("apps should get the latest 50, got %d", len(h))
 	}
-	// A day later everything is gone.
 	clock = clock.Add(25 * time.Hour)
 	if len(buf.All()) != 0 {
 		t.Fatal("messages older than 24 h must be deleted")
@@ -33,7 +32,6 @@ func TestChatBuffer_KeepsADayButAppsGetTheLatest(t *testing.T) {
 
 func TestArchive_EndedRoomsKeptForADay(t *testing.T) {
 	hub := NewHub()
-	hub.EnsurePermanentRooms()
 	host := mockClient("h", "Host")
 	room, _ := hub.CreateRoom(host, "Host", wire.RoomModeCollaborative)
 	guest := mockClient("g", "Guest")
@@ -45,9 +43,6 @@ func TestArchive_EndedRoomsKeptForADay(t *testing.T) {
 	hub.cleanupOnce()
 	if _, live := hub.GetRoom(room.Code); live {
 		t.Fatal("empty room should be removed")
-	}
-	if _, live := hub.GetRoom("INDIA"); !live {
-		t.Fatal("stations are never removed")
 	}
 	ended := hub.ArchivedRooms()
 	if len(ended) != 1 || ended[0].Room.Code != room.Code || ended[0].ChatCount != 1 {
@@ -61,7 +56,6 @@ func TestArchive_EndedRoomsKeptForADay(t *testing.T) {
 		t.Fatal("ended room chat should be readable")
 	}
 
-	// After 24 hours the history is gone.
 	hub.mu.Lock()
 	hub.archive[0].EndedAt = time.Now().Add(-25 * time.Hour).UnixMilli()
 	hub.mu.Unlock()

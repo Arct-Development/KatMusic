@@ -8,7 +8,7 @@ Go WebSocket service for **Listen Together**. It synchronizes playback position,
 server/jam
 ├── cmd/jam              # process entrypoint
 ├── internal/wire        # envelopes, payloads, validation
-├── internal/rooms       # rooms, connections, playback clock, chat, stations
+├── internal/rooms       # rooms, connections, playback clock, chat
 └── internal/api         # HTTP/WebSocket routes, admin panel, share images
 ```
 
@@ -32,12 +32,9 @@ server/jam
   - `PORT` (Render sets this automatically)
   - `SUPABASE_URL` — the dedicated **Jam** Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY` — service-role key for that Jam project (server only)
-  - `RADIO_SOURCE_URL` — optional station feed base URL; set to `off` to disable the always-on radio loops
   - `ADMIN_PASSWORD` — enables `/admin` when set
 - Run `supabase/migrations/0001_jam_persistence.sql` in the Jam project before deploying.
 - Run **one instance**. Rooms and chat are snapshotted to Supabase every 15 seconds and on shutdown, then restored when the service wakes. Live sockets cannot be restored, so the first listener to rejoin becomes host and playback resumes paused at the saved position.
-
-Without a station feed the server still creates the `INDIA` and `WORLD` rooms, but they stay idle until someone joins. With `RADIO_SOURCE_URL` pointing at a compatible station API, those rooms play continuously and cannot be controlled by listeners.
 
 ## Local development
 
@@ -73,7 +70,7 @@ Client to server:
 | `approve_suggestion` / `reject_suggestion` | `suggestion_id` |
 | `change_room_mode` | `room_mode` |
 | `grant_host` / `revoke_host` | `user_id` (co-host management) |
-| `transfer_host` | `user_id` (live-station admin transfer) |
+| `transfer_host` | `user_id` (main host hands the room to another listener) |
 | `queue_update` | `queue` (main host only, at most five upcoming tracks) |
 | `ping` | client timestamp |
 
@@ -89,10 +86,10 @@ Server to client:
 | `host_changed`, `cohost_changed` | Role changes |
 | `suggestion_received` | A guest proposed a track to the main host |
 | `chat_message` | Chat entry (24-hour room buffer, latest 50 sent to joiners) |
-| `room_mode_changed`, `station_mode`, `cooldown` | Room policy changes |
+| `room_mode_changed` | Room policy changes |
 | `pong`, `error` | Health and error responses |
 
-Rooms support one main host plus one co-host. In `collaborative` mode any participant may drive playback; in `host_only` mode only the two hosts may. Host-only rooms promote the longest-tenured listener when the host leaves. Live stations have no co-hosts and return to automatic playback when their admin leaves.
+Rooms support one main host plus one co-host. In `collaborative` mode any participant may drive playback; in `host_only` mode only the two hosts may. Host-only rooms promote the co-host, then the longest-tenured listener, when the host leaves.
 
 ## Operational limits
 

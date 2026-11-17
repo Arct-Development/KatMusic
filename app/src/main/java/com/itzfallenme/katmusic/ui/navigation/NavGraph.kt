@@ -40,7 +40,6 @@ import com.itzfallenme.katmusic.ui.screens.auth.LoginScreen
 import com.itzfallenme.katmusic.ui.screens.home.HomeScreen
 import com.itzfallenme.katmusic.ui.screens.settings.SettingsScreen
 import com.itzfallenme.katmusic.ui.screens.jam.ListenTogetherScreen
-import com.itzfallenme.katmusic.ui.screens.blend.GroupBlendScreen
 import com.itzfallenme.katmusic.ui.screens.search.SearchScreen
 import com.itzfallenme.katmusic.ui.screens.discover.DiscoverScreen
 import com.itzfallenme.katmusic.ui.screens.genres.GenresScreen
@@ -373,7 +372,6 @@ fun KatMusicNavHost(
                     },
                     onOpenDownloads = { navController.navigate(Screen.Downloads.route) },
                     onOpenListenTogether = { navController.navigate(Screen.ListenTogether.route) },
-                    onOpenGroupBlend = { navController.navigate(Screen.GroupBlend.route) },
                     onOpenHomeSections = { navController.navigate(Screen.HomeSections.route) },
                     onOpenExcludedSongs = { navController.navigate(Screen.ExcludedSongs.route) },
                     onOpenYouTubeImport = { navController.navigate(Screen.YouTubeImport.route) },
@@ -391,11 +389,6 @@ fun KatMusicNavHost(
             }
         }
 
-        composable(Screen.GroupBlend.route) {
-            BackAwareScreen(onBack = { navController.popBackStack() }) {
-                GroupBlendScreen(onBack = { navController.popBackStack() })
-            }
-        }
 
         composable(Screen.Create.route) {
             BackAwareScreen(onBack = { navController.popBackStack() }) {

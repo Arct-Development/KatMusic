@@ -43,9 +43,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /healthz", h.handleHealth)
 	mux.HandleFunc("GET /stats", h.handleStats)
 	mux.HandleFunc("GET /ws", h.handleWebSocket)
-	mux.HandleFunc("GET /rooms", h.handleRooms)
 	mux.HandleFunc("GET /og/{file}", h.handleOG)
+	mux.HandleFunc("GET /code/{file}", h.handleCodeImage)
 	h.registerAdminRoutes(mux)
+	h.registerEmbedRoutes(mux)
 
 	// Serve self-contained invite landing page
 	indexHTML, err := embeddedWebFS.ReadFile("web/index.html")
@@ -83,16 +84,6 @@ func (h *Handler) handleStats(w http.ResponseWriter, r *http.Request) {
 		"active_rooms":       h.hub.RoomCount(),
 		"total_participants": h.hub.TotalParticipants(),
 	})
-}
-
-// handleRooms lists the always-active rooms with live listener counts, so
-// join screens can show "India · 42 listening" before connecting.
-func (h *Handler) handleRooms(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Cache-Control", "public, max-age=5")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{"rooms": h.hub.PublicRooms()})
 }
 
 func (h *Handler) handleWebSocket(w http.ResponseWriter, r *http.Request) {

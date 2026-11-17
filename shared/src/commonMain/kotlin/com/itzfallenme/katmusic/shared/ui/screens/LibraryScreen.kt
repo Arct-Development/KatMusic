@@ -53,7 +53,7 @@ import com.itzfallenme.katmusic.shared.ui.components.formatDuration
 import com.itzfallenme.katmusic.ui.components.adaptiveContentWidth
 import com.itzfallenme.katmusic.ui.components.expressiveBounceClickable
 
-private val LIBRARY_TABS = listOf("Songs", "Albums", "Artists")
+private val LIBRARY_TABS = listOf("Songs", "Albums", "Artists", "Genres")
 /**
  * The shared Library: the same three views Android's library offers (songs,
  * albums, artists) built from whichever track list the platform supplied.
@@ -70,6 +70,7 @@ fun LibraryScreen(
     onPlay: (List<Track>, Int) -> Unit,
     onOpenAlbum: (LibraryGrouping.Album) -> Unit = {},
     onOpenArtist: (LibraryGrouping.Artist) -> Unit = {},
+    onOpenGenre: (String, List<Track>) -> Unit = { _, _ -> },
     onOpenDownloads: (() -> Unit)? = null,
     onOpenPlaylists: (() -> Unit)? = null,
 ) {
@@ -139,7 +140,8 @@ fun LibraryScreen(
         when (selectedTab) {
             0 -> SongsTab(tracks = tracks, playerState = playerState, onPlay = onPlay)
             1 -> AlbumsTab(tracks = tracks, onOpenAlbum = onOpenAlbum)
-            else -> ArtistsTab(tracks = tracks, onOpenArtist = onOpenArtist)
+            2 -> ArtistsTab(tracks = tracks, onOpenArtist = onOpenArtist)
+            else -> GenresTab(tracks = tracks, onOpenGenre = onOpenGenre)
         }
     }
 }
@@ -204,6 +206,73 @@ private fun AlbumsTab(
         }
     }
 }
+
+@Composable
+private fun GenresTab(
+    tracks: List<Track>,
+    onOpenGenre: (String, List<Track>) -> Unit,
+) {
+    val genres = remember(tracks) { genresOf(tracks) }
+    if (genres.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+            Text(
+                "No genre tags in this library",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().adaptiveContentWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        item { SectionLabel("${genres.size} genres") }
+        items(genres, key = { it.first }) { (genre, genreTracks) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .expressiveBounceClickable { onOpenGenre(genre, genreTracks) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Artwork(
+                    uri = genreTracks.firstOrNull()?.artwork,
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)),
+                    contentDescription = genre,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = genre,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${genreTracks.size} songs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Splits multi-genre tags (`Rock/Pop`, `Rock; Pop`) into one entry per tag. */
+private fun genresOf(tracks: List<Track>): List<Pair<String, List<Track>>> = tracks
+    .flatMap { track ->
+        track.genre.split('/', ';', ',')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { it to track }
+    }
+    .groupBy({ it.first }, { it.second })
+    .map { (genre, genreTracks) ->
+        genre to genreTracks.distinctBy { it.id }.sortedBy { it.title.lowercase() }
+    }
+    .sortedBy { it.first.lowercase() }
 
 @Composable
 private fun ArtistsTab(

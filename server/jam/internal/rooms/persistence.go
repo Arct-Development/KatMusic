@@ -32,7 +32,7 @@ func (h *Hub) Restore(ctx context.Context) error {
 	restored := 0
 	for _, snap := range snaps {
 		code := strings.ToUpper(strings.TrimSpace(snap.Code))
-		if code == "" || snap.Permanent || snap.Radio {
+		if code == "" {
 			continue
 		}
 		h.mu.RLock()
@@ -42,7 +42,6 @@ func (h *Hub) Restore(ctx context.Context) error {
 			continue
 		}
 		room := NewRoom(code, nil, snap.Mode)
-		room.Name = snap.Name
 		room.CreatedAt = time.Now()
 		playback := snap.Playback
 		if playback.Queue == nil {
@@ -88,14 +87,10 @@ func (r *Room) Snapshot() store.RoomSnapshot {
 		chat = []wire.ChatMessage{}
 	}
 	return store.RoomSnapshot{
-		Code:      r.Code,
-		Mode:      r.Mode,
-		Name:      r.Name,
-		Permanent: r.Permanent,
-		Radio:     r.Radio,
-		RadioKey:  r.RadioKey,
-		Playback:  state,
-		Chat:      chat,
+		Code:     r.Code,
+		Mode:     r.Mode,
+		Playback: state,
+		Chat:     chat,
 	}
 }
 
@@ -129,7 +124,7 @@ func (h *Hub) PersistOnce(ctx context.Context) {
 	h.mu.RLock()
 	rooms := make([]*Room, 0, len(h.rooms))
 	for _, room := range h.rooms {
-		if room != nil && !room.Permanent && !room.Radio {
+		if room != nil {
 			rooms = append(rooms, room)
 		}
 	}

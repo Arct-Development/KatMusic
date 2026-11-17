@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import com.itzfallenme.katmusic.shared.share.KatMusicCode
 
 /**
  * Cross-device track links.
@@ -37,6 +38,19 @@ object ShareLinks {
         // artworkUrl is intentionally omitted to keep share links short, clean and fast.
         // Both the app and web landing page automatically derive artwork from videoId.
         return builder.build().toString()
+    }
+
+    /** Reversible human code for a track, e.g. `KM-7F3A2-...`. */
+    fun trackCode(videoId: String?): String? = KatMusicCode.encode(videoId)
+
+    /** Share-card image URL for a code, rendered by the Jam host. */
+    fun codeImageUrl(code: String): String =
+        "https://katmusic.onrender.com/code/${code.trim().uppercase()}.png"
+
+    /** Link plus the KatMusic code, so the receiver can use either surface. */
+    fun trackMessage(url: String, videoId: String?): String {
+        val code = trackCode(videoId)
+        return if (code == null) url else "$url\n\nKatMusic code: $code"
     }
 
     /** Opens the system share sheet with [url] as plain text. */

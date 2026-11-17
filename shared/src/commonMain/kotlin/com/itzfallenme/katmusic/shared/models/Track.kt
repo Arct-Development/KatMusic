@@ -15,6 +15,8 @@ data class Track(
     val title: String,
     val artist: String,
     val album: String = "",
+    /** Primary genre from the file tags, empty when unknown. */
+    val genre: String = "",
     /** Duration in milliseconds, 0 when unknown. */
     val durationMs: Long = 0L,
     /** Platform URI — a file:// URI on desktop, a content:// or https:// URI on Android. */
@@ -24,6 +26,8 @@ data class Track(
     val trackNumber: Int = 0,
     val year: Int = 0,
     val isLocal: Boolean = true,
+    /** YouTube video id when this track came from a streaming provider. */
+    val videoId: String? = null,
 ) {
     val hasArtwork: Boolean get() = !artwork.isNullOrBlank()
 }

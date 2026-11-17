@@ -41,7 +41,7 @@
     });
   }
 
-  function roomLabel(r) { return r.station ? r.name + ' station' : 'Jam ' + r.code; }
+  function roomLabel(r) { return 'Jam ' + r.code; }
   function isSel(kind, key) {
     return state.selected && state.selected.kind === kind && (state.selected.code === key || state.selected.id === key);
   }
@@ -61,8 +61,7 @@
       b.appendChild(row);
       var row2 = el('div', 'room-row');
       row2.appendChild(el('span', 'room-sub', r.nowPlaying ? '♪ ' + r.nowPlaying.title : 'Nothing playing'));
-      if (r.station) row2.appendChild(badge(r.stationAuto ? 'Auto' : 'Admin', r.stationAuto ? 'live' : 'solid'));
-      else row2.appendChild(badge('Private'));
+      row2.appendChild(badge('Private'));
       b.appendChild(row2);
       b.addEventListener('click', function () { select({ kind: 'live', code: r.code }); });
       box.appendChild(b);
@@ -145,7 +144,6 @@
     var ended = endedRoom();
     $('empty').hidden = !!(live || ended);
     $('room').hidden = !(live || ended);
-    $('btn-auto').hidden = true;
     $('btn-unhost').hidden = true;
     if (live) renderLive(live);
     else if (ended) renderEnded(ended);
@@ -156,10 +154,8 @@
     var meta = $('d-meta');
     meta.textContent = '';
     meta.appendChild(el('span', 'count', r.code));
-    if (r.station) meta.appendChild(badge(r.stationAuto ? 'Auto radio' : 'Admin in control', r.stationAuto ? 'live' : 'solid'));
-    else meta.appendChild(badge(r.mode === 'collaborative' ? 'Everyone controls' : 'Host controls'));
+    meta.appendChild(badge(r.mode === 'collaborative' ? 'Everyone controls' : 'Host controls'));
     meta.appendChild(document.createTextNode(r.participants.length + ' listening · started ' + clock(r.createdAt)));
-    $('btn-auto').hidden = !(r.station && !r.stationAuto);
 
     var info = renderNowPlaying(r, 'Now playing');
     if (info && r.nowPlaying.duration_ms) {
@@ -174,21 +170,21 @@
       var row = el('div', 'person');
       row.appendChild(el('span', 'person-name', p.name));
       var right = el('div', 'person-right');
-      if (p.isHost) right.appendChild(badge(r.station ? 'Admin' : 'Host', 'solid'));
+      if (p.isHost) right.appendChild(badge('Host', 'solid'));
       else if (p.isCoHost) right.appendChild(badge('Co-host'));
       var base = '/admin/api/rooms/' + encodeURIComponent(r.code);
       if (p.isHost) {
-        var take = el('button', 'btn ghost small', r.station ? 'Take admin' : 'Take host');
+        var take = el('button', 'btn ghost small', 'Take host');
         take.type = 'button';
         take.addEventListener('click', function () {
-          act(base + '/unhost', {}, r.station ? 'Admin removed · station back on auto' : 'Host removed');
+          act(base + '/unhost', {}, 'Host removed');
         });
         right.appendChild(take);
       } else {
-        var give = el('button', 'btn small', r.station ? 'Make admin' : 'Make host');
+        var give = el('button', 'btn small', 'Make host');
         give.type = 'button';
         give.addEventListener('click', function () {
-          act(base + '/host', { userId: p.id }, p.name + (r.station ? ' is now the station admin' : ' is now the host'));
+          act(base + '/host', { userId: p.id }, p.name + ' is now the host');
         });
         right.appendChild(give);
       }
@@ -248,7 +244,7 @@
           if (day !== lastDay) { box.appendChild(el('div', 'tag', day)); lastDay = day; }
           var line = el('div', 'line');
           var head = el('div', 'line-head');
-          head.appendChild(el('span', 'line-name' + (m.user_id === 'station' ? ' station' : ''), m.user_name + (m.is_host ? ' · host' : '')));
+          head.appendChild(el('span', 'line-name', m.user_name + (m.is_host ? ' · host' : '')));
           head.appendChild(el('span', 'line-time', clock(m.timestamp)));
           line.appendChild(head);
           if (m.reply_to) line.appendChild(el('div', 'line-reply', '↪ ' + m.reply_to.user_name + ': ' + m.reply_to.text));
@@ -279,10 +275,6 @@
     }).catch(function (e) { if (e.message !== 'auth') toast(e.message); });
   }
 
-  $('btn-auto').addEventListener('click', function () {
-    var r = liveRoom();
-    if (r) act('/admin/api/rooms/' + encodeURIComponent(r.code) + '/auto', {}, 'Station back on auto');
-  });
   $('logout').addEventListener('click', function () {
     api('/admin/logout', 'POST', {}).catch(function () {}).then(function () { window.location.replace('/admin/login'); });
   });

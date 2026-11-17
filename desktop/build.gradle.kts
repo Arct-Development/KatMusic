@@ -30,6 +30,8 @@ dependencies {
     // LRCLIB responses are parsed with kotlinx.serialization; `:shared` keeps
     // its serialization dependency internal, so the desktop module declares it.
     implementation(libs.kotlinx.serialization.json)
+    // Jam room socket (same OkHttp protocol Android uses).
+    implementation(libs.okhttp.core)
     // Real local-file decoding for the desktop player: MP3 (mp3spi/jlayer)
     // and Ogg Vorbis (vorbisspi) SPI providers on top of javax.sound.sampled.
     implementation(libs.mp3spi)
