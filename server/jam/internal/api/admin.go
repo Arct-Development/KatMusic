@@ -6,7 +6,6 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -18,8 +17,8 @@ import (
 	"katmusic/jam/internal/rooms"
 )
 
-// Admin panel for every active Jam (private rooms and the live stations):
-// see listeners, now playing and chat; give / take admin; put a station on auto.
+// Admin panel for every active Jam: see listeners, now playing and chat;
+// give or take the host role.
 //
 // Password: JAM_ADMIN_PASSWORD in the server's environment (never in the repo).
 // Session: random token in an HttpOnly, SameSite=Strict cookie scoped to /admin, 8 h.
@@ -297,16 +296,5 @@ func (h *Handler) registerAdminRoutes(mux *http.ServeMux) {
 			_ = rm.AdminTakeHost()
 			adminJSON(w, http.StatusOK, rm.View())
 		}
-	}))
-	mux.HandleFunc("POST /admin/api/rooms/{code}/auto", need(func(w http.ResponseWriter, r *http.Request) {
-		rm, ok := room(w, r)
-		if !ok {
-			return
-		}
-		if err := rm.AdminMakeAuto(); errors.Is(err, rooms.ErrNotStation) {
-			adminJSON(w, http.StatusBadRequest, map[string]string{"error": "Only live stations have auto mode"})
-			return
-		}
-		adminJSON(w, http.StatusOK, rm.View())
 	}))
 }

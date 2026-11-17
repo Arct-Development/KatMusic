@@ -34,7 +34,6 @@ func main() {
 	slog.Info("initializing KatMusic Jam server", "port", port)
 
 	hub := rooms.NewHub()
-	hub.EnsurePermanentRooms()
 
 	// Jam uses its own Supabase project, separate from Group Blend, so each
 	// project stays inside its own free-tier quota. The service-role key never
@@ -59,18 +58,6 @@ func main() {
 		slog.Info("jam persistence enabled")
 	} else {
 		slog.Info("jam persistence disabled; set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
-	}
-
-	// 24/7 radio in the always-on rooms, fed by the contribution site.
-	radioCtx, stopRadio := context.WithCancel(context.Background())
-	defer stopRadio()
-	radioSource := os.Getenv("RADIO_SOURCE_URL")
-	if radioSource == "" {
-		radioSource = "http://127.0.0.1:6969"
-	}
-	if radioSource != "off" {
-		hub.StartRadio(radioCtx, radioSource)
-		slog.Info("radio started", "source", radioSource)
 	}
 	srv := api.NewServer(api.Config{
 		Port:            port,

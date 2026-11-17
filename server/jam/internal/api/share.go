@@ -20,7 +20,6 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
-	"katmusic/jam/internal/rooms"
 )
 
 //go:embed assets/logo.png
@@ -69,16 +68,6 @@ func normalizeCode(raw string) string {
 	return ""
 }
 
-// stationName returns "India" / "International" for the always-on rooms.
-func stationName(code string) string {
-	for _, pr := range rooms.PermanentRooms {
-		if pr.Code == code {
-			return pr.Name
-		}
-	}
-	return ""
-}
-
 // renderMeta builds the <head> tags that make chat apps (Telegram, WhatsApp,
 // Discord, X) show a rich preview. Crawlers do not run JavaScript, so this is
 // rendered on the server.
@@ -91,10 +80,6 @@ func renderMeta(code string) string {
 	if code != "" {
 		title = "Join room " + code + " on KatMusic Jam"
 		desc = "Tap to join room " + code + " and listen together in real time."
-		if name := stationName(code); name != "" {
-			title = "Join " + name + " on KatMusic Jam"
-			desc = name + " is an always-on room. Tap to join and listen together."
-		}
 		pageURL = base + "/?code=" + code
 		image = base + "/og/" + code + ".png"
 	}
@@ -230,10 +215,6 @@ func renderBanner(code string) []byte {
 	label := "JOIN MY SESSION"
 	sub := "Open KatMusic and enter the code"
 	big := code
-	if name := stationName(code); name != "" {
-		label = "ALWAYS-ON ROOM"
-		sub = name + " room - open to everyone, join anytime"
-	}
 	if code == "" {
 		label = "LISTEN TOGETHER"
 		big = "JAM"

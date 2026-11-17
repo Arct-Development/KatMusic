@@ -77,6 +77,7 @@ class DesktopMediaLibrary(
             val artist = tag?.getFirst(FieldKey.ARTIST)?.takeIf { it.isNotBlank() }
                 ?: "Unknown artist"
             val album = runCatching { tag?.getFirst(FieldKey.ALBUM) }.getOrNull().orEmpty()
+            val genre = runCatching { tag?.getFirst(FieldKey.GENRE) }.getOrNull().orEmpty()
             val trackNumber = runCatching { tag?.getFirst(FieldKey.TRACK)?.toIntOrNull() }.getOrNull() ?: 0
             val year = runCatching { tag?.getFirst(FieldKey.YEAR)?.take(4)?.toIntOrNull() }.getOrNull() ?: 0
             val durationSeconds = runCatching { audioFile.audioHeader?.trackLength ?: 0 }.getOrDefault(0)
@@ -85,6 +86,7 @@ class DesktopMediaLibrary(
                 title = title,
                 artist = artist,
                 album = album,
+                genre = genre,
                 durationMs = durationSeconds * 1000L,
                 source = file.toURI().toString(),
                 artwork = coverArt(file.parentFile)?.toURI()?.toString(),

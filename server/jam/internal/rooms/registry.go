@@ -36,50 +36,6 @@ func NewHub() *Hub {
 	}
 }
 
-// PermanentRooms are the always-active rooms every server provides.
-var PermanentRooms = []struct{ Code, Name, Key string }{
-	{"INDIA", "India", "india"},
-	{"WORLD", "International", "international"},
-}
-
-// RoomInfo is the public summary of an always-active room.
-type RoomInfo struct {
-	Code         string `json:"code"`
-	Name         string `json:"name"`
-	Participants int    `json:"participants"`
-}
-
-// PublicRooms lists the always-active rooms with live listener counts.
-func (h *Hub) PublicRooms() []RoomInfo {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	out := make([]RoomInfo, 0, len(PermanentRooms))
-	for _, pr := range PermanentRooms {
-		if room, ok := h.rooms[pr.Code]; ok {
-			out = append(out, RoomInfo{Code: pr.Code, Name: pr.Name, Participants: room.ParticipantCount()})
-		}
-	}
-	return out
-}
-
-// EnsurePermanentRooms provisions the always-active rooms (INDIA, WORLD) as
-// 24/7 radio stations: no host, nobody can control playback (see radio.go).
-func (h *Hub) EnsurePermanentRooms() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for _, pr := range PermanentRooms {
-		if _, exists := h.rooms[pr.Code]; exists {
-			continue
-		}
-		room := NewRoom(pr.Code, nil, wire.RoomModeHostOnly)
-		room.Permanent = true
-		room.Radio = true
-		room.RadioKey = pr.Key
-		room.Name = pr.Name
-		h.rooms[pr.Code] = room
-	}
-}
-
 // GenerateRoomCode generates a random 6-character alphanumeric room code.
 func (h *Hub) GenerateRoomCode() string {
 	b := make([]byte, 6)
@@ -186,7 +142,7 @@ func (h *Hub) RemoveRoom(code string) {
 	code = strings.ToUpper(code)
 	h.mu.Lock()
 	room, ok := h.rooms[code]
-	if !ok || room.Permanent {
+	if !ok {
 		h.mu.Unlock()
 		return
 	}

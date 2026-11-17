@@ -33,7 +33,7 @@ data class PlayerState(
 interface PlayerController {
     val state: StateFlow<PlayerState>
 
-    fun play(tracks: List<Track>, startIndex: Int = 0)
+    fun play(tracks: List<Track>, startIndex: Int = 0, startPositionMs: Long = 0L)
     fun togglePlayPause()
     fun next()
     fun previous()

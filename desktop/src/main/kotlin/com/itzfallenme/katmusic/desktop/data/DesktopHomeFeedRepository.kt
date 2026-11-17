@@ -77,6 +77,7 @@ class DesktopHomeFeedRepository(
                     source = newPipe.getOrThrow(),
                     artwork = card.artworkUrl,
                     isLocal = false,
+                    videoId = videoId,
                 ),
             )
         }
@@ -90,6 +91,7 @@ class DesktopHomeFeedRepository(
                     source = piped.getOrThrow(),
                     artwork = card.artworkUrl,
                     isLocal = false,
+                    videoId = videoId,
                 ),
             )
         }

@@ -65,6 +65,9 @@ class MpvPlayer(
         private const val EVENT_PROPERTY_CHANGE = 22
         private const val MAX_STREAM_REFRESH_ATTEMPTS = 2
 
+        /** 10-band equalizer centre frequencies, in Hz. */
+        val EQUALIZER_BANDS_HZ = intArrayOf(31, 62, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000)
+
         private val NAMES = listOf(
             "mpv" to listOf("libmpv.so.2", "libmpv.so.1", "libmpv.so"),
             "mac" to listOf("libmpv.dylib", "libmpv.2.dylib"),
@@ -99,6 +102,9 @@ class MpvPlayer(
     private val shutdown = AtomicBoolean(false)
     private var generation = 0
     private var refreshAttempts = 0
+    private var pendingStartPositionMs = 0L
+    private var equalizerEnabled = false
+    private var equalizerGains = FloatArray(EQUALIZER_BANDS_HZ.size)
 
     init {
         if (lib != null) {
@@ -123,18 +129,19 @@ class MpvPlayer(
         }
     }
 
-    override fun play(tracks: List<Track>, startIndex: Int) {
+    override fun play(tracks: List<Track>, startIndex: Int, startPositionMs: Long) {
         if (!isAvailable || tracks.isEmpty()) return
         val index = startIndex.coerceIn(0, tracks.lastIndex)
         generation++
         refreshAttempts = 0
+        pendingStartPositionMs = startPositionMs.coerceAtLeast(0L)
         _state.update {
             it.copy(
                 queue = tracks,
                 index = index,
                 isBuffering = true,
                 isPlaying = true,
-                positionMs = 0L,
+                positionMs = pendingStartPositionMs,
                 durationMs = tracks[index].durationMs,
                 error = null,
             )
@@ -190,6 +197,26 @@ class MpvPlayer(
         _state.update { it.copy(isPlaying = false, isBuffering = false, positionMs = 0) }
     }
 
+    /** Applies the 10-band equalizer through libmpv's audio filter chain. */
+    fun setEqualizer(enabled: Boolean, gainsDb: FloatArray) {
+        equalizerEnabled = enabled
+        equalizerGains = FloatArray(EQUALIZER_BANDS_HZ.size) { index -> gainsDb.getOrElse(index) { 0f } }
+        applyEqualizer()
+    }
+
+    private fun applyEqualizer() {
+        val h = handle ?: return
+        val chain = if (!equalizerEnabled) {
+            ""
+        } else {
+            EQUALIZER_BANDS_HZ.mapIndexed { index, hz ->
+                val gain = java.lang.String.format(java.util.Locale.US, "%.1f", equalizerGains[index])
+                "equalizer=f=$hz:t=q:w=1:g=$gain"
+            }.joinToString(",")
+        }
+        lib?.mpv_set_property_string(h, "af", if (chain.isBlank()) "" else "lavfi=[$chain]")
+    }
+
     /** Releases the mpv handle; safe to call when libmpv was never loaded. */
     fun release() {
         if (shutdown.getAndSet(true)) return
@@ -204,6 +231,7 @@ class MpvPlayer(
         if (snapshot.queue.getOrNull(index) == null) return
         generation++
         refreshAttempts = 0
+        pendingStartPositionMs = 0L
         _state.update { it.copy(index = index, positionMs = 0, isPlaying = true, isBuffering = true, error = null) }
         loadCurrent()
     }
@@ -218,6 +246,14 @@ class MpvPlayer(
         }
         val pauseFlag = if (!_state.value.isPlaying) "yes" else "no"
         lib?.mpv_command(h, arrayOf("loadfile", fileArg, "replace"))
+        if (pendingStartPositionMs > 0L) {
+            lib?.mpv_command(
+                h,
+                arrayOf("seek", (pendingStartPositionMs / 1000.0).toString(), "absolute"),
+            )
+            pendingStartPositionMs = 0L
+        }
+        applyEqualizer()
         lib?.mpv_set_property_string(h, "pause", pauseFlag)
     }
 

@@ -28,6 +28,7 @@ data class HomeCard(
             source = vid,
             artwork = artworkUrl,
             isLocal = false,
+            videoId = vid,
         )
     }
 }

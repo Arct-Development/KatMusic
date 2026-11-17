@@ -65,6 +65,30 @@ class M3uPlaylistsRepository(
         }
     }
 
+    /** Copies an external `.m3u`/`.m3u8` into the library and refreshes its tags. */
+    suspend fun importM3u(file: File): Result<Playlist> = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            runCatching {
+                val extension = file.extension.lowercase()
+                require(file.isFile && (extension == "m3u" || extension == "m3u8")) {
+                    "Choose an .m3u or .m3u8 playlist"
+                }
+                baseDir.toFile().mkdirs()
+                val name = safeFileName(file.nameWithoutExtension)
+                var target = baseDir.resolve("$name.m3u").toFile()
+                var counter = 2
+                while (target.exists()) {
+                    target = baseDir.resolve("$name ($counter).m3u").toFile()
+                    counter++
+                }
+                file.copyTo(target, overwrite = false)
+                val playlist = parsePlaylistFile(target)
+                _playlists.value = (_playlists.value + playlist).sortedBy { it.title.lowercase() }
+                playlist
+            }
+        }
+    }
+
     override suspend fun delete(playlistId: String): Result<Unit> = withContext(Dispatchers.IO) {
         mutex.withLock {
             runCatching {

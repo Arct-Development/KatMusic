@@ -20,25 +20,17 @@ import (
 // co-hosts are intentionally not stored: after a restart the first listener to
 // rejoin becomes host, exactly as if the room had just been created.
 type RoomSnapshot struct {
-	Code      string             `json:"code"`
-	Mode      string             `json:"mode"`
-	Name      string             `json:"name"`
-	Permanent bool               `json:"permanent"`
-	Radio     bool               `json:"radio"`
-	RadioKey  string             `json:"radio_key"`
-	Playback  wire.PlaybackState `json:"playback"`
-	Chat      []wire.ChatMessage `json:"chat"`
+	Code     string             `json:"code"`
+	Mode     string             `json:"mode"`
+	Playback wire.PlaybackState `json:"playback"`
+	Chat     []wire.ChatMessage `json:"chat"`
 }
 
 type row struct {
-	Code      string             `json:"code"`
-	Mode      string             `json:"mode"`
-	Name      string             `json:"name"`
-	Permanent bool               `json:"permanent"`
-	Radio     bool               `json:"radio"`
-	RadioKey  string             `json:"radio_key"`
-	Playback  wire.PlaybackState `json:"playback"`
-	Chat      []wire.ChatMessage `json:"chat"`
+	Code     string             `json:"code"`
+	Mode     string             `json:"mode"`
+	Playback wire.PlaybackState `json:"playback"`
+	Chat     []wire.ChatMessage `json:"chat"`
 }
 
 // Supabase persists snapshots to one table. A disabled store is a no-op, so
@@ -80,10 +72,6 @@ func (s *Supabase) SaveRoom(ctx context.Context, snap RoomSnapshot) error {
 	body, err := json.Marshal([]any{map[string]any{
 		"code":       snap.Code,
 		"mode":       snap.Mode,
-		"name":       snap.Name,
-		"permanent":  snap.Permanent,
-		"radio":      snap.Radio,
-		"radio_key":  snap.RadioKey,
 		"playback":   snap.Playback,
 		"chat":       snap.Chat,
 		"updated_at": now.Format(time.RFC3339Nano),
@@ -109,8 +97,7 @@ func (s *Supabase) ListRooms(ctx context.Context) ([]RoomSnapshot, error) {
 		return nil, nil
 	}
 	q := url.Values{}
-	q.Set("select", "code,mode,name,permanent,radio,radio_key,playback,chat")
-	q.Set("permanent", "eq.false")
+	q.Set("select", "code,mode,playback,chat")
 	q.Set("expires_at", "gt."+time.Now().UTC().Format(time.RFC3339Nano))
 	q.Set("order", "updated_at.desc")
 	q.Set("limit", "500")
@@ -138,8 +125,7 @@ func (s *Supabase) ListRooms(ctx context.Context) ([]RoomSnapshot, error) {
 			continue
 		}
 		out = append(out, RoomSnapshot{
-			Code: r.Code, Mode: r.Mode, Name: r.Name,
-			Permanent: r.Permanent, Radio: r.Radio, RadioKey: r.RadioKey,
+			Code: r.Code, Mode: r.Mode,
 			Playback: r.Playback, Chat: r.Chat,
 		})
 	}

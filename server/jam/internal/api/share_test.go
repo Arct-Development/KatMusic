@@ -20,7 +20,7 @@ func newMux() *http.ServeMux {
 }
 
 func TestBanner_IsRealPNGAndCachedPerCode(t *testing.T) {
-	for _, code := range []string{"WAVE01", "INDIA", "WORLD", "", "ABCDEFGHIJKL"} {
+	for _, code := range []string{"WAVE01", "", "ABCDEFGHIJKL"} {
 		data := renderBanner(code)
 		img, err := png.Decode(bytes.NewReader(data))
 		if err != nil {
@@ -90,8 +90,8 @@ func TestIndexInjectsPreviewMeta(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/?code=INDIA", nil))
-	if !strings.Contains(rec.Body.String(), "Join India on KatMusic Jam") {
-		t.Fatal("station title expected")
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/?code=WAVE01", nil))
+	if !strings.Contains(rec.Body.String(), "Join room WAVE01 on KatMusic Jam") {
+		t.Fatal("room title expected")
 	}
 }

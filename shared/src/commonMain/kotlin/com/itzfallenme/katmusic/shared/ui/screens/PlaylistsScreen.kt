@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,6 +62,8 @@ fun PlaylistsScreen(
     onBack: () -> Unit,
     /** Called with a collection to open in the shared Collection route. */
     onOpenCollection: (CollectionTargetHolder) -> Unit = {},
+    /** Optional platform file import; hidden when the platform has none. */
+    onImport: (() -> Unit)? = null,
 ) {
     val playlists by repository.playlists.collectAsState()
     val scope = rememberCoroutineScope()
@@ -84,6 +87,11 @@ fun PlaylistsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            onImport?.let { import ->
+                IconButton(onClick = import) {
+                    Icon(Icons.Rounded.FileOpen, contentDescription = "Import M3U playlist")
+                }
             }
             IconButton(onClick = { showCreate = true }) {
                 Icon(Icons.Rounded.Add, contentDescription = "New playlist")

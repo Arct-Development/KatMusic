@@ -27,6 +27,25 @@ class DesktopSettingsStore : SettingsStore {
         persist(next)
     }
 
+    fun equalizerEnabled(): Boolean = prefs.getBoolean("equalizerEnabled", false)
+
+    fun equalizerGains(): FloatArray = prefs.get("equalizerGains", "")
+        .split(',')
+        .mapNotNull { it.trim().toFloatOrNull() }
+        .let { gains ->
+            FloatArray(EQUALIZER_BAND_COUNT) { index -> gains.getOrElse(index) { 0f } }
+        }
+
+    fun setEqualizerEnabled(enabled: Boolean) {
+        prefs.putBoolean("equalizerEnabled", enabled)
+        runCatching { prefs.flush() }
+    }
+
+    fun setEqualizerGains(gains: FloatArray) {
+        prefs.put("equalizerGains", gains.joinToString(","))
+        runCatching { prefs.flush() }
+    }
+
     /** Folders the user added to the library, in the order they were added. */
     fun libraryFolders(): List<String> =
         prefs.get("libraryFolders", "")
@@ -39,6 +58,10 @@ class DesktopSettingsStore : SettingsStore {
         val folders = (libraryFolders() + path).distinct()
         prefs.put("libraryFolders", folders.joinToString("\n"))
         runCatching { prefs.flush() }
+    }
+
+    private companion object {
+        const val EQUALIZER_BAND_COUNT = 10
     }
 
     private fun load(): AppSettings = AppSettings(

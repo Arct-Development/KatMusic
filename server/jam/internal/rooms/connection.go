@@ -239,7 +239,7 @@ func (c *Client) dispatch(env wire.Envelope) {
 	switch env.Type {
 	case wire.MsgTypeChangeRoomMode:
 		r := c.CurrentRoom()
-		if r != nil && r.IsHost(c) && !r.Radio {
+		if r != nil && r.IsHost(c) {
 			var p struct {
 				RoomMode string `json:"room_mode"`
 			}
@@ -271,7 +271,7 @@ func (c *Client) dispatch(env wire.Envelope) {
 			c.SendError("invalid_payload", "Invalid transfer_host payload")
 			return
 		}
-		r.TransferStationAdmin(c, p.UserID)
+		r.TransferHost(c, p.UserID)
 
 	case wire.MsgTypeGrantHost, wire.MsgTypeRevokeHost:
 		r := c.CurrentRoom()
