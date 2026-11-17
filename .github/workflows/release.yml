@@ -321,6 +321,11 @@ jobs:
       # to configure the build even when only packaging the desktop app.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The runner image no longer ships the legacy `tools` package that
+          # this action installs by default; only platform-tools is needed to
+          # configure the :shared Android target for desktop packaging.
+          packages: 'platform-tools'
 
       - name: Test shared logic and desktop
         run: ./gradlew :shared:desktopTest :desktop:test --stacktrace

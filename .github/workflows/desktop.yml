@@ -93,6 +93,11 @@ jobs:
       # desktop application is packaged.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The runner image no longer ships the legacy `tools` package that
+          # this action installs by default; only platform-tools is needed to
+          # configure the :shared Android target for desktop packaging.
+          packages: 'platform-tools'
 
       - name: Resolve package version
         run: |
