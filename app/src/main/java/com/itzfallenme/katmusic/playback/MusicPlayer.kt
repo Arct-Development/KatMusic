@@ -247,6 +247,7 @@ data class PlaybackProgressState(
 @Singleton
 class MusicPlayer @Inject constructor(
     @ApplicationContext context: Context,
+    private val http: okhttp3.OkHttpClient,
     private val innerTube: StreamApi,
     private val relatedGraph: RelatedGraphRepository,
     private val segBridge: DashSegmenter,
@@ -731,11 +732,18 @@ class MusicPlayer @Inject constructor(
     }
 
     private val httpUpstreamFactory: OkHttpDataSource.Factory by lazy {
-        // Match extraction's IPv4-first routing. HttpURLConnection otherwise
-        // waits a full connect timeout on broken IPv6 routes before trying IPv4.
-        // Keep media off the API client's interceptors and disk HTTP cache.
-        val mediaHttp = okhttp3.OkHttpClient.Builder()
-            .dns(com.itzfallenme.katmusic.data.network.Ipv4FirstDnsResolver())
+        // Share the resolver's dispatcher, DNS policy and connection pool with
+        // YouTube extraction. YouTube may bind a googlevideo URL to the network
+        // context that minted it; an independent media client can choose a
+        // different route/address family, which often fails on full-tunnel VPNs.
+        // Strip API-only interceptors and the metadata cache while retaining the
+        // shared transport state.
+        val mediaHttp = http.newBuilder()
+            .cache(null)
+            .apply {
+                interceptors().clear()
+                networkInterceptors().clear()
+            }
             .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
             .followRedirects(true)
@@ -1366,7 +1374,8 @@ class MusicPlayer @Inject constructor(
                             playbackUrl = null,
                             playbackMimeType = null,
                         )
-                        val stream = resolveTrackAudioStream(
+                        val stream = boundedRecoveryResolve {
+                            resolveTrackAudioStream(
                             track = updated,
                             allowLocalDownloads = false,
                             videoId = videoId,
@@ -1382,7 +1391,8 @@ class MusicPlayer @Inject constructor(
                             // module walk used to eat the whole throttle
                             // window and land on "Unable to resolve".
                             losslessBudget = LosslessBudget.Disabled,
-                        )
+                            )
+                        }
                         withContext(Dispatchers.Main.immediate) {
                             if (generation != playRequestGeneration.get() ||
                                 player.currentMediaItemIndex != failedIndex ||
@@ -2638,6 +2648,9 @@ class MusicPlayer @Inject constructor(
         startShuffled: Boolean = false,
         playWhenReady: Boolean = true,
     ) {
+        // A new queue start owns the position from here; a stale post-stop
+        // position must not leak into a later resume.
+        resumeAfterStopPositionMs = null
         val selectedTrack = tracks[selectedIndex].withYoutubeArtwork()
         PlaybackStartupLog.begin(
             trackId = selectedTrack.internalTrackId?.takeIf { it.isNotBlank() } ?: selectedTrack.videoId.orEmpty(),
@@ -3019,10 +3032,13 @@ class MusicPlayer @Inject constructor(
         if (player.mediaItemCount == 0 && pendingCurrent != null) {
             val q = _state.value.queue.ifEmpty { listOf(pendingCurrent) }
             val idx = _state.value.currentIndex.coerceIn(q.indices)
+            // After a stop, continue where the song was instead of at 0:00.
+            val startAt = resumeAfterStopPositionMs ?: _state.value.positionMs
+            resumeAfterStopPositionMs = null
             startResolvedQueuePlayback(
                 tracks = q,
                 selectedIndex = idx,
-                startPositionMs = _state.value.positionMs,
+                startPositionMs = startAt,
                 sourceLabel = _state.value.sourceLabel,
                 endlessDiscover = _state.value.isEndlessQueue,
                 startShuffled = _state.value.shuffleEnabled,
@@ -5703,7 +5719,14 @@ class MusicPlayer @Inject constructor(
      *   playing) and the last session should still be restorable the next
      *   time the app opens.
      */
+    /** Position to resume from after stopAndClear(clearSession = false). */
+    private var resumeAfterStopPositionMs: Long? = null
+
     fun stopAndClear(clearSession: Boolean = true) = onMain {
+        // Captured before the player is torn down: afterwards it reports 0.
+        val stoppedAtMs = runCatching {
+            if (player.mediaItemCount > 0) player.currentPosition else null
+        }.getOrNull()?.takeIf { it > 0L } ?: _state.value.positionMs
         if (isCasting) castPlayback?.disconnect()
         cancelCrossfade()
         resolutionRequests.values.forEach { it.second.cancel() }
@@ -5733,8 +5756,15 @@ class MusicPlayer @Inject constructor(
             clearPersistedPlaybackSession()
             applicationScope.launch(Dispatchers.IO) { WidgetUpdater.clear(appContext) }
         } else {
-            _state.update { it.copy(isPlaying = false, isBuffering = false) }
+            // Keep the song where it stopped, for resume() and for the saved
+            // session that restores it after the process is gone.
+            resumeAfterStopPositionMs = stoppedAtMs.coerceAtLeast(0L)
+            _state.update {
+                it.copy(isPlaying = false, isBuffering = false, positionMs = stoppedAtMs.coerceAtLeast(0L))
+            }
+            persistPlaybackSession()
         }
+        if (clearSession) resumeAfterStopPositionMs = null
         appContext.stopService(Intent(appContext, MusicPlaybackService::class.java))
     }
     fun removeQueueItem(index: Int) = onMain {
@@ -8194,13 +8224,15 @@ class MusicPlayer @Inject constructor(
             var lastFailure: Throwable? = null
             repeat(2) { attempt ->
                 try {
-                    return resolveTrackAudioStream(
-                        track = track,
-                        videoId = videoId,
-                        allowLossless = allowLossless,
-                        losslessBudget = losslessBudget,
-                        claimPlayback = claimPlayback,
-                    )
+                    return boundedRecoveryResolve {
+                        resolveTrackAudioStream(
+                            track = track,
+                            videoId = videoId,
+                            allowLossless = allowLossless,
+                            losslessBudget = losslessBudget,
+                            claimPlayback = claimPlayback,
+                        )
+                    }
                 } catch (error: Throwable) {
                     if (error is CancellationException &&
                         error !is kotlinx.coroutines.TimeoutCancellationException
@@ -8226,6 +8258,36 @@ class MusicPlayer @Inject constructor(
                 if (streamResolutionWakeLock?.isHeld == true) streamResolutionWakeLock?.release()
             }
         }
+    }
+
+    /**
+     * Re-resolve for a stream that died mid-track, with a deadline.
+     *
+     * The retry and recovery coroutines rethrow every CancellationException as
+     * "we were cancelled". But a 403 makes reportPlaybackFailure() cancel the
+     * shared in-flight stream requests for that video, and a hung resolve never
+     * returns at all — both ended the coroutine silently, leaving the player
+     * IDLE at ~1:00 with no error, skip or recovery. Only a cancellation of
+     * THIS job propagates; anything else is a failure the caller handles.
+     */
+    private suspend fun <T : Any> boundedRecoveryResolve(resolve: suspend () -> T): T {
+        val result = try {
+            withTimeoutOrNull(RECOVERY_RESOLVE_TIMEOUT_MS) { resolve() }
+        } catch (error: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            throw java.io.IOException("Stream re-resolve was cancelled by another request", error)
+        }
+        if (result != null) return result
+        // A hung shared request would otherwise be re-joined by the next
+        // attempt (requests are deduped for 60s): drop and cancel the ones
+        // still pending past the whole YouTube resolve budget.
+        val cutoff = android.os.SystemClock.elapsedRealtime() - YT_RESOLVE_TOTAL_TIMEOUT_MS
+        resolutionRequests.entries.removeIf { (_, request) ->
+            val stale = !request.second.isCompleted && request.first <= cutoff
+            if (stale) request.second.cancel()
+            stale
+        }
+        throw java.io.IOException("Stream re-resolve timed out after ${RECOVERY_RESOLVE_TIMEOUT_MS}ms")
     }
 
     private fun rememberKnownDuration(key: String?, durationMs: Long?) {
@@ -8987,6 +9049,8 @@ class MusicPlayer @Inject constructor(
          *  promote wait plus every stacked re-resolve. Normal resolves take
          *  seconds; past this the track fails fast instead of spinning. */
         const val YT_RESOLVE_TOTAL_TIMEOUT_MS = 30_000L
+        /** Cap for one mid-track re-resolve (the YT budget above plus margin). */
+        const val RECOVERY_RESOLVE_TIMEOUT_MS = 35_000L
         const val DISCOVER_QUEUE_BATCH_SIZE = 16
         const val DISCOVER_QUEUE_REFILL_THRESHOLD = 8
         const val RADIO_QUEUE_BATCH_SIZE = 35

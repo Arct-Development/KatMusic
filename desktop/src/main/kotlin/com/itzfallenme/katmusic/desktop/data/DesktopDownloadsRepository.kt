@@ -4,6 +4,7 @@ import com.itzfallenme.katmusic.shared.data.DownloadedTrack
 import com.itzfallenme.katmusic.shared.data.DownloadsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,36 +71,59 @@ class DesktopDownloadsRepository(
      */
     suspend fun download(videoId: String, title: String, artist: String): Result<DownloadedTrack> =
         withContext(Dispatchers.IO) {
-            val url = runCatching { resolver.resolveAudioUrl(videoId).getOrThrow() }
-                .getOrElse { piped.resolveStream(videoId).getOrThrow() }
-            runCatching {
-                val extension = if (url.contains("opus", ignoreCase = true)) "webm" else "m4a"
-                val file = dir.resolve("${safeFileName("$artist - $title")}.$extension").toFile()
-                file.parentFile?.mkdirs()
-                val connection = java.net.URI(url).toURL().openConnection().apply {
-                    setRequestProperty("User-Agent", PipedClient.USER_AGENT)
-                    setConnectTimeout(15_000)
-                    setReadTimeout(120_000)
-                }
-                connection.getInputStream().use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
-                }
-                val bytes = file.length()
-                check(bytes >= MIN_VALID_AUDIO_BYTES) { "Downloaded file is empty; download failed" }
-                val track = DownloadedTrack(
-                    id = file.toURI().toString(),
-                    title = title,
-                    artist = artist,
-                    album = "",
-                    source = file.toURI().toString(),
-                    fileSizeBytes = bytes,
-                    durationMs = 0L,
-                    downloadedAtMillis = System.currentTimeMillis(),
-                )
-                addToIndex(track)
-                track
+            var lastFailure: Throwable? = null
+            repeat(MAX_DOWNLOAD_ATTEMPTS) { attempt ->
+                val result = runCatching { downloadOnce(videoId, title, artist) }
+                result.getOrNull()?.let { return@withContext Result.success(it) }
+                lastFailure = result.exceptionOrNull()
+                if (attempt < MAX_DOWNLOAD_ATTEMPTS - 1) delay(DOWNLOAD_RETRY_DELAY_MS)
             }
+            Result.failure(lastFailure ?: IllegalStateException("Download failed"))
         }
+
+    /**
+     * One resolve + transfer. Every attempt starts from a fresh extraction: a
+     * googlevideo URL can answer the first probe and still 403 mid-transfer,
+     * and reusing it just fails the same way.
+     */
+    private suspend fun downloadOnce(videoId: String, title: String, artist: String): DownloadedTrack {
+        val (url, itag) = runCatching { resolver.resolveAudio(videoId).getOrThrow() }
+            .getOrElse { piped.resolveStream(videoId).getOrThrow() to 0 }
+        // The itag decides the container; a googlevideo URL does not contain
+        // the codec name, so the old URL sniff saved Opus as .m4a.
+        val extension = if (itag in OPUS_ITAGS) "webm" else "m4a"
+        val file = dir.resolve("${safeFileName("$artist - $title")}.$extension").toFile()
+        file.parentFile?.mkdirs()
+        try {
+            val connection = java.net.URI(url).toURL().openConnection().apply {
+                // The URL was minted by the extractor; use the same identity
+                // for the transfer or the CDN can refuse it mid-file.
+                setRequestProperty("User-Agent", EXTRACTOR_USER_AGENT)
+                setConnectTimeout(15_000)
+                setReadTimeout(120_000)
+            }
+            connection.getInputStream().use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            val bytes = file.length()
+            check(bytes >= MIN_VALID_AUDIO_BYTES) { "Downloaded file is empty; download failed" }
+            val track = DownloadedTrack(
+                id = file.toURI().toString(),
+                title = title,
+                artist = artist,
+                album = "",
+                source = file.toURI().toString(),
+                fileSizeBytes = bytes,
+                durationMs = 0L,
+                downloadedAtMillis = System.currentTimeMillis(),
+            )
+            addToIndex(track)
+            return track
+        } catch (failure: Throwable) {
+            runCatching { Files.deleteIfExists(file.toPath()) }
+            throw failure
+        }
+    }
 
     override suspend fun remove(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         mutex.withLock {
@@ -198,5 +222,7 @@ class DesktopDownloadsRepository(
 
     private companion object {
         const val MIN_VALID_AUDIO_BYTES = 1_024L
+        const val MAX_DOWNLOAD_ATTEMPTS = 3
+        const val DOWNLOAD_RETRY_DELAY_MS = 750L
     }
 }

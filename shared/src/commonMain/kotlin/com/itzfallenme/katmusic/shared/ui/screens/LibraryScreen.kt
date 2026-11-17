@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,7 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -126,7 +126,7 @@ fun LibraryScreen(
             return@Column
         }
 
-        TabRow(selectedTabIndex = selectedTab) {
+        SecondaryTabRow(selectedTabIndex = selectedTab) {
             LIBRARY_TABS.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTab == index,
@@ -271,7 +271,7 @@ private fun LibraryEntriesRow(
         }
         if (onOpenPlaylists != null) {
             Button(onClick = onOpenPlaylists) {
-                Icon(Icons.Rounded.QueueMusic, contentDescription = null)
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
                 Text("  Playlists")
             }
         }

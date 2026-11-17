@@ -8,6 +8,7 @@ import dev.maxrave.pipepipe.extractor.downloader.Request
 import dev.maxrave.pipepipe.extractor.downloader.Response
 import dev.maxrave.pipepipe.extractor.exceptions.ReCaptchaException
 import dev.maxrave.pipepipe.extractor.stream.StreamInfo
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe as BraveNewPipe
@@ -48,7 +49,7 @@ class NewPipeStreamResolver(
      */
     private val cookieHeader: () -> String? = { null },
 ) {
-    private val headClient: OkHttpClient = OkHttpClient.Builder()
+    private val probeClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
@@ -74,7 +75,11 @@ class NewPipeStreamResolver(
      * Resolves [videoId] to one playable audio URL, trying every tier.
      * Fails with every tier's reason when none produces audio.
      */
-    fun resolveAudioUrl(videoId: String): Result<String> {
+    fun resolveAudioUrl(videoId: String): Result<String> =
+        resolveAudio(videoId).map { it.first }
+
+    /** Same as [resolveAudioUrl], keeping the chosen itag for downloads. */
+    fun resolveAudio(videoId: String): Result<Pair<String, Int>> {
         init()
         // Signed-in extraction: PipePipe reads this global exactly like
         // SimpMusic's desktop Extractor.logIn(cookie). Clearing it on sign-out
@@ -87,16 +92,16 @@ class NewPipeStreamResolver(
         )) {
             try {
                 val streams = extract()
-                val url = pickAudioUrl(streams) ?: run {
+                val picked = pickAudio(streams) ?: run {
                     errors += "$tier: no audio itag"
                     null
                 }
-                if (url == null) continue
-                if (!headOk(url)) {
-                    errors += "$tier: URLs rejected by CDN (stale signature)"
+                if (picked == null) continue
+                if (!probePlayable(picked.second)) {
+                    errors += "$tier: URL failed the media probe (stale signature)"
                     continue
                 }
-                return Result.success(url)
+                return Result.success(picked.second to picked.first)
             } catch (error: Throwable) {
                 errors += "$tier: ${error.message ?: error.javaClass.simpleName}"
             }
@@ -132,10 +137,34 @@ class NewPipeStreamResolver(
         return pairs
     }
 
-    /** HEAD probe; a URL is only trusted when the CDN answers 2xx/3xx. */
-    private fun headOk(url: String): Boolean = runCatching {
-        headClient.newCall(okhttp3.Request.Builder().head().url(url).build())
-            .execute().use { response -> response.code in 200..399 }
+    /**
+     * Opens the media URL the way a player does: ranged GET, reading past the
+     * first MiB when the size allows it. HEAD (and 0-1 byte ranges) can answer
+     * 200 while the body is refused, which is how a track starts and dies a
+     * minute in.
+     */
+    private fun probePlayable(url: String): Boolean = runCatching {
+        val request = okhttp3.Request.Builder()
+            .url(url)
+            .header("Accept", "audio/*,*/*;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header("Range", probeRange(url))
+            .header("User-Agent", EXTRACTOR_USER_AGENT)
+            .build()
+        probeClient.newCall(request).execute().use { response ->
+            if (response.code != 200 && response.code != 206) return@use false
+            val type = response.header("Content-Type").orEmpty().lowercase()
+            if (type.contains("text/html") || type.contains("application/json") ||
+                type.contains("text/plain")
+            ) {
+                return@use false
+            }
+            val source = response.body?.source() ?: return@use false
+            source.request(1L) && run {
+                source.request(PROBE_READ_BYTES)
+                true
+            }
+        }
     }.getOrDefault(false)
 
     class StreamResolveException(override val message: String) : Exception(message)
@@ -146,14 +175,40 @@ class NewPipeStreamResolver(
  * player can stream (Opus 774/251 preferred, AAC 141/140 next). Video and
  * muxed itags are never chosen, and blank URLs are dropped.
  */
-internal fun pickAudioUrl(streams: List<Pair<Int, String>>): String? =
+internal fun pickAudioUrl(streams: List<Pair<Int, String>>): String? = pickAudio(streams)?.second
+
+/** The chosen audio itag and URL; blank URLs are rejected. */
+internal fun pickAudio(streams: List<Pair<Int, String>>): Pair<Int, String>? =
     streams.filter { it.first in AUDIO_ITAGS }
         .maxByOrNull { it.first }
-        ?.second
-        ?.takeUnless { it.isBlank() }
+        ?.takeIf { it.second.isNotBlank() }
 
 /** Itags carrying playable audio (SimpMusic's ITAG.AUDIO set). */
 internal val AUDIO_ITAGS = setOf(140, 141, 250, 251, 774)
+
+/** Opus-in-WebM itags; every other supported itag is AAC-in-MP4. */
+internal val OPUS_ITAGS = setOf(250, 251, 774)
+
+private const val PROBE_AUTH_BOUNDARY_BYTES = 1L * 1024 * 1024
+private const val PROBE_WINDOW_BYTES = 1L * 1024 * 1024
+private const val PROBE_READ_BYTES = 16L * 1024
+internal const val EXTRACTOR_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) KatMusic/2.6"
+
+/**
+ * Range for the playback probe: the window just past the first MiB when
+ * `clen` says the file reaches it, otherwise the opening. Some clients serve
+ * only the first MiB and 403 the rest.
+ */
+internal fun probeRange(url: String): String {
+    val length = url.toHttpUrlOrNull()?.queryParameter("clen")?.toLongOrNull()?.takeIf { it > 0L }
+    val start = if (length != null && length > PROBE_AUTH_BOUNDARY_BYTES + PROBE_READ_BYTES) {
+        PROBE_AUTH_BOUNDARY_BYTES
+    } else {
+        0L
+    }
+    val end = (start + PROBE_WINDOW_BYTES - 1).let { if (length != null) minOf(it, length - 1) else it }
+    return "bytes=$start-$end"
+}
 
 /** OkHttp-backed downloader for the PipePipe extractor. */
 private class PipePipeDownloaderImpl(
@@ -250,7 +305,7 @@ private class PipePipeDownloaderImpl(
     }
 
     private companion object {
-        const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) KatMusic/2.6"
+        const val USER_AGENT = EXTRACTOR_USER_AGENT
     }
 }
 
@@ -301,7 +356,7 @@ private class BraveDownloaderImpl(
     }
 
     private companion object {
-        const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) KatMusic/2.6"
+        const val USER_AGENT = EXTRACTOR_USER_AGENT
     }
 }
 

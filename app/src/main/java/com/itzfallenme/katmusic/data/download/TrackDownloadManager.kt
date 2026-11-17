@@ -1516,6 +1516,13 @@ class TrackDownloadManager @Inject constructor(
                     // raw frames from every mdat; nothing is decoded or re-encoded,
                     // so 24-bit hi-res stays bit-exact. On failure the .m4a is kept
                     // rather than losing a completed download.
+                    // The bytes decide Atmos: the addon can omit its atmos flag
+                    // (codec defaults to "flac") and the loopback always answers
+                    // audio/mp4, which used to relabel E-AC-3 as FLAC or "M4A AAC".
+                    if (extension == "m4a" && Mp4FlacRemuxer.isMp4Spatial(currentAudioFile)) {
+                        formatBadge = "DOLBY ATMOS"
+                        dashIsFlacInMp4 = false
+                    }
                     if (dashIsFlacInMp4 && extension == "m4a") {
                         val nativeFlac = File.createTempFile("dl_flac_", ".flac", context.cacheDir)
                         if (Mp4FlacRemuxer.remux(currentAudioFile, nativeFlac)) {

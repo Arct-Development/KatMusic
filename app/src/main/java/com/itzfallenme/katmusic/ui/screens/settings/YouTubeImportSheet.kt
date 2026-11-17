@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,7 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,7 +84,7 @@ fun YouTubeImportSheet(
     importManager: PlaylistImportManager,
     onImportSuccess: (SavedPlaylist) -> Unit,
 ) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -170,7 +170,7 @@ fun YouTubeImportSheet(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.QueueMusic,
+                        Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(20.dp),
@@ -213,10 +213,13 @@ fun YouTubeImportSheet(
                             }
                         } else {
                             IconButton(onClick = {
-                                val text = clipboard.getText()?.text.orEmpty()
-                                if (text.isNotBlank()) {
-                                    urlInput = text
-                                    fetchPlaylist()
+                                scope.launch {
+                                    val text = clipboard.getClipEntry()
+                                        ?.clipData?.getItemAt(0)?.text?.toString().orEmpty()
+                                    if (text.isNotBlank()) {
+                                        urlInput = text
+                                        fetchPlaylist()
+                                    }
                                 }
                             }) {
                                 Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.ytimport_paste_cd))

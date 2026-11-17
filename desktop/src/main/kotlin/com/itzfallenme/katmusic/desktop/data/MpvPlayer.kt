@@ -34,7 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * installed, [isAvailable] is false and the app keeps the Java Sound engine
  * for local files instead of shipping a broken control.
  */
-class MpvPlayer : PlayerController {
+class MpvPlayer(
+    /** Mints a fresh googlevideo URL when a track ends with a media error. */
+    private val freshUrl: ((String) -> String?)? = null,
+) : PlayerController {
 
     interface MpvLibrary : Library {
         fun mpv_create(): Pointer?
@@ -50,10 +53,17 @@ class MpvPlayer : PlayerController {
     }
 
     companion object {
-        /** MPV_FORMAT_FLAG / MPV_FORMAT_DOUBLE / MPV_FORMAT_STRING ids. */
-        private const val FORMAT_FLAG = 0
+        /** mpv_format ids from client.h. */
+        private const val FORMAT_FLAG = 3
         private const val FORMAT_STRING = 1
-        private const val FORMAT_DOUBLE = 4
+        private const val FORMAT_DOUBLE = 5
+
+        // mpv_event_id values from client.h.
+        private const val EVENT_NONE = 0
+        private const val EVENT_SHUTDOWN = 1
+        private const val EVENT_END_FILE = 7
+        private const val EVENT_PROPERTY_CHANGE = 22
+        private const val MAX_STREAM_REFRESH_ATTEMPTS = 2
 
         private val NAMES = listOf(
             "mpv" to listOf("libmpv.so.2", "libmpv.so.1", "libmpv.so"),
@@ -88,6 +98,7 @@ class MpvPlayer : PlayerController {
     private val eventThreadRunning = AtomicBoolean(false)
     private val shutdown = AtomicBoolean(false)
     private var generation = 0
+    private var refreshAttempts = 0
 
     init {
         if (lib != null) {
@@ -96,6 +107,8 @@ class MpvPlayer : PlayerController {
                 lib.mpv_set_property_string(created, "vo", "null")
                 lib.mpv_set_property_string(created, "audio-display", "no")
                 lib.mpv_set_property_string(created, "terminal", "no")
+                // Same identity the extractor used to mint the media URL.
+                lib.mpv_set_property_string(created, "user-agent", EXTRACTOR_USER_AGENT)
                 if (lib.mpv_initialize(created) == 0) {
                     handle = created
                     lib.mpv_observe_property(created, 1, "time-pos", FORMAT_DOUBLE)
@@ -114,6 +127,7 @@ class MpvPlayer : PlayerController {
         if (!isAvailable || tracks.isEmpty()) return
         val index = startIndex.coerceIn(0, tracks.lastIndex)
         generation++
+        refreshAttempts = 0
         _state.update {
             it.copy(
                 queue = tracks,
@@ -189,6 +203,7 @@ class MpvPlayer : PlayerController {
         val snapshot = _state.value
         if (snapshot.queue.getOrNull(index) == null) return
         generation++
+        refreshAttempts = 0
         _state.update { it.copy(index = index, positionMs = 0, isPlaying = true, isBuffering = true, error = null) }
         loadCurrent()
     }
@@ -214,13 +229,15 @@ class MpvPlayer : PlayerController {
                 val event = lib?.mpv_wait_event(h, 0.25) ?: break
                 val eventId = event.getInt(0) // mpv_event.event_id
                 when (eventId) {
-                    0 -> break // MPV_EVENT_NONE ends the pointer validity window
-                    7 -> { // MPV_EVENT_PROPERTY_CHANGE
-                        val prop = event.getPointer(8) // mpv_event_property*
+                    EVENT_NONE -> break // NONE ends the pointer validity window
+                    EVENT_PROPERTY_CHANGE -> {
+                        // mpv_event.data points at mpv_event_property.
+                        val prop = event.getPointer(16)
                         if (prop != null) {
+                            // mpv_event_property: name (0), format (8), data (16).
                             val name = prop.getString(0)
-                            val format = prop.getInt(16)
-                            val data = prop.getPointer(24)
+                            val format = prop.getInt(8)
+                            val data = prop.getPointer(16)
                             when (name) {
                                 "time-pos" -> if (format == FORMAT_DOUBLE && data != null) {
                                     _state.update { it.copy(positionMs = (data.getDouble(0) * 1000).toLong()) }
@@ -235,19 +252,71 @@ class MpvPlayer : PlayerController {
                             }
                         }
                     }
-                    21, 22, 23 -> { // MPV_EVENT_END_FILE / SHUTDOWN / PLAYBACK_RESTART
-                        if (eventId == 23) break // SHUTDOWN
-                        if (eventId == 21 && eofSeen) { // END_FILE after eof
+                    EVENT_END_FILE -> {
+                        // mpv_event_end_file.reason: 0 EOF, 2 STOP, 4 ERROR.
+                        val reason = event.getPointer(16)?.getInt(0) ?: 0
+                        if (reason == 0 || eofSeen) {
                             eofSeen = false
                             if (_state.value.isPlaying && generation > 0) {
                                 advanceAfterTrackEnd()
                             }
+                        } else if (reason == 4) {
+                            recoverExpiredStream()
                         }
                     }
+                    EVENT_SHUTDOWN -> break
                 }
                 delay(1)
             }
             eventThreadRunning.set(false)
+        }
+    }
+
+    /**
+     * A signed googlevideo URL can expire or be refused mid-song. Mint a fresh
+     * one for the same video and reload at the position playback reached,
+     * instead of leaving the player stopped with no error.
+     */
+    private fun recoverExpiredStream() {
+        val snapshot = _state.value
+        val track = snapshot.current ?: return
+        if (track.isLocal || track.source.startsWith("file:", ignoreCase = true)) return
+        val resolver = freshUrl ?: return
+        if (refreshAttempts >= MAX_STREAM_REFRESH_ATTEMPTS) {
+            _state.update { it.copy(isPlaying = false, isBuffering = false, error = "Stream URL expired") }
+            return
+        }
+        refreshAttempts++
+        val resumeAt = snapshot.positionMs.coerceAtLeast(0L)
+        val expectedGeneration = generation
+        _state.update { it.copy(isBuffering = true, error = null) }
+        scope.launch {
+            val fresh = runCatching { resolver(track.id) }.getOrNull()
+            val h = handle
+            if (fresh.isNullOrBlank() || h == null || expectedGeneration != generation) {
+                if (expectedGeneration == generation) {
+                    _state.update { it.copy(isBuffering = false, error = "Stream URL expired") }
+                }
+                return@launch
+            }
+            val updated = track.copy(source = fresh)
+            _state.update { state ->
+                val queue = state.queue.toMutableList().apply {
+                    if (state.index in indices) set(state.index, updated)
+                }
+                state.copy(
+                    queue = queue,
+                    positionMs = resumeAt,
+                    isBuffering = false,
+                    isPlaying = true,
+                    error = null,
+                )
+            }
+            lib?.mpv_command(h, arrayOf("loadfile", fresh, "replace"))
+            lib?.mpv_set_property_string(h, "pause", "no")
+            if (resumeAt > 0L) {
+                lib?.mpv_command(h, arrayOf("seek", (resumeAt / 1000.0).toString(), "absolute"))
+            }
         }
     }
 
@@ -276,4 +345,5 @@ class MpvPlayer : PlayerController {
         val ref = DoubleByReference(value)
         return ref.pointer
     }
+
 }

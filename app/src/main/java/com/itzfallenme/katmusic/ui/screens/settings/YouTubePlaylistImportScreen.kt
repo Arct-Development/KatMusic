@@ -46,7 +46,7 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
@@ -69,9 +69,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -79,13 +76,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -98,6 +96,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.itzfallenme.katmusic.data.music.YouTubePlaylistResult
 import com.itzfallenme.katmusic.data.music.YouTubePlaylistSummary
 import com.itzfallenme.katmusic.data.playlist.SavedPlaylist
@@ -120,7 +119,8 @@ fun YouTubePlaylistImportScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
 
@@ -201,7 +201,7 @@ fun YouTubePlaylistImportScreen(
                         val selected = state.selectedTab == tab
                         val icon = when (tab) {
                             ImportTab.LIBRARY -> Icons.Filled.LibraryMusic
-                            ImportTab.SEARCH -> Icons.Filled.QueueMusic
+                            ImportTab.SEARCH -> Icons.AutoMirrored.Filled.QueueMusic
                             ImportTab.LINK -> Icons.Filled.Link
                             ImportTab.CSV -> Icons.Filled.Description
                         }
@@ -350,10 +350,13 @@ fun YouTubePlaylistImportScreen(
                                         }
                                     } else {
                                         IconButton(onClick = {
-                                            val text = clipboard.getText()?.text.orEmpty()
-                                            if (text.isNotBlank()) {
-                                                viewModel.onQueryChange(text)
-                                                viewModel.search(text)
+                                            scope.launch {
+                                                val text = clipboard.getClipEntry()
+                                                    ?.clipData?.getItemAt(0)?.text?.toString().orEmpty()
+                                                if (text.isNotBlank()) {
+                                                    viewModel.onQueryChange(text)
+                                                    viewModel.search(text)
+                                                }
                                             }
                                         }) {
                                             Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.imp_paste_cd), tint = MaterialTheme.colorScheme.primary)
@@ -486,10 +489,13 @@ fun YouTubePlaylistImportScreen(
                                             }
                                         } else {
                                             IconButton(onClick = {
-                                                val text = clipboard.getText()?.text.orEmpty()
-                                                if (text.isNotBlank()) {
-                                                    viewModel.onDirectLinkChange(text)
-                                                    viewModel.resolveDirectLink(text)
+                                                scope.launch {
+                                                    val text = clipboard.getClipEntry()
+                                                        ?.clipData?.getItemAt(0)?.text?.toString().orEmpty()
+                                                    if (text.isNotBlank()) {
+                                                        viewModel.onDirectLinkChange(text)
+                                                        viewModel.resolveDirectLink(text)
+                                                    }
                                                 }
                                             }) {
                                                 Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.imp_paste_cd), tint = MaterialTheme.colorScheme.primary)

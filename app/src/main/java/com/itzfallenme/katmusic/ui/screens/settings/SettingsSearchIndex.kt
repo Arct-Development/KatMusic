@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.SwitchAccount
@@ -44,7 +44,7 @@ import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.SpeakerPhone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -313,7 +313,7 @@ object SettingsSearchIndex {
                     keywords = listOf(
                         "volume", "software volume", "hardware volume", "dac", "logiciel", "matériel",
                     ),
-                    icon = Icons.Filled.VolumeUp,
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
                     parentTab = SettingsTab.AUDIO,
@@ -330,7 +330,7 @@ object SettingsSearchIndex {
                         "loudness", "normalization", "volume", "replaygain", "lufs", "track volume",
                         "leveling", "equal volume", "album loudness", "gain"
                     ),
-                    icon = Icons.Filled.VolumeUp,
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
                     parentTab = SettingsTab.AUDIO,
@@ -381,7 +381,7 @@ object SettingsSearchIndex {
                         "system audio effects", "wavelet", "dolby system", "external eq", "audio fx",
                         "dsp apps", "system equalizer", "sound enhancer"
                     ),
-                    icon = Icons.Filled.VolumeUp,
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
                     iconContainer = { MaterialTheme.colorScheme.tertiaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onTertiaryContainer },
                     parentTab = SettingsTab.AUDIO,
@@ -900,7 +900,7 @@ object SettingsSearchIndex {
                         "sync playlists", "playlist selection", "choose playlists", "mirror playlists",
                         "synced playlists", "filter sync"
                     ),
-                    icon = Icons.Filled.FormatListBulleted,
+                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
                     iconContainer = { MaterialTheme.colorScheme.tertiaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onTertiaryContainer },
                     parentTab = SettingsTab.YOUTUBE,
@@ -934,7 +934,7 @@ object SettingsSearchIndex {
                         "import youtube", "import playlist", "paste link", "yt import", "copy playlist",
                         "transfer youtube", "make local"
                     ),
-                    icon = Icons.Filled.QueueMusic,
+                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                     iconContainer = { MaterialTheme.colorScheme.primaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onPrimaryContainer },
                     parentTab = SettingsTab.YOUTUBE,
@@ -985,7 +985,7 @@ object SettingsSearchIndex {
                         "spotify playlist", "import playlist", "my playlists", "liked songs",
                         "spotify library", "import from spotify"
                     ),
-                    icon = Icons.Filled.QueueMusic,
+                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
                     parentTab = SettingsTab.SPOTIFY,
@@ -1197,7 +1197,7 @@ object SettingsSearchIndex {
                         "import youtube", "import playlist", "yt music import", "paste playlist url",
                         "transfer youtube playlists"
                     ),
-                    icon = Icons.Filled.QueueMusic,
+                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                     iconContainer = { MaterialTheme.colorScheme.primaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onPrimaryContainer },
                     parentTab = SettingsTab.LIBRARY,
@@ -1214,7 +1214,7 @@ object SettingsSearchIndex {
                         "import spotify", "import apple music", "transfer playlist", "spotify to katmusic",
                         "apple to katmusic", "playlist converter", "public link"
                     ),
-                    icon = Icons.Filled.QueueMusic,
+                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                     iconContainer = { MaterialTheme.colorScheme.secondaryContainer },
                     iconTint = { MaterialTheme.colorScheme.onSecondaryContainer },
                     parentTab = SettingsTab.LIBRARY,

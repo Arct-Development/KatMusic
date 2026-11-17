@@ -45,6 +45,23 @@ class NewPipeStreamResolverTest {
     }
 
     @Test
+    fun `playback probe reads past the first mebibyte when the file reaches it`() {
+        assertEquals(
+            "bytes=1048576-2097151",
+            probeRange("https://example.test/videoplayback?itag=251&clen=3000000"),
+        )
+        assertEquals(
+            "bytes=1048576-1499999",
+            probeRange("https://example.test/videoplayback?itag=251&clen=1500000"),
+        )
+        assertEquals(
+            "bytes=0-499999",
+            probeRange("https://example.test/videoplayback?itag=251&clen=500000"),
+        )
+        assertEquals("bytes=0-1048575", probeRange("https://example.test/videoplayback?itag=251"))
+    }
+
+    @Test
     fun `account cookies are scoped to youtube and google hosts`() {
         assertTrue(sendsYoutubeCookies("https://www.youtube.com/watch?v=jNQXAC9IVRw"))
         assertTrue(sendsYoutubeCookies("https://music.youtube.com/watch?v=jNQXAC9IVRw"))

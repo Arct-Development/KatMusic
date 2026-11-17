@@ -123,7 +123,7 @@ import androidx.compose.material.icons.filled.FormatSize
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.HighQuality
@@ -131,7 +131,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.SpeakerPhone
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -139,9 +139,9 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -444,7 +444,7 @@ enum class SettingsTab(
         subtitleRes = R.string.set_cat_lib_sub,
         title = "Library & Content",
         subtitle = "Home layout, Playlist imports, Downloads, Exclusions",
-        icon = Icons.Filled.QueueMusic,
+        icon = Icons.AutoMirrored.Filled.QueueMusic,
     ),
     DATA_BACKUP(
         titleRes = R.string.set_cat_data,
@@ -755,7 +755,7 @@ fun SettingsScreen(
                                             position = position,
                                         )
                                         2 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = stringResource(R.string.set_cat_lib),
@@ -1247,7 +1247,7 @@ fun SettingsScreen(
                             )
                             }
                             2 -> SettingsToggleCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 title = stringResource(R.string.settings_force_sw_volume),
@@ -1262,7 +1262,7 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "audio.force_software_volume"),
                             )
                             3 -> SettingsActionCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 title = stringResource(R.string.set_loud_title),
@@ -1288,7 +1288,7 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "audio.equalizer"),
                             )
                             5 -> SettingsToggleCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                 title = stringResource(R.string.set_sys_fx_title),
@@ -1865,7 +1865,7 @@ fun SettingsScreen(
                                     stringResource(R.string.set_sync_partial, selectedCount, allPlaylists.size)
                                 }
                                 SettingsActionCard(
-                                    icon = Icons.Filled.FormatListBulleted,
+                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                     title = stringResource(R.string.settings_select_playlists),
@@ -1876,7 +1876,7 @@ fun SettingsScreen(
                                 )
                             } else {
                                 SettingsActionCard(
-                                    icon = Icons.Filled.QueueMusic,
+                                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                     title = stringResource(R.string.set_import_yt),
@@ -1905,7 +1905,7 @@ fun SettingsScreen(
                                 )
                             }
                             5 -> SettingsActionCard(
-                                icon = Icons.Filled.QueueMusic,
+                                icon = Icons.AutoMirrored.Filled.QueueMusic,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 title = stringResource(R.string.settings_make_local),
@@ -2004,7 +2004,7 @@ fun SettingsScreen(
                                             )
                                         }
                                         1 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = "Your Spotify Playlists",
@@ -2123,7 +2123,7 @@ fun SettingsScreen(
                                 SettingsGroup(rowCount = 3) { index, position ->
                                     when (index) {
                                         0 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                             title = stringResource(R.string.set_import_yt),
@@ -2133,7 +2133,7 @@ fun SettingsScreen(
                                             isHighlighted = (highlightedSettingId == "library.import_yt"),
                                         )
                                         1 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = stringResource(R.string.set_import_spotify),
@@ -4142,7 +4142,7 @@ private fun YouTubeAccountRow(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
             }
         }
     }
@@ -4205,7 +4205,7 @@ private fun SpotifyAccountRow(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
             }
         }
     }
@@ -4333,7 +4333,7 @@ private fun LastFmIntegrationCard(
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         ),
                     ) {
-                        Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
                     }
                 }
             }
@@ -5752,7 +5752,7 @@ private fun YouTubeLibraryVisibilitySheet(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        Icons.Filled.QueueMusic,
+                                        Icons.AutoMirrored.Filled.QueueMusic,
                                         contentDescription = null,
                                         tint = if (isShown) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -5894,7 +5894,7 @@ private fun SyncPlaylistsSheet(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        Icons.Filled.QueueMusic,
+                                        Icons.AutoMirrored.Filled.QueueMusic,
                                         contentDescription = null,
                                         tint = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(22.dp),

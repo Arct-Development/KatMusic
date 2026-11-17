@@ -52,7 +52,7 @@ fun main() = application {
     // Streaming (Opus/AAC/HLS) needs libmpv; when it is not installed the app
     // falls back to the Java Sound engine, which covers local MP3/Ogg/WAV/AIFF.
     val player: PlayerController = remember {
-        val mpv = MpvPlayer()
+        val mpv = MpvPlayer { videoId -> streamResolver.resolveAudioUrl(videoId).getOrNull() }
         if (mpv.isAvailable) mpv else JavaSoundPlayer()
     }
 
