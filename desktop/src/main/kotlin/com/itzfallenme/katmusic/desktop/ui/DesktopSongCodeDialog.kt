@@ -253,7 +253,7 @@ private fun createWaveform(code: String, width: Int, height: Int): Waveform {
             while (x < matrix.width && matrix.get(x, row)) x++
             val first = normalized[barIndex % normalized.length].code
             val second = normalized[(barIndex * 7) % normalized.length].code
-            val ratio = 0.56f + ((first * 31 + second * 17 + barIndex * 47) % 43) / 100f
+            val ratio = 0.55f + ((first * 31 + second * 17 + barIndex * 47) % 45) / 100f
             add(WaveBar(start, x, ratio))
             barIndex++
         }

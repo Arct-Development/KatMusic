@@ -55,8 +55,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BarcodeFormat
+import android.util.Size
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
+import com.google.zxing.LuminanceSource
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.ReaderException
@@ -212,6 +214,8 @@ private fun KatMusicCodeCameraPreview(
                 }
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetRotation(previewView.display?.rotation ?: 0)
+                    .setTargetResolution(Size(1280, 720))
                     .build()
                     .also { it.setAnalyzer(executor, KatMusicCodeAnalyzer(onCodeScanned)) }
                 provider?.unbindAll()
@@ -257,7 +261,7 @@ private class KatMusicCodeAnalyzer(
             val buffer = plane.buffer.duplicate()
             val bytes = ByteArray(buffer.remaining())
             buffer.get(bytes)
-            val source = PlanarYUVLuminanceSource(
+            var source: LuminanceSource = PlanarYUVLuminanceSource(
                 bytes,
                 plane.rowStride,
                 image.height,
@@ -267,6 +271,12 @@ private class KatMusicCodeAnalyzer(
                 image.height,
                 false,
             )
+            // CameraX reports the clockwise rotation that would make the frame
+            // upright. ZXing's 1D readers scan horizontal rows, so rotate the
+            // luminance source back before looking for the Code 128 tag.
+            repeat(imageProxy.imageInfo.rotationDegrees / 90) {
+                source = source.rotateCounterClockwise()
+            }
             val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source)))
             val code = KatMusicCode.normalize(result.text)
             if (code != null && handled.compareAndSet(false, true)) {

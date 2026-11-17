@@ -2,8 +2,10 @@ package com.itzfallenme.katmusic.ui.components
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -116,8 +118,12 @@ internal fun createKatMusicCodeCard(
 }.getOrNull()
 
 private fun drawKatMusicCodeTag(canvas: Canvas, code: String, bounds: RectF) {
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    paint.color = CODE_BLUE
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = LinearGradient(
+            bounds.left, bounds.top, bounds.right, bounds.bottom,
+            CODE_BLUE, CODE_CYAN, Shader.TileMode.CLAMP,
+        )
+    }
     canvas.drawRoundRect(bounds, 26f, 26f, paint)
 
     val insetX = 26f
@@ -135,9 +141,9 @@ private fun drawKatMusicCodeTag(canvas: Canvas, code: String, bounds: RectF) {
         mapOf(EncodeHintType.MARGIN to 10),
     )
     val scaleX = innerWidth.toFloat() / matrix.width
-    val scaleY = innerHeight.toFloat() / matrix.height
     val scanRow = matrix.height / 2
     val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CODE_NAVY }
+    val centerY = bounds.centerY()
     var x = 0
     var barIndex = 0
     while (x < matrix.width) {
@@ -149,18 +155,15 @@ private fun drawKatMusicCodeTag(canvas: Canvas, code: String, bounds: RectF) {
         while (x < matrix.width && matrix.get(x, scanRow)) x++
         val seed = code[barIndex % code.length].code
         val secondSeed = code[(barIndex * 7) % code.length].code
-        val heightRatio = 0.38f + ((seed * 31 + secondSeed * 17 + barIndex * 47) % 63) / 100f
-        val barHeight = innerHeight * scaleY * heightRatio
-        val centerY = bounds.centerY()
+        // Keep every bar tall enough to cross the scan row reliably while
+        // still reading as a soundwave. Rounded ends are kept subtle.
+        val heightRatio = 0.55f + ((seed * 31 + secondSeed * 17 + barIndex * 47) % 45) / 100f
+        val barHeight = innerHeight * heightRatio
         val left = bounds.left + insetX + runStart * scaleX
         val right = bounds.left + insetX + x * scaleX
         val top = centerY - barHeight / 2f
-        canvas.drawRoundRect(
-            RectF(left, top, right, top + barHeight),
-            minOf(5f, (right - left) / 2f),
-            minOf(5f, (right - left) / 2f),
-            barPaint,
-        )
+        val radius = minOf(3f, (right - left) / 2f)
+        canvas.drawRoundRect(RectF(left, top, right, top + barHeight), radius, radius, barPaint)
         barIndex++
     }
 }
