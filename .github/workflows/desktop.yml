@@ -86,7 +86,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # The :shared module compiles for Android as well as desktop, so Gradle
       # needs the Android SDK to configure the build even when only the
