@@ -6,28 +6,28 @@ on:
       tag_name:
         description: 'Release version (must match app/build.gradle.kts)'
         required: true
-        default: '2.6.4'
+        default: '2.6.5'
       release_name:
         description: 'Public release title'
         required: true
-        default: 'KatMusic 2.6.4'
+        default: 'KatMusic 2.6.5'
       release_notes:
         description: 'Changelog / Release Notes'
         required: false
         default: |
-          ## KatMusic 2.6.4
+          ## KatMusic 2.6.5
 
-          ### Fixed
-          - Lossless addon resolution preserves coroutine cancellation instead of swallowing it as an ordinary failure.
-          - A normal no-match result no longer counts as a backend outage or starts a cooldown.
-          - The resolver waits for three consecutive backend failures before applying its 30-second cooldown; a successful resolution resets the failure count.
-
-          ### Validation note
-          - Seek/rebuffer behaviour, skipped UI frames and Atmos decoder availability still require device-level validation and are not claimed as fixed.
+          ### Added
+          - A desktop application for Windows, Linux and macOS built on the same Kotlin Multiplatform Compose UI as Android, with a local library, search, queue, playlists, downloads, home feed, lyrics and settings.
+          - Desktop YouTube playback through the NewPipe-fork extractors, with Piped powering the home feed and music search.
+          - Phone → desktop YouTube sign-in by scanning a QR code with the Android app; the session transfers encrypted over the local network and survives restarts.
+          - Portable liquid-glass chrome for the desktop player dock and navigation.
+          - Distinct Android Vinyl and Cassette decks plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas players; Classic is unchanged.
+          - Desktop Jam controls, Code 128 KatMusic Codes, Last.fm, regional Discover, artist radio/albums, public playlist imports, media keys, tray controls and PNG lyric cards.
 
           ### Build
           - Universal, ARM64 and Android 7–9 legacy APK packages.
-          - Windows, Linux and macOS desktop packages.
+          - Windows MSI and portable ZIP, Linux DEB and portable archive, macOS DMG for Apple silicon and Intel plus portable bundles.
 jobs:
   release:
     name: Build & Publish Release
@@ -38,8 +38,6 @@ jobs:
       SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
       RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
       EXPECTED_CERT_SHA256: ${{ secrets.EXPECTED_CERT_SHA256 }}
-      KATMUSIC_BLEND_SUPABASE_URL: ${{ secrets.KATMUSIC_BLEND_SUPABASE_URL }}
-      KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - name: Checkout code
@@ -205,9 +203,13 @@ jobs:
           | **`KatMusic-v__TAG__-arm64-v8a.apk`** | **Android 10+ (64-bit ARM)** | **ARM64 build.** Smaller ABI-specific package for arm64-v8a phones and tablets. |
           | **`KatMusic-v__TAG__-universal-uncompressed.apk`** (~89 MB) | **Android 10+ (Android 10 – 16+)** | **Raw Release.** Unminified debuggable variant with uncompressed native libraries. |
           | **`KatMusic-v__TAG__-android7.apk`** (~17 MB) | **Android 7.0 – 9.0 (Legacy)** | **Legacy Android 7.0+ Variant.** Built with compressed native libraries for older package managers. |
-          | `KatMusic-v__TAG__-windows-x64.zip` | Windows 10 / 11 (64-bit) | Portable desktop build — extract and run `KatMusic.exe`. |
-          | `KatMusic-v__TAG__-linux-x64.tar.gz` | Linux (64-bit) | Portable desktop bundle — extract and run the KatMusic binary. |
-          | `KatMusic-v__TAG__-macos.zip` | macOS 12+ | Unsigned `.app` bundle — right-click → Open on first launch. |
+          | `KatMusic-v__TAG__-windows-x64.msi` | Windows 10 / 11 (64-bit) | Signed installer — Start-menu shortcut and uninstall entry. |
+          | `KatMusic-v__TAG__-windows-x64-portable.zip` | Windows 10 / 11 (64-bit) | Portable desktop build — extract and run `KatMusic.exe`. |
+          | `KatMusic-v__TAG__-macos-arm64.dmg` | macOS 12+ (Apple silicon) | Apple-silicon disk image — drag `KatMusic.app` into Applications. |
+          | `KatMusic-v__TAG__-macos-x64.dmg` | macOS 12+ (Intel) | Intel disk image — drag `KatMusic.app` into Applications. |
+          | `KatMusic-v__TAG__-macos-*-portable.zip` | macOS 12+ | Unsigned `.app` bundle — right-click → Open on first launch. |
+          | `KatMusic-v__TAG__-linux-x64.deb` | Debian / Ubuntu 64-bit | Installer package with desktop menu entry. |
+          | `KatMusic-v__TAG__-linux-x64-portable.tar.gz` | Linux (64-bit) | Portable desktop bundle — extract and run the KatMusic binary. |
 
           > [!WARNING]
           > **Notice for Android 7.0 – 9.0 Users (`KatMusic-v__TAG__-android7.apk`):**
@@ -249,83 +251,114 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m"
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Windows
+          - name: Windows x64
             os: windows-latest
-            build: flutter build windows --release
-            artifact: build/windows/x64/runner/Release
-            package: windows-x64.zip
-          - name: Linux
-            os: ubuntu-22.04
-            build: flutter build linux --release
-            artifact: build/linux/x64/release/bundle
-            package: linux-x64.tar.gz
-          - name: macOS
+            slug: windows-x64
+            installer_task: packageMsi
+            installer_glob: desktop/build/compose/binaries/main/msi/*.msi
+            installer_ext: msi
+            portable: zip
+          - name: macOS Apple silicon
             os: macos-latest
-            build: flutter build macos --release
-            artifact: build/macos/Build/Products/Release
-            package: macos.zip
-    defaults:
-      run:
-        working-directory: desktop
+            slug: macos-arm64
+            installer_task: packageDmg
+            installer_glob: desktop/build/compose/binaries/main/dmg/*.dmg
+            installer_ext: dmg
+            portable: zip
+          - name: macOS Intel
+            os: macos-15-intel
+            slug: macos-x64
+            installer_task: packageDmg
+            installer_glob: desktop/build/compose/binaries/main/dmg/*.dmg
+            installer_ext: dmg
+            portable: zip
+          - name: Linux x64
+            os: ubuntu-22.04
+            slug: linux-x64
+            installer_task: packageDeb
+            installer_glob: desktop/build/compose/binaries/main/deb/*.deb
+            installer_ext: deb
+            portable: tar.gz
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Install Linux build dependencies
+      - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
-        working-directory: .
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-            libstdc++-12-dev libayatana-appindicator3-dev libasound2-dev \
-            libmpv-dev libkeybinder-3.0-dev libwebkit2gtk-4.1-dev \
-            libsecret-1-dev libjsoncpp-dev
+          sudo apt-get install -y libasound2-dev fakeroot
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.47.9"
-          channel: stable
-          cache: true
-
-      - name: Install Dart dependencies
-        run: flutter pub get
-
-      - name: Generate secret module
-        run: dart tool/obfuscate_secrets.dart
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Test
-        run: flutter test --exclude-tags golden,live
-
-      - name: Build
-        run: ${{ matrix.build }}
-
-      - name: Package
-        shell: bash
+      # jpackage's MSI backend needs WiX 3.14 (WiX 4/5 is not compatible with
+      # the JDK 17 jpackage shipped on the runner).
+      - name: Ensure WiX 3.14 for MSI packaging
+        if: runner.os == 'Windows'
         run: |
-          mkdir -p dist stage/KatMusic
-          cp -R "${{ matrix.artifact }}/." stage/KatMusic/
-          OUT="dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.package }}"
-          case "${{ runner.os }}" in
-            Windows) (cd stage && 7z a -tzip "../${OUT}" KatMusic > /dev/null) ;;
-            macOS) ditto -c -k --sequesterRsrc --keepParent stage/KatMusic "$OUT" ;;
-            *) tar -czf "$OUT" -C stage KatMusic ;;
+          if ! command -v candle >/dev/null 2>&1; then
+            choco install wixtoolset --version=3.14.1 -y --no-progress
+            echo "$(cygpath 'C:\Program Files (x86)\WiX Toolset v3.14\bin')" >> "$GITHUB_PATH"
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # :shared targets Android and desktop, so Gradle needs the Android SDK
+      # to configure the build even when only packaging the desktop app.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Test shared logic and desktop
+        run: ./gradlew :shared:desktopTest :desktop:test --stacktrace
+
+      - name: Build installer and app image
+        run: ./gradlew :desktop:${{ matrix.installer_task }} :desktop:createDistributable --stacktrace
+
+      - name: Stage installer and portable package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          installer="$(ls ${{ matrix.installer_glob }} | head -n1)"
+          cp "$installer" "dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.slug }}.${{ matrix.installer_ext }}"
+
+          case "${{ matrix.portable }}" in
+            zip)
+              if [[ "${{ runner.os }}" == "Windows" ]]; then
+                mkdir -p stage
+                cp -R desktop/build/compose/binaries/main/app/. stage/KatMusic/
+                (cd stage && 7z a -tzip "../dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.slug }}-portable.zip" KatMusic > /dev/null)
+              else
+                ditto -c -k --sequesterRsrc --keepParent \
+                  desktop/build/compose/binaries/main/app/KatMusic.app \
+                  "dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.slug }}-portable.zip"
+              fi
+              ;;
+            tar.gz)
+              tar -czf "dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.slug }}-portable.tar.gz" \
+                -C desktop/build/compose/binaries/main/app KatMusic
+              ;;
           esac
           ls -lh dist
 
-      - name: Upload desktop package
+      - name: Upload desktop packages
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.name }}
-          path: desktop/dist/*
+          name: desktop-${{ matrix.slug }}
+          path: dist/*
           if-no-files-found: error
 
   attach-desktop:
@@ -341,8 +374,11 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: List packages
-        run: ls -lh dist
+      - name: Generate desktop checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS-desktop.txt
+          cat SHA256SUMS-desktop.txt
 
       - name: Upload to the release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2

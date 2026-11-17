@@ -10,27 +10,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class AccentMode(val storageValue: String) {
-    MANUAL("manual"),
-    DYNAMIC("dynamic"),
-    MONOCHROME("monochrome");
-
-    companion object {
-        fun fromStorage(value: String?): AccentMode =
-            entries.firstOrNull { it.storageValue == value } ?: MANUAL
-    }
-}
-
-enum class ThemeMode(val storageValue: String) {
-    SYSTEM("system"),
-    LIGHT("light"),
-    DARK("dark");
-
-    companion object {
-        fun fromStorage(value: String?): ThemeMode =
-            entries.firstOrNull { it.storageValue == value } ?: SYSTEM
-    }
-}
+// AccentMode and ThemeMode now live in :shared (com.itzfallenme.katmusic.data.local)
+// so the shared theme and the desktop settings store read the same values.
 
 data class ThemePrefs(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,

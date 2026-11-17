@@ -44,7 +44,7 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Subscriptions
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
@@ -137,7 +137,7 @@ private fun HomeSection.toUniversalItem(): UniversalSectionItem = UniversalSecti
         HomeSection.TOP_ARTISTS -> Icons.Filled.People
         HomeSection.HEAVY_ROTATION -> Icons.Filled.Favorite
         HomeSection.ALBUMS -> Icons.Filled.Album
-        HomeSection.CHARTS -> Icons.Filled.TrendingUp
+        HomeSection.CHARTS -> Icons.AutoMirrored.Filled.TrendingUp
         HomeSection.NEW_RELEASES -> Icons.Filled.NewReleases
         HomeSection.FRIENDS -> Icons.Filled.Group
     },
@@ -153,7 +153,7 @@ private fun String.toYtUniversalItem(): UniversalSectionItem = UniversalSectionI
         "quick picks" -> Icons.Filled.Bolt
         "mixed for you" -> Icons.Filled.Shuffle
         "from your library" -> Icons.Filled.LibraryMusic
-        "trending" -> Icons.Filled.TrendingUp
+        "trending" -> Icons.AutoMirrored.Filled.TrendingUp
         "new releases" -> Icons.Filled.NewReleases
         "community playlists" -> Icons.Filled.Group
         else -> Icons.Filled.Subscriptions

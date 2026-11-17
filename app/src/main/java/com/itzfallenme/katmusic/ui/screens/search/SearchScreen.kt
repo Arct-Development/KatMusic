@@ -91,6 +91,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.itzfallenme.katmusic.data.search.SearchResultItem
 import com.itzfallenme.katmusic.data.search.SearchTab
 import com.itzfallenme.katmusic.ui.components.ArtworkImage
+import com.itzfallenme.katmusic.ui.components.KatMusicCodeScannerDialog
 import com.itzfallenme.katmusic.ui.components.MotionSpec
 import com.itzfallenme.katmusic.ui.components.HeaderActionIcon
 import com.itzfallenme.katmusic.ui.components.TrackContextMenuSheet
@@ -138,6 +139,7 @@ fun SearchScreen(
     val musicPlayer = com.itzfallenme.katmusic.ui.screens.player.LocalMusicPlayer.current
     val playbackState by musicPlayer.chromeState.collectAsStateWithLifecycle()
     var menuTarget by remember { mutableStateOf<TrackMenuTarget?>(null) }
+    var showKatMusicCodeScanner by remember { mutableStateOf(false) }
     // Long-press (deep press) on a TRACKS row opens the mini tray;
     // the overflow button keeps the full sheet.
     var miniTrayItem by remember { mutableStateOf<SearchResultItem?>(null) }
@@ -271,6 +273,19 @@ fun SearchScreen(
                             }
                         },
                     )
+                    IconButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            showKatMusicCodeScanner = true
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.GraphicEq,
+                            contentDescription = "Scan KatMusic Code",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(10.dp))
@@ -587,6 +602,16 @@ fun SearchScreen(
                 onPlay = { viewModel.playResult(item) },
             ),
             onDismiss = { miniTrayItem = null },
+        )
+    }
+
+    if (showKatMusicCodeScanner) {
+        KatMusicCodeScannerDialog(
+            onDismiss = { showKatMusicCodeScanner = false },
+            onCodeScanned = { code ->
+                showKatMusicCodeScanner = false
+                viewModel.playKatMusicCode(code)
+            },
         )
     }
 }
@@ -1003,4 +1028,3 @@ private fun SearchFilterPills(
         }
     }
 }
-

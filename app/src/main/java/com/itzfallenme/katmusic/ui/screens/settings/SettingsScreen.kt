@@ -119,11 +119,12 @@ import com.itzfallenme.katmusic.ui.screens.player.LyricsOffsetDialog
 import com.itzfallenme.katmusic.ui.screens.player.LyricsSizeDialog
 import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStyle
 import com.itzfallenme.katmusic.ui.screens.player.KatPlayerStylePreferences
+import com.itzfallenme.katmusic.ui.screens.player.PlayerStylePreview
 import androidx.compose.material.icons.filled.FormatSize
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.HighQuality
@@ -131,7 +132,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material.icons.filled.SpeakerPhone
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -139,9 +140,9 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -444,7 +445,7 @@ enum class SettingsTab(
         subtitleRes = R.string.set_cat_lib_sub,
         title = "Library & Content",
         subtitle = "Home layout, Playlist imports, Downloads, Exclusions",
-        icon = Icons.Filled.QueueMusic,
+        icon = Icons.AutoMirrored.Filled.QueueMusic,
     ),
     DATA_BACKUP(
         titleRes = R.string.set_cat_data,
@@ -476,7 +477,6 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
     onOpenListenTogether: () -> Unit = {},
-    onOpenGroupBlend: () -> Unit = {},
     onOpenHomeSections: () -> Unit = {},
     onOpenExcludedSongs: () -> Unit = {},
     onOpenYouTubeImport: () -> Unit = {},
@@ -755,7 +755,7 @@ fun SettingsScreen(
                                             position = position,
                                         )
                                         2 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = stringResource(R.string.set_cat_lib),
@@ -1054,18 +1054,6 @@ fun SettingsScreen(
                             )
                         }
                         add { position ->
-                            SettingsActionCard(
-                                icon = Icons.Filled.AutoAwesome,
-                                iconContainer = MaterialTheme.colorScheme.primaryContainer,
-                                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                title = "Group Blend",
-                                subtitle = "Compare music taste with friends",
-                                onClick = onOpenGroupBlend,
-                                position = position,
-                                isHighlighted = (highlightedSettingId == "audio.group_blend"),
-                            )
-                        }
-                        add { position ->
                             SettingsToggleCard(
                                 icon = Icons.Filled.Tune,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
@@ -1247,7 +1235,7 @@ fun SettingsScreen(
                             )
                             }
                             2 -> SettingsToggleCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 title = stringResource(R.string.settings_force_sw_volume),
@@ -1262,7 +1250,7 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "audio.force_software_volume"),
                             )
                             3 -> SettingsActionCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 title = stringResource(R.string.set_loud_title),
@@ -1288,7 +1276,7 @@ fun SettingsScreen(
                                 isHighlighted = (highlightedSettingId == "audio.equalizer"),
                             )
                             5 -> SettingsToggleCard(
-                                icon = Icons.Filled.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                 title = stringResource(R.string.set_sys_fx_title),
@@ -1865,7 +1853,7 @@ fun SettingsScreen(
                                     stringResource(R.string.set_sync_partial, selectedCount, allPlaylists.size)
                                 }
                                 SettingsActionCard(
-                                    icon = Icons.Filled.FormatListBulleted,
+                                    icon = Icons.AutoMirrored.Filled.FormatListBulleted,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                     title = stringResource(R.string.settings_select_playlists),
@@ -1876,7 +1864,7 @@ fun SettingsScreen(
                                 )
                             } else {
                                 SettingsActionCard(
-                                    icon = Icons.Filled.QueueMusic,
+                                    icon = Icons.AutoMirrored.Filled.QueueMusic,
                                     iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
                                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                                     title = stringResource(R.string.set_import_yt),
@@ -1905,7 +1893,7 @@ fun SettingsScreen(
                                 )
                             }
                             5 -> SettingsActionCard(
-                                icon = Icons.Filled.QueueMusic,
+                                icon = Icons.AutoMirrored.Filled.QueueMusic,
                                 iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 title = stringResource(R.string.settings_make_local),
@@ -2004,7 +1992,7 @@ fun SettingsScreen(
                                             )
                                         }
                                         1 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = "Your Spotify Playlists",
@@ -2123,7 +2111,7 @@ fun SettingsScreen(
                                 SettingsGroup(rowCount = 3) { index, position ->
                                     when (index) {
                                         0 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.primaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                                             title = stringResource(R.string.set_import_yt),
@@ -2133,7 +2121,7 @@ fun SettingsScreen(
                                             isHighlighted = (highlightedSettingId == "library.import_yt"),
                                         )
                                         1 -> SettingsActionCard(
-                                            icon = Icons.Filled.QueueMusic,
+                                            icon = Icons.AutoMirrored.Filled.QueueMusic,
                                             iconContainer = MaterialTheme.colorScheme.secondaryContainer,
                                             iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                                             title = stringResource(R.string.set_import_spotify),
@@ -2373,7 +2361,7 @@ fun SettingsScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Now playing")
                                 Text(
-                                    "Choose between the original Mochy-inspired Poster, Timeline and Lyrics layouts, plus KatMusic Artwork and Canvas styles. Your choice is saved for the next time you open Now Playing.",
+                                    "Classic stays exactly as it is. Vinyl and Cassette add two fully custom decks; the other presets keep their focused artwork, timeline, lyrics, and Canvas presentations.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 4.dp),
@@ -2408,6 +2396,11 @@ fun SettingsScreen(
                                                 },
                                             )
                                             Spacer(Modifier.width(10.dp))
+                                            PlayerStylePreview(
+                                                style = style,
+                                                modifier = Modifier.size(width = 76.dp, height = 54.dp),
+                                            )
+                                            Spacer(Modifier.width(12.dp))
                                             Column(Modifier.weight(1f)) {
                                                 Text(
                                                     style.label,
@@ -4142,7 +4135,7 @@ private fun YouTubeAccountRow(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
             }
         }
     }
@@ -4205,7 +4198,7 @@ private fun SpotifyAccountRow(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
             }
         }
     }
@@ -4333,7 +4326,7 @@ private fun LastFmIntegrationCard(
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         ),
                     ) {
-                        Icon(Icons.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.set_disconnect_cd))
                     }
                 }
             }
@@ -5752,7 +5745,7 @@ private fun YouTubeLibraryVisibilitySheet(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        Icons.Filled.QueueMusic,
+                                        Icons.AutoMirrored.Filled.QueueMusic,
                                         contentDescription = null,
                                         tint = if (isShown) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -5894,7 +5887,7 @@ private fun SyncPlaylistsSheet(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        Icons.Filled.QueueMusic,
+                                        Icons.AutoMirrored.Filled.QueueMusic,
                                         contentDescription = null,
                                         tint = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(22.dp),

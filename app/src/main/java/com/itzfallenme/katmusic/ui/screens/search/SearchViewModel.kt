@@ -7,8 +7,10 @@ import com.itzfallenme.katmusic.data.search.SearchHistoryRepository
 import com.itzfallenme.katmusic.data.search.SearchRepository
 import com.itzfallenme.katmusic.data.search.SearchResultItem
 import com.itzfallenme.katmusic.data.search.SearchTab
+import com.itzfallenme.katmusic.playback.LinkPlaybackResolver
 import com.itzfallenme.katmusic.playback.MusicPlayer
 import com.itzfallenme.katmusic.playback.PlayableTrack
+import com.itzfallenme.katmusic.shared.share.KatMusicCode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -42,6 +44,7 @@ class SearchViewModel @Inject constructor(
     private val repository: SearchRepository,
     private val historyRepository: SearchHistoryRepository,
     private val musicPlayer: MusicPlayer,
+    private val linkPlaybackResolver: LinkPlaybackResolver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -92,6 +95,14 @@ class SearchViewModel @Inject constructor(
         debounceJob = viewModelScope.launch {
             delay(350)
             triggerSearch(query, saveToHistory = false)
+        }
+    }
+
+    /** Scans an app-owned KatMusic Code and resolves the encoded song. */
+    fun playKatMusicCode(rawCode: String) {
+        val code = KatMusicCode.normalize(rawCode) ?: return
+        viewModelScope.launch {
+            linkPlaybackResolver.resolveAndPlay(code)
         }
     }
 

@@ -25,14 +25,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.R
 import com.itzfallenme.katmusic.data.ytmusic.CookieNormalizer
+import kotlinx.coroutines.launch
 
 @Composable
 fun CookieLoginDialog(
@@ -42,7 +44,8 @@ fun CookieLoginDialog(
 ) {
     var rawText by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = { if (!isConnecting) onDismiss() },
@@ -95,10 +98,13 @@ fun CookieLoginDialog(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            val clip = clipboardManager.getText()?.text
-                            if (!clip.isNullOrBlank()) {
-                                rawText = clip
-                                errorText = null
+                            scope.launch {
+                                val clip = clipboard.getClipEntry()
+                                    ?.clipData?.getItemAt(0)?.text?.toString()
+                                if (!clip.isNullOrBlank()) {
+                                    rawText = clip
+                                    errorText = null
+                                }
                             }
                         },
                         shape = RoundedCornerShape(8.dp),

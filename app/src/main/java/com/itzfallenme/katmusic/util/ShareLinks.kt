@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import com.itzfallenme.katmusic.shared.jam.JamDefaults
+import com.itzfallenme.katmusic.shared.share.KatMusicCode
 
 /**
  * Cross-device track links.
@@ -37,6 +39,43 @@ object ShareLinks {
         // artworkUrl is intentionally omitted to keep share links short, clean and fast.
         // Both the app and web landing page automatically derive artwork from videoId.
         return builder.build().toString()
+    }
+
+    /** Reversible human code for a track, e.g. `KM-7F3A2-...`. */
+    fun trackCode(videoId: String?): String? = KatMusicCode.encode(videoId)
+
+    /**
+     * Scannable KatMusic Code destination. The code remains explicit in the
+     * URL; `v` is included as a fallback for older share pages and app builds.
+     */
+    fun trackCodeUrl(
+        code: String?,
+        title: String,
+        artist: String,
+        album: String? = null,
+    ): String? {
+        val normalized = KatMusicCode.normalize(code) ?: return null
+        val videoId = KatMusicCode.decode(normalized) ?: return null
+        val builder = Uri.parse(SITE).buildUpon()
+            .appendQueryParameter("code", normalized)
+            .appendQueryParameter("v", videoId)
+        title.trim().takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("title", it) }
+        artist.trim().takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("artist", it) }
+        album?.trim()?.takeIf { it.isNotEmpty() }?.let { builder.appendQueryParameter("album", it) }
+        return builder.build().toString()
+    }
+
+    /** Canonical invite URL used by Jam copy, share and QR actions. */
+    fun jamUrl(roomCode: String): String? = JamDefaults.inviteUrl(roomCode)
+
+    /** Share-card image URL for a code, rendered by the Jam host. */
+    fun codeImageUrl(code: String): String =
+        "https://katmusic.onrender.com/code/${code.trim().uppercase()}.png"
+
+    /** Link plus the KatMusic code, so the receiver can use either surface. */
+    fun trackMessage(url: String, videoId: String?): String {
+        val code = trackCode(videoId)
+        return if (code == null) url else "$url\n\nKatMusic code: $code"
     }
 
     /** Opens the system share sheet with [url] as plain text. */

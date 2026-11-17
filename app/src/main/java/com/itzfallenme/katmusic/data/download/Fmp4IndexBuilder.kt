@@ -289,6 +289,61 @@ object Fmp4IndexBuilder {
         false
     }
 
+    /**
+     * Summed fragment duration converted to [sampleRate] ticks, or 0 when unknown.
+     * Fills FLAC STREAMINFO total_samples, which fMP4 muxers leave at 0.
+     */
+    fun totalSamples(file: File, sampleRate: Long): Long = runCatching {
+        if (!file.isFile || sampleRate <= 0L) return 0L
+        val moovInfo = MoovInfo()
+        var firstFragTime = -1L
+        var lastFragEnd = 0L
+        RandomAccessFile(file, "r").use { raf ->
+            val length = raf.length()
+            var pos = 0L
+            val header = ByteArray(16)
+            while (pos + 8 <= length) {
+                raf.seek(pos)
+                if (raf.read(header, 0, 8) < 8) break
+                val size32 = be32(header, 0)
+                val type = String(header, 4, 4, Charsets.US_ASCII)
+                var boxSize = size32.toLong() and 0xFFFF_FFFFL
+                var headerSize = 8L
+                if (size32 == 1) {
+                    if (raf.read(header, 8, 8) < 8) break
+                    boxSize = be64(header, 8)
+                    headerSize = 16L
+                } else if (size32 == 0) {
+                    boxSize = length - pos
+                }
+                if (boxSize < headerSize) break
+                val payloadStart = pos + headerSize
+                val payloadSize = boxSize - headerSize
+                when (type) {
+                    "moov" -> if (payloadSize in 1..(32 * 1024 * 1024)) {
+                        parseMoovBox(raf, payloadStart, payloadSize, moovInfo)
+                    }
+                    "moof" -> {
+                        val (fragTime, fragDuration) = parseMoofBox(
+                            raf = raf,
+                            payloadStart = payloadStart,
+                            payloadSize = payloadSize,
+                            expectedTrackId = moovInfo.trackId,
+                            fallbackTime = lastFragEnd,
+                        )
+                        if (firstFragTime < 0L) firstFragTime = fragTime
+                        lastFragEnd = fragTime + fragDuration
+                    }
+                }
+                pos += boxSize
+            }
+        }
+        val start = firstFragTime.takeIf { it >= 0L } ?: 0L
+        val ticks = (lastFragEnd - start).takeIf { it > 0L } ?: moovInfo.mediaDuration
+        val timescale = moovInfo.mediaTimescale
+        if (ticks <= 0L || timescale <= 0L) 0L else ticks * sampleRate / timescale
+    }.getOrDefault(0L)
+
     private fun parseMoovBox(
         raf: RandomAccessFile,
         moovStart: Long,
@@ -312,15 +367,15 @@ object Fmp4IndexBuilder {
             when (type) {
                 "mvhd" -> {
                     val version = moovBytes[payloadStart].toInt() and 0xFF
-                    if (version == 1 && payloadSize >= 28) {
-                        moovInfo.movieTimescale = be32(moovBytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
-                        moovInfo.movieDuration = be64(moovBytes, payloadStart + 20)
-                        moovInfo.movieDurationOffset = moovStart + payloadStart + 20
+                    if (version == 1 && payloadSize >= 32) {
+                        moovInfo.movieTimescale = be32(moovBytes, payloadStart + 20).toLong() and 0xFFFF_FFFFL
+                        moovInfo.movieDuration = be64(moovBytes, payloadStart + 24)
+                        moovInfo.movieDurationOffset = moovStart + payloadStart + 24
                         moovInfo.movieDurationIs64 = true
                     } else if (version == 0 && payloadSize >= 20) {
-                        moovInfo.movieTimescale = be32(moovBytes, payloadStart + 8).toLong() and 0xFFFF_FFFFL
-                        moovInfo.movieDuration = be32(moovBytes, payloadStart + 12).toLong() and 0xFFFF_FFFFL
-                        moovInfo.movieDurationOffset = moovStart + payloadStart + 12
+                        moovInfo.movieTimescale = be32(moovBytes, payloadStart + 12).toLong() and 0xFFFF_FFFFL
+                        moovInfo.movieDuration = be32(moovBytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
+                        moovInfo.movieDurationOffset = moovStart + payloadStart + 16
                         moovInfo.movieDurationIs64 = false
                     }
                 }
@@ -354,15 +409,15 @@ object Fmp4IndexBuilder {
             when (type) {
                 "tkhd" -> {
                     val version = bytes[payloadStart].toInt() and 0xFF
-                    if (version == 1 && payloadSize >= 32) {
-                        moovInfo.trackId = be32(bytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
-                        moovInfo.trackDuration = be64(bytes, payloadStart + 24)
-                        moovInfo.trackDurationOffset = fileMoovStart + payloadStart + 24
+                    if (version == 1 && payloadSize >= 36) {
+                        moovInfo.trackId = be32(bytes, payloadStart + 20).toLong() and 0xFFFF_FFFFL
+                        moovInfo.trackDuration = be64(bytes, payloadStart + 28)
+                        moovInfo.trackDurationOffset = fileMoovStart + payloadStart + 28
                         moovInfo.trackDurationIs64 = true
                     } else if (version == 0 && payloadSize >= 24) {
-                        moovInfo.trackId = be32(bytes, payloadStart + 8).toLong() and 0xFFFF_FFFFL
-                        moovInfo.trackDuration = be32(bytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
-                        moovInfo.trackDurationOffset = fileMoovStart + payloadStart + 16
+                        moovInfo.trackId = be32(bytes, payloadStart + 12).toLong() and 0xFFFF_FFFFL
+                        moovInfo.trackDuration = be32(bytes, payloadStart + 20).toLong() and 0xFFFF_FFFFL
+                        moovInfo.trackDurationOffset = fileMoovStart + payloadStart + 20
                         moovInfo.trackDurationIs64 = false
                     }
                 }
@@ -395,15 +450,15 @@ object Fmp4IndexBuilder {
 
             if (type == "mdhd") {
                 val version = bytes[payloadStart].toInt() and 0xFF
-                if (version == 1 && payloadSize >= 28) {
-                    moovInfo.mediaTimescale = be32(bytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
-                    moovInfo.mediaDuration = be64(bytes, payloadStart + 20)
-                    moovInfo.mediaDurationOffset = fileMoovStart + payloadStart + 20
+                if (version == 1 && payloadSize >= 32) {
+                    moovInfo.mediaTimescale = be32(bytes, payloadStart + 20).toLong() and 0xFFFF_FFFFL
+                    moovInfo.mediaDuration = be64(bytes, payloadStart + 24)
+                    moovInfo.mediaDurationOffset = fileMoovStart + payloadStart + 24
                     moovInfo.mediaDurationIs64 = true
                 } else if (version == 0 && payloadSize >= 20) {
-                    moovInfo.mediaTimescale = be32(bytes, payloadStart + 8).toLong() and 0xFFFF_FFFFL
-                    moovInfo.mediaDuration = be32(bytes, payloadStart + 12).toLong() and 0xFFFF_FFFFL
-                    moovInfo.mediaDurationOffset = fileMoovStart + payloadStart + 12
+                    moovInfo.mediaTimescale = be32(bytes, payloadStart + 12).toLong() and 0xFFFF_FFFFL
+                    moovInfo.mediaDuration = be32(bytes, payloadStart + 16).toLong() and 0xFFFF_FFFFL
+                    moovInfo.mediaDurationOffset = fileMoovStart + payloadStart + 16
                     moovInfo.mediaDurationIs64 = false
                 }
             }

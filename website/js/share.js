@@ -9,17 +9,56 @@
 
   const PACKAGE = "com.itzfallenme.katmusic";
   const validVideo = (v) => /^[A-Za-z0-9_-]{6,24}$/.test((v || "").trim());
+  const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
   const params = new URLSearchParams(location.search);
   const onAndroid = /android/i.test(navigator.userAgent);
   const onIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const skipAuto = params.get("noapp") === "1";
 
+  function decodeKatMusicCode(raw) {
+    let normalized = (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (normalized.startsWith("KM") && normalized.length === 22) {
+      normalized = normalized.slice(2);
+    }
+    if (normalized.length !== 20) return null;
+
+    const payload = normalized.slice(0, 18);
+    let checksum = 0x1F;
+    for (const char of payload) {
+      const digit = CODE_ALPHABET.indexOf(char);
+      if (digit < 0) return null;
+      checksum = (checksum * 31 + digit) & 0x3ff;
+    }
+    const expected = CODE_ALPHABET[(checksum >> 5) & 31] + CODE_ALPHABET[checksum & 31];
+    if (normalized.slice(18) !== expected) return null;
+
+    let buffer = 0;
+    let bits = 0;
+    const bytes = [];
+    for (const char of payload) {
+      const digit = CODE_ALPHABET.indexOf(char);
+      if (digit < 0) return null;
+      buffer = (buffer << 5) | digit;
+      bits += 5;
+      if (bits >= 8) {
+        bits -= 8;
+        bytes.push((buffer >> bits) & 0xff);
+        buffer &= (1 << bits) - 1;
+      }
+    }
+    const videoId = String.fromCharCode(...bytes);
+    return /^[A-Za-z0-9_-]{11}$/.test(videoId) ? videoId : null;
+  }
+
   function parseTarget(raw) {
     const text = (raw || "").trim();
     if (!text) return null;
+    const directCode = decodeKatMusicCode(text);
+    if (directCode) return { v: directCode, title: "", artist: "", album: "", art: "" };
     try {
       const url = new URL(text.includes("://") ? text : `https://${text}`);
-      const videoId = (url.searchParams.get("v") || "").trim();
+      const videoId = (url.searchParams.get("v") || "").trim() ||
+        decodeKatMusicCode(url.searchParams.get("code")) || "";
       if (!validVideo(videoId)) return null;
       return {
         v: videoId,
@@ -87,7 +126,9 @@
     if (!data || !validVideo(data.v)) {
       actions.hidden = true;
       form.hidden = false;
-      status.textContent = "Paste a KatMusic or YouTube Music link to open a shared track.";
+      status.textContent = params.has("code") && !decodeKatMusicCode(params.get("code"))
+        ? "That KatMusic Code is not valid. Check the code and try again."
+        : "Paste a KatMusic link, YouTube Music link, or KatMusic Code.";
       return;
     }
     const q = shareQuery(data);
@@ -131,7 +172,7 @@
   }
 
   const initial = {
-    v: params.get("v") || "",
+    v: params.get("v") || decodeKatMusicCode(params.get("code")) || "",
     title: params.get("title") || "",
     artist: params.get("artist") || "",
     album: params.get("album") || "",

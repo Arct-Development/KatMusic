@@ -21,7 +21,6 @@ type adminEnv struct {
 func newAdminEnv(t *testing.T) *adminEnv {
 	t.Setenv("JAM_ADMIN_PASSWORD", "pw-123")
 	hub := rooms.NewHub()
-	hub.EnsurePermanentRooms()
 	mux := http.NewServeMux()
 	NewHandler(hub).RegisterRoutes(mux)
 	return &adminEnv{t: t, hub: hub, mux: mux}
@@ -60,7 +59,6 @@ func (e *adminEnv) login() {
 
 func TestAdmin_LoginAndAccessControl(t *testing.T) {
 	e := newAdminEnv(t)
-
 	if rec := e.do("GET", "/admin", "", nil); rec.Code != http.StatusFound || rec.Header().Get("Location") != "/admin/login" {
 		t.Fatalf("dashboard without login should redirect, got %d", rec.Code)
 	}
@@ -88,16 +86,13 @@ func TestAdmin_LoginAndAccessControl(t *testing.T) {
 	if rec := e.do("GET", "/admin", "", nil); rec.Code != 200 || !strings.Contains(rec.Header().Get("Content-Security-Policy"), "script-src 'self'") {
 		t.Fatal("dashboard should load with a strict CSP")
 	}
-
-	// Cross-site requests are refused even with a valid session.
-	if rec := e.do("POST", "/admin/api/rooms/INDIA/auto", "{}", map[string]string{"Content-Type": "application/json"}); rec.Code != http.StatusForbidden {
+	if rec := e.do("POST", "/admin/api/rooms/ABCDEF/unhost", "{}", map[string]string{"Content-Type": "application/json"}); rec.Code != http.StatusForbidden {
 		t.Fatal("POST without X-Requested-With must be refused")
 	}
-	if rec := e.do("POST", "/admin/api/rooms/INDIA/auto", "{}", map[string]string{"X-Requested-With": "lwjam", "Origin": "https://evil.example"}); rec.Code != http.StatusForbidden {
+	if rec := e.do("POST", "/admin/api/rooms/ABCDEF/unhost", "{}", map[string]string{"X-Requested-With": "lwjam", "Origin": "https://evil.example"}); rec.Code != http.StatusForbidden {
 		t.Fatal("POST from another origin must be refused")
 	}
 
-	// Logout ends the session.
 	e.do("POST", "/admin/logout", "{}", xhr)
 	if rec := e.do("GET", "/admin/api/rooms", "", nil); rec.Code != http.StatusUnauthorized {
 		t.Fatal("session should end at logout")
@@ -128,93 +123,51 @@ func TestAdmin_DisabledWithoutPassword(t *testing.T) {
 	}
 }
 
-func TestAdmin_ListGiveTakeAutoAndChat(t *testing.T) {
+func TestAdmin_ListGiveTakeAndChat(t *testing.T) {
 	e := newAdminEnv(t)
 	e.login()
-
-	india, _ := e.hub.GetRoom("INDIA")
-	a, b := rooms.NewClient(nil, e.hub), rooms.NewClient(nil, e.hub)
-	_ = india.Join(a, "Aarav")
-	_ = india.Join(b, "Bela")
-	india.HandleChat(a, "hello station", "")
 
 	owner := rooms.NewClient(nil, e.hub)
 	guest := rooms.NewClient(nil, e.hub)
 	private, _ := e.hub.CreateRoom(owner, "Owner", wire.RoomModeHostOnly)
 	_ = private.Join(guest, "Guest Person")
+	private.HandleChat(guest, "hello room", "")
 
-	// Every active Jam is listed, stations first.
 	rec := e.do("GET", "/admin/api/rooms", "", nil)
 	var list struct {
 		Rooms []rooms.RoomView `json:"rooms"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &list)
-	if len(list.Rooms) != 3 || !list.Rooms[0].Station || list.Rooms[2].Code != private.Code {
+	if len(list.Rooms) != 1 || list.Rooms[0].Code != private.Code {
 		t.Fatalf("unexpected room list: %+v", list.Rooms)
 	}
 
-	// Chat is visible.
-	rec = e.do("GET", "/admin/api/rooms/INDIA/chat", "", nil)
-	if !strings.Contains(rec.Body.String(), "hello station") {
+	rec = e.do("GET", "/admin/api/rooms/"+private.Code+"/chat", "", nil)
+	if !strings.Contains(rec.Body.String(), "hello room") {
 		t.Fatal("admin should see the room chat")
 	}
 
-	// Give admin on a station: auto radio pauses.
-	rec = e.do("POST", "/admin/api/rooms/INDIA/host", `{"userId":"`+b.ID+`"}`, xhr)
+	rec = e.do("POST", "/admin/api/rooms/"+private.Code+"/host", `{"userId":"`+guest.ID+`"}`, xhr)
 	var v rooms.RoomView
 	_ = json.Unmarshal(rec.Body.Bytes(), &v)
-	if rec.Code != 200 || v.HostID != b.ID || v.StationAuto {
-		t.Fatalf("give admin failed: %d %+v", rec.Code, v)
-	}
-	// Make auto: admin removed, radio back on.
-	rec = e.do("POST", "/admin/api/rooms/INDIA/auto", "{}", xhr)
-	_ = json.Unmarshal(rec.Body.Bytes(), &v)
-	if v.HostID != "" || !v.StationAuto {
-		t.Fatalf("make auto failed: %+v", v)
-	}
-
-	// Private Jam: give host to the guest, then take it away.
-	rec = e.do("POST", "/admin/api/rooms/"+private.Code+"/host", `{"userId":"`+guest.ID+`"}`, xhr)
-	_ = json.Unmarshal(rec.Body.Bytes(), &v)
-	if v.HostID != guest.ID {
-		t.Fatalf("give host in a private Jam failed: %+v", v)
+	if rec.Code != 200 || v.HostID != guest.ID {
+		t.Fatalf("give host failed: %d %+v", rec.Code, v)
 	}
 	rec = e.do("POST", "/admin/api/rooms/"+private.Code+"/unhost", "{}", xhr)
 	_ = json.Unmarshal(rec.Body.Bytes(), &v)
 	if v.HostID != "" {
 		t.Fatal("take host failed")
 	}
-	if rec := e.do("POST", "/admin/api/rooms/"+private.Code+"/auto", "{}", xhr); rec.Code != http.StatusBadRequest {
-		t.Fatal("private Jams have no auto mode")
-	}
 
-	// Unknown listener / room.
-	if rec := e.do("POST", "/admin/api/rooms/INDIA/host", `{"userId":"usr_nobody"}`, xhr); rec.Code != http.StatusNotFound {
+	if rec := e.do("POST", "/admin/api/rooms/"+private.Code+"/host", `{"userId":"usr_nobody"}`, xhr); rec.Code != http.StatusNotFound {
 		t.Fatal("unknown listener should be 404")
 	}
 	if rec := e.do("GET", "/admin/api/rooms/ZZZZZZ/chat", "", nil); rec.Code != http.StatusNotFound {
 		t.Fatal("unknown room should be 404")
 	}
 
-	// The chat shows what happened ("Station" lines).
-	rec = e.do("GET", "/admin/api/rooms/INDIA/chat", "", nil)
-	if !strings.Contains(rec.Body.String(), "is now the station admin") || !strings.Contains(rec.Body.String(), "back on auto") {
-		t.Fatal("station changes should be announced in chat")
-	}
-}
-
-func TestAdmin_StationAdminLeavingReturnsToAuto(t *testing.T) {
-	e := newAdminEnv(t)
-	e.login()
-	world, _ := e.hub.GetRoom("WORLD")
-	a := rooms.NewClient(nil, e.hub)
-	_ = world.Join(a, "Aarav")
-	e.do("POST", "/admin/api/rooms/WORLD/host", `{"userId":"`+a.ID+`"}`, xhr)
-	if world.IsStationAuto() {
-		t.Fatal("station should be under admin control")
-	}
-	world.Leave(a)
-	if !world.IsStationAuto() || world.HostID() != "" {
-		t.Fatal("admin leaving must return the station to auto")
+	rec = e.do("GET", "/admin/api/rooms/"+private.Code+"/chat", "", nil)
+	if !strings.Contains(rec.Body.String(), "is now the host") || !strings.Contains(rec.Body.String(), "host was removed") {
+		t.Fatal("host changes should be announced in chat")
 	}
 }

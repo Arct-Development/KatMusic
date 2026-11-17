@@ -917,6 +917,7 @@ class LosslessMusicApi @Inject constructor(
 
             if (verified.isNotEmpty()) {
                 val gated = gateAmbiguousLanguage(verified, title, expectedAlbum)
+                    ?: return null
                 if (gated.isNotEmpty()) {
                     candidates = gated
                     break
@@ -1338,28 +1339,27 @@ class LosslessMusicApi @Inject constructor(
      * When multiple language releases exist and the request specifies an
      * expected language, filter candidates to match that language.
      * When no language is specified, prefer clean/original candidates without
-     * dub/foreign-language markers over dubbed versions.
-     * Never drops all candidates to empty.
+     * dub/foreign-language markers over dubbed versions; if every close copy
+     * names a language and they disagree, returns null: nothing says which
+     * one the listener is hearing, so the caller stays on YouTube.
      */
     private fun gateAmbiguousLanguage(
         verified: List<TidalCandidateItem>,
         title: String,
         expectedAlbum: String?,
-    ): List<TidalCandidateItem> {
+    ): List<TidalCandidateItem>? {
         if (verified.size < 2) return verified
         val expectedLanguages = extractLanguages("$title ${expectedAlbum.orEmpty()}")
+        val candidateLanguages = verified.map { extractLanguages("${it.title} ${it.albumTitle}") }
         if (expectedLanguages.isNotEmpty()) {
-            val matching = verified.filter {
-                val candidateLangs = extractLanguages("${it.title} ${it.albumTitle}")
-                candidateLangs.intersect(expectedLanguages).isNotEmpty()
+            val matching = verified.filterIndexed { i, _ ->
+                candidateLanguages[i].intersect(expectedLanguages).isNotEmpty()
             }
             if (matching.isNotEmpty()) return matching
         } else {
-            val clean = verified.filter {
-                val candidateLangs = extractLanguages("${it.title} ${it.albumTitle}")
-                candidateLangs.isEmpty()
-            }
+            val clean = verified.filterIndexed { i, _ -> candidateLanguages[i].isEmpty() }
             if (clean.isNotEmpty()) return clean
+            if (candidateLanguages.flatten().toSet().size > 1) return null
         }
         return verified
     }

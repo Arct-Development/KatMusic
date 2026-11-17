@@ -121,15 +121,6 @@ class ListenTogetherWebSocketClient @Inject constructor() : Closeable {
     private val _roomMode = MutableStateFlow("host_only")
     val roomMode: StateFlow<String> = _roomMode.asStateFlow()
 
-    private val _roomName = MutableStateFlow("")
-    val roomName: StateFlow<String> = _roomName.asStateFlow()
-    private val _permanent = MutableStateFlow(false)
-    val permanent: StateFlow<Boolean> = _permanent.asStateFlow()
-    private val _radio = MutableStateFlow(false)
-    val radio: StateFlow<Boolean> = _radio.asStateFlow()
-    private val _stationAuto = MutableStateFlow(false)
-    val stationAuto: StateFlow<Boolean> = _stationAuto.asStateFlow()
-
     private val _members = MutableStateFlow<List<JamRoomMember>>(emptyList())
     val members: StateFlow<List<JamRoomMember>> = _members.asStateFlow()
     private val _playback = MutableStateFlow<JamPlayback?>(null)
@@ -276,10 +267,6 @@ class ListenTogetherWebSocketClient @Inject constructor() : Closeable {
                 _isHost.value = (payload.bool("is_host") ?: false) ||
                     _hostId.value == _memberId.value || _isCoHost.value
                 _roomMode.value = payload.str("room_mode") ?: "host_only"
-                _roomName.value = payload.str("room_name").orEmpty()
-                _permanent.value = payload.bool("permanent") ?: false
-                _radio.value = payload.bool("radio") ?: false
-                _stationAuto.value = payload.bool("station_auto") ?: false
 
                 _members.value = payload["participants"]?.jsonArray?.mapNotNull { item ->
                     runCatching {
@@ -342,10 +329,6 @@ class ListenTogetherWebSocketClient @Inject constructor() : Closeable {
                 refreshRoles()
             }
             "room_mode_changed" -> _roomMode.value = payload.str("room_mode") ?: "host_only"
-            "station_mode" -> {
-                _stationAuto.value = payload.bool("auto") ?: true
-                _isHost.value = (_hostId.value == _memberId.value) || _isCoHost.value
-            }
             "suggestion_received" -> {
                 val track = payload["track"]?.jsonObject
                 val id = payload.str("suggestion_id").orEmpty()
@@ -461,10 +444,6 @@ class ListenTogetherWebSocketClient @Inject constructor() : Closeable {
         _hostId.value = ""
         _coHostId.value = ""
         _roomMode.value = "host_only"
-        _roomName.value = ""
-        _permanent.value = false
-        _radio.value = false
-        _stationAuto.value = false
         _members.value = emptyList()
         _playback.value = null
         _sharedQueue.value = emptyList()

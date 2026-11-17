@@ -1,76 +1,13 @@
 package rooms
 
 import (
-	"strings"
-	"time"
-
 	"katmusic/jam/internal/wire"
 )
-
-// CooldownWindow is how long a user must wait between "disruptive" playback
-// commands in an always-active room.
-const CooldownWindow = time.Minute
-
-// isCooldownAction reports whether the action counts against the cooldown.
-// Play is deliberately exempt so a paused room can always be resumed.
-func isCooldownAction(action string) bool {
-	switch action {
-	case wire.ActionPause,
-		wire.ActionSeek,
-		wire.ActionChangeTrack,
-		wire.ActionSkipNext,
-		wire.ActionSkipPrev,
-		wire.ActionQueueClear:
-		return true
-	}
-	return false
-}
-
-func (r *Room) cooldownRemainingLocked(userID string) time.Duration {
-	last, ok := r.cooldowns[userID]
-	if !ok {
-		return 0
-	}
-	if remaining := CooldownWindow - r.now().Sub(last); remaining > 0 {
-		return remaining
-	}
-	return 0
-}
-
-// rejectRateLimitedLocked tells the sender when they may retry and re-sends
-// the authoritative playback state so their player snaps back in sync.
-func (r *Room) rejectRateLimitedLocked(c *Client, wait time.Duration) {
-	nowMs := r.now().UnixMilli()
-	_ = c.Send(wire.MsgTypeError, wire.ErrorPayload{
-		Code:         "rate_limited",
-		Message:      "Only one pause or change per minute. Try again shortly.",
-		RetryAfterMs: wait.Milliseconds(),
-		RetryAtMs:    nowMs + wait.Milliseconds(),
-	})
-	if r.state.CurrentTrack == nil {
-		return
-	}
-	_ = c.Send(wire.MsgTypeSyncPlayback, wire.PlaybackActionPayload{
-		Action:       wire.ActionChangeTrack,
-		Track:        r.state.CurrentTrack,
-		PositionMs:   CalculateCurrentPosition(&r.state, nowMs),
-		ServerTimeMs: nowMs,
-		IsPlaying:    r.state.IsPlaying,
-		IsAutoDJ:     r.state.IsAutoDJ,
-		Queue:        append([]wire.TrackInfo(nil), r.state.Queue...),
-		Revision:     r.state.Revision,
-	})
-}
 
 // GrantCoHost lets the main host promote one other participant to co-host.
 // A room never has more than two hosts.
 func (r *Room) GrantCoHost(c *Client, targetID string) {
 	r.mu.Lock()
-	if r.Radio {
-		r.mu.Unlock()
-		c.SendError("not_available", "Live stations have no co-hosts. Use Make admin instead.")
-		return
-	}
 	if r.host == nil || r.host.ID != c.ID {
 		r.mu.Unlock()
 		c.SendError("unauthorized", "Only the main host can give host")
@@ -121,18 +58,8 @@ func (r *Room) RevokeCoHost(c *Client, targetID string) {
 	})
 }
 
-// IsDefaultName reports whether a display name is one of the placeholder
-// names the apps fall back to. Public rooms refuse these.
-func IsDefaultName(name string) bool {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "listener", "host", "guest", "user", "anonymous":
-		return true
-	}
-	return false
-}
-
 // HandleQueueUpdate stores the main host's upcoming queue and shows it,
-// read-only, to everyone else. Only the main host (admin) may publish it.
+// read-only, to everyone else. Only the main host may publish it.
 func (r *Room) HandleQueueUpdate(c *Client, tracks []wire.TrackInfo) {
 	r.mu.Lock()
 	if r.host == nil || r.host.ID != c.ID {

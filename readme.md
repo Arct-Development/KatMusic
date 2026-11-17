@@ -11,7 +11,7 @@ A native Android music player built around YouTube Music, with synced lyrics, of
 <p><strong>Hi, We are <a href="https://github.com/Arct-Development">Arct-Developments</a>.</strong> WE build Android apps, web projects and practical tools — KatMusic is my home for the music-player ideas We want to use every day.</p>
 
 <p>
-  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.4"><strong>Download v2.6.4</strong></a>
+  <a href="https://github.com/Arct-Development/KatMusic/releases/tag/2.6.5"><strong>Download v2.6.5</strong></a>
   &nbsp;·&nbsp;
   <a href="https://katmusic.pages.dev">Project website</a>
   &nbsp;·&nbsp;
@@ -129,7 +129,6 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
   <img src="website/assets/img/player.jpg" width="31%" alt="Full player" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/lyrics.jpg" width="31%" alt="Synced lyrics" style="border-radius: 14px; margin: 4px;" />
   <br/>
-  <img src="website/assets/img/group-blend.jpg" width="31%" alt="Group Blend compatibility" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/listen-together.jpg" width="31%" alt="Listen Together room" style="border-radius: 14px; margin: 4px;" />
   <img src="website/assets/img/library.jpg" width="31%" alt="Library screen" style="border-radius: 14px; margin: 4px;" />
   <br/>
@@ -140,68 +139,68 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 
 ## Desktop
 
-KatMusic Desktop is a Flutter app for **Windows, Linux and macOS**. It is not a
-web wrapper: it uses the same YouTube Music and lossless streaming sources,
-Last.fm taste and scrobbling, synced lyrics, downloads, group Jam rooms and
-local playback as the Android app, with native desktop window, tray and media
-controls.
+KatMusic Desktop is a **Compose Multiplatform** app for **Windows, Linux and
+macOS**. It renders the same shared Compose UI as the Android app — one design
+system, one navigation model, one set of screens and components — with
+platform-specific playback, file access and settings storage underneath.
 
-The desktop UI is its own interpretation of KatMusic: midnight-navy surfaces,
-KatMusic blue, Figtree type, and shader-backed Liquid Glass navigation chrome.
-It is built with Flutter 3.47+ and the
-[liquid_glass_widgets](https://github.com/sdegenaar/liquid_glass_widgets)
-package; turn the effect off in **Settings → Surface & motion** if you prefer
-an opaque shell.
+The project is one Kotlin Multiplatform build:
+
+| Module | Contents |
+| --- | --- |
+| `:shared` | Shared Compose UI (theme, typography, shapes, motion, components, navigation, screens), models, queue/shuffle/repeat logic, search, settings contracts. Targets Android and desktop. |
+| `:app` | Android application: Media3/ExoPlayer playback, USB bit-perfect output, native DSP, widgets, downloads, media session. |
+| `:desktop` | Desktop application: `javax.sound.sampled` playback, folder-based library, `java.util.prefs` settings. |
+
+Layout is the only thing that adapts: a bottom navigation bar below 600dp and
+a navigation rail above it, so phones, tablets and resized desktop windows use
+the same screens.
 
 ### Run it
 
-Install [Flutter](https://docs.flutter.dev/get-started/install) 3.47 or newer,
-then:
+Requires JDK 17+ and the Android SDK (the shared module also targets Android,
+so Gradle needs `ANDROID_HOME` or `sdk.dir` in `local.properties`).
 
 ```bash
-cd desktop
-flutter pub get
-dart tool/obfuscate_secrets.dart   # creates the gitignored secrets file
-flutter run -d windows              # or: linux, macos
+./gradlew :desktop:run            # Compose Desktop
+./gradlew :app:installDebug       # Android
+./gradlew :shared:desktopTest     # shared logic tests
 ```
-
-Create `desktop/.env` from `desktop/.env.example` before the secrets step if you
-have an addon key. The app runs without one; keyed addon calls fail closed.
 
 ### Build installers
 
 ```bash
-cd desktop
-flutter build windows --release    # build/windows/x64/runner/Release
-flutter build linux --release      # build/linux/x64/release/bundle
-flutter build macos --release      # build/macos/Build/Products/Release
+./gradlew :desktop:createDistributable   # app image
+./gradlew :desktop:packageDmg            # macOS
+./gradlew :desktop:packageMsi            # Windows
+./gradlew :desktop:packageDeb            # Linux
 ```
 
-Linux deb/rpm packaging uses `desktop/linux/packaging/nfpm.yaml`; Windows
-installer source is `desktop/windows/installer.iss`. Tagged `v*` builds and
-manual runs are produced by `.github/workflows/desktop.yml`.
+Tagged `v*` builds and manual runs are produced by
+`.github/workflows/desktop.yml`.
 
-See [desktop/README.md](desktop/README.md) for platform dependencies,
-architecture and troubleshooting.
+See [desktop/README.md](desktop/README.md) for the platform split and
+[docs/multiplatform-migration.md](docs/multiplatform-migration.md) for the
+migration record, including what is still Android-only and why.
 
 ## Download and install
 
-**Latest stable release: [KatMusic 2.6.4](https://github.com/Arct-Development/KatMusic/releases/tag/2.6.4)**
+**Latest stable release: [KatMusic 2.6.5](https://github.com/Arct-Development/KatMusic/releases/tag/2.6.5)**
 
 Choose the package that matches your device:
 
 | Package | Android version | Recommended for |
 | --- | --- | --- |
-| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.4/KatMusic-v2.6.4-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
-| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.4/KatMusic-v2.6.4-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
-| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.4/KatMusic-v2.6.4-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
-| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.4/KatMusic-v2.6.4-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
+| [Universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.5/KatMusic-v2.6.5-universal.apk) | Android 10+ | Most devices. Recommended for normal installation. |
+| [ARM64 APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.5/KatMusic-v2.6.5-arm64-v8a.apk) | Android 10+ | 64-bit ARM phones and tablets. |
+| [Legacy APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.5/KatMusic-v2.6.5-android7.apk) | Android 7–9 | Older supported devices. Some visual effects and media controls use legacy alternatives. |
+| [Uncompressed universal APK](https://github.com/Arct-Development/KatMusic/releases/download/2.6.5/KatMusic-v2.6.5-universal-uncompressed.apk) | Android 10+ | Larger, uncompressed package for troubleshooting and testing. |
 
 1. Download the APK that matches your device.
 2. Open the downloaded file and approve installation when Android asks.
 3. Launch KatMusic and configure account access or optional integrations from Settings.
 
-You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.6.4/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
+You can also download the [SHA-256 checksums](https://github.com/Arct-Development/KatMusic/releases/download/2.6.5/SHA256SUMS.txt) to verify a package, or browse [all releases](https://github.com/Arct-Development/KatMusic/releases).
 
 ## Build from source
 

@@ -50,6 +50,41 @@ object BotGuardTokenGenerator {
     private const val REQUEST_KEY = "O43z0dpjhgX20SCx4KAo"
     private const val JS_BRIDGE = "BotGuardBridge"
 
+    // The jnn endpoints are a gRPC-web API keyed by the YouTube web player's
+    // public API key. Without these headers Create answers {"error": ...},
+    // so the engine never armed and was rebuilt every song.
+    private const val GOOGLE_API_KEY = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw"
+    private const val DESKTOP_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/131.0.0.0 Safari/537.36"
+    private val JSPB = "application/json+protobuf".toMediaType()
+
+    /** Delay between blanking a retired WebView and destroying it. */
+    private const val WEBVIEW_DESTROY_DELAY_MS = 500L
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private class BotGuardHttpException(val code: Int, endpoint: String) :
+        IOException("$endpoint answered HTTP $code")
+
+    /** One jnn call with the headers the API requires; non-200 is an error, never a body to parse. */
+    private fun callBotGuardApi(url: String, body: String, endpoint: String): String {
+        val request = Request.Builder()
+            .url(url)
+            .post(body.toRequestBody(JSPB))
+            .header("Content-Type", "application/json+protobuf")
+            .header("Accept", "application/json")
+            .header("x-goog-api-key", GOOGLE_API_KEY)
+            .header("x-user-agent", "grpc-web-javascript/0.1")
+            .header("User-Agent", DESKTOP_USER_AGENT)
+            .build()
+        return httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw BotGuardHttpException(response.code, endpoint)
+            response.body?.string().orEmpty().ifBlank {
+                throw IOException("$endpoint returned an empty response (HTTP ${response.code})")
+            }
+        }
+    }
+
     // A cold start must fit: WebView boot + Create HTTPS call + JS BotGuard +
     // GenerateIT call + minter creation, strictly serial. The old 1.5s budget
     // was physically impossible on anything but a warm cache + fast network,
@@ -202,7 +237,12 @@ object BotGuardTokenGenerator {
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
-                recordBootstrapFailure()
+                // A refused or unrecognised challenge is a fact about the API
+                // right now, not one unlucky song: retrying it only rebuilds a
+                // WebView per track, which is the churn that crashed the app.
+                val refusedOutright = error is ChallengeFormatException ||
+                    (error is BotGuardHttpException && error.code in 400..499)
+                recordBootstrapFailure(refusedOutright)
                 throw error
             }
         }
@@ -211,9 +251,9 @@ object BotGuardTokenGenerator {
     }
 
     /** Mutex-guarded: only called from [getOrCreateEngine]'s locked section. */
-    private fun recordBootstrapFailure() {
+    private fun recordBootstrapFailure(refusedOutright: Boolean = false) {
         val failures = consecutiveBootstrapFailures.incrementAndGet()
-        if (failures >= BOOTSTRAP_FAILURE_THRESHOLD &&
+        if ((refusedOutright || failures >= BOOTSTRAP_FAILURE_THRESHOLD) &&
             System.currentTimeMillis() >= bootstrapCooldownUntilMs
         ) {
             bootstrapCooldownUntilMs = System.currentTimeMillis() + BOOTSTRAP_COOLDOWN_MS
@@ -265,30 +305,11 @@ object BotGuardTokenGenerator {
             }
         }
 
-        /**
-         * Read only successful JSON responses. Error bodies can contain session
-         * material or server diagnostics, so report the HTTP status and body
-         * length without logging or interpolating the body into an exception.
-         */
-        private fun executeJsonResponse(request: Request, endpoint: String): String =
-            httpClient.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IOException("$endpoint returned HTTP ${response.code} (bodyLength=${body.length})")
-                }
-                if (body.isBlank()) {
-                    throw IOException("$endpoint returned an empty response (HTTP ${response.code})")
-                }
-                body
-            }
-
         @JavascriptInterface
         fun onPageLoaded() {
             scope.launch(Dispatchers.IO) {
                 runCatching {
-                    val requestBody = "[ \"$REQUEST_KEY\" ]".toRequestBody("application/json".toMediaType())
-                    val request = Request.Builder().url(CREATE_URL).post(requestBody).build()
-                    val response = executeJsonResponse(request, "Create")
+                    val response = callBotGuardApi(CREATE_URL, "[ \"$REQUEST_KEY\" ]", "Create")
                     val challengeJson = parseCreateChallenge(response)
 
                     withContext(Dispatchers.Main) {
@@ -319,9 +340,11 @@ object BotGuardTokenGenerator {
             scope.launch(Dispatchers.IO) {
                 runCatching {
                     val safeResponse = botguardResponse.replace("\\", "\\\\").replace("\"", "\\\"")
-                    val requestBody = "[ \"$REQUEST_KEY\", \"$safeResponse\" ]".toRequestBody("application/json".toMediaType())
-                    val request = Request.Builder().url(GENERATE_IT_URL).post(requestBody).build()
-                    val response = executeJsonResponse(request, "GenerateIT")
+                    val response = callBotGuardApi(
+                        GENERATE_IT_URL,
+                        "[ \"$REQUEST_KEY\", \"$safeResponse\" ]",
+                        "GenerateIT",
+                    )
                     val (tokenU8, lifetimeSec) = parseIntegrityToken(response)
                     // Keep the same 5-minute safety margin as the desktop
                     // minter, but never create an already-expired engine when
@@ -412,9 +435,17 @@ object BotGuardTokenGenerator {
                 }
                 pendingMints.clear()
                 runCatching { scope.cancel() }
-                webView.stopLoading()
-                webView.removeJavascriptInterface(JS_BRIDGE)
-                webView.destroy()
+                // Torn down on the main thread, with destroy() a moment later:
+                // close() is reached from a failing bootstrap while the page's
+                // own bridge call and Chromium's IO threads are still unwinding,
+                // and destroying the WebView under them crashed the whole app
+                // natively inside libwebviewchromium a few seconds into a song.
+                mainHandler.post {
+                    runCatching { webView.stopLoading() }
+                    runCatching { webView.removeJavascriptInterface(JS_BRIDGE) }
+                    runCatching { webView.loadUrl("about:blank") }
+                    mainHandler.postDelayed({ runCatching { webView.destroy() } }, WEBVIEW_DESTROY_DELAY_MS)
+                }
             }
         }
 
@@ -435,6 +466,8 @@ object BotGuardTokenGenerator {
                 val webView = WebView(context.applicationContext).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    // The same browser identity the jnn requests present.
+                    settings.userAgentString = DESKTOP_USER_AGENT
                     webViewClient = WebViewClient()
                 }
                 val engine = BotGuardEngine(webView, readyDeferred)

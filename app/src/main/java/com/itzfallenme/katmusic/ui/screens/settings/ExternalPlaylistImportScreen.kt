@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,10 +50,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.itzfallenme.katmusic.data.playlist.ExternalTrackRow
 import com.itzfallenme.katmusic.data.playlist.SavedPlaylist
 import com.itzfallenme.katmusic.ui.components.ScreenHeader
@@ -93,7 +95,8 @@ fun ExternalPlaylistImportScreen(
     viewModel: ExternalPlaylistImportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val haptic = LocalHapticFeedback.current
 
@@ -320,9 +323,12 @@ fun ExternalPlaylistImportScreen(
                                         }
                                     } else {
                                         IconButton(onClick = {
-                                            val text = clipboard.getText()?.text.orEmpty()
-                                            if (text.isNotBlank()) {
-                                                viewModel.onLinkChange(text)
+                                            scope.launch {
+                                                val text = clipboard.getClipEntry()
+                                                    ?.clipData?.getItemAt(0)?.text?.toString().orEmpty()
+                                                if (text.isNotBlank()) {
+                                                    viewModel.onLinkChange(text)
+                                                }
                                             }
                                         }) {
                                             Icon(Icons.Filled.ContentPaste, contentDescription = stringResource(R.string.imp_paste_cd), tint = MaterialTheme.colorScheme.primary)
@@ -362,7 +368,7 @@ fun ExternalPlaylistImportScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Text(stringResource(R.string.imp_reading))
                                 } else {
-                                    Icon(Icons.Filled.QueueMusic, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Text(stringResource(R.string.imp_preview), fontWeight = FontWeight.Bold)
                                 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,16 +39,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.graphics.Bitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.itzfallenme.katmusic.shared.jam.JamDefaults
 import com.itzfallenme.katmusic.ui.components.ScreenHeader
+import com.itzfallenme.katmusic.util.ShareLinks
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -62,19 +71,22 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
     val isCoHost by client.isCoHost.collectAsState()
     val coHostId by client.coHostId.collectAsState()
     val roomMode by client.roomMode.collectAsState()
-    val roomName by client.roomName.collectAsState()
-    val radio by client.radio.collectAsState()
     val events by client.events.collectAsState()
     val members by client.members.collectAsState()
     val playback by client.playback.collectAsState()
     val sharedQueue by client.sharedQueue.collectAsState()
     val suggestions by client.suggestions.collectAsState()
     val clipboard = LocalClipboardManager.current
-    var endpoint by rememberSaveable { mutableStateOf("wss://katmusic.onrender.com/ws") }
+    val context = LocalContext.current
+    val inviteUrl = remember(roomCode) {
+        ShareLinks.jamUrl(roomCode).orEmpty()
+    }
+    var endpoint by rememberSaveable { mutableStateOf(JamDefaults.SERVER_ENDPOINT) }
     var displayName by rememberSaveable { mutableStateOf("") }
     var joinCode by rememberSaveable { mutableStateOf("") }
     var collaborative by rememberSaveable { mutableStateOf(false) }
     var chatText by rememberSaveable { mutableStateOf("") }
+    var showQr by rememberSaveable { mutableStateOf(false) }
     val mainHost = isHost && !isCoHost
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -162,18 +174,6 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                     enabled = displayName.isNotBlank() && joinCode.length >= 4 && connection != "Connecting…",
                                     modifier = Modifier.fillMaxWidth(),
                                 ) { Text("Join room") }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = { viewModel.joinRoom(endpoint, "INDIA", displayName) },
-                                        enabled = displayName.isNotBlank(),
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("India station") }
-                                    OutlinedButton(
-                                        onClick = { viewModel.joinRoom(endpoint, "WORLD", displayName) },
-                                        enabled = displayName.isNotBlank(),
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("International") }
-                                }
                             }
                         }
                     }
@@ -185,13 +185,10 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                         ) {
                             Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    if (radio) "LIVE STATION" else "YOUR ROOM",
+                                    "YOUR ROOM",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
-                                if (roomName.isNotBlank()) {
-                                    Text(roomName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         roomCode,
@@ -204,9 +201,44 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                         Icon(Icons.Default.ContentCopy, contentDescription = "Copy room code", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                     }
                                 }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick = { showQr = !showQr }) {
+                                        Text(if (showQr) "Hide invite QR" else "Show invite QR")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            clipboard.setText(AnnotatedString(inviteUrl))
+                                        },
+                                    ) { Text("Copy invite link") }
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        ShareLinks.send(
+                                            context,
+                                            "Join my KatMusic Jam: $inviteUrl\n\nJam code: $roomCode",
+                                            "Join KatMusic Jam $roomCode",
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Share jam invite") }
+                                if (showQr) {
+                                    Text(
+                                        "SCAN TO JOIN · $roomCode",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    val qr = remember(inviteUrl, showQr) { jamQrBitmap(inviteUrl) }
+                                    if (qr != null) {
+                                        Image(
+                                            bitmap = qr.asImageBitmap(),
+                                            contentDescription = "Jam invite QR",
+                                            modifier = Modifier.size(188.dp),
+                                        )
+                                    }
+                                }
                                 Text(
                                     when {
-                                        radio -> "Always-on station · playback is automatic"
                                         isCoHost -> "You're a co-host · you can control playback"
                                         isHost -> "You're hosting · you control playback and roles"
                                         roomMode == "collaborative" -> "Collaborative room · anyone can control playback"
@@ -218,7 +250,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                             }
                         }
                     }
-                    if (mainHost && !radio) {
+                    if (mainHost) {
                         item {
                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -266,7 +298,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
-                                        if (mainHost && !radio && member.id != memberId) {
+                                        if (mainHost && member.id != memberId) {
                                             when {
                                                 member.id == coHostId -> TextButton(onClick = { viewModel.removeCoHost(member.id) }) { Text("Remove co-host") }
                                                 coHostId.isBlank() -> TextButton(onClick = { viewModel.makeCoHost(member.id) }) { Text("Make co-host") }
@@ -295,7 +327,7 @@ fun ListenTogetherScreen(onBack: () -> Unit = {}, viewModel: ListenTogetherViewM
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                                if (!isHost && !radio) {
+                                if (!isHost) {
                                     OutlinedButton(onClick = viewModel::suggestCurrentTrack, modifier = Modifier.fillMaxWidth()) {
                                         Text("Suggest my current track")
                                     }
@@ -406,9 +438,19 @@ private fun eventText(event: com.itzfallenme.katmusic.data.jam.JamEvent): String
         "room_mode_changed" -> "Room mode: ${p.text("room_mode")?.replace('_', ' ') ?: "updated"}"
         "suggestion_received" -> "$name suggested a track"
         "queue_updated" -> "Shared queue updated"
-        "station_mode" -> "Station playback updated"
         else -> event.type.replace('_', ' ')
     }
 }
+
+private fun jamQrBitmap(value: String): Bitmap? = runCatching {
+    val matrix = QRCodeWriter().encode(value, BarcodeFormat.QR_CODE, 512, 512)
+    val bitmap = Bitmap.createBitmap(matrix.width, matrix.height, Bitmap.Config.ARGB_8888)
+    for (y in 0 until matrix.height) {
+        for (x in 0 until matrix.width) {
+            bitmap.setPixel(x, y, if (matrix.get(x, y)) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+        }
+    }
+    bitmap
+}.getOrNull()
 
 private fun JsonObject.text(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull

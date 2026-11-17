@@ -265,10 +265,10 @@ class StreamApi @Inject constructor(
     private val settingsPreferences: SettingsPreferences,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val connectionPool = okhttp3.ConnectionPool(10, 5, TimeUnit.MINUTES)
     private val innerTubeClient: OkHttpClient = http.newBuilder()
-        .dns(com.itzfallenme.katmusic.data.network.Ipv4FirstDnsResolver(http))
-        .connectionPool(connectionPool)
+        // Keep API extraction and Media3 playback on the same OkHttp transport
+        // identity: a separate pool or DNS policy can select a different route
+        // on VPNs and make the minted googlevideo URL fail when played.
         .retryOnConnectionFailure(true)
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
@@ -319,8 +319,15 @@ class StreamApi @Inject constructor(
                 innerTubeXExtractor.reportPlaybackFailure(videoId, stream.authScope, stream.clientProfile)
             }
         }
+        // Drop every cached URL that client minted for this video, not only the
+        // exact rejected one: its other itags came from the same refused
+        // session, and keeping them let the retry cache-hit straight back onto
+        // that client.
         streamCache.keys.removeIf { key ->
-            key.videoId == videoId && (stream == null || key.matches(stream))
+            key.videoId == videoId && (
+                stream == null ||
+                    (key.clientProfile == stream.clientProfile && key.authScope == stream.authScope)
+                )
         }
         lastResolvedStreams.entries.removeIf { it.value.videoId == videoId }
         activeStreamRequests.entries.removeIf { (key, request) ->
@@ -3014,8 +3021,8 @@ class StreamApi @Inject constructor(
     /**
      * One youtubei/player POST. The client that served the previous song goes
      * first; the next client runs only if this one returns no direct URL.
-     * Parallel hedges used to open VISIONOS, ANDROID_VR, and TVHTML5 together
-     * and cancel the losers after the winner, which showed up as several
+     * Parallel hedges used to open several clients at once and cancel the
+     * losers after the winner, which showed up as several
      * player requests and a cancellation immediately after a ~2s extract.
      */
     private suspend fun resolveDirectUrlFastPath(
@@ -3023,8 +3030,8 @@ class StreamApi @Inject constructor(
         authScope: String,
         preferredCodec: String? = null,
     ): YouTubeAudioStream? {
-        // Visitor data is mandatory, not best-effort: VISIONOS/ANDROID_VR
-        // answer LOGIN_REQUIRED with zero formats when it is missing, so a
+        // Visitor data is mandatory, not best-effort: ANDROID_VR answers
+        // LOGIN_REQUIRED with zero formats when it is missing, so a
         // resolve without it burns the fast-path budget on misses. Bootstrap
         // it here (bounded, throttled) when the startup pre-warm hasn't —
         // including when the cached value is only the synthetic placeholder,
@@ -3520,8 +3527,16 @@ class StreamApi @Inject constructor(
                 val validType = !contentType.contains("text/html") &&
                     !contentType.contains("application/json") &&
                     !contentType.contains("text/plain")
+                val source = response.body?.source()
+                val previewArrived = source?.request(1L) == true
+                if (previewArrived) {
+                    // Read a full probe window, not just one byte: a body that
+                    // stalls or is refused after its headers must fail here,
+                    // not ~a minute into playback.
+                    source.request(PROBE_READ_BYTES)
+                }
                 val valid = (response.code == 200 || response.code == 206) &&
-                    validType && response.body?.source()?.request(1L) == true
+                    validType && previewArrived
                 logStreamEvent(
                     stage = stage,
                     stream = stream,
@@ -4076,7 +4091,7 @@ class StreamApi @Inject constructor(
             } catch (e: Exception) {
                 lastException = e
                 if (e is java.net.SocketTimeoutException || e is IOException) {
-                    connectionPool.evictAll()
+                    innerTubeClient.connectionPool.evictAll()
                 }
                 if (attempt >= maxAttempts || !e.isTransientRequestFailure()) break
                 val exponential = REQUEST_RETRY_BASE_DELAY_MS * (1L shl (attempt - 1).coerceAtMost(3))
@@ -5195,8 +5210,8 @@ class StreamApi @Inject constructor(
          *  wins the race, only the worst case waits longer. */
         const val DIRECT_FAST_CLIENT_TIMEOUT_MS = 4_000L
         /** Bound for the mandatory visitor-data bootstrap on the fast path.
-         *  VISIONOS/ANDROID_VR answer LOGIN_REQUIRED with zero formats when
-         *  visitor data is missing, so a resolve without it burns the whole
+         *  ANDROID_VR answers LOGIN_REQUIRED with zero formats when visitor
+         *  data is missing, so a resolve without it burns the whole
          *  fast-path budget on guaranteed misses. */
         const val VISITOR_BOOTSTRAP_BUDGET_MS = 3_000L
         /** Cooldown before the fast path retries a failed visitor bootstrap. */
@@ -5222,8 +5237,13 @@ class StreamApi @Inject constructor(
         const val NEWPIPE_FALLBACK_TIMEOUT_MS = 9_000L
         /** Overall budget for promoting a staged YouTube stream from MusicPlayer. */
         const val YOUTUBE_PROMOTE_BUDGET_MS = 12_000L
-        /** No-cipher clients tried first, in order (mirrors limusic's fallback order). */
-        val DIRECT_FAST_CLIENT_ORDER = listOf("ANDROID_VR", "IOS", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "WEB_REMIX")
+        /**
+         * No-cipher clients tried first, in order (mirrors limusic's fallback
+         * order). Apple-family clients (IOS, IPADOS, VISIONOS) are excluded:
+         * YouTube serves them direct URLs that need an Apple-attested GVS
+         * token, so they 403 after roughly a minute of playback.
+         */
+        val DIRECT_FAST_CLIENT_ORDER = listOf("ANDROID_VR", "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "WEB_REMIX")
         const val MAX_FORMAT_PROBES_PER_CLIENT = 4
         const val MAX_PLAYER_REQUEST_ATTEMPTS = 2
         const val CONFIG_REQUEST_TIMEOUT_MS = 6_000L
@@ -5235,7 +5255,7 @@ class StreamApi @Inject constructor(
          *  resolution with no error. Normal searches answer in ~1s. */
         const val SEARCH_REQUEST_TIMEOUT_MS = 10_000L
         const val ACCOUNT_SWITCHER_TIMEOUT_MS = 15_000L
-        /** Per-probe socket timeout for the 0-1 byte stream validity check. */
+        /** Per-probe socket timeout for the ranged stream validity check. */
         const val STREAM_PROBE_TIMEOUT_MS = 6_000L
         const val HISTORY_PING_TIMEOUT_MS = 15_000L
         const val URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000L
@@ -5257,8 +5277,12 @@ class StreamApi @Inject constructor(
             "copyright claim",
         )
 
-        /** How long a failed player client is skipped by the racer. */
-        const val CLIENT_COOLDOWN_MS = 60_000L
+        /**
+         * How long a failed player client is skipped by the racer. Long enough
+         * to outlast the song it failed on: at 60 s a client that died a
+         * minute in was allowed straight back for the retry.
+         */
+        const val CLIENT_COOLDOWN_MS = 5 * 60_000L
 
         /** Hard cap so long sessions can't grow the caches without bound. */
         const val MAX_STREAM_CACHE_ENTRIES = 64

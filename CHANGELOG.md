@@ -4,6 +4,33 @@ All notable changes to KatMusic are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [2.6.5] - 2026-11-17
+
+### Added
+
+- A desktop application for Windows, Linux and macOS, built on the same Kotlin Multiplatform Compose UI as Android: local library with Songs/Albums/Artists views, search, now playing, queue, playlists, downloads, home feed, lyrics and settings.
+- Desktop YouTube playback through the NewPipe-fork extractors, with real stream URLs validated before playback; the home feed and music search use the Piped API with instance failover.
+- Phone → desktop YouTube sign-in: the desktop shows a QR code, the Android app approves the request and transfers the session encrypted over the local network; the stored session is applied to extraction and survives restarts.
+- Portable liquid-glass chrome on desktop for the player dock and navigation surfaces, drawn with Compose primitives while Android keeps Kyant Backdrop refraction.
+- Desktop installers in the release workflow: MSI, DMG for Apple silicon and Intel Macs, DEB, plus portable archives.
+- A shared download-size formatter that produces identical output on Android, desktop and Kotlin/Native.
+- Android player styles with genuinely different decks: rotating Vinyl and animated Cassette players, plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas layouts. Classic remains unchanged.
+- Player-style previews in Settings so each deck can be compared before opening Now Playing.
+- Desktop parity features: Jam room controls, displayable/enterable Code 128 KatMusic Codes, local listening stats, album browsing, streamed M3U playlists, sleep timer and lyrics copy.
+- Desktop Last.fm support with bring-your-own API credentials, browser authorization, scrobbling, now-playing updates, recent tracks, top artists and public friend profiles.
+- Public playlist import on desktop for YouTube, Spotify and Apple Music, matching external tracks to YouTube Music without account cookies.
+- Desktop regional Discover charts with a persisted country choice, local-history mixes, artist album browsing and provider-recommended artist radio.
+- Desktop system-wide media keys with a focused-window fallback, a system tray with playback controls and track-change notifications, and PNG lyric-card export.
+
+### Changed
+
+- Desktop packaging now carries a stable Windows upgrade identity, bundle identifier, vendor and menu metadata.
+- Settings explains that Classic is unchanged while Vinyl and Cassette add custom decks.
+
+### Notes
+
+- Anonymous desktop streaming depends on YouTube accepting the extractor requests; when a provider refuses, the player shows the provider's own reason instead of failing silently.
+
 ## [2.6.4] - 2026-11-14
 
 ### Fixed
@@ -56,10 +83,8 @@ All notable changes to KatMusic are documented here. The format follows
 
 - **Go-based Jam server** with co-hosts, collaborative rooms, suggestions, chat and permanent radio stations, replacing the Node relay.
 - Optional **Supabase persistence** for Jam rooms and recent chat. Snapshots survive Render restarts; the first listener back becomes host.
-- A separate **Group Blend Supabase project** guide so Blend and Jam keep independent free-tier quotas.
 - **KatMusic Cover**, an artwork-first home-screen widget with a 1×1 tile and a 2×1 wide layout, one-tap play/pause and the same live session/artwork pipeline as the existing widgets.
 - **Android-to-desktop YouTube Music login** using a five-minute, one-use LAN QR code, desktop approval and AES-GCM encrypted session transfer.
-- A circular **match-percentage gauge** with animated fill and a plain-language match label on the Group Blend compatibility card.
 - A more cinematic alternate-player motion system: drifting ambient colour, breathing and rotating cover art, animated glow rings, lyric-line crossfades, a pulsing timeline playhead and an animated play/pause glyph.
 - A polished startup handoff from the final video emblem into the centred logo, wordmark and gradient underline.
 
@@ -68,13 +93,10 @@ All notable changes to KatMusic are documented here. The format follows
 - The Android Jam client now uses the native envelope protocol, reconnects with the saved room code and only publishes real playback changes.
 - Android home-screen player widgets now use size-specific RemoteViews layouts with clearer artwork hierarchy, responsive controls, progress rails and reliable empty states.
 - Removed the desktop Addon sources settings screen and its settings-search entry; existing playback fallback behavior remains unchanged.
-- Group Blend interleaves each member's strongest picks instead of letting one person's taste dominate.
-- README screenshots now include Group Blend, Listen Together, For You, player, lyrics, library, settings and stats, with v2.6.0 download links.
+- README screenshots now include Listen Together, For You, player, lyrics, library, settings and stats, with v2.6.0 download links.
 
 ### Fixed
 
-- Online Group Blend now populates the member list used by the compatibility score with the actual cloud members instead of only the local “You” row.
-- Leaving an online Blend now restores and recalculates the on-device group instead of leaving the departed cloud room visible.
 - Tagged release builds now use the same `SIGNING_KEY` contract as the manual release workflow, avoiding an unsigned/debug-key fallback.
 - The 1×1 Cover widget advertises a 1×1 default instead of opening at 2×2.
 - macOS desktop builds now compile against newer Xcode SDKs whose Flutter delegate URL handlers require explicit `override` declarations.
@@ -115,8 +137,6 @@ All notable changes to KatMusic are documented here. The format follows
 - **Branded startup sequence.** The supplied KatMusic logo animation is packaged as an Android raw video resource. After playback completes, the final emblem transitions into the static logo; the logo slides left as the “Kat Music” wordmark enters, before the app opens Login or Home.
 - **First-run experience preference.** Onboarding offers Classic and Modern appearance presets with animated selection feedback and a description of each mode. The choice is saved in the existing theme preferences.
 - **App-wide release update prompt.** The app checks the latest release from `Arct-Development/KatMusic` and can show the version and release-note preview on both Login and Home, with per-version dismissal.
-- **Dedicated Group Blend Supabase backend foundation.** Added a separate Blend project schema under `server/blend/supabase/migrations`, authenticated create/join/leave functions, row-level security, hashed invitation codes, membership limits, compact-profile storage and build-time client configuration.
-- Group Blend Android cloud flows for email/password sign-up and sign-in, persisted/refreshed sessions, compact taste-profile upload, online Blend creation and joining, member/profile retrieval, refresh and leaving a group. Local profile-code sharing remains available as a fallback.
 - Website shortcut in Settings → About, alongside Arct Development repository attribution.
 
 ### Changed
@@ -136,13 +156,10 @@ All notable changes to KatMusic are documented here. The format follows
 - Startup playback now uses an Android resource URI rather than a fragile asset file URI, waits for the video completion callback, and keeps the app on the black splash screen until the logo/wordmark transition finishes. A decoder timeout is retained as a fallback.
 - Startup animation is replayed after a fresh app launch, including when Android restores a previous navigation back stack.
 - Expanded navigation no longer inherits the collapsed dock's left alignment.
-- Corrected Supabase Auth response parsing in the Group Blend client and session refresh flow.
 - Queue helper text that crowded the queue header has been removed, and the menu/drag-handle symbols now share consistent sizing and placement.
 
 ### Setup and verification notes
 
-- Group Blend uses a **separate Supabase project** from Listen Together. Apply `server/blend/supabase/migrations/0001_blend_schema.sql` and configure `KATMUSIC_BLEND_SUPABASE_URL` plus `KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY` in the local environment or GitHub Actions secrets before enabling cloud access. Never use a service-role key in the Android app.
-- Group Blend cloud flows are implemented in Android; they require a configured Supabase project and still need a live project verification before being treated as production-proven.
 - Verify the release workflow and APK artifacts before publishing this version.
 
 

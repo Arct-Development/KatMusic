@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -339,6 +340,7 @@ fun TrackContextMenuSheet(
     val musicPlayer = LocalMusicPlayer.current
     val addToPlaylist = LocalAddToPlaylist.current
     var showDetailsSheet by remember { mutableStateOf(false) }
+    var showCodeDialog by remember { mutableStateOf(false) }
     var showSyncedVideoDialog by remember { mutableStateOf(false) }
     val musicVideoEnabled by downloadViewModel.musicVideoEnabled.collectAsStateWithLifecycle()
     var showTimerDialog by remember { mutableStateOf(false) }
@@ -368,6 +370,33 @@ fun TrackContextMenuSheet(
     fun exploreGenre(genre: String) {
         if (onExploreGenre != null) onExploreGenre(genre)
         else exploreGenreViewModel.explore(genre)
+    }
+
+    if (showCodeDialog && target is TrackMenuTarget.Track) {
+        val playable = playableTrack ?: PlayableTrack(title = target.name, artist = target.artist)
+        val shareUrl = com.itzfallenme.katmusic.util.ShareLinks.trackUrl(
+            videoId = playable.videoId,
+            title = target.name,
+            artist = target.artist,
+            album = playable.album,
+        )
+        val code = com.itzfallenme.katmusic.util.ShareLinks.trackCode(playable.videoId)
+        if (shareUrl != null && code != null) {
+            SongShareCodeDialog(
+                title = target.name,
+                artist = target.artist,
+                url = shareUrl,
+                code = code,
+                album = playable.album,
+                onDismiss = {
+                    showCodeDialog = false
+                    onDismiss()
+                },
+            )
+        } else {
+            showCodeDialog = false
+        }
+        return
     }
 
     if (showDetailsSheet && target is TrackMenuTarget.Track) {
@@ -676,9 +705,22 @@ fun TrackContextMenuSheet(
                             MenuActionRow(Icons.Filled.Share, stringResource(R.string.menu_share_link), position = pos) {
                                 com.itzfallenme.katmusic.util.ShareLinks.send(
                                     context,
-                                    shareUrl,
+                                    com.itzfallenme.katmusic.util.ShareLinks.trackMessage(shareUrl, playable.videoId),
                                     "${t.name} \u2014 ${t.artist}",
                                 )
+                                onDismiss()
+                            }
+                        }
+                    }
+                    com.itzfallenme.katmusic.util.ShareLinks.trackCode(playable.videoId)?.let { code ->
+                        add { pos ->
+                            MenuActionRow(Icons.Filled.GraphicEq, "Share KatMusic Code", position = pos) {
+                                showCodeDialog = true
+                            }
+                        }
+                        add { pos ->
+                            MenuActionRow(Icons.Filled.ContentCopy, "Copy KatMusic code", position = pos) {
+                                clipboard.setText(AnnotatedString(code))
                                 onDismiss()
                             }
                         }

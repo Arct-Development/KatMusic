@@ -61,24 +61,11 @@ android {
         "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     defaultConfig {
-        // Blend uses its own Supabase project. These are public client config
-        // values (URL + publishable/anon key), never service-role credentials.
-        buildConfigField(
-            "String",
-            "BLEND_SUPABASE_URL",
-            buildConfigString(resolveSecret("KATMUSIC_BLEND_SUPABASE_URL")),
-        )
-        buildConfigField(
-            "String",
-            "BLEND_SUPABASE_PUBLISHABLE_KEY",
-            buildConfigString(resolveSecret("KATMUSIC_BLEND_SUPABASE_PUBLISHABLE_KEY")),
-        )
-
         applicationId = "com.itzfallenme.katmusic"
         minSdk = (project.findProperty("minSdk") as? String)?.toIntOrNull() ?: 29
         targetSdk = 35
-        versionCode = 2604
-        versionName = "2.6.4"
+        versionCode = 2605
+        versionName = "2.6.5"
 
         (project.findProperty("targetAbis") as? String)?.let { prop ->
             ndk {
@@ -231,6 +218,9 @@ android {
 }
 
 dependencies {
+    // Shared Compose UI, design system, models, queue logic and settings
+    // contracts used by both Android and the desktop app.
+    implementation(project(":shared"))
     implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation(libs.androidx.core.ktx)

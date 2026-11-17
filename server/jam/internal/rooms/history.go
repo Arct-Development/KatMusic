@@ -109,7 +109,7 @@ func (h *Hub) cleanupOnce() {
 	h.mu.Lock()
 	ended := make([]string, 0)
 	for code, room := range h.rooms {
-		if room.IsEmpty() && !room.Permanent {
+		if room.IsEmpty() {
 			h.archiveLocked(room)
 			delete(h.rooms, code)
 			ended = append(ended, code)

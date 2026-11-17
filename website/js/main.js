@@ -5,7 +5,7 @@
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STYLES = [["Classic", "Full player, tabs, queue and controls."], ["Poster", "Large circular artwork and expressive track text."], ["Timeline", "Progress-led layout with oversized timestamps."], ["Lyrics Stage", "Lyrics-focused view with synced highlighting and source controls."], ["iPod", "A compact, tactile player inspired by classic music devices."], ["Full Video", "Immersive playback with animated Canvas artwork when available."]];
-  const TICKER = ["Listen Together", "Group Blend", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Android · Windows · macOS · Linux", "Open source"];
+  const TICKER = ["Listen Together", "Jam QR invites", "KatMusic Codes", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Android · Windows · macOS · Linux", "Open source"];
 
   /* ---------- platforms ---------- */
   const ICONS = {
@@ -17,7 +17,7 @@
   const PLATFORMS = [
     {
       id: "android", name: "Android", file: "APK package", button: "Download APK",
-      desc: "The full app, in your pocket: Listen Together, Group Blend, synced lyrics, native audio and offline downloads.",
+      desc: "The full app, in your pocket: Listen Together, KatMusic Codes, synced lyrics, native audio and offline downloads.",
       specs: ["Android 10+", "ARM64 or universal", "Legacy for Android 7–9"],
       hint: "Signed APKs. Verify with the SHA-256 checksum from the release.",
       match: (n) => /\.apk$/i.test(n)

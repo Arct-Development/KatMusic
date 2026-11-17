@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -169,12 +169,12 @@ fun YouTubeDesktopPairingScreen(
                         message = "${current.desktopName} must approve this phone before the session can be sent.",
                     )
                     is YtDesktopPairingUiState.Ready -> MessageStatus(
-                        icon = Icons.Filled.Send,
+                        icon = Icons.AutoMirrored.Filled.Send,
                         title = "Desktop approved",
                         message = "Send your active YouTube Music session to ${current.desktopName}?",
                         action = {
                             Button(onClick = viewModel::send) {
-                                Icon(Icons.Filled.Send, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                                 Spacer(Modifier.size(8.dp))
                                 Text("Send session")
                             }
