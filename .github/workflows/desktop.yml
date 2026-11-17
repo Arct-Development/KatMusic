@@ -60,7 +60,7 @@ jobs:
             portable: tar.gz
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
