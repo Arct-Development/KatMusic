@@ -16,12 +16,13 @@
 <link rel="stylesheet" href="css/style.css">
 <script src="js/main.js" defer></script>
 <script src="js/report.js" defer></script>
+<script src="js/donate.js" defer></script>
 </head>
 <body>
 <i class="progress" aria-hidden="true"></i><i class="glow g1" aria-hidden="true"></i><i class="glow g2" aria-hidden="true"></i>
 <header class="nav glass" id="nav">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="30" height="30">KatMusic</a>
-  <nav class="links" id="links"><a href="#features">Features</a><a href="#together">Together</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="#report">Report</a><a href="share.html">Share</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
+  <nav class="links" id="links"><a href="#features">Features</a><a href="#together">Together</a><a href="#screens">Screens</a><a href="#install">Install</a><a href="#faq">FAQ</a><a href="#report">Report</a><a href="#donate">Donate</a><a href="share.html">Share</a><a href="https://github.com/Arct-Development/KatMusic" target="_blank" rel="noopener noreferrer">Source</a></nav>
   <span class="dlpill" title="Total downloads"><i>↓</i><b data-count>0</b></span>
   <a class="btn mag" href="#download">Download</a>
   <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
@@ -142,6 +143,29 @@
   </div>
 </div></section>
 
+<section id="donate"><div class="wrap">
+  <div class="head rv"><h2>Keep the music <em class="grad">playing.</em></h2><p class="lead">KatMusic is free, open source and built by a small team. If it earns a spot on your device, a donation helps cover development time and keeps it ad-free.</p></div>
+  <div class="don">
+    <div class="don-cta card glass rv">
+      <span class="chip glass" style="justify-self:start"><span class="dot"></span>Every bit helps</span>
+      <h3>Support KatMusic</h3>
+      <p class="lead">Pick whichever way is easiest for you. Donations are always optional and never unlock anything in the app.</p>
+      <div class="don-ways"><span>UPI · QR</span><span>UPI ID</span><span>BTC</span><span>ETH</span><span>SOL</span><span>LTC</span></div>
+      <button class="btn mag" type="button" data-donate="qr">♥ Donate</button>
+      <p class="don-note">Donors are added to the board by hand, so it can take a little while for a new entry to appear.</p>
+    </div>
+    <div class="board glass rv" aria-labelledby="boardTitle">
+      <div class="bd-head"><h3 id="boardTitle" class="grad">Donation board</h3></div>
+      <div class="bd-stats">
+        <div class="stat"><span>Total donated</span><b id="boardTotal">—</b></div>
+        <div class="stat"><span>Supporters</span><b id="boardCount">—</b></div>
+      </div>
+      <ul id="boardList" aria-live="polite"><li class="bd-empty">Loading donors…</li></ul>
+      <button class="btn ghost mag" type="button" id="boardMore" hidden>Show all</button>
+    </div>
+  </div>
+</div></section>
+
 <section id="report"><div class="wrap split">
   <div class="rv">
     <span class="chip glass"><span class="dot"></span>Help us fix it</span>
@@ -209,10 +233,38 @@
 </div></section>
 </main>
 
+<dialog class="dm" id="donateDlg" aria-labelledby="dlgTitle">
+  <div class="dm-top"><h3 id="dlgTitle" class="grad">Donate to KatMusic</h3><button class="dm-x" id="dlgClose" type="button" aria-label="Close">✕</button></div>
+  <div class="tabs" role="tablist" aria-label="Payment method">
+    <button class="tab" type="button" role="tab" data-dtab="qr">UPI QR</button>
+    <button class="tab" type="button" role="tab" data-dtab="id">UPI ID</button>
+    <button class="tab" type="button" role="tab" data-dtab="crypto">Crypto</button>
+  </div>
+  <div class="dm-pane" data-dpane="qr">
+    <div class="qrbox"><img src="assets/img/fampay-upi-qr.png" alt="UPI QR code for atishayprasad@fam" width="720" height="720"></div>
+    <div class="dm-name">Atishay Prasad Sahu</div>
+    <p class="dm-sub">Scan with any UPI app — Google Pay, PhonePe, Paytm, BHIM or FamPay.</p>
+  </div>
+  <div class="dm-pane" data-dpane="id" hidden>
+    <div class="dm-name">Atishay Prasad Sahu</div>
+    <div class="file"><small>UPI ID</small><b>atishayprasad@fam</b></div>
+    <div class="dm-row"><button class="btn ghost mag" type="button" data-copy="atishayprasad@fam">Copy UPI ID</button><a class="btn mag" id="upiApp" href="#" hidden>Open UPI app</a></div>
+    <p class="dm-sub">Paste the ID into any UPI app, or on a phone tap “Open UPI app”.</p>
+  </div>
+  <div class="dm-pane" data-dpane="crypto" hidden>
+    <div class="tabs" id="coinBar" role="tablist" aria-label="Coin"></div>
+    <div class="qrbox"><img id="coinImg" src="" alt="" width="492" height="492"></div>
+    <div class="coin-head"><span class="dm-name" id="coinName"></span><small id="coinNet"></small></div>
+    <div class="file"><b id="coinAddr"></b></div>
+    <button class="btn ghost mag wide" type="button" id="coinCopy" data-copy="">Copy address</button>
+    <p class="dm-sub">Double-check the network before sending. Funds sent on the wrong network can’t be recovered.</p>
+  </div>
+</dialog>
+
 <footer><div class="wrap">
   <a class="brand" href="#top"><img src="assets/img/katmusic_logo.svg" alt="" width="26" height="26">KatMusic</a>
   <span>Independent music player · Android · Windows · macOS · Linux · GPL-3.0 · © <span id="yr"></span> <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">ArctDevelopments</a></span>
-  <span>Made with 💗 by <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">Arct Developments</a> · <a href="share.html">Share a track</a> · <a href="#report">Report a bug</a></span>
+  <span>Made with 💗 by <a href="https://arctdevelopments.pages.dev" target="_blank" rel="noopener noreferrer">Arct Developments</a> · <a href="share.html">Share a track</a> · <a href="#donate">Donate</a> · <a href="#report">Report a bug</a></span>
 </div></footer>
 </body>
 </html>

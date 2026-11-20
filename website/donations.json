@@ -1,0 +1,9 @@
+{
+  "_readme": "DEVELOPER FILE - this is the ONLY file you need to edit to update the website's Donation Board. Add one { \"name\": \"...\", \"amount\": 0 } object per donation inside the \"donors\" list (comma between entries, no comma after the last one). Save, deploy/refresh and the board updates. Optional per-entry keys: \"message\" (short note shown under the name) and \"date\" (any text, e.g. \"2026-11-20\"). Top-level options: \"currency\" = symbol shown before amounts, \"sort\" = \"amount\" (highest first) or \"latest\" (newest entries at the top = bottom of this file first), \"showTop\" = how many rows to show before the 'Show all' button. Keys starting with an underscore are ignored.",
+  "currency": "₹",
+  "sort": "amount",
+  "showTop": 10,
+  "donors": [
+    {"name": "Anjan Puri", "amount":5, "message": "Loved the app" , "date": "2026-11-20"}
+  ]
+}

@@ -131,3 +131,43 @@ fieldset.rp-f{border:0;margin:0;padding:0;min-width:0}
 .rp-links{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mute)}
 .rp-links a:hover{color:var(--cyan)}
 @media(max-width:860px){.rp{padding:22px}.rp-row{grid-template-columns:1fr}}
+
+/* Donations feature — additive stylesheet. Reuses the site's tokens, .glass, .card, .tab, .btn, .file. */
+#donate .head{margin-bottom:40px}
+.don{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:16px;align-items:start}
+.don-cta{display:grid;gap:18px;align-content:start;padding:32px}
+.don-cta h3{font-size:30px;margin:0}.don-cta .lead{margin:0;font-size:15px}
+.don-ways{display:flex;flex-wrap:wrap;gap:8px}.don-ways span{font-size:12px;color:#c6d5e8;padding:6px 11px;border-radius:999px;background:#ffffff0c;border:1px solid var(--edge)}
+.don-cta .btn{justify-self:start}.don-note{margin:0;font-size:12px;line-height:1.6;color:var(--mute)}
+.board{padding:28px;display:grid;gap:18px}
+.bd-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.bd-head h3{font-size:24px}
+.bd-stats{display:flex;gap:12px;flex-wrap:wrap}.bd-stats .stat{flex:1 1 140px}.bd-stats .stat b{font-size:24px}
+#boardList{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bd-row{display:grid;grid-template-columns:30px 40px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:16px;background:#ffffff08;border:1px solid var(--edge);transition:border-color .25s,background .25s}
+.bd-row:hover{border-color:#7db9ff66;background:#ffffff0d}
+.bd-rank{text-align:center;font-family:var(--disp);font-size:15px;color:var(--mute)}
+.bd-av{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--violet));font-family:var(--disp);font-size:14px;box-shadow:inset 0 1px #ffffff40}
+.bd-who{min-width:0;display:grid;gap:2px}.bd-who b{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bd-who small{color:var(--mute);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-amt{font-family:var(--disp);font-size:17px;font-variant-numeric:tabular-nums;background:linear-gradient(100deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.bd-row.top .bd-rank{color:var(--cyan)}.bd-row.t1{border-color:#7db9ff66;box-shadow:0 0 30px #2f7fff30}
+.bd-empty{padding:26px 16px;text-align:center;color:var(--mute);font-size:14px;border:1px dashed var(--edge);border-radius:16px}
+#boardMore{justify-self:center;min-height:40px;padding:0 20px;font-size:14px}
+/* dialog */
+html.modal-open{overflow:hidden}
+dialog.dm{width:min(470px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:26px;margin:auto;color:var(--text);background:#0a101cd9;border:1px solid #ffffff2a;border-radius:28px;-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:inset 0 1px 0 #ffffff38,0 40px 100px #000c,0 0 80px #168cff30}
+dialog.dm::backdrop{background:#000000b3;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+dialog.dm[open]{animation:rise .35s both}
+.dm-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}.dm-top h3{font-size:24px}
+.dm-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--edge);background:#ffffff0d;cursor:pointer;font-size:18px;line-height:1;transition:border-color .25s}.dm-x:hover{border-color:var(--cyan)}
+.dm .tabs{margin:0 0 20px;gap:8px}.dm .tab{padding:9px 15px}
+.dm-pane{display:grid;gap:14px;justify-items:center;text-align:center}.dm-pane[hidden]{display:none}
+.qrbox{width:min(300px,78vw);aspect-ratio:1;padding:10px;border-radius:22px;background:#fff;box-shadow:0 0 60px #2f7fff40}.qrbox img{width:100%;height:100%}
+.dm-name{font-family:var(--disp);font-size:20px;font-weight:700}.dm-sub{margin:0;color:var(--mute);font-size:13px;line-height:1.6}
+.dm-pane .file,.dm-pane .btn,.dm-pane .tabs{width:100%}.dm-pane .file{text-align:left}.dm-pane .file b{font-size:15px}
+.dm-pane .tabs{justify-content:center}
+.dm-row{display:flex;gap:10px;width:100%}.dm-row .btn{flex:1;min-height:44px;font-size:14px;padding:0 16px}
+.coin-head{display:flex;gap:8px;align-items:baseline;justify-content:center}.coin-head small{color:var(--mute)}
+@media(max-width:860px){.don{grid-template-columns:1fr}.don-cta,.board{padding:22px}.bd-row{grid-template-columns:24px 36px minmax(0,1fr) auto;gap:10px}.bd-av{width:36px;height:36px}}
+/* nav: one extra link (Donate) — trim link padding a touch so the pill keeps its breathing room */
+@media(min-width:861px){.links a{padding:9px 10px}}
+@media(min-width:861px) and (max-width:1080px){.links a{padding:9px 7px;font-size:13.5px}.nav .btn{padding:0 14px}.dlpill{padding:7px 10px}}
