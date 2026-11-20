@@ -4,6 +4,8 @@
   "sort": "amount",
   "showTop": 10,
   "donors": [
-    {"name": "Anjan Puri", "amount":5, "message": "Loved the app" , "date": "2026-11-20"}
+    {"name": "Abhinav Kumar", "amount":50, "message": "Loved the app" , "date": "2026-11-20"},
+    {"name": "Anjan Puri", "amount":5, "message": "Loved the app" , "date": "2026-11-20"},
+    {"name": "Maaz Qamar", "amount":5, "message": "Loved the app" , "date": "2026-11-20"}
   ]
 }
