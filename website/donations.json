@@ -8,9 +8,11 @@
     { "name": "Shreyash Kulkarni", "amount": 6.9, "message": "Encorins bhai love u [gilli puchi]", "date": "2026-11-21" },
     { "name": "Aniruddh", "amount": 6.5, "message": "nice app", "date": "2026-11-20" },
     { "name": "Hitansh Garg", "amount": 6, "message": "Toji on top", "date": "2026-11-20" },
+    { "name": "Piku", "amount": 5, "message": "Ggs", "date": "2026-11-21" },
     { "name": "Anjan Puri", "amount": 5, "message":"Great App", "date":"2026-11-20"},
     { "name": "Maaz Qamar", "amount": 5, "message": "Heheh", "date": "2026-11-20" },
-    { "name": "Vansh Sahu", "amount": 2, "message": "Yippie", "date": "2026-11-20" }
+    { "name": "Vansh Sahu", "amount": 2, "message": "Yippie", "date": "2026-11-20" },
+    { "name": "Shreyash Kulkarni", "amount": 1, "message": "Wow", "date": "2026-11-21" }
 
   ]
 }
