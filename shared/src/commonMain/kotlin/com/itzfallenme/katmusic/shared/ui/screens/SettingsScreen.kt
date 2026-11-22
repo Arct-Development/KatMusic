@@ -1,5 +1,6 @@
 package com.itzfallenme.katmusic.shared.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,17 +9,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.itzfallenme.katmusic.data.local.ThemeMode
+import com.itzfallenme.katmusic.shared.ProjectLinks
 import com.itzfallenme.katmusic.shared.platform.platformDisplayName
 import com.itzfallenme.katmusic.shared.settings.AppSettings
 import com.itzfallenme.katmusic.shared.settings.SettingsStore
@@ -34,6 +42,7 @@ fun SettingsScreen(
      */
     extraContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -125,6 +134,31 @@ fun SettingsScreen(
         extraContent?.let { content ->
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             content()
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        SettingsSection("Support")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .clickable { runCatching { uriHandler.openUri(ProjectLinks.DONATE) } }
+                .padding(horizontal = 4.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Favorite,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+                Text("Donate to the project", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "Support KatMusic development on the project page.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))

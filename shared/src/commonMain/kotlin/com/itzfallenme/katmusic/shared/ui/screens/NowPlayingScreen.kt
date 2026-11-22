@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Pause
@@ -66,6 +67,8 @@ fun NowPlayingScreen(
     onBack: () -> Unit,
     onOpenLyrics: (() -> Unit)? = null,
     onShareSongCode: ((com.itzfallenme.katmusic.shared.models.Track) -> Unit)? = null,
+    /** Android's "Start mix with this song": seed a radio from the current track. */
+    onStartMix: ((com.itzfallenme.katmusic.shared.models.Track) -> Unit)? = null,
 ) {
     val current = state.current
     if (current == null) {
@@ -102,6 +105,11 @@ fun NowPlayingScreen(
                 textAlign = TextAlign.Center,
             )
             Row {
+                if (onStartMix != null) {
+                    IconButton(onClick = { onStartMix.invoke(current) }) {
+                        Icon(Icons.Rounded.AutoAwesome, contentDescription = "Start mix with this song")
+                    }
+                }
                 IconButton(onClick = { showSleepTimer = true }) {
                     Icon(
                         Icons.Rounded.Timer,

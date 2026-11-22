@@ -73,8 +73,31 @@ interface HomeFeedRepository {
             else Result.failure(IllegalStateException("Card is not a playable track"))
         }
 
+    /**
+     * Opens a KatMusic Code: resolves the video id into a playable track.
+     *
+     * Platforms with a catalog client override this to also fetch the real
+     * title, artist and artwork, so a code received from another device opens
+     * as the song itself instead of a generic "Shared song" placeholder.
+     */
+    suspend fun resolveCode(videoId: String): Result<Track> =
+        Result.success(sharedCodeTrack(videoId))
+
     suspend fun refresh()
 }
+
+/**
+ * A code's track when the platform has no catalog client to enrich it: the
+ * video id is enough to play, the labels are neutral placeholders.
+ */
+fun sharedCodeTrack(videoId: String) = Track(
+    id = videoId,
+    title = "Shared song",
+    artist = "YouTube Music",
+    source = videoId,
+    isLocal = false,
+    videoId = videoId,
+)
 
 /** Turns search/home results into a queue of [Track]s the player can use. */
 fun List<HomeCard>.toTracks(durationMsById: Map<String, Long> = emptyMap()): List<Track> =

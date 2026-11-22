@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -61,12 +62,15 @@ import com.google.zxing.DecodeHintType
 import com.google.zxing.LuminanceSource
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
-import com.google.zxing.ReaderException
 import com.google.zxing.common.HybridBinarizer
 import com.itzfallenme.katmusic.shared.share.KatMusicCode
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.EnumMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /** In-app camera for KatMusic's Spotify-style Code 128 sound tags. */
 @Composable
@@ -89,6 +93,7 @@ fun KatMusicCodeScannerDialog(
         if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
     var cameraUnavailable by remember { mutableStateOf(false) }
+    val diagnostics = remember { ScannerDiagnostics() }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -140,6 +145,7 @@ fun KatMusicCodeScannerDialog(
                         KatMusicCodeCameraPreview(
                             onCodeScanned = onCodeScanned,
                             onCameraUnavailable = { cameraUnavailable = true },
+                            diagnostics = diagnostics,
                             modifier = Modifier.fillMaxSize(),
                         )
                         Box(
@@ -162,6 +168,7 @@ fun KatMusicCodeScannerDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    ScannerDiagnosticsPanel(diagnostics, Modifier.fillMaxWidth())
                 } else {
                     Column(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -187,11 +194,40 @@ fun KatMusicCodeScannerDialog(
     }
 }
 
+/** Polls the analyzer's counters so its recomposition stays off the camera subtree. */
+@Composable
+private fun ScannerDiagnosticsPanel(
+    diagnostics: ScannerDiagnostics,
+    modifier: Modifier = Modifier,
+) {
+    var line by remember(diagnostics) { mutableStateOf(diagnostics.describe()) }
+    LaunchedEffect(diagnostics) {
+        while (isActive) {
+            line = diagnostics.describe()
+            delay(250)
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = modifier,
+    ) {
+        Text(
+            text = line,
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+    }
+}
+
 @SuppressLint("MissingPermission")
 @Composable
 private fun KatMusicCodeCameraPreview(
     onCodeScanned: (String) -> Unit,
     onCameraUnavailable: () -> Unit,
+    diagnostics: ScannerDiagnostics,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -217,7 +253,7 @@ private fun KatMusicCodeCameraPreview(
                     .setTargetRotation(previewView.display?.rotation ?: 0)
                     .setTargetResolution(Size(1280, 720))
                     .build()
-                    .also { it.setAnalyzer(executor, KatMusicCodeAnalyzer(onCodeScanned)) }
+                    .also { it.setAnalyzer(executor, KatMusicCodeAnalyzer(onCodeScanned, diagnostics)) }
                 provider?.unbindAll()
                 provider?.bindToLifecycle(
                     lifecycleOwner,
@@ -237,58 +273,115 @@ private fun KatMusicCodeCameraPreview(
     }
 }
 
+/**
+ * Live counters for diagnosing a scanner that never fires. The analyzer thread
+ * only writes these atomics; the dialog polls them for display.
+ */
+private class ScannerDiagnostics {
+    val frames = AtomicInteger(0)
+    val frameWidth = AtomicInteger(0)
+    val frameHeight = AtomicInteger(0)
+    val rotationDegrees = AtomicInteger(-1)
+    val lastDecodedText = AtomicReference<String?>(null)
+
+    fun describe(): String {
+        val raw = lastDecodedText.get()?.take(40)?.replace("\n", " ") ?: "—"
+        val width = frameWidth.get()
+        val height = frameHeight.get()
+        val rotation = rotationDegrees.get()
+        val camera = if (width > 0) "${width}x$height rot $rotation°" else "camera starting"
+        val turns = if (rotation < 0) "—" else quarterTurns(rotation).joinToString() { "${it * 90}°" }
+        return "frames ${frames.get()} · $camera · turns $turns\nraw: $raw"
+    }
+}
+
+/**
+ * Quarter turns (counter-clockwise) to try for a frame CameraX reports with
+ * [rotationDegrees]. The second turn covers a tag that is vertical in the
+ * first; ZXing also reads each row reversed, which covers the other two.
+ */
+private fun quarterTurns(rotationDegrees: Int): IntArray {
+    val upright = (4 - rotationDegrees / 90) % 4
+    return intArrayOf(upright, (upright + 1) % 4)
+}
+
 private class KatMusicCodeAnalyzer(
     private val onCodeScanned: (String) -> Unit,
+    private val diagnostics: ScannerDiagnostics,
 ) : ImageAnalysis.Analyzer {
     private val handled = AtomicBoolean(false)
-    private val reader = MultiFormatReader().apply {
-        setHints(
-            EnumMap<DecodeHintType, Any>(DecodeHintType::class.java).apply {
-                put(DecodeHintType.POSSIBLE_FORMATS, listOf(BarcodeFormat.CODE_128))
-                put(DecodeHintType.TRY_HARDER, true)
-            },
-        )
+    private val reader = MultiFormatReader()
+    private val hints = EnumMap<DecodeHintType, Any>(DecodeHintType::class.java).apply {
+        put(DecodeHintType.POSSIBLE_FORMATS, listOf(BarcodeFormat.CODE_128))
+        put(DecodeHintType.TRY_HARDER, true)
     }
 
     override fun analyze(imageProxy: ImageProxy) {
-        val image = imageProxy.image
-        if (image == null || handled.get()) {
+        if (handled.get()) {
             imageProxy.close()
             return
         }
         try {
-            val plane = image.planes.firstOrNull() ?: return
-            val buffer = plane.buffer.duplicate()
-            val bytes = ByteArray(buffer.remaining())
-            buffer.get(bytes)
-            var source: LuminanceSource = PlanarYUVLuminanceSource(
-                bytes,
-                plane.rowStride,
-                image.height,
-                0,
-                0,
-                image.width,
-                image.height,
-                false,
-            )
-            // CameraX reports the clockwise rotation that would make the frame
-            // upright. ZXing's 1D readers scan horizontal rows, so rotate the
-            // luminance source back before looking for the Code 128 tag.
-            repeat(imageProxy.imageInfo.rotationDegrees / 90) {
-                source = source.rotateCounterClockwise()
+            diagnostics.frames.incrementAndGet()
+            diagnostics.frameWidth.set(imageProxy.width)
+            diagnostics.frameHeight.set(imageProxy.height)
+            diagnostics.rotationDegrees.set(imageProxy.imageInfo.rotationDegrees)
+            val frame = imageProxy.luminanceSource() ?: return
+            // ZXing's 1D readers only scan horizontal rows, and CameraX can
+            // report rotation 0 (leaving a horizontal tag vertical in the
+            // frame), so try the upright frame plus one quarter turn.
+            var code: String? = null
+            for (turn in quarterTurns(imageProxy.imageInfo.rotationDegrees)) {
+                val result = runCatching {
+                    var rotated = frame
+                    repeat(turn) { rotated = rotated.rotateCounterClockwise() }
+                    reader.decode(BinaryBitmap(HybridBinarizer(rotated)), hints)
+                }.getOrNull() ?: continue
+                diagnostics.lastDecodedText.set(result.text)
+                code = KatMusicCode.normalize(result.text)
+                if (code != null) break
             }
-            val result = reader.decodeWithState(BinaryBitmap(HybridBinarizer(source)))
-            val code = KatMusicCode.normalize(result.text)
             if (code != null && handled.compareAndSet(false, true)) {
                 Handler(Looper.getMainLooper()).post { onCodeScanned(code) }
             }
-        } catch (_: ReaderException) {
-            // Keep analyzing frames until a valid KatMusic Code is in view.
         } catch (_: Throwable) {
             // Bad camera frames should not stop the scanner.
         } finally {
-            reader.reset()
             imageProxy.close()
         }
     }
+}
+
+/**
+ * Copies the camera's luma plane into a tightly packed buffer so each rotated
+ * copy has clean rows regardless of the source plane's row padding.
+ */
+private fun ImageProxy.luminanceSource(): LuminanceSource? {
+    val frame = image ?: return null
+    val plane = frame.planes.firstOrNull() ?: return null
+    val buffer = plane.buffer.duplicate()
+    val rowStride = plane.rowStride
+    val pixelStride = plane.pixelStride
+    val width = frame.width
+    val height = frame.height
+    if (width <= 0 || height <= 0) return null
+    val data = ByteArray(width * height)
+    if (pixelStride == 1) {
+        buffer.rewind()
+        for (row in 0 until height) {
+            val start = row * rowStride
+            if (start + width > buffer.limit()) break
+            buffer.position(start)
+            buffer.get(data, row * width, width)
+        }
+    } else {
+        for (row in 0 until height) {
+            val start = row * rowStride
+            for (col in 0 until width) {
+                val index = start + col * pixelStride
+                if (index < buffer.limit()) data[row * width + col] = buffer.get(index)
+            }
+        }
+    }
+    return PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false)
 }

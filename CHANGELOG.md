@@ -8,28 +8,22 @@ All notable changes to KatMusic are documented here. The format follows
 
 ### Added
 
-- A desktop application for Windows, Linux and macOS, built on the same Kotlin Multiplatform Compose UI as Android: local library with Songs/Albums/Artists views, search, now playing, queue, playlists, downloads, home feed, lyrics and settings.
-- Desktop YouTube playback through the NewPipe-fork extractors, with real stream URLs validated before playback; the home feed and music search use the Piped API with instance failover.
-- Phone → desktop YouTube sign-in: the desktop shows a QR code, the Android app approves the request and transfers the session encrypted over the local network; the stored session is applied to extraction and survives restarts.
-- Portable liquid-glass chrome on desktop for the player dock and navigation surfaces, drawn with Compose primitives while Android keeps Kyant Backdrop refraction.
-- Desktop installers in the release workflow: MSI, DMG for Apple silicon and Intel Macs, DEB, plus portable archives.
-- A shared download-size formatter that produces identical output on Android, desktop and Kotlin/Native.
+- The Flutter desktop application from 2.6.4 for Windows, Linux and macOS: YouTube Music and lossless streaming, synced and word-by-word lyrics, downloads, local files, Jam rooms, Spotify Canvas, Last.fm sign-in and scrobbling, tray controls and MPRIS / SMTC media integration.
+- A KatMusic-specific desktop interface with Liquid Glass title bar, navigation rail and player dock, and an opaque fallback for Solid material and Reduce Transparency.
+- Phone → desktop YouTube sign-in: the desktop shows a QR code, the Android app approves the request and transfers the session encrypted over the local network.
+- Desktop packages built with `flutter build`: Windows ZIP, Linux tar.gz and macOS ZIP, attached to the release by the release workflow.
+- A shared download-size formatter that produces identical output on Android and Kotlin/Native.
 - Android player styles with genuinely different decks: rotating Vinyl and animated Cassette players, plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas layouts. Classic remains unchanged.
 - Player-style previews in Settings so each deck can be compared before opening Now Playing.
-- Desktop parity features: Jam room controls, displayable/enterable Code 128 KatMusic Codes, local listening stats, album browsing, streamed M3U playlists, sleep timer and lyrics copy.
-- Desktop Last.fm support with bring-your-own API credentials, browser authorization, scrobbling, now-playing updates, recent tracks, top artists and public friend profiles.
-- Public playlist import on desktop for YouTube, Spotify and Apple Music, matching external tracks to YouTube Music without account cookies.
-- Desktop regional Discover charts with a persisted country choice, local-history mixes, artist album browsing and provider-recommended artist radio.
-- Desktop system-wide media keys with a focused-window fallback, a system tray with playback controls and track-change notifications, and PNG lyric-card export.
 
 ### Changed
 
-- Desktop packaging now carries a stable Windows upgrade identity, bundle identifier, vendor and menu metadata.
+- The desktop app is the Flutter project in `desktop/` again; the Kotlin Compose Desktop module (`:desktop`) and its MSI/DMG/DEB Gradle packaging were removed. `:shared` remains because the Android app uses it.
 - Settings explains that Classic is unchanged while Vinyl and Cassette add custom decks.
 
 ### Notes
 
-- Anonymous desktop streaming depends on YouTube accepting the extractor requests; when a provider refuses, the player shows the provider's own reason instead of failing silently.
+- Desktop streaming depends on providers accepting the requests; when one refuses, the player shows the provider's own reason instead of failing silently.
 
 ## [2.6.4] - 2026-11-14
 

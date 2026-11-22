@@ -1,49 +1,79 @@
-# KatMusic Desktop (Compose Multiplatform)
+# KatMusic Desktop
 
-The Windows, Linux and macOS build of KatMusic. It is a Compose Desktop
-(`:desktop`) application that renders the **shared Compose UI** from
-`shared/src/commonMain` — the same theme, typography, shapes, motion, components,
-navigation and screens the Android app uses.
+The Windows, Linux and macOS build of KatMusic. It is a Flutter desktop player
+with YouTube Music and lossless streaming, Last.fm authentication/scrobbling,
+synced and word-by-word lyrics, downloads, local files, group Jam rooms,
+Spotify Canvas, tray controls and MPRIS/SMTC integration.
 
-Only the platform-specific parts are implemented here:
+## UI direction
 
-| Concern | Desktop (`:desktop`) | Android (`:app`) |
-| --- | --- | --- |
-| UI, design system, navigation | shared (`:shared`, `commonMain`) | shared (`:shared`, `commonMain`) |
-| Playback engine | `JavaSoundPlayer` on `javax.sound.sampled` (MP3/Ogg/WAV/AIFF) | Media3/ExoPlayer, USB bit-perfect, DSP/native processors |
-| Library | `DesktopMediaLibrary` — folders picked from disk, tags via jaudiotagger | MediaStore + the app's download database |
-| Settings storage | `java.util.prefs` | DataStore |
-| System integration | window, file chooser | widgets, media session, Auto, notifications, tray-free |
+The desktop app uses a KatMusic-specific visual system rather than the neutral
+chrome of its foundation:
 
-Queue order, shuffle/repeat, search filtering, models, settings semantics and
-the theme mapping are shared Kotlin (`shared/src/commonMain`), so both players
-advance the queue identically.
+- midnight-navy surfaces (`#060910` / `#0B111C` / `#111B2A`);
+- KatMusic blue (`#3D91FF`) for selection, progress and focus;
+- Figtree for the complete Kat type ramp;
+- shader-backed [Liquid Glass](https://github.com/sdegenaar/liquid_glass_widgets)
+  on the title bar, navigation rail, player dock and floating controls;
+- KatMusic logo, welcome lockup, navigation labels and home wordmark;
+- an opaque tonal fallback under Solid material, Reduce Transparency, or when
+  **Settings → Surface & motion → Liquid Glass chrome** is turned off.
+
+Content cards and lists stay opaque by design; glass is reserved for the
+navigation and control layer above them.
 
 ## Requirements
 
-- JDK 17 or newer (Gradle 9 toolchain).
-- The Android SDK is required for configuration because `:shared` also targets
-  Android: set `ANDROID_HOME` (or `sdk.dir` in `local.properties`).
+- Flutter **3.47+** (Dart 3.13+) and the desktop toolchain for your OS.
+- Windows: Visual Studio 2022 with Desktop development with C++.
+- macOS: Xcode with command-line tools.
+- Linux: GTK 3, WebKitGTK 4.1, libmpv, libsecret, appindicator and keybinder
+  development packages. On Ubuntu 22.04:
+
+```bash
+sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
+  liblzma-dev libstdc++-12-dev libayatana-appindicator3-dev libasound2-dev \
+  libmpv-dev libkeybinder-3.0-dev libwebkit2gtk-4.1-dev libsecret-1-dev \
+  libjsoncpp-dev
+```
 
 ## Run
 
 ```bash
-./gradlew :desktop:run
+flutter pub get
+dart tool/obfuscate_secrets.dart
+flutter run -d windows   # linux | macos
 ```
 
-## Test the shared logic
+`dart tool/obfuscate_secrets.dart` reads an optional local `.env` (copy
+`.env.example`) and writes the gitignored `lib/core/env/secrets.g.dart`. The app
+starts without addon credentials; keyed addon calls fail closed.
+
+Last.fm is bring-your-own-key: sign in from the welcome screen and enter your
+own API key and shared secret. They stay on this device.
+
+## Build
 
 ```bash
-./gradlew :shared:desktopTest
+flutter build windows --release   # build/windows/x64/runner/Release
+flutter build linux --release     # build/linux/x64/release/bundle
+flutter build macos --release     # build/macos/Build/Products/Release
 ```
 
-## Package
+Linux packages use `linux/packaging/nfpm.yaml`; the Windows installer source is
+`windows/installer.iss`. `.github/workflows/desktop.yml` builds all three on
+pushes to `main`, pull requests and version tags; tagged builds attach the
+packages to the matching GitHub release.
 
-```bash
-./gradlew :desktop:createDistributable        # app image
-./gradlew :desktop:packageDmg                 # macOS
-./gradlew :desktop:packageMsi                 # Windows
-./gradlew :desktop:packageDeb                 # Linux
-```
+## Architecture
 
-Tagged builds are produced by `.github/workflows/desktop.yml`.
+- `lib/features/player`: media_kit/libmpv playback, queue, crossfade and AutoMix.
+- `lib/features/innertube`: YouTube Music browsing, library sync and playback.
+- `lib/features/lossless`: lossless/addon sources.
+- `lib/features/lyrics`: timed lyrics plus provider fallback.
+- `lib/features/jam`: synchronized listening rooms.
+- `lib/ui`: Fluent shell, Kat design tokens, Liquid Glass chrome.
+- `lib/core`: storage, networking, diagnostics and artwork cache.
+
+KatMusic Desktop is its own application: the identity, theme, navigation,
+artwork, packaging metadata and Liquid Glass surfaces are KatMusic-specific.

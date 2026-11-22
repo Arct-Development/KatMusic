@@ -28,5 +28,4 @@ dependencyResolutionManagement {
 rootProject.name = "KatMusic"
 include(":app")
 include(":shared")
-include(":desktop")
 include(":audio:decent-usb-audio-driver")

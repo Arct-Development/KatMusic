@@ -1401,6 +1401,24 @@ object SettingsSearchIndex {
 
             add(
                 SettingsEntry(
+                    id = "about.donate",
+                    title = "Donate to the project",
+                    subtitle = "Support KatMusic development at katmusic.pages.dev/#donate",
+                    keywords = listOf(
+                        "donate", "donation", "support", "support the project", "tip", "buy me a coffee",
+                        "contribute", "fund", "patreon", "donate to project"
+                    ),
+                    icon = Icons.Filled.Favorite,
+                    iconContainer = { MaterialTheme.colorScheme.primaryContainer },
+                    iconTint = { MaterialTheme.colorScheme.onPrimaryContainer },
+                    parentTab = SettingsTab.ABOUT,
+                    section = "About & Community",
+                    type = EntryType.ACTION,
+                )
+            )
+
+            add(
+                SettingsEntry(
                     id = "about.source_code",
                     title = "Open Source Code",
                     subtitle = "View repository at github.com/Arct-Development/KatMusic",

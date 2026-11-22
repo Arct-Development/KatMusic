@@ -139,49 +139,54 @@ The Poster, Timeline and expressive Lyrics concepts are adapted from [Mochy Musi
 
 ## Desktop
 
-KatMusic Desktop is a **Compose Multiplatform** app for **Windows, Linux and
-macOS**. It renders the same shared Compose UI as the Android app — one design
-system, one navigation model, one set of screens and components — with
-platform-specific playback, file access and settings storage underneath.
+KatMusic Desktop is a Flutter app for **Windows, Linux and macOS**. It is not a
+web wrapper: it uses the same YouTube Music and lossless streaming sources,
+Last.fm taste and scrobbling, synced lyrics, downloads, group Jam rooms and
+local playback as the Android app, with native desktop window, tray and media
+controls.
 
-The project is one Kotlin Multiplatform build:
+The desktop UI is its own interpretation of KatMusic: midnight-navy surfaces,
+KatMusic blue, Figtree type, and shader-backed Liquid Glass navigation chrome.
+It is built with Flutter 3.47+ and the
+[liquid_glass_widgets](https://github.com/sdegenaar/liquid_glass_widgets)
+package; turn the effect off in **Settings → Surface & motion** if you prefer
+an opaque shell.
 
-| Module | Contents |
-| --- | --- |
-| `:shared` | Shared Compose UI (theme, typography, shapes, motion, components, navigation, screens), models, queue/shuffle/repeat logic, search, settings contracts. Targets Android and desktop. |
-| `:app` | Android application: Media3/ExoPlayer playback, USB bit-perfect output, native DSP, widgets, downloads, media session. |
-| `:desktop` | Desktop application: `javax.sound.sampled` playback, folder-based library, `java.util.prefs` settings. |
-
-Layout is the only thing that adapts: a bottom navigation bar below 600dp and
-a navigation rail above it, so phones, tablets and resized desktop windows use
-the same screens.
+The desktop app lives in `desktop/` and is built with Flutter, not Gradle: it
+shares no code with the Android app.
 
 ### Run it
 
-Requires JDK 17+ and the Android SDK (the shared module also targets Android,
-so Gradle needs `ANDROID_HOME` or `sdk.dir` in `local.properties`).
+Install [Flutter](https://docs.flutter.dev/get-started/install) 3.47 or newer,
+then:
 
 ```bash
-./gradlew :desktop:run            # Compose Desktop
-./gradlew :app:installDebug       # Android
-./gradlew :shared:desktopTest     # shared logic tests
+cd desktop
+flutter pub get
+dart tool/obfuscate_secrets.dart   # creates the gitignored secrets file
+flutter run -d windows              # or: linux, macos
 ```
 
-### Build installers
+Create `desktop/.env` from `desktop/.env.example` before the secrets step if you
+have an addon key. The app runs without one; keyed addon calls fail closed.
+
+### Build
 
 ```bash
-./gradlew :desktop:createDistributable   # app image
-./gradlew :desktop:packageDmg            # macOS
-./gradlew :desktop:packageMsi            # Windows
-./gradlew :desktop:packageDeb            # Linux
+cd desktop
+flutter build windows --release    # build/windows/x64/runner/Release
+flutter build linux --release      # build/linux/x64/release/bundle
+flutter build macos --release      # build/macos/Build/Products/Release
 ```
 
-Tagged `v*` builds and manual runs are produced by
-`.github/workflows/desktop.yml`.
+Linux deb/rpm packaging uses `desktop/linux/packaging/nfpm.yaml`; Windows
+installer source is `desktop/windows/installer.iss`. Tagged `v*` builds and
+manual runs are produced by `.github/workflows/desktop.yml`.
 
-See [desktop/README.md](desktop/README.md) for the platform split and
-[docs/multiplatform-migration.md](docs/multiplatform-migration.md) for the
-migration record, including what is still Android-only and why.
+See [desktop/README.md](desktop/README.md) for platform dependencies and
+architecture, and [docs/desktop-feature-parity.md](docs/desktop-feature-parity.md)
+and [docs/multiplatform-migration.md](docs/multiplatform-migration.md) for how
+the desktop app relates to Android.
 
 ## Download and install
 
@@ -257,6 +262,8 @@ For the CI build and contribution workflow, see [CONTRIBUTING.md](CONTRIBUTING.m
 | <code>app/src/main/java/.../ui/</code> | Compose screens, components, player and theming. |
 | <code>app/src/main/cpp/</code> | Native audio engine and DSP implementation. |
 | <code>audio/</code> | Native audio support modules. |
+| <code>shared/</code> | Kotlin Multiplatform module (shared Compose UI, models and queue logic) consumed by <code>:app</code>. |
+| <code>desktop/</code> | Flutter desktop app for Windows, Linux and macOS. |
 | <code>website/</code> | KatMusic project website. |
 | <code>third_party/</code> | Third-party source and licence notices. |
 | <code>tools/</code> | Build and development utilities. |

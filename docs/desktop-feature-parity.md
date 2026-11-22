@@ -1,5 +1,9 @@
 # Desktop feature and UI parity
 
+KatMusic Desktop is the Flutter app in `desktop/` (Windows, Linux, macOS). It is
+a separate codebase from the Android app, so "parity" here means matching the
+experience and the wire protocols, not sharing code.
+
 ## Goal
 
 Desktop should provide the full KatMusic experience with desktop-appropriate
@@ -7,79 +11,71 @@ layouts and controls. This does **not** mean sharing personal data between
 devices: Desktop settings, library, playlists, downloads, and listening history
 remain local to that computer.
 
-Listen Together is the intentional exception: it is a live room feature, so
-Android and Desktop must connect to the same Jam server and be able to join the
-same room. A KatMusic Code displayed on Desktop must be a Code 128 tag that the
-Android in-app scanner can read.
+Two things are intentionally shared with Android:
+
+- **Listen Together (Jam)** is a live room feature, so Android and Desktop must
+  connect to the same Jam server and be able to join the same room
+  (`desktop/lib/features/jam`).
+- **Phone → desktop YouTube sign-in** uses one protocol on both sides: the
+  Android app scans the QR code and the desktop receives the session
+  (`desktop/lib/features/innertube/yt_phone_pairing.dart`).
 
 ## Current parity snapshot
 
+"Present" means the feature module exists in `desktop/lib`. This table was
+written from the source tree and has not been re-verified by running the app.
+
 | Area | Desktop status |
 | --- | --- |
-| Shared responsive Compose shell, theme, playback dock | Present |
-| Local library, album/artist grouping, playlists, downloads | Present, stored locally |
-| Online music feed/search/playback | Present through Desktop providers; regional trending selector plus the local-history mix |
-| Discover | Desktop has regional online trending (persisted country choice) plus a local-history-weighted mix generated from its library |
-| New releases | Desktop can search/open YouTube Music album results through Piped; not yet the same regional/personalized Android release feed |
-| First-class listening stats | Present, based on Desktop-local playback history |
-| Streamed music in playlists | Desktop M3U entries preserve portable YouTube links and KatMusic metadata; playback resolves a fresh URL |
-| Playlist import | Desktop supports local M3U plus public YouTube, Spotify and Apple Music imports; external tracks are matched to YouTube Music |
-| Podcasts, lyrics, queue, settings | Present in the shared shell; narrower feature surface than Android |
-| Sleep timer | Shared player control with Desktop-local countdown and pause |
-| Listen Together | Uses the same WebSocket service/protocol and default endpoint as Android; room controls cover members, co-hosting, suggestions, queue, invites and chat |
-| KatMusic Code | Desktop can display/export Code 128 and enter codes from Search; its full-card Code 128 regression test passes, but camera scanning still needs device validation |
-| Generated mixes | Local-history-weighted mix from the Desktop library; no online taste-profile mix |
-| Online artist, album, genre and playlist detail flows | Public artist search with recent tracks, albums and provider-recommended radio; album detail, genre keyword picks and playlist import are present. Android's dedicated genre pages and full release timeline are not matched |
-| Last.fm scrobbling, social listening and friend profiles | Optional bring-your-own-key browser authorization, scrobbling, recent listening, top artists and public friend profiles |
-| Account-owned catalog integrations | Spotify login, private/liked playlists and Spotify playback are not ported; public Spotify/Apple playlist import works without account cookies. Spotify Canvas is partner-only, so Desktop uses artwork motion |
-| Settings sub-pages and Android-specific playback configuration | Shared appearance plus Desktop library-folder management, YouTube pairing, equalizer, playback integrations, Last.fm and stats; Android-only player decks and camera flows are documented platform differences |
-| Desktop OS controls | System-wide media keys through a native hook when the desktop allows it (focused-window fallback otherwise), optional system-tray play/pause/next/previous and track-change notifications with the supplied KatMusic logo |
-| Lyrics presentation and sharing | Shared synced lyrics with copy-to-clipboard and a Desktop-rendered PNG lyrics card; Android's alternate player decks and richer on-device share-card editor are Android-specific |
-| Android widgets, Auto, notifications, camera and USB-specific integrations | Require suitable desktop-native equivalents where meaningful; tray notifications and manual code entry replace the camera/widget flows |
+| Playback, queue, crossfade, AutoMix | Present (`media_kit` / libmpv; `features/player`, `features/automix`) |
+| Equalizer and audio output | Present (`features/equalizer`, `features/audio_output`; the WASAPI output engine is Windows-only) |
+| YouTube Music browsing, library sync and playback | Present (`features/innertube`) |
+| Lossless and addon sources | Present (`features/lossless`, `features/addons`); keyed addon calls fail closed without credentials |
+| Home feed, Discover, genres | Present (`features/feed`, `features/home`, `ui/discover`, `ui/genres`) |
+| Local files, playlists, M3U, playlist import | Present, stored locally (`features/library`) |
+| Downloads | Present (`features/downloads`) |
+| Lyrics | Synced and word-by-word lyrics with provider fallback and translation (`features/lyrics`) |
+| Podcasts | Present (`features/podcasts`) |
+| Listening stats | Present, based on desktop-local history (`features/stats`) |
+| Jam rooms | Present (`features/jam`) |
+| Group Blend | Present (`features/blend`) |
+| Last.fm | Bring-your-own API key; authentication and scrobbling (`features/lastfm`) |
+| Spotify and Spotify Canvas | Present (`features/spotify`, `ui/canvas`) |
+| Backup | Present (`features/backup`) |
+| Sharing | Present (`features/sharing`, `ui/sharing`) |
+| Phone → desktop YouTube sign-in | Present (`yt_phone_pairing.dart`, QR code via `qr_flutter`) |
+| OS integration | System tray, global hotkeys, MPRIS (Linux), SMTC (Windows), Discord presence (`features/mpris`, `features/smtc`, `features/presence`) |
+| In-app updates | Present (`features/updates`) |
+| Android widgets, Android Auto, notification controls, USB exclusive output, native DSP engine | Android-only; desktop uses tray, media-key and OS media-session equivalents where one exists |
 
 ## Acceptance criteria
 
 - Desktop users can reach every supported Android feature without hidden or
   dead-end routes; mobile-only system integrations get clear desktop
   equivalents rather than fake controls.
-- Desktop Search can find local music and online tracks, play a KatMusic Code,
-  and open the same share-code card Android can scan.
 - Android and Desktop users can create or join the same Jam room and use the
   room's playback, queue, member, suggestion, invite and chat features.
+- A phone running the Android app can sign the desktop in to YouTube Music by
+  scanning its QR code.
 - Desktop-owned data remains local; no account or general-purpose device sync is
   introduced as part of feature parity.
-- Desktop and Android builds/tests pass, and the packaged Desktop app is
+- `flutter analyze` and `flutter test --exclude-tags golden,live` pass in
+  `desktop/`, the Android build passes, and the packaged desktop app is
   smoke-tested before preparing an update.
 
-## Porting approach
+## Approach
 
-Keep shared Compose screens and shared data contracts where behavior is common.
-Implement desktop-native storage, file pickers, keyboard/mouse interactions,
-audio, export, and provider integrations in `:desktop`. Preserve Android's
-platform-specific implementations and give hardware-dependent features an
-appropriate desktop alternative instead of coupling Desktop to Android APIs.
+Desktop features are implemented natively in Dart under `desktop/lib`.
+Where Android and Desktop must interoperate (Jam, YouTube pairing), the wire
+protocol is the contract and each side implements it independently. Android's
+platform-specific code is not touched by desktop work, and hardware-dependent
+Android features get a desktop-appropriate alternative instead of an emulation.
 
-## Remaining parity waves
+## Known differences
 
-1. **Music discovery:** authenticated/personalized Discover sourced from an
-   online taste profile and Android's regional release feed. Desktop already has
-   a persisted regional trending chart, a private local-history mix, public
-   artist albums and radio; the remaining difference is the account-backed
-   recommendation algorithm, which Desktop intentionally does not copy.
-2. **Social and catalog integrations:** Spotify sign-in/token import,
-   account-owned playlists and private playlist access. Public Spotify/Apple
-   playlist import works without account cookies. Spotify Canvas is a
-   partner-only API, so Desktop uses artwork motion instead.
-3. **Player and settings depth:** Android's alternate player decks and the full
-   on-device share-card editor remain Android-specific presentation features.
-   Desktop has the shared Classic player, synchronized lyrics, copy and PNG
-   lyric-card export; shared appearance, library, YouTube, equalizer, playback
-   and Last.fm settings are present.
-4. **Desktop-native integrations:** system-wide media keys with a focused-window
-   fallback, tray controls and track-change notifications are present. Webcam
-   scanning has a manual/paste code equivalent; widgets and Android Auto have no
-   meaningful desktop counterpart.
-
-The parity target is complete when every remaining item is either implemented or
-has a documented platform-specific equivalent and the acceptance checks above
-pass.
+- Android's alternate player decks and widgets, Android Auto, USB bit-perfect
+  output and the native DSP engine have no desktop counterpart.
+- Streaming depends on providers accepting the requests; when one refuses, the
+  player surfaces the provider's own reason instead of failing silently.
+- Account-owned catalog features depend on credentials the user supplies on that
+  machine (Last.fm key, Spotify sign-in, addon key).

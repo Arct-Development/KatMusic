@@ -35,6 +35,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
+import com.itzfallenme.katmusic.shared.ProjectLinks
 import com.itzfallenme.katmusic.ui.components.HeaderActionIcon
 import android.content.Intent
 import android.net.Uri
@@ -4686,6 +4687,7 @@ private fun ColorTile(
 
 @Composable
 private fun AboutCard(versionName: String) {
+    val context = LocalContext.current
     Card(
         shape = CardOuterShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -4740,6 +4742,22 @@ private fun AboutCard(versionName: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = {
+                    startActivitySafely(
+                        context,
+                        Intent(Intent.ACTION_VIEW, Uri.parse(ProjectLinks.DONATE)),
+                    )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text("  Donate to the project")
+            }
         }
     }
 }
