@@ -49,7 +49,16 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
+      # The release variant refuses to build without a signing key (by design:
+      # a debug-signed release APK can never be updated in place). Pull requests
+      # from forks and repos without the SIGNING_KEY secret therefore skip the
+      # signed release steps instead of failing the whole check.
+      - name: Note skipped release build
+        if: env.SIGNING_KEY == ''
+        run: echo "::notice::SIGNING_KEY secret is not available, so the signed release APK build was skipped. Unit tests still ran."
+
       - name: Build Release APK
+        if: env.SIGNING_KEY != ''
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           RELEASE_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
@@ -58,6 +67,7 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Stage Final APK
+        if: env.SIGNING_KEY != ''
         id: prep_apk
         run: |
           mkdir -p final_apk
@@ -76,6 +86,7 @@ jobs:
           ls -lh final_apk/
 
       - name: Verify APK signature + publish checksum
+        if: env.SIGNING_KEY != ''
         run: |
           SDKROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           APKSIGNER=$(find "$SDKROOT/build-tools" -maxdepth 2 -name apksigner 2>/dev/null | head -n1)
@@ -92,6 +103,7 @@ jobs:
           cat final_apk/SHA256SUMS.txt
 
       - name: Upload Release APK
+        if: env.SIGNING_KEY != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: KatMusic-v${{ steps.prep_apk.outputs.version }}-APK
