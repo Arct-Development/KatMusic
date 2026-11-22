@@ -87,7 +87,9 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        minSdk = 29
+        // Keep the shared Android library compatible with the legacy APK build (API 24).
+        // The main app's default minSdk remains 29; release workflow overrides it for legacy.
+        minSdk = 24
     }
 
     compileOptions {
