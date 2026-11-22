@@ -109,10 +109,13 @@ website/node_modules/
 website/.next/
 website/.env.local
 
-# Desktop (Compose Multiplatform) build output and local secrets
+# Desktop (Flutter) build output and local secrets
 desktop/build/
-desktop/.gradle/
 .env
+
+# Packaged desktop artifacts and the local source archive are build output.
+dist/
+katmusic-source.zip
 
 # iOS (deferred; kept locally, not part of the current KMP delivery)
 iosApp/
