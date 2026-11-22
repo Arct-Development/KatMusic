@@ -4,6 +4,7 @@
   "sort": "amount",
   "showTop": 10,
   "donors": [
+    { "name": "Aveeka Prasad", "amount": 100, "message": "Good app", "date": "2026-11-20" },
     { "name": "Abhinav Kumar", "amount": 50, "message": "Keep it going", "date": "2026-11-20" },
     { "name": "Shreyash Kulkarni", "amount": 6.9, "message": "Encorins bhai love u [gilli puchi]", "date": "2026-11-21" },
     { "name": "Aniruddh", "amount": 6.5, "message": "nice app", "date": "2026-11-20" },
