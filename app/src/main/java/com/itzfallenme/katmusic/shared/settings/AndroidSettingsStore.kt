@@ -9,11 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * The Android persistence for the shared [AppSettings]: SharedPreferences in the
- * app's private storage. The app's own DataStore remains the store for its
- * full settings surface; this store covers exactly the appearance and volume
- * settings the shared UI owns, and every value written here is read back on the
- * next launch.
+ * Android persistence for the shared [AppSettings]. SharedPreferences stores
+ * the appearance and volume settings owned by the shared UI.
  */
 class AndroidSettingsStore(context: Context) : SettingsStore {
 

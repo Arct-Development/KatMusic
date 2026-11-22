@@ -50,7 +50,6 @@ class AndroidMediaLibrary(
         )
     }
 
-    /** Fire-and-forget refresh for callers that are not in a coroutine. */
     fun refreshAsync() {
         scope.launch { refresh() }
     }
@@ -105,7 +104,6 @@ class AndroidMediaLibrary(
                     durationMs = cursor.getLong(durationCol).coerceAtLeast(0L),
                     source = ContentUris.withAppendedId(collection, id).toString(),
                     artwork = albumArtworkUri(albumId),
-                    // MediaStore stores "disc-track" as track + 1000 * disc.
                     trackNumber = if (rawTrack >= 1000) rawTrack % 1000 else rawTrack,
                     year = cursor.getInt(yearCol),
                     isLocal = true,
@@ -129,10 +127,6 @@ class AndroidMediaLibrary(
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * Android's audio library is the system MediaStore, not a folder the user
-     * picks, so there is no folder to choose: the shared UI hides that action.
-     */
     companion object {
         val platformActions: PlatformActions = object : PlatformActions {
             override val canChooseFolder: Boolean = false
