@@ -95,3 +95,33 @@ func TestIndexInjectsPreviewMeta(t *testing.T) {
 		t.Fatal("room title expected")
 	}
 }
+
+
+func TestLogoRoute(t *testing.T) {
+	mux := newMux()
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/assets/logo.png", nil))
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf("bad logo response %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if !bytes.HasPrefix(rec.Body.Bytes(), []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}) {
+		t.Fatal("logo response is not a PNG")
+	}
+}
+
+func TestEmbedSongUsesPublicBaseURL(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "https://katmusic.onrender.com/")
+	mux := newMux()
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/embed/song/dQw4w9WgXcQ?title=Test", nil))
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("embed returned %d", rec.Code)
+	}
+	if !strings.Contains(body, "https://katmusic.onrender.com/share.html?v=dQw4w9WgXcQ") {
+		t.Fatal("song embed should link to the canonical KatMusic URL")
+	}
+	if strings.Contains(body, "katmusic.pages.dev") || strings.Contains(body, "LastWave") {
+		t.Fatal("embed contains legacy branding or host")
+	}
+}
