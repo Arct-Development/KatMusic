@@ -9,6 +9,7 @@ import 'package:unorm_dart/unorm_dart.dart' as unorm;
 import '../network/dio_factory.dart';
 import '../storage/app_database.dart';
 import '../../features/innertube/innertube_api.dart';
+import '../../features/performance/performance_controller.dart';
 import '../../features/search/shared_providers.dart';
 import 'apple_music_canvas.dart';
 import 'community_canvas.dart';
@@ -22,7 +23,11 @@ export 'tidal_canvas.dart';
 /// Which provider a motion artwork clip came from.
 ///
 /// Priority order: [apple] > [tidal] > [community].
-enum CanvasSource { apple, tidal, community }
+enum CanvasSource {
+  apple,
+  tidal,
+  community,
+}
 
 typedef CanvasArtwork = AnimatedArtwork;
 
@@ -58,13 +63,11 @@ class AnimatedArtwork {
     required String wantArtist,
     String? wantAlbum,
   }) {
-    final titleOk =
-        title == null ||
+    final titleOk = title == null ||
         wantTitle.trim().isEmpty ||
         canvasTitlesMatch(wantTitle, title!);
 
-    final artistOk =
-        artist == null ||
+    final artistOk = artist == null ||
         wantArtist.trim().isEmpty ||
         canvasArtistsMatch(
           wantArtist,
@@ -74,15 +77,14 @@ class AnimatedArtwork {
         );
 
     final nAlbum = album != null ? normalizeCanvasMatch(album!) : '';
-    final nWantAlbum = wantAlbum != null ? normalizeCanvasMatch(wantAlbum) : '';
-    final sAlbum = album != null
-        ? normalizeCanvasMatch(stripCanvasSubtitles(album!))
-        : '';
+    final nWantAlbum =
+        wantAlbum != null ? normalizeCanvasMatch(wantAlbum) : '';
+    final sAlbum =
+        album != null ? normalizeCanvasMatch(stripCanvasSubtitles(album!)) : '';
     final sWantAlbum = wantAlbum != null
         ? normalizeCanvasMatch(stripCanvasSubtitles(wantAlbum))
         : '';
-    final albumOk =
-        nAlbum.isEmpty ||
+    final albumOk = nAlbum.isEmpty ||
         nWantAlbum.isEmpty ||
         nAlbum == nWantAlbum ||
         nAlbum.contains(nWantAlbum) ||
@@ -172,9 +174,7 @@ bool canvasArtistsMatch(
   final nWantTitle = wantTitle != null ? normalizeCanvasMatch(wantTitle) : '';
 
   bool tokenMatchesList(String token, List<String> pool, String extraTitle) {
-    if (pool.any(
-      (it) => it == token || it.contains(token) || token.contains(it),
-    )) {
+    if (pool.any((it) => it == token || it.contains(token) || token.contains(it))) {
       return true;
     }
     if (extraTitle.isNotEmpty && extraTitle.contains(token)) {
@@ -185,14 +185,12 @@ bool canvasArtistsMatch(
 
   // Match if all wanted artists are accounted for in credited (+ gotTitle),
   // OR all credited artists are accounted for in wanted (+ wantTitle).
-  final allWantedMatched = wanted.every(
-    (w) => tokenMatchesList(w, credited, nGotTitle),
-  );
+  final allWantedMatched =
+      wanted.every((w) => tokenMatchesList(w, credited, nGotTitle));
   if (allWantedMatched) return true;
 
-  final allCreditedMatched = credited.every(
-    (c) => tokenMatchesList(c, wanted, nWantTitle),
-  );
+  final allCreditedMatched =
+      credited.every((c) => tokenMatchesList(c, wanted, nWantTitle));
   if (allCreditedMatched) return true;
 
   return false;
@@ -256,7 +254,10 @@ Future<String?> canvasGetText(
       queryParameters: queryParameters,
       options: Options(
         responseType: ResponseType.plain,
-        headers: {'User-Agent': canvasUserAgent, ...headers},
+        headers: {
+          'User-Agent': canvasUserAgent,
+          ...headers,
+        },
         validateStatus: (code) => code != null && code >= 200 && code < 300,
       ),
     );
@@ -286,7 +287,10 @@ Future<Map<String, dynamic>?> canvasGetJson(
       url,
       queryParameters: queryParameters,
       options: Options(
-        headers: {'User-Agent': canvasUserAgent, ...headers},
+        headers: {
+          'User-Agent': canvasUserAgent,
+          ...headers,
+        },
         validateStatus: (code) => code != null && code >= 200 && code < 300,
       ),
     );
@@ -320,8 +324,11 @@ class AnimatedArtworkQuery {
     required this.title,
   });
 
-  String get cacheKey =>
-      animatedArtworkCacheKey(artist: artist, album: album, title: title);
+  String get cacheKey => animatedArtworkCacheKey(
+        artist: artist,
+        album: album,
+        title: title,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -372,7 +379,10 @@ Map<String, String> headersForAnimatedArtworkUrl(String url) {
   if (lower.contains('apple.com')) {
     return appleArtworkHeaders;
   }
-  return const {'User-Agent': canvasUserAgent, 'Accept': '*/*'};
+  return const {
+    'User-Agent': canvasUserAgent,
+    'Accept': '*/*',
+  };
 }
 
 /// Persistent disk cache for `.mp4` animated cover loops.
@@ -465,12 +475,14 @@ class CanvasDiskCache {
 
   Future<String?> _download(String url) async {
     HttpClient? client;
+    File? tmp;
+    var committed = false;
     try {
       final target = _fileFor(url);
       if (target.existsSync() && target.lengthSync() >= _minValidBytes) {
         return target.path;
       }
-      final tmp = File('${target.path}.tmp');
+      tmp = File('${target.path}.tmp');
       client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
       final req = await client.getUrl(Uri.parse(url));
       headersForAnimatedArtworkUrl(url).forEach(req.headers.set);
@@ -498,23 +510,37 @@ class CanvasDiskCache {
         } catch (_) {}
       }
       tmp.renameSync(target.path);
+      committed = true;
       _evictIfNeeded();
       return target.path;
     } catch (_) {
       return null;
     } finally {
       client?.close(force: false);
+      // A failed/aborted download used to leave its `.tmp` behind forever
+      // (eviction only counted `.mp4`), growing the dir past the cap.
+      if (!committed) {
+        try {
+          if (tmp != null && tmp.existsSync()) tmp.deleteSync();
+        } catch (_) {}
+      }
     }
   }
 
   void _evictIfNeeded() {
     try {
       final dir = _ensureDir();
-      final files = dir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.mp4'))
-          .toList();
+      final all = dir.listSync().whereType<File>().toList();
+      // Orphaned partials from a crash/kill mid-download: anything older
+      // than an hour is not an in-flight download any more.
+      final staleBefore = DateTime.now().subtract(const Duration(hours: 1));
+      for (final f in all) {
+        if (!f.path.endsWith('.tmp')) continue;
+        try {
+          if (f.statSync().modified.isBefore(staleBefore)) f.deleteSync();
+        } catch (_) {}
+      }
+      final files = all.where((f) => f.path.endsWith('.mp4')).toList();
       var totalBytes = 0;
       final entries = <({File file, int size, DateTime modified})>[];
       for (final file in files) {
@@ -573,8 +599,8 @@ String? pickAnimatedArtworkFile(
   required String variantUrl,
 }) {
   if (!variantPlaylist.contains('#EXT-X-MAP:')) return null;
-  final mapped = RegExp(r'#EXT-X-MAP:URI="([^"]+)"')
-      .firstMatch(variantPlaylist);
+  final mapped =
+      RegExp(r'#EXT-X-MAP:URI="([^"]+)"').firstMatch(variantPlaylist);
   var uri = mapped?.group(1)?.trim() ?? '';
   if (uri.isEmpty) {
     for (final line in variantPlaylist.split(RegExp(r'\r?\n'))) {
@@ -601,7 +627,7 @@ AnimatedArtwork? parseAnimatedArtworkPayload(Object? json) {
 
 /// Multi-source lookup + memory/SQLite cache for animated album artwork.
 ///
-/// Waterfall priority order (matching KatMusic-Native `CanvasRepository`):
+/// Waterfall priority order (matching KatMusic `CanvasRepository`):
 /// 1. Apple Music (`AppleMusicCanvas` + proxy fallback)
 /// 2. Tidal (`TidalCanvas` 1280x1280 video covers)
 /// 3. Community (`CommunityCanvas` ViMusic manifest)
@@ -623,7 +649,7 @@ class AnimatedArtworkService {
   final List<void Function()> _queue = [];
 
   AnimatedArtworkService({Dio? dio, this._db, this.albumLookup})
-    : _dio = dio ?? DioFactory.create();
+      : _dio = dio ?? DioFactory.create();
 
   String _trackKeyId(String artist, String title) {
     final p = OfficialArtworkService.normalizeForSearch(
@@ -698,7 +724,11 @@ class AnimatedArtworkService {
         OfficialArtworkService.normalizeForSearch(query.title).isEmpty) {
       return Future.value(null);
     }
-    return _lookupKey(key, () => _fetchSearch(query, key), query: query);
+    return _lookupKey(
+      key,
+      () => _fetchSearch(query, key),
+      query: query,
+    );
   }
 
   Future<AnimatedArtwork?> lookupByUrl(String appleMusicUrl) {
@@ -772,8 +802,7 @@ class AnimatedArtworkService {
     if (provider == _animMiss) {
       return (null, age < _missTtl.inMilliseconds);
     }
-    final isHitProvider =
-        provider == _animHit ||
+    final isHitProvider = provider == _animHit ||
         provider == _animTidalHit ||
         provider == _animCommunityHit;
     if (isHitProvider &&
@@ -797,13 +826,11 @@ class AnimatedArtworkService {
     final completer = Completer<T>();
     void run() {
       _active++;
-      task()
-          .then(completer.complete)
-          .catchError(completer.completeError)
+      task().then(completer.complete).catchError(completer.completeError)
           .whenComplete(() {
-            _active--;
-            if (_queue.isNotEmpty) _queue.removeAt(0)();
-          });
+        _active--;
+        if (_queue.isNotEmpty) _queue.removeAt(0)();
+      });
     }
 
     if (_active < 2) {
@@ -835,10 +862,8 @@ class AnimatedArtworkService {
       // pollution ("The Less I Know The Better" → Currents).
       if (album.isEmpty && albumLookup != null) {
         try {
-          final viaYtm = await albumLookup!(
-            title,
-            artist,
-          ).timeout(const Duration(seconds: 8));
+          final viaYtm = await albumLookup!(title, artist)
+              .timeout(const Duration(seconds: 8));
           if (viaYtm.trim().isNotEmpty) {
             album = cleanCanvasQuery(viaYtm.trim());
           }
@@ -874,9 +899,21 @@ class AnimatedArtworkService {
       // 1. Apple Music > 2. Tidal > 3. Community
       final found = await _firstHit(
         [
-          () => _lookupAppleMusic(artist: artist, album: album, title: title),
-          () => _lookupTidal(artist: artist, album: album, title: title),
-          () => _lookupCommunity(artist: artist, album: album, title: title),
+          () => _lookupAppleMusic(
+                artist: artist,
+                album: album,
+                title: title,
+              ),
+          () => _lookupTidal(
+                artist: artist,
+                album: album,
+                title: title,
+              ),
+          () => _lookupCommunity(
+                artist: artist,
+                album: album,
+                title: title,
+              ),
         ],
         wantTitle: title,
         wantArtist: artist,
@@ -891,8 +928,8 @@ class AnimatedArtworkService {
       final playable = await _resolvePlayableIfNeeded(found.url);
       final fallbackPlayable =
           (found.fallbackUrl != null && found.fallbackUrl!.isNotEmpty)
-          ? await _resolvePlayableIfNeeded(found.fallbackUrl!)
-          : null;
+              ? await _resolvePlayableIfNeeded(found.fallbackUrl!)
+              : null;
       final effectiveAlbum = album.isNotEmpty
           ? album
           : (found.album?.trim().isNotEmpty == true ? found.album!.trim() : '');
@@ -942,10 +979,12 @@ class AnimatedArtworkService {
           wantArtist: wantArtist,
           wantAlbum: wantAlbum,
         );
-        final matchesSong =
-            wantTitle.isNotEmpty &&
+        final matchesSong = wantTitle.isNotEmpty &&
             found.title != null &&
-            found.matches(wantTitle: wantTitle, wantArtist: wantArtist);
+            found.matches(
+              wantTitle: wantTitle,
+              wantArtist: wantArtist,
+            );
         if (!matchesWithAlbum && !matchesSong) continue;
         return found;
       } catch (_) {}
@@ -995,11 +1034,8 @@ class AnimatedArtworkService {
     if (album.isNotEmpty && title.isNotEmpty) {
       found = await _requestSearch(artist: artist, album: album, title: title);
       if (found == null && primary != artist) {
-        found = await _requestSearch(
-          artist: primary,
-          album: album,
-          title: title,
-        );
+        found =
+            await _requestSearch(artist: primary, album: album, title: title);
       }
     }
     if (found == null && album.isNotEmpty) {
@@ -1030,7 +1066,11 @@ class AnimatedArtworkService {
         album: album.isEmpty ? null : album,
       );
       if (found == null && album.isNotEmpty) {
-        found = await TidalCanvas.search(_dio, title: title, artist: artist);
+        found = await TidalCanvas.search(
+          _dio,
+          title: title,
+          artist: artist,
+        );
       }
       if (found == null && album.isNotEmpty) {
         found = await TidalCanvas.searchAlbum(
@@ -1040,7 +1080,11 @@ class AnimatedArtworkService {
         );
       }
     } else if (album.isNotEmpty) {
-      found = await TidalCanvas.searchAlbum(_dio, album: album, artist: artist);
+      found = await TidalCanvas.searchAlbum(
+        _dio,
+        album: album,
+        artist: artist,
+      );
     }
     return found;
   }
@@ -1059,7 +1103,11 @@ class AnimatedArtworkService {
       album: album.isEmpty ? null : album,
     );
     if (found == null && album.isNotEmpty && title.isNotEmpty) {
-      found = await CommunityCanvas.search(_dio, title: title, artist: artist);
+      found = await CommunityCanvas.search(
+        _dio,
+        title: title,
+        artist: artist,
+      );
     }
     return found;
   }
@@ -1252,7 +1300,8 @@ final animatedArtworkServiceProvider = Provider<AnimatedArtworkService>((ref) {
 
 final animatedArtworkProvider =
     FutureProvider.family<AnimatedArtwork?, AnimatedArtworkQuery>((ref, query) {
-      final svc = ref.watch(animatedArtworkServiceProvider);
-      if (svc.isCached(query)) return Future.value(svc.peek(query));
-      return svc.lookup(query);
-    });
+  if (ref.watch(performanceModeProvider)) return Future.value(null);
+  final svc = ref.watch(animatedArtworkServiceProvider);
+  if (svc.isCached(query)) return Future.value(svc.peek(query));
+  return svc.lookup(query);
+});

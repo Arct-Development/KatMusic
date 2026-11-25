@@ -3,7 +3,10 @@ import 'dart:io';
 
 import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
+import 'package:window_manager/window_manager.dart';
 
+import '../../core/diagnostics/diagnostics_log.dart';
 import 'webview_profile.dart';
 import 'yt_webview_guard.dart';
 
@@ -20,6 +23,10 @@ enum YtSignInFailure {
 
   /// No usable system WebView (missing WebView2 / WebKitGTK).
   unavailable,
+
+  /// The runtime is installed but the sign-in window failed to start
+  /// (the plugin's create call errored, twice). Reason in the logs.
+  startFailed,
 
   /// The user closed the sign-in window.
   windowClosed,
@@ -161,8 +168,31 @@ class YtWebLogin {
     unawaited(_foregroundRetries(w));
   }
 
+  /// True while the cached window sits off-screen (created for a silent
+  /// refresh on Windows).
+  static bool _parked = false;
+
+  /// Moves a parked window to where the plugin would have placed it:
+  /// 480x760 logical, centered on the primary display.
+  static Future<void> _unpark(Webview w) async {
+    if (!_parked || !identical(_cachedWindow, w)) return;
+    try {
+      final display = WidgetsBinding.instance.platformDispatcher.displays.first;
+      final width = (480 * display.devicePixelRatio).round();
+      final height = (760 * display.devicePixelRatio).round();
+      await w.moveWebviewWindow(
+        ((display.size.width - width) / 2).round(),
+        ((display.size.height - height) / 2).round(),
+        width,
+        height,
+      );
+      _parked = false;
+    } catch (_) {}
+  }
+
   static Future<void> _foregroundOnce(Webview w) async {
     if (!identical(_cachedWindow, w) || !_expectVisible) return;
+    await _unpark(w);
     try {
       await w.setWebviewWindowVisibility(true);
     } catch (_) {}
@@ -189,10 +219,8 @@ class YtWebLogin {
   static Future<String?> readDelegatedPageId(Webview webview) async {
     try {
       final raw = await webview
-          .evaluateJavaScript(
-            'window.ytcfg ? String(window.ytcfg.data_'
-            '.DELEGATED_SESSION_ID ?? "") : ""',
-          )
+          .evaluateJavaScript('window.ytcfg ? String(window.ytcfg.data_'
+              '.DELEGATED_SESSION_ID ?? "") : ""')
           .timeout(const Duration(seconds: 8));
       var v = _unquote(raw) ?? '';
       v = v.trim();
@@ -202,8 +230,7 @@ class YtWebLogin {
       final id = _pageIdPattern.hasMatch(v) ? v : null;
       if (kDebugMode) {
         debugPrint(
-          'YtWebLogin: delegated pageId=${id == null ? 'main' : '${id.length} digits'}',
-        );
+            'YtWebLogin: delegated pageId=${id == null ? 'main' : '${id.length} digits'}');
       }
       return id;
     } catch (_) {
@@ -285,8 +312,7 @@ class YtWebLogin {
     try {
       final raw = await webview
           .evaluateJavaScript(
-            'document.body ? document.body.innerText.slice(0, 1200) : ""',
-          )
+              'document.body ? document.body.innerText.slice(0, 1200) : ""')
           .timeout(const Duration(seconds: 4));
       return _unquote(raw);
     } catch (_) {
@@ -305,16 +331,14 @@ class YtWebLogin {
   /// native bridge JSON-encodes the result, and a nested JSON payload
   /// would arrive with escaped quotes that [_unquote] cannot undo.
   static Future<({String? url, bool? signedIn})> _pageState(
-    Webview webview,
-  ) async {
+      Webview webview) async {
     try {
       final raw = await webview
           .evaluateJavaScript(
-            '(window.ytcfg && window.ytcfg.data_ && '
-            '(window.ytcfg.data_.LOGGED_IN === true || '
-            'window.ytcfg.data_.LOGGED_IN === "true") ? "1" : "0") '
-            '+ "|" + window.location.href',
-          )
+              '(window.ytcfg && window.ytcfg.data_ && '
+              '(window.ytcfg.data_.LOGGED_IN === true || '
+              'window.ytcfg.data_.LOGGED_IN === "true") ? "1" : "0") '
+              '+ "|" + window.location.href')
           .timeout(const Duration(seconds: 4));
       final v = _unquote(raw);
       if (v == null || v.isEmpty) return (url: null, signedIn: null);
@@ -439,24 +463,82 @@ class YtWebLogin {
       _cachedWindow = null;
     }
     try {
-      if (!await WebviewWindow.isWebviewAvailable()) return null;
-    } catch (_) {
+      if (!await WebviewWindow.isWebviewAvailable()) {
+        _windowFailure = YtSignInFailure.unavailable;
+        DiagnosticsLog.info('yt signin: no WebView runtime');
+        return null;
+      }
+    } catch (e) {
+      _windowFailure = YtSignInFailure.unavailable;
+      DiagnosticsLog.info('yt signin: runtime check failed: $e');
       return null;
     }
+    // One creation at a time: a second click while the first window is
+    // still starting used to start a second WebView2 on the same profile,
+    // which fails and reported "no WebView" over a blank first window.
+    return _creating ??= _createWindow(show).whenComplete(() {
+      _creating = null;
+    });
+  }
+
+  static Future<Webview?>? _creating;
+
+  /// Why the last [_ensureWindow] returned null (runtime missing vs the
+  /// window failing to start).
+  static YtSignInFailure _windowFailure = YtSignInFailure.unavailable;
+
+  static Future<Webview?> _createWindow(bool show) async {
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      final w = await _createWindowOnce(show);
+      if (w != null) return w;
+      if (attempt == 1) {
+        // A profile left broken by an unclean exit fails every create;
+        // start the retry on a fresh one (costs only the webview's own
+        // Google login, which was unusable anyway).
+        if (Platform.isWindows) {
+          DiagnosticsLog.info('yt signin: resetting auth webview profile');
+          await resetWebviewProfile('auth');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
+    }
+    _windowFailure = YtSignInFailure.startFailed;
+    return null;
+  }
+
+  static Future<Webview?> _createWindowOnce(bool show) async {
     try {
       final folder = await _userDataFolder('auth');
+      // The Windows plugin creates every window WS_VISIBLE and centered,
+      // so a background-only window flashed a white sign-in screen at
+      // startup before the hide landed. Create it off-screen instead
+      // (same as the BotGuard window); [_unpark] brings it back if the
+      // user ever needs to see it.
+      final park = !show && Platform.isWindows;
+      // Remember whether KatMusic had foreground focus before creating a
+      // silent background WebView2 window (desktop_webview_window spawns
+      // WS_VISIBLE and briefly steals Win32 focus on creation).
+      var hadFocus = false;
+      if (park) {
+        try {
+          hadFocus = await windowManager.isFocused();
+        } catch (_) {}
+      }
       final w = await WebviewWindow.create(
         configuration: CreateConfiguration(
           title: _windowTitle,
           titleBarHeight: 40,
           windowWidth: 480,
           windowHeight: 760,
-          userDataFolderWindows: folder.isEmpty
-              ? 'webview_window_WebView2'
-              : folder,
+          windowPosX: park ? -32000 : 0,
+          windowPosY: park ? -32000 : 0,
+          useWindowPositionAndSize: park,
+          userDataFolderWindows:
+              folder.isEmpty ? 'webview_window_WebView2' : folder,
         ),
       );
       _cachedWindow = w;
+      _parked = park;
       if (Platform.isMacOS) {
         try {
           w.addScriptToExecuteOnDocumentCreated(_macCompatShim);
@@ -467,13 +549,13 @@ class YtWebLogin {
       }
       // If the window ever really dies, drop the cache so the next
       // sign-in creates a fresh window instead of talking to a dead one.
-      unawaited(
-        w.onClose.then((_) {
-          if (identical(_cachedWindow, w)) _cachedWindow = null;
-        }),
-      );
+      unawaited(w.onClose.then((_) {
+        if (identical(_cachedWindow, w)) _cachedWindow = null;
+      }));
       if (!show) {
-        // Background use (silent session refresh): hide straight away.
+        // Background use (silent session refresh): hide straight away and
+        // immediately hand foreground focus back to KatMusic on Windows so
+        // the app never feels frozen or unclickable.
         _expectVisible = false;
         if (Platform.isLinux) {
           await YtWebviewGuard.hide();
@@ -481,6 +563,11 @@ class YtWebLogin {
           try {
             await w.setWebviewWindowVisibility(false);
           } catch (_) {}
+          if (hadFocus) {
+            try {
+              await windowManager.focus();
+            } catch (_) {}
+          }
         }
       } else if (Platform.isLinux) {
         // Ensure it is visible (create shows it; harmless if so).
@@ -491,8 +578,10 @@ class YtWebLogin {
         await _foreground(w);
       }
       return w;
-    } catch (_) {
-      // No usable system WebView (missing webkit2gtk/WebView2/etc).
+    } catch (e) {
+      // The runtime is present (checked above); the plugin failed to
+      // start the window or its WebView2 environment.
+      DiagnosticsLog.info('yt signin: window create failed: $e');
       return null;
     }
   }
@@ -506,10 +595,26 @@ class YtWebLogin {
   /// into the upstream destroy bug), then runs the normal capture.
   static const _logoutUrl = 'https://accounts.google.com/Logout';
 
+  /// Signs the sign-in window's own Google session out (hidden), so the
+  /// next Connect asks for an account instead of re-capturing the old
+  /// one. Used by Disconnect; the jar persists across restarts, so
+  /// clearing it here is what makes Disconnect stick.
+  static Future<void> signOutWebview() async {
+    if (_inflight) return;
+    final w = await _ensureWindow(show: false);
+    if (w == null) return;
+    try {
+      w.launch(_logoutUrl, triggerOnUrlRequestEvent: false);
+      // Same wait as [signInFresh]: let the logout round-trip land.
+      await Future<void>.delayed(const Duration(seconds: 4));
+    } catch (_) {}
+    await hideWindow();
+  }
+
   static Future<String?> signInFresh() async {
     final w = await _ensureWindow();
     if (w == null) {
-      lastFailure = YtSignInFailure.unavailable;
+      lastFailure = _windowFailure;
       return null;
     }
     try {
@@ -540,8 +645,8 @@ class YtWebLogin {
       );
       lastFailure = r.header == null
           ? (r.failure == YtSignInFailure.none
-                ? YtSignInFailure.noSession
-                : r.failure)
+              ? YtSignInFailure.noSession
+              : r.failure)
           : YtSignInFailure.none;
       return r.header;
     } catch (_) {
@@ -577,8 +682,7 @@ class YtWebLogin {
     if (_inflight) return null;
     _inflight = true;
     try {
-      final w =
-          _cachedWindow ??
+      final w = _cachedWindow ??
           (allowCreate ? await _ensureWindow(show: false) : null);
       if (w == null) return null;
       _expectVisible = false;
@@ -603,8 +707,7 @@ class YtWebLogin {
       );
       if (kDebugMode) {
         debugPrint(
-          'YtWebLogin: silent refresh ${r.header != null ? 'captured' : 'failed (${r.failure.name})'}',
-        );
+            'YtWebLogin: silent refresh ${r.header != null ? 'captured' : 'failed (${r.failure.name})'}');
       }
       return r.header;
     } catch (_) {
@@ -620,7 +723,7 @@ class YtWebLogin {
     lastCapturedPageId = null;
     final w = await _ensureWindow();
     if (w == null) {
-      lastFailure = YtSignInFailure.unavailable;
+      lastFailure = _windowFailure;
       return null;
     }
     try {
@@ -645,8 +748,8 @@ class YtWebLogin {
       );
       lastFailure = r.header == null
           ? (r.failure == YtSignInFailure.none
-                ? YtSignInFailure.noSession
-                : r.failure)
+              ? YtSignInFailure.noSession
+              : r.failure)
           : YtSignInFailure.none;
       // Capture the active channel alongside the jar (null = main).
       // Best-effort: a miss just means main-channel routing.
@@ -728,9 +831,8 @@ class YtWebLogin {
             ? ''
             : ' missing=${missingMarkerNames(cookies.map((c) => c.name))}';
         debugPrint(
-          'YtWebLogin: poll host=$host signedIn=${page.signedIn} '
-          'jar=${cookies?.length ?? -1} complete=${header != null}$skip',
-        );
+            'YtWebLogin: poll host=$host signedIn=${page.signedIn} '
+            'jar=${cookies?.length ?? -1} complete=${header != null}$skip');
       }
 
       if (await gone()) {
@@ -740,7 +842,9 @@ class YtWebLogin {
       // 2. Failed/blank navigation: WebView2 on `chrome-error://` or
       //    stuck on about:blank never recovers on its own. Relaunch a
       //    few times, then give up instead of burning the timeout.
-      final blank = url == null ? false : (isBlankUrl(url) || isErrorUrl(url));
+      final blank = url == null
+          ? false
+          : (isBlankUrl(url) || isErrorUrl(url));
       if (blank) {
         blankCycles++;
         if (blankCycles >= 2) {
@@ -748,22 +852,18 @@ class YtWebLogin {
           blankReloads++;
           if (blankReloads > 3) {
             if (kDebugMode) {
-              debugPrint(
-                'YtWebLogin: page never loaded (blank/error), giving up',
-              );
+              debugPrint('YtWebLogin: page never loaded (blank/error), giving up');
             }
             return const _LoginResult(null, YtSignInFailure.blankPage);
           }
           if (kDebugMode) {
             debugPrint(
-              'YtWebLogin: $url — re-launching $_loginUrl ($blankReloads/3)',
-            );
+                'YtWebLogin: $url — re-launching $_loginUrl ($blankReloads/3)');
           }
           try {
             webview.launch(_loginUrl, triggerOnUrlRequestEvent: false);
-            await webview.evaluateJavaScript(
-              'window.location.href = "$_loginUrl";',
-            );
+            await webview
+                .evaluateJavaScript('window.location.href = "$_loginUrl";');
           } catch (_) {}
           if (!silent) {
             if (!await gone()) await _foreground(webview);
@@ -818,8 +918,7 @@ class YtWebLogin {
           stuckCycles = 0;
           if (kDebugMode) {
             debugPrint(
-              'YtWebLogin: passkey stall detected, reloading ($autoReloads/2)',
-            );
+                'YtWebLogin: passkey stall detected, reloading ($autoReloads/2)');
           }
           try {
             webview.launch(_loginUrl, triggerOnUrlRequestEvent: false);
@@ -848,8 +947,15 @@ class YtWebLogin {
     'SAPISID',
     'APISID',
   ];
-  static const _psidNames = ['__Secure-3PSID', '__Secure-1PSID', 'SID'];
-  static const _freshNames = ['__Secure-3PSIDTS', '__Secure-1PSIDTS'];
+  static const _psidNames = [
+    '__Secure-3PSID',
+    '__Secure-1PSID',
+    'SID',
+  ];
+  static const _freshNames = [
+    '__Secure-3PSIDTS',
+    '__Secure-1PSIDTS',
+  ];
   static const _loginNames = ['LOGIN_INFO'];
 
   /// Names that are actually forwarded in the Cookie header. Google
@@ -981,22 +1087,20 @@ class YtWebLogin {
   /// type is inferred from `getAllCookies()` instead of named.)
   static Future<List<YtJarCookie>?> _readCookies(Webview webview) async {
     try {
-      final raw = await webview.getAllCookies().timeout(
-        const Duration(seconds: 5),
-      );
+      final raw = await webview
+          .getAllCookies()
+          .timeout(const Duration(seconds: 5));
       final out = <YtJarCookie>[];
       for (final c in raw) {
-        out.add(
-          YtJarCookie(
-            name: _normName(c.name),
-            value: _normValue(c.value),
-            // Domain goes through the same NUL strip: a stray trailing
-            // NUL would make _domainRank see an unknown scope and drop
-            // every YouTube cookie, which reads exactly like "not
-            // signed in" even though the window is signed in.
-            domain: _normName(c.domain.toString()),
-          ),
-        );
+        out.add(YtJarCookie(
+          name: _normName(c.name),
+          value: _normValue(c.value),
+          // Domain goes through the same NUL strip: a stray trailing
+          // NUL would make _domainRank see an unknown scope and drop
+          // every YouTube cookie, which reads exactly like "not
+          // signed in" even though the window is signed in.
+          domain: _normName(c.domain.toString()),
+        ));
       }
       if (out.isNotEmpty && kDebugMode) {
         debugPrint('YtWebLogin: jar read ${out.length} cookies');

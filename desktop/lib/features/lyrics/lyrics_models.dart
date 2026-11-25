@@ -4,7 +4,7 @@ import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 final _diacriticsRegex = RegExp(r'\p{M}+', unicode: true);
 
-/// Lyrics models. Ported from KatMusic-native
+/// Lyrics models. Ported from KatMusic
 /// `data/lyrics/LyricsRepository.kt`.
 class LyricSyllable {
   final int timeMs;
@@ -25,6 +25,7 @@ class LyricLine {
   final String text;
   final List<LyricSyllable> syllables;
   final String transliteration;
+  final String? agent;
 
   const LyricLine({
     required this.timeMs,
@@ -32,11 +33,124 @@ class LyricLine {
     required this.text,
     this.syllables = const [],
     this.transliteration = '',
+    this.agent,
   });
 
   bool get hasSyllables => syllables.isNotEmpty;
 
   bool get isRtl => isRtlText(text);
+}
+
+/// Vocal role for spatial staging in desktop widescreen layouts.
+enum VocalRole {
+  leadLeft,          // Vocalist 1 / Main singer (Left aligned, max 72% width)
+  duetRight,         // Vocalist 2 / Duet singer (Right aligned, max 72% width)
+  unisonCenter,      // Both vocalists / Solo chorus (Center aligned)
+  backgroundSubline, // Accompaniment / harmony (Nested under lead line, 0.65x font)
+}
+
+/// A line with its nested accompaniment background vocals.
+class LyricLineGroup {
+  final LyricLine leadLine;
+  final List<LyricLine> backgroundSublines;
+  final VocalRole role;
+
+  const LyricLineGroup({
+    required this.leadLine,
+    this.backgroundSublines = const [],
+    this.role = VocalRole.leadLeft,
+  });
+
+  int get timeMs => leadLine.timeMs;
+  int get durationMs => leadLine.durationMs;
+}
+
+/// A cohesive stanza (verse, chorus, bridge) with musical boundary timing.
+class LyricStanza {
+  final int timeMs;
+  final int durationMs;
+  final List<LyricLineGroup> groups;
+  final bool isChorus;
+
+  const LyricStanza({
+    required this.timeMs,
+    required this.durationMs,
+    required this.groups,
+    this.isChorus = false,
+  });
+}
+
+/// Group flat lyric lines into musical stanzas and assign spatial vocal roles.
+List<LyricStanza> assembleStanzas(List<LyricLine> rawLines) {
+  if (rawLines.isEmpty) return const [];
+  final stanzas = <LyricStanza>[];
+  var currentGroups = <LyricLineGroup>[];
+  var stanzaStartMs = rawLines.first.timeMs;
+
+  for (var i = 0; i < rawLines.length; i++) {
+    final line = rawLines[i];
+    final prevLine = i > 0 ? rawLines[i - 1] : null;
+
+    // Detect stanza break: pause >= 2500ms or explicit credit/section change
+    final isStanzaBreak = prevLine != null &&
+        (line.timeMs - (prevLine.timeMs + math.max(prevLine.durationMs, 1000)) >= 2500);
+
+    if (isStanzaBreak && currentGroups.isNotEmpty) {
+      final stanzaEndMs = currentGroups.last.timeMs + currentGroups.last.durationMs;
+      stanzas.add(LyricStanza(
+        timeMs: stanzaStartMs,
+        durationMs: math.max(0, stanzaEndMs - stanzaStartMs),
+        groups: List.unmodifiable(currentGroups),
+      ));
+      currentGroups = [];
+      stanzaStartMs = line.timeMs;
+    }
+
+    // Determine vocal role
+    VocalRole role = VocalRole.leadLeft;
+    final text = line.text.trim();
+    final isBg = line.syllables.isNotEmpty && line.syllables.every((s) => s.isBackground) ||
+                 (text.startsWith('(') && text.endsWith(')'));
+
+    if (isBg && currentGroups.isNotEmpty) {
+      // Nest as background subline attached to previous lead line!
+      final lastGroup = currentGroups.removeLast();
+      currentGroups.add(LyricLineGroup(
+        leadLine: lastGroup.leadLine,
+        backgroundSublines: [...lastGroup.backgroundSublines, line],
+        role: lastGroup.role,
+      ));
+      continue;
+    }
+
+    // Detect duet opposing alignment (TTML agents or singer markers)
+    if (line.agent == 'v2' ||
+        text.startsWith('Vocalist 2:') ||
+        text.startsWith('Singer 2:') ||
+        text.contains('[v2]')) {
+      role = VocalRole.duetRight;
+    } else if ((line.agent != null && line.agent!.contains('both')) ||
+               text.startsWith('Both:') ||
+               text.startsWith('Chorus:') ||
+               text.contains('[all]')) {
+      role = VocalRole.unisonCenter;
+    }
+
+    currentGroups.add(LyricLineGroup(
+      leadLine: line,
+      role: role,
+    ));
+  }
+
+  if (currentGroups.isNotEmpty) {
+    final stanzaEndMs = currentGroups.last.timeMs + currentGroups.last.durationMs;
+    stanzas.add(LyricStanza(
+      timeMs: stanzaStartMs,
+      durationMs: math.max(0, stanzaEndMs - stanzaStartMs),
+      groups: List.unmodifiable(currentGroups),
+    ));
+  }
+  return stanzas;
 }
 
 class LyricsResult {
@@ -56,9 +170,11 @@ class LyricsResult {
     this.source = '',
   });
 
-  const LyricsResult.empty() : this(lines: const [], isSynced: false);
+  const LyricsResult.empty()
+      : this(lines: const [], isSynced: false);
 
-  bool get isEmpty => lines.isEmpty && plainLyrics.isEmpty && !isInstrumental;
+  bool get isEmpty =>
+      lines.isEmpty && plainLyrics.isEmpty && !isInstrumental;
 }
 
 /// Synthesize proportional word syllables across a line's duration
@@ -76,9 +192,7 @@ List<LyricSyllable> interpolateLineSyllables({
   final totalChars = words.fold<int>(0, (acc, w) => acc + w.length);
   if (totalChars <= 0) return const [];
 
-  final safeDuration = durationMs > 0
-      ? durationMs
-      : math.max(1500, words.length * 350);
+  final safeDuration = durationMs > 0 ? durationMs : math.max(1500, words.length * 350);
   final syllables = <LyricSyllable>[];
   var currentMs = startTimeMs;
 
@@ -89,13 +203,11 @@ List<LyricSyllable> interpolateLineSyllables({
       120,
       ((word.length / totalChars) * safeDuration).round(),
     );
-    syllables.add(
-      LyricSyllable(
-        timeMs: currentMs,
-        durationMs: wordDur,
-        text: isLast ? word : '$word ',
-      ),
-    );
+    syllables.add(LyricSyllable(
+      timeMs: currentMs,
+      durationMs: wordDur,
+      text: isLast ? word : '$word ',
+    ));
     currentMs += wordDur;
   }
   return syllables;
@@ -161,14 +273,12 @@ List<LyricLine> expandPackedLyricLines(List<LyricLine> lines) {
       continue;
     }
     for (final part in parts) {
-      out.add(
-        LyricLine(
-          timeMs: line.timeMs,
-          durationMs: line.durationMs,
-          text: part,
-          transliteration: line.transliteration,
-        ),
-      );
+      out.add(LyricLine(
+        timeMs: line.timeMs,
+        durationMs: line.durationMs,
+        text: part,
+        transliteration: line.transliteration,
+      ));
     }
   }
   return out;
@@ -218,12 +328,15 @@ double calculateSyllableProgress(LyricSyllable syl, int posMs) {
 }
 
 /// Viewport alignment for follow-scroll. Opening lines stay at the
-
-/// top; only later lines pin to the Apple ~34% karaoke anchor.
-double lyricFollowAlignment(int activeIndex, {required bool compact}) {
+/// top; only later lines pin to the target anchor (defaults to 0.34, 0.18 for desktop golden ratio).
+double lyricFollowAlignment(
+  int activeIndex, {
+  required bool compact,
+  double? targetAnchor,
+}) {
   if (activeIndex <= 0) return 0;
   if (activeIndex == 1) return compact ? 0.12 : 0.14;
-  return compact ? 0.28 : 0.34;
+  return targetAnchor ?? (compact ? 0.28 : 0.34);
 }
 
 /// Scale cues that were clearly authored in seconds (or microseconds)
@@ -231,7 +344,8 @@ double lyricFollowAlignment(int activeIndex, {required bool compact}) {
 /// finished after the first second of playback.
 LyricsResult ensureMillisecondTimestamps(LyricsResult result) {
   if (!result.isSynced || result.lines.length < 3) return result;
-  final times = result.lines.map((l) => l.timeMs).toList()..sort();
+  final times = result.lines.map((l) => l.timeMs).toList()
+    ..sort();
   final first = times.first;
   final last = times.last;
   final span = last - first;
@@ -325,113 +439,21 @@ final _phraseCreditRegex = RegExp(
 );
 
 const _nonCreditSingleWords = <String>{
-  'oh',
-  'ooh',
-  'ah',
-  'uh',
-  'uhh',
-  'yeah',
-  'yea',
-  'yep',
-  'nah',
-  'hey',
-  'na',
-  'la',
-  'da',
-  'ba',
-  'sha',
-  'mm',
-  'hmm',
-  'woah',
-  'whoa',
-  'ayy',
-  'ay',
-  'yo',
-  'no',
-  'yes',
-  'go',
-  'he',
-  'she',
-  'him',
-  'her',
-  'his',
-  'hers',
-  'they',
-  'them',
-  'their',
-  'me',
-  'you',
-  'we',
-  'us',
-  'it',
-  'on',
-  'in',
-  'up',
-  'down',
-  'left',
-  'right',
-  'day',
-  'night',
-  'love',
-  'hate',
-  'life',
-  'death',
-  'true',
-  'false',
-  'black',
-  'white',
-  'one',
-  'two',
-  'three',
-  'four',
+  'oh', 'ooh', 'ah', 'uh', 'uhh', 'yeah', 'yea', 'yep', 'nah', 'hey',
+  'na', 'la', 'da', 'ba', 'sha', 'mm', 'hmm', 'woah', 'whoa', 'ayy',
+  'ay', 'yo', 'no', 'yes', 'go', 'he', 'she', 'him', 'her', 'his',
+  'hers', 'they', 'them', 'their', 'me', 'you', 'we', 'us', 'it',
+  'on', 'in', 'up', 'down', 'left', 'right', 'day', 'night', 'love',
+  'hate', 'life', 'death', 'true', 'false', 'black', 'white', 'one',
+  'two', 'three', 'four',
 };
 
 const _creditNameParticles = <String>{
-  'de',
-  'del',
-  'della',
-  'da',
-  'di',
-  'du',
-  'dos',
-  'das',
-  'van',
-  'von',
-  'der',
-  'den',
-  'het',
-  'ten',
-  'ter',
-  'bin',
-  'ibn',
-  'ibin',
-  'al',
-  'el',
-  'la',
-  'le',
-  'los',
-  'las',
-  'mc',
-  'mac',
-  'st',
-  'st.',
-  'jr',
-  'jr.',
-  'sr',
-  'sr.',
-  'ii',
-  'iii',
-  'iv',
-  'v',
-  'and',
-  '&',
-  'x',
-  'feat',
-  'feat.',
-  'ft',
-  'ft.',
-  'the',
-  'of',
+  'de', 'del', 'della', 'da', 'di', 'du', 'dos', 'das', 'van', 'von',
+  'der', 'den', 'het', 'ten', 'ter', 'bin', 'ibn', 'ibin', 'al', 'el',
+  'la', 'le', 'los', 'las', 'mc', 'mac', 'st', 'st.', 'jr', 'jr.',
+  'sr', 'sr.', 'ii', 'iii', 'iv', 'v', 'and', '&', 'x', 'feat',
+  'feat.', 'ft', 'ft.', 'the', 'of',
 };
 
 bool _looksLikeCreditNameSegment(String rawSegment) {
@@ -444,10 +466,8 @@ bool _looksLikeCreditNameSegment(String rawSegment) {
     return segment.length >= 2 && segment.length <= 12;
   }
 
-  final words = segment
-      .split(RegExp(r'\s+'))
-      .where((w) => w.isNotEmpty)
-      .toList();
+  final words =
+      segment.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
   if (words.isEmpty || words.length > 6) return false;
   if (words.length == 1 &&
       _nonCreditSingleWords.contains(words.first.toLowerCase())) {
@@ -487,13 +507,11 @@ bool _isSlashSeparatedCreditList(
   if (uniqueLower.length < 2) return false;
 
   final nameCount = segments.where(_looksLikeCreditNameSegment).length;
-  final multiWordCount = segments
-      .where((s) => s.split(RegExp(r'\s+')).length >= 2)
-      .length;
+  final multiWordCount =
+      segments.where((s) => s.split(RegExp(r'\s+')).length >= 2).length;
 
   if (segments.length >= 3) {
-    final allOrMostAreNames =
-        nameCount == segments.length ||
+    final allOrMostAreNames = nameCount == segments.length ||
         (segments.length >= 4 && nameCount / segments.length >= 0.8);
     if (allOrMostAreNames &&
         (multiWordCount >= 1 || index < 8 || index >= totalLines - 4)) {
@@ -559,10 +577,9 @@ bool isLyricCreditLine(
       }
       if (index == 0 &&
           !RegExp(r'[!?]').hasMatch(trimmed) &&
-          RegExp(
-            r'[,&/]|(?:\b(?:feat|ft|featuring|with)\b)',
-            caseSensitive: false,
-          ).hasMatch(trimmed) &&
+          RegExp(r'[,&/]|(?:\b(?:feat|ft|featuring|with)\b)',
+                  caseSensitive: false)
+              .hasMatch(trimmed) &&
           !lyricsTitlesMatchStrict(trimmed, reqTitle)) {
         final lineEntities = _extractArtistEntities(trimmed);
         final artistEntities = _extractArtistEntities(reqArtist);
@@ -702,7 +719,9 @@ LyricsResult normalizeKaraokeTimings(
         .where((l) => l.isNotEmpty)
         .toList();
     result = LyricsResult(
-      lines: [for (final l in rawLines) LyricLine(timeMs: 0, text: l)],
+      lines: [
+        for (final l in rawLines) LyricLine(timeMs: 0, text: l),
+      ],
       isSynced: result.isSynced,
       isWordSynced: result.isWordSynced,
       plainLyrics: result.plainLyrics,
@@ -737,15 +756,13 @@ LyricsResult normalizeKaraokeTimings(
             startTimeMs: line.timeMs,
             durationMs: duration,
           );
-    lines.add(
-      LyricLine(
-        timeMs: line.timeMs,
-        durationMs: duration,
-        text: line.text,
-        syllables: syllables,
-        transliteration: line.transliteration,
-      ),
-    );
+    lines.add(LyricLine(
+      timeMs: line.timeMs,
+      durationMs: duration,
+      text: line.text,
+      syllables: syllables,
+      transliteration: line.transliteration,
+    ));
   }
   return LyricsResult(
     lines: lines,
@@ -769,7 +786,8 @@ List<LyricSyllable> _normalizeSyllables(
   final out = <LyricSyllable>[];
   for (var i = 0; i < sorted.length; i++) {
     final s = sorted[i];
-    final nextStart = i + 1 < sorted.length ? sorted[i + 1].timeMs : lineEnd;
+    final nextStart =
+        i + 1 < sorted.length ? sorted[i + 1].timeMs : lineEnd;
     var start = s.timeMs < lineStartMs ? lineStartMs : s.timeMs;
     if (start >= nextStart) start = math.max(lineStartMs, nextStart - 40);
     final gap = math.max(40, nextStart - start);
@@ -781,14 +799,12 @@ List<LyricSyllable> _normalizeSyllables(
     } else {
       dur = gap;
     }
-    out.add(
-      LyricSyllable(
-        timeMs: start,
-        durationMs: dur,
-        text: s.text,
-        isBackground: s.isBackground,
-      ),
-    );
+    out.add(LyricSyllable(
+      timeMs: start,
+      durationMs: dur,
+      text: s.text,
+      isBackground: s.isBackground,
+    ));
   }
   return out;
 }
@@ -819,9 +835,8 @@ List<LyricLine> parseLrc(String lrc) {
   }
   text = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 
-  final timestampRegex = RegExp(
-    r'\[\s*(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:[.:](\d{1,4}))?\s*\]',
-  );
+  final timestampRegex =
+      RegExp(r'\[\s*(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:[.:](\d{1,4}))?\s*\]');
   final offsetRegex = RegExp(r'\[offset:\s*([+-]?\d+)\]', caseSensitive: false);
   var offset = 0;
   final rawEntries = <({int timeMs, String body})>[];
@@ -874,10 +889,7 @@ List<LyricLine> parseLrc(String lrc) {
         // 2 components: [mm:ss] or [mm:ss.frac]
         final min = int.tryParse(m.group(2) ?? '') ?? 0;
         final sec = int.tryParse(m.group(3) ?? '') ?? 0;
-        totalMs = (min * 60000 + sec * 1000 + fracMs + offset).clamp(
-          0,
-          1 << 31,
-        );
+        totalMs = (min * 60000 + sec * 1000 + fracMs + offset).clamp(0, 1 << 31);
       }
       rawEntries.add((timeMs: totalMs, body: body));
     }
@@ -889,9 +901,8 @@ List<LyricLine> parseLrc(String lrc) {
   final result = <LyricLine>[];
   for (var i = 0; i < rawEntries.length; i++) {
     final current = rawEntries[i];
-    final nextTime = (i + 1 < rawEntries.length)
-        ? rawEntries[i + 1].timeMs
-        : null;
+    final nextTime =
+        (i + 1 < rawEntries.length) ? rawEntries[i + 1].timeMs : null;
     final text = current.body.replaceAll(_wordStampRegex, '').trim();
     final words = _parseWordRuns(current.body, current.timeMs, nextTime);
     if (words.isNotEmpty) {
@@ -902,32 +913,30 @@ List<LyricLine> parseLrc(String lrc) {
       // Keep the author spacing when the plain body carries
       // punctuation the word join would rewrite.
       final joined = words.map((w) => w.text).join(' ');
-      result.add(
-        LyricLine(
-          timeMs: lineStart,
-          durationMs: calcDur,
-          text: text.isNotEmpty && text.length >= joined.length ? text : joined,
-          syllables: words,
-        ),
-      );
+      result.add(LyricLine(
+        timeMs: lineStart,
+        durationMs: calcDur,
+        text: text.isNotEmpty && text.length >= joined.length
+            ? text
+            : joined,
+        syllables: words,
+      ));
       continue;
     }
     if (text.isEmpty) continue;
     final calcDur = nextTime != null
         ? (nextTime - current.timeMs).clamp(80, 20000)
         : 4000;
-    result.add(
-      LyricLine(
-        timeMs: current.timeMs,
-        durationMs: calcDur,
+    result.add(LyricLine(
+      timeMs: current.timeMs,
+      durationMs: calcDur,
+      text: text,
+      syllables: interpolateLineSyllables(
         text: text,
-        syllables: interpolateLineSyllables(
-          text: text,
-          startTimeMs: current.timeMs,
-          durationMs: calcDur,
-        ),
+        startTimeMs: current.timeMs,
+        durationMs: calcDur,
       ),
-    );
+    ));
   }
   return result;
 }
@@ -948,9 +957,9 @@ int _wordStampToMs(String minRaw, String secRaw, String fracRaw) {
   return min * 60000 + sec * 1000 + fracMs;
 }
 
-/// Split an enhanced-LRC body at its inline word stamps. Each stamped
-/// run ends at the next stamp, the next line, or +800ms. Text before the
-/// first stamp carries no timing (native parity: it is not a syllable).
+/// Split an enhanced-LRC body at its inline word stamps. Prepend leading
+/// text before the first timestamp using line start timestamp. Each stamped
+/// run ends at the next stamp, the next line, or +800ms.
 List<LyricSyllable> _parseWordRuns(
   String body,
   int lineStartMs,
@@ -959,9 +968,31 @@ List<LyricSyllable> _parseWordRuns(
   final marks = _wordStampRegex.allMatches(body).toList();
   if (marks.isEmpty) return const [];
   final words = <LyricSyllable>[];
+
+  // 1. Capture leading text before the first timestamp tag (Word 1)
+  final firstMark = marks.first;
+  final rawLeading = body.substring(0, firstMark.start);
+  final leadingText = rawLeading.trim();
+  if (leadingText.isNotEmpty && (rawLeading.endsWith(' ') || rawLeading.endsWith('\t'))) {
+    final firstMarkMs = _wordStampToMs(
+      firstMark.group(1)!,
+      firstMark.group(2)!,
+      firstMark.group(3)!,
+    );
+    final startMs = math.min(lineStartMs, firstMarkMs);
+    final durMs = math.max(0, firstMarkMs - startMs);
+    words.add(LyricSyllable(
+      timeMs: startMs.clamp(0, 1 << 31),
+      durationMs: (durMs > 0 ? durMs : 500).clamp(0, 1 << 31),
+      text: leadingText,
+    ));
+  }
+
+  // 2. Iterate through matched word tags
   for (var i = 0; i < marks.length; i++) {
     final mark = marks[i];
-    final until = i + 1 < marks.length ? marks[i + 1].start : body.length;
+    final until =
+        i + 1 < marks.length ? marks[i + 1].start : body.length;
     final text = body.substring(mark.end, until).trim();
     if (text.isEmpty) continue;
     final startMs = _wordStampToMs(
@@ -976,13 +1007,11 @@ List<LyricSyllable> _parseWordRuns(
             marks[i + 1].group(3)!,
           )
         : (lineEndMs ?? (startMs + 800));
-    words.add(
-      LyricSyllable(
-        timeMs: startMs.clamp(0, 1 << 31),
-        durationMs: (endMs - startMs).clamp(0, 1 << 31),
-        text: text,
-      ),
-    );
+    words.add(LyricSyllable(
+      timeMs: startMs.clamp(0, 1 << 31),
+      durationMs: (endMs - startMs).clamp(0, 1 << 31),
+      text: text,
+    ));
   }
   return words;
 }
@@ -1045,14 +1074,14 @@ Set<String> _versionTags(String rawTitle) {
   for (final m in RegExp(r'[\(\[](.*?)[\)\]]').allMatches(rawTitle)) {
     segments.add(m.group(1) ?? '');
   }
-  final trailing = RegExp(r'\s*[-–—:]\s*([^-–—:\(\[]+)\s*$')
-      .firstMatch(rawTitle);
+  final trailing =
+      RegExp(r'\s*[-–—:]\s*([^-–—:\(\[]+)\s*$').firstMatch(rawTitle);
   if (trailing != null) segments.add(trailing.group(1) ?? '');
 
   final trailingWord = RegExp(
-    r'\b(remix|acoustic|live|cover|karaoke|instrumental|slowed|nightcore|extended|unplugged|vip)\s*$',
-    caseSensitive: false,
-  ).firstMatch(rawTitle);
+          r'\b(remix|acoustic|live|cover|karaoke|instrumental|slowed|nightcore|extended|unplugged|vip)\s*$',
+          caseSensitive: false)
+      .firstMatch(rawTitle);
   if (trailingWord != null) segments.add(trailingWord.group(1) ?? '');
 
   for (final segment in segments) {
@@ -1076,9 +1105,8 @@ bool lyricsSameVersion(String requestTitle, String candidateTitle) {
 String stripLeadingArtistPrefix(String raw) => _stripLeadingArtistPrefix(raw);
 
 String _stripLeadingArtistPrefix(String raw) {
-  final stripped = raw
-      .replaceFirst(RegExp(r'^\s*.+?\s*[-–—:]\s+(?=\S)'), '')
-      .trim();
+  final stripped =
+      raw.replaceFirst(RegExp(r'^\s*.+?\s*[-–—:]\s+(?=\S)'), '').trim();
   return stripped.length >= 2 ? stripped : raw.trim();
 }
 
@@ -1100,9 +1128,8 @@ Set<String> _extractArtistEntities(String rawArtist) {
       .trim();
   final cleaned = stripped.replaceAll(
     RegExp(
-      r'\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring\b|with\b|prod\.?|produced by\b)[^\)\]]*[\)\]]',
-      caseSensitive: false,
-    ),
+        r'\s*[\(\[]\s*(?:feat\.?|ft\.?|featuring\b|with\b|prod\.?|produced by\b)[^\)\]]*[\)\]]',
+        caseSensitive: false),
     '',
   );
   final normalized = _normalizeLyricsSymbol(cleaned).trim();
@@ -1111,10 +1138,8 @@ Set<String> _extractArtistEntities(String rawArtist) {
     entities.add(normalized);
   }
   final parts = normalized.split(
-    RegExp(
-      r'\s*[,/;&+]\s*|\s+(?:feat\.?|ft\.?|featuring|with|vs\.?|x)\s+',
-      caseSensitive: false,
-    ),
+    RegExp(r'\s*[,/;&+]\s*|\s+(?:feat\.?|ft\.?|featuring|with|vs\.?|x)\s+',
+        caseSensitive: false),
   );
   for (final p in parts) {
     final t = p.trim();
@@ -1124,14 +1149,8 @@ Set<String> _extractArtistEntities(String rawArtist) {
 }
 
 bool _tokenOverlap(String a, String b, double floor) {
-  final aTokens = _normalizeLyricsSymbol(a)
-      .split(RegExp(r'\s+'))
-      .where((t) => t.isNotEmpty)
-      .toSet();
-  final bTokens = _normalizeLyricsSymbol(b)
-      .split(RegExp(r'\s+'))
-      .where((t) => t.isNotEmpty)
-      .toSet();
+  final aTokens = _normalizeLyricsSymbol(a).split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toSet();
+  final bTokens = _normalizeLyricsSymbol(b).split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toSet();
   final union = aTokens.union(bTokens).length;
   if (union == 0) return false;
   return aTokens.intersection(bTokens).length / union >= floor;
@@ -1205,17 +1224,14 @@ bool lyricsArtistsMatchStrict(String candidateArtist, String requestArtist) {
 
 final _searchWhitespace = RegExp(r'\s+');
 final _searchCredits = [
-  RegExp(
-    r'\s*[(\[]\s*(feat|ft|featuring|with)\b[^)\]]*[)\]]',
-    caseSensitive: false,
-  ),
+  RegExp(r'\s*[(\[]\s*(feat|ft|featuring|with)\b[^)\]]*[)\]]',
+      caseSensitive: false),
   RegExp(r'\s+(feat|ft|featuring)\.?\s+.*$', caseSensitive: false),
   RegExp(
-    r'\s*[(\[]\s*(official\s*)?(music\s*)?'
-    r'(video|audio|visuali[sz]er|lyrics?\s*video|lyrics?|m/?v|hd|hq|4k|full\s*song)'
-    r'\s*[)\]]',
-    caseSensitive: false,
-  ),
+      r'\s*[(\[]\s*(official\s*)?(music\s*)?'
+      r'(video|audio|visuali[sz]er|lyrics?\s*video|lyrics?|m/?v|hd|hq|4k|full\s*song)'
+      r'\s*[)\]]',
+      caseSensitive: false),
   RegExp(r'\s*[(\[]\s*official\s*[)\]]', caseSensitive: false),
 ];
 
@@ -1298,29 +1314,23 @@ List<LyricLine> parseTtml(String ttml) {
     raw = raw.replaceAll(r'\r\n', '\n').replaceAll(r'\n', '\n');
   }
   final pTag = RegExp(
-    r'<(?:[a-zA-Z0-9_-]+:)?p\b([^>]*?)>(.*?)</(?:[a-zA-Z0-9_-]+:)?p>',
-    dotAll: true,
-    caseSensitive: false,
-  );
+      r'<(?:[a-zA-Z0-9_-]+:)?p\b([^>]*?)>(.*?)</(?:[a-zA-Z0-9_-]+:)?p>',
+      dotAll: true,
+      caseSensitive: false);
   final spanTag = RegExp(
-    r'<(?:[a-zA-Z0-9_-]+:)?span\b([^>]*?)>(.*?)</(?:[a-zA-Z0-9_-]+:)?span>(\s*)',
-    dotAll: true,
-    caseSensitive: false,
-  );
+      r'<(?:[a-zA-Z0-9_-]+:)?span\b([^>]*?)>(.*?)</(?:[a-zA-Z0-9_-]+:)?span>(\s*)',
+      dotAll: true,
+      caseSensitive: false);
   final xmlTag = RegExp(r'<[^>]+>');
   final lines = <LyricLine>[];
 
   for (final p in pTag.allMatches(raw)) {
     final pAttrs = p.group(1) ?? '';
     final inner = p.group(2) ?? '';
-    final pBeginMatch = RegExp(
-      r'''(?:begin|start|startTime|from)=["']([^"']+)["']''',
-      caseSensitive: false,
-    ).firstMatch(pAttrs);
-    final pEndMatch = RegExp(
-      r'''(?:end|endTime|to)=["']([^"']+)["']''',
-      caseSensitive: false,
-    ).firstMatch(pAttrs);
+    final pBeginMatch = RegExp(r'''(?:begin|start|startTime|from)=["']([^"']+)["']''', caseSensitive: false).firstMatch(pAttrs);
+    final pEndMatch = RegExp(r'''(?:end|endTime|to)=["']([^"']+)["']''', caseSensitive: false).firstMatch(pAttrs);
+    final pAgentMatch = RegExp(r'''(?:agent)=["']([^"']+)["']''', caseSensitive: false).firstMatch(pAttrs);
+    final agent = pAgentMatch?.group(1);
     final start = _parseTtmlTime(pBeginMatch?.group(1) ?? '');
     final end = _parseTtmlTime(pEndMatch?.group(1) ?? '');
     final duration = (end - start).clamp(0, 1 << 31);
@@ -1331,19 +1341,38 @@ List<LyricLine> parseTtml(String ttml) {
       if (text.isEmpty) continue;
       // Line-synced TTML carries no syllables so that wordByWord racing
       // and providers correctly distinguish line sync vs word sync.
-      lines.add(
-        LyricLine(
-          timeMs: start,
-          durationMs: duration > 0 ? duration : 4000,
-          text: text,
-          syllables: const [],
-        ),
-      );
+      lines.add(LyricLine(
+        timeMs: start,
+        durationMs: duration > 0 ? duration : 4000,
+        text: text,
+        syllables: const [],
+        agent: agent,
+      ));
     } else {
       final syllables = <LyricSyllable>[];
       final buf = StringBuffer();
-      final hasExplicitInterTagSpaces = RegExp(r'</span>\s+<span')
-          .hasMatch(inner);
+      final hasExplicitInterTagSpaces =
+          RegExp(r'</span>\s+<span').hasMatch(inner);
+
+      // Pre-span text before spans.first
+      final firstSpan = spans.first;
+      if (firstSpan.start > 0) {
+        final preSpanRaw = inner.substring(0, firstSpan.start).replaceAll(xmlTag, '');
+        final preSpanText = _unescapeXml(preSpanRaw);
+        if (preSpanText.trim().isNotEmpty) {
+          final fAttrs = firstSpan.group(1) ?? '';
+          final fbMatch = RegExp(r'''(?:begin|start|startTime|from)=["']([^"']+)["']''', caseSensitive: false).firstMatch(fAttrs);
+          final fbTime = fbMatch != null ? _parseTtmlTime(fbMatch.group(1)!) : start;
+          final preDur = math.max(0, fbTime - start);
+          final sylText = preSpanText.endsWith(' ') ? preSpanText : '$preSpanText ';
+          syllables.add(LyricSyllable(
+            timeMs: start,
+            durationMs: preDur > 0 ? preDur : 500,
+            text: sylText,
+          ));
+          buf.write(sylText);
+        }
+      }
 
       for (var i = 0; i < spans.length; i++) {
         final s = spans[i];
@@ -1352,14 +1381,8 @@ List<LyricLine> parseTtml(String ttml) {
         final rawContent = s.group(2) ?? '';
         final trailingSpace = s.group(3) ?? '';
 
-        final beginMatch = RegExp(
-          r'''(?:begin|start|startTime|from)=["']([^"']+)["']''',
-          caseSensitive: false,
-        ).firstMatch(attrs);
-        final endMatch = RegExp(
-          r'''(?:end|endTime|to)=["']([^"']+)["']''',
-          caseSensitive: false,
-        ).firstMatch(attrs);
+        final beginMatch = RegExp(r'''(?:begin|start|startTime|from)=["']([^"']+)["']''', caseSensitive: false).firstMatch(attrs);
+        final endMatch = RegExp(r'''(?:end|endTime|to)=["']([^"']+)["']''', caseSensitive: false).firstMatch(attrs);
 
         if (beginMatch == null || endMatch == null) {
           // Nested or container span (e.g. <span ttm:role="x-bg">)
@@ -1369,33 +1392,23 @@ List<LyricLine> parseTtml(String ttml) {
             final ispan = innerSpans[j];
             final isInnerLast = isLast && j == innerSpans.length - 1;
             final iattrs = ispan.group(1) ?? '';
-            final ibMatch = RegExp(
-              r'''(?:begin|start|startTime|from)=["']([^"']+)["']''',
-              caseSensitive: false,
-            ).firstMatch(iattrs);
-            final ieMatch = RegExp(
-              r'''(?:end|endTime|to)=["']([^"']+)["']''',
-              caseSensitive: false,
-            ).firstMatch(iattrs);
+            final ibMatch = RegExp(r'''(?:begin|start|startTime|from)=["']([^"']+)["']''', caseSensitive: false).firstMatch(iattrs);
+            final ieMatch = RegExp(r'''(?:end|endTime|to)=["']([^"']+)["']''', caseSensitive: false).firstMatch(iattrs);
             if (ibMatch == null || ieMatch == null) continue;
             final ws = _parseTtmlTime(ibMatch.group(1) ?? '');
             final we = _parseTtmlTime(ieMatch.group(1) ?? '');
-            final wt = _unescapeXml(
-              ispan.group(2)?.replaceAll(xmlTag, '') ?? '',
-            );
+            final wt = _unescapeXml(ispan.group(2)?.replaceAll(xmlTag, '') ?? '');
             final iTrailing = ispan.group(3) ?? '';
             final addSpace = hasExplicitInterTagSpaces
                 ? (wt.endsWith(' ') || iTrailing.isNotEmpty)
                 : (!isInnerLast && !wt.endsWith(' '));
             final sylText = addSpace ? '${wt.trimRight()} ' : wt;
-            syllables.add(
-              LyricSyllable(
-                timeMs: ws,
-                durationMs: (we - ws).clamp(0, 1 << 31),
-                text: hasExplicitInterTagSpaces ? sylText : wt.trim(),
-                isBackground: isBg,
-              ),
-            );
+            syllables.add(LyricSyllable(
+              timeMs: ws,
+              durationMs: (we - ws).clamp(0, 1 << 31),
+              text: hasExplicitInterTagSpaces ? sylText : wt.trim(),
+              isBackground: isBg,
+            ));
             buf.write(sylText);
           }
           continue;
@@ -1409,27 +1422,24 @@ List<LyricLine> parseTtml(String ttml) {
             ? (wt.endsWith(' ') || trailingSpace.isNotEmpty)
             : (!isLast && !wt.endsWith(' '));
         final sylText = addSpace ? '${wt.trimRight()} ' : wt;
-        syllables.add(
-          LyricSyllable(
-            timeMs: ws,
-            durationMs: (we - ws).clamp(0, 1 << 31),
-            text: hasExplicitInterTagSpaces ? sylText : wt.trim(),
-            isBackground: isBg,
-          ),
-        );
+        syllables.add(LyricSyllable(
+          timeMs: ws,
+          durationMs: (we - ws).clamp(0, 1 << 31),
+          text: hasExplicitInterTagSpaces ? sylText : wt.trim(),
+          isBackground: isBg,
+        ));
         buf.write(sylText);
       }
 
       final text = buf.toString().trim();
       if (text.isEmpty) continue;
-      lines.add(
-        LyricLine(
-          timeMs: start,
-          durationMs: duration,
-          text: text,
-          syllables: syllables,
-        ),
-      );
+      lines.add(LyricLine(
+        timeMs: start,
+        durationMs: duration,
+        text: text,
+        syllables: syllables,
+        agent: agent,
+      ));
     }
   }
   lines.sort((a, b) => a.timeMs.compareTo(b.timeMs));

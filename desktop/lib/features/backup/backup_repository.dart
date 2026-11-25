@@ -36,18 +36,18 @@ class BackupPlaylist {
   });
 
   factory BackupPlaylist.fromJson(Map<String, dynamic> json) => BackupPlaylist(
-    id: json['id'] is num ? (json['id'] as num).toInt() : 0,
-    title: json['title']?.toString() ?? '',
-    subtitle: json['subtitle']?.toString() ?? '',
-    mode: json['mode']?.toString() ?? 'custom',
-    tracksJson: json['tracksJson']?.toString() ?? '[]',
-    createdAtMillis: json['createdAtMillis'] is num
-        ? (json['createdAtMillis'] as num).toInt()
-        : 0,
-    discoverSignature: json['discoverSignature']?.toString(),
-    customCoverUri: json['customCoverUri']?.toString(),
-    isPinned: json['isPinned'] == true,
-  );
+        id: json['id'] is num ? (json['id'] as num).toInt() : 0,
+        title: json['title']?.toString() ?? '',
+        subtitle: json['subtitle']?.toString() ?? '',
+        mode: json['mode']?.toString() ?? 'custom',
+        tracksJson: json['tracksJson']?.toString() ?? '[]',
+        createdAtMillis: json['createdAtMillis'] is num
+            ? (json['createdAtMillis'] as num).toInt()
+            : 0,
+        discoverSignature: json['discoverSignature']?.toString(),
+        customCoverUri: json['customCoverUri']?.toString(),
+        isPinned: json['isPinned'] == true,
+      );
 }
 
 class BackupPreview {
@@ -174,11 +174,9 @@ class BackupRepository {
     if (playlistsRaw is List) {
       for (final item in playlistsRaw) {
         if (item is Map) {
-          playlists.add(
-            BackupPlaylist.fromJson(
-              item.map((k, v) => MapEntry(k.toString(), v)),
-            ),
-          );
+          playlists.add(BackupPlaylist.fromJson(
+            item.map((k, v) => MapEntry(k.toString(), v)),
+          ));
         }
       }
     }
@@ -193,17 +191,15 @@ class BackupRepository {
     }
     final exclusions = decoded['recommendationExclusions'];
     final prefs = decoded['prefs'];
-    return BackupReadOk(
-      BackupPreview(
-        playlists: playlists,
-        newerLocal: newer,
-        exclusionCount: exclusions is List ? exclusions.length : 0,
-        homeShelfLayout: decoded['homeShelfLayout']?.toString(),
-        prefs: prefs is Map
-            ? prefs.map((k, v) => MapEntry(k.toString(), v))
-            : const {},
-      ),
-    );
+    return BackupReadOk(BackupPreview(
+      playlists: playlists,
+      newerLocal: newer,
+      exclusionCount: exclusions is List ? exclusions.length : 0,
+      homeShelfLayout: decoded['homeShelfLayout']?.toString(),
+      prefs: prefs is Map
+          ? prefs.map((k, v) => MapEntry(k.toString(), v))
+          : const {},
+    ));
   }
 
   Future<int> restore({
@@ -214,7 +210,9 @@ class BackupRepository {
     required bool overwriteNewer,
   }) async {
     await _restorePrefs(prefs, preview.prefs);
-    final blocked = {for (final playlist in preview.newerLocal) playlist.id};
+    final blocked = {
+      for (final playlist in preview.newerLocal) playlist.id,
+    };
     var applied = 0;
     for (final playlist in preview.playlists) {
       if (playlist.id == 0) continue;
@@ -320,6 +318,5 @@ class BackupRepository {
   }
 }
 
-final backupRepositoryProvider = Provider<BackupRepository>(
-  (ref) => BackupRepository(),
-);
+final backupRepositoryProvider =
+    Provider<BackupRepository>((ref) => BackupRepository());

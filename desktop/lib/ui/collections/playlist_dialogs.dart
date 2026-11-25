@@ -13,26 +13,31 @@ import '../components/inputs.dart';
 
 /// Shared playlist dialogs (create / rename / delete), used by the
 /// playlists browser and the local playlist detail page.
-Future<void> showWaveCreatePlaylist(BuildContext context, WidgetRef ref) async {
+Future<void> showWaveCreatePlaylist(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final controller = TextEditingController();
   final name = await showDialog<String>(
     context: context,
     builder: (context) => ContentDialog(
       title: const Text('New playlist'),
       content: TextBox(
-        decoration: katInputDecoration(),
+        decoration: waveInputDecoration(),
         controller: controller,
         placeholder: 'Playlist name',
         autofocus: true,
-        onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+        onSubmitted: (v) =>
+            Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        KatFilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+        WaveFilledButton(
+          onPressed: () => Navigator.of(context)
+              .pop(controller.text.trim()),
           child: const Text('Create'),
         ),
       ],
@@ -65,19 +70,20 @@ Future<void> showWaveAddToNewPlaylist(
     builder: (context) => ContentDialog(
       title: const Text('New playlist'),
       content: TextBox(
-        decoration: katInputDecoration(),
+        decoration: waveInputDecoration(),
         controller: controller,
         placeholder: 'Playlist name',
         autofocus: true,
         onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        KatFilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+        WaveFilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(controller.text.trim()),
           child: const Text('Create'),
         ),
       ],
@@ -95,24 +101,27 @@ Future<void> showWaveRenamePlaylist(
   WidgetRef ref,
   SavedPlaylist playlist,
 ) async {
-  final controller = TextEditingController(text: playlist.title);
+  final controller =
+      TextEditingController(text: playlist.title);
   final name = await showDialog<String>(
     context: context,
     builder: (context) => ContentDialog(
       title: const Text('Rename playlist'),
       content: TextBox(
-        decoration: katInputDecoration(),
+        decoration: waveInputDecoration(),
         controller: controller,
         autofocus: true,
-        onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+        onSubmitted: (v) =>
+            Navigator.of(context).pop(v.trim()),
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        KatFilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+        WaveFilledButton(
+          onPressed: () => Navigator.of(context)
+              .pop(controller.text.trim()),
           child: const Text('Save'),
         ),
       ],
@@ -139,19 +148,23 @@ Future<void> showWaveDeletePlaylist(
         '"${playlist.title}" will be removed from your library, including any copy on YouTube Music.',
       ),
       actions: [
-        KatButton(
-          onPressed: () => Navigator.of(context).pop(false),
+        WaveButton(
+          onPressed: () =>
+              Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        KatFilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
+        WaveFilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(true),
           child: const Text('Delete'),
         ),
       ],
     ),
   );
   if (confirm == true && context.mounted) {
-    await ref.read(playlistRepositoryProvider.notifier).delete(playlist.id);
+    await ref
+        .read(playlistRepositoryProvider.notifier)
+        .delete(playlist.id);
     if (context.mounted) {
       context.go('/playlists');
     }
@@ -162,7 +175,10 @@ Future<void> showWaveDeletePlaylist(
 /// Apple Music — no account needed) or a playlist file (CSV, M3U, text).
 /// Paste or pick, fetch a preview ("<title>" - N of M tracks matched),
 /// then import.
-Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
+Future<void> showWaveImportPlaylist(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final controller = TextEditingController();
   PlaylistLinkSource? source;
   bool busy = false;
@@ -226,11 +242,9 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
             bytes = await file.readAsBytes();
           } catch (e) {
             if (!context.mounted) return;
-            setState(
-              () => error = e is FormatException
-                  ? e.message
-                  : 'Could not read that file.',
-            );
+            setState(() => error = e is FormatException
+                ? e.message
+                : 'Could not read that file.');
             return;
           }
           if (!context.mounted) return;
@@ -293,7 +307,7 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextBox(
-                decoration: katInputDecoration(),
+                decoration: waveInputDecoration(),
                 controller: controller,
                 autofocus: true,
                 placeholder:
@@ -316,18 +330,23 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
                 const SizedBox(height: 12),
                 const Row(
                   children: [
-                    SizedBox(width: 16, height: 16, child: ProgressRing()),
-                    SizedBox(width: 8),
-                    Text(
-                      'Fetching playlist...',
-                      style: TextStyle(fontSize: 12),
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: ProgressRing(),
                     ),
+                    SizedBox(width: 8),
+                    Text('Fetching playlist...',
+                        style: TextStyle(fontSize: 12)),
                   ],
                 ),
               ],
               if (error != null) ...[
                 const SizedBox(height: 8),
-                Text(error!, style: const TextStyle(fontSize: 12)),
+                Text(
+                  error!,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
               if (ready != null) ...[
                 const SizedBox(height: 8),
@@ -339,16 +358,17 @@ Future<void> showWaveImportPlaylist(BuildContext context, WidgetRef ref) async {
             ],
           ),
           actions: [
-            KatButton(
+            WaveButton(
               onPressed: busy ? null : fromFile,
               child: const Text('From file...'),
             ),
-            KatButton(
+            WaveButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            KatFilledButton(
-              onPressed: busy ? null : (ready != null ? doImport : fetch),
+            WaveFilledButton(
+              onPressed:
+                  busy ? null : (ready != null ? doImport : fetch),
               child: Text(ready != null ? 'Import' : 'Fetch'),
             ),
           ],

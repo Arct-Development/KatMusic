@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 
 /// Last.fm API signing + InnerTube SAPISIDHASH helpers.
 ///
-/// Ported from KatMusic-native:
+/// Ported from KatMusic:
 /// - `data/network/LastFmSigner.kt` (md5 of sorted k+v + secret,
 ///   skipping `format`, `callback`, `api_sig`)
 /// - `data/music/InnerTubeMusicApi.kt` SAPISIDHASH computation.
@@ -19,17 +19,14 @@ class LastFmSigner {
 
   /// `md5(sorted(k+v concatenated) + secret)` lowercase hex.
   static String sign(Map<String, String> params, String secret) {
-    final entries =
-        params.entries
-            .where(
-              (e) =>
-                  e.key != 'format' &&
-                  e.key != 'callback' &&
-                  e.key != 'api_sig' &&
-                  e.value.isNotEmpty,
-            )
-            .toList()
-          ..sort((a, b) => a.key.compareTo(b.key));
+    final entries = params.entries
+        .where((e) =>
+            e.key != 'format' &&
+            e.key != 'callback' &&
+            e.key != 'api_sig' &&
+            e.value.isNotEmpty)
+        .toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
     final buffer = StringBuffer();
     for (final e in entries) {
       buffer.write(e.key);

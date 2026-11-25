@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../core/artwork/artwork_cache.dart';
+
 /// Measures a remote cover once and reports whether it is wide (16:9) or
 /// square (1:1), so podcast art keeps its own shape instead of being forced
 /// into one box.
@@ -22,24 +24,26 @@ class ImageAspect {
     final known = _cache[url];
     if (known != null) return Future.value(known);
     if (url.isEmpty) return Future.value(wide);
-    final provider = CachedNetworkImageProvider(url, maxWidth: 160);
+    final provider = ResizeImage(
+      CachedNetworkImageProvider(url, cacheManager: ArtworkCache.instance),
+      width: 160,
+      height: 160,
+      policy: ResizeImagePolicy.fit,
+    );
     final completer = Completer<double>();
     final stream = provider.resolve(const ImageConfiguration());
     late final ImageStreamListener listener;
-    listener = ImageStreamListener(
-      (info, _) {
-        final ui.Image img = info.image;
-        final ratio = img.height == 0 ? 1.0 : img.width / img.height;
-        final result = ratio > 1.4 ? wide : 1.0;
-        _cache[url] = result;
-        if (!completer.isCompleted) completer.complete(result);
-        stream.removeListener(listener);
-      },
-      onError: (Object _, StackTrace? stack) {
-        if (!completer.isCompleted) completer.complete(wide);
-        stream.removeListener(listener);
-      },
-    );
+    listener = ImageStreamListener((info, _) {
+      final ui.Image img = info.image;
+      final ratio = img.height == 0 ? 1.0 : img.width / img.height;
+      final result = ratio > 1.4 ? wide : 1.0;
+      _cache[url] = result;
+      if (!completer.isCompleted) completer.complete(result);
+      stream.removeListener(listener);
+    }, onError: (Object _, StackTrace? stack) {
+      if (!completer.isCompleted) completer.complete(wide);
+      stream.removeListener(listener);
+    });
     stream.addListener(listener);
     return completer.future.timeout(
       const Duration(seconds: 8),

@@ -8,11 +8,7 @@ import 'package:katmusic_desktop/features/library/playlists.dart';
 
 YouTubeMusicTrack _track(String id, String title, String artist) =>
     YouTubeMusicTrack(
-      videoId: id,
-      title: title,
-      artist: artist,
-      artworkUrl: 'art-$id',
-    );
+        videoId: id, title: title, artist: artist, artworkUrl: 'art-$id');
 
 class _FakeSource implements PlaylistTrackSource {
   YouTubePlaylistResult? playlist;
@@ -58,19 +54,16 @@ Dio _pageDio() {
     InterceptorsWrapper(
       onRequest: (options, handler) {
         final url = options.uri.toString();
-        if (url.contains('spotify.com/embed')) {
-          handler.resolve(
-            Response(
-              requestOptions: options,
-              statusCode: 200,
-              data: '<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"state":{"data":{"entity":{"uri":"spotify:playlist:P1","title":"Spot Mix","trackList":[{"uri":"spotify:track:T1","title":"Hit One","subtitle":"Star A"},{"uri":"spotify:track:T2","title":"Hit Two","subtitle":"Star B"},{"uri":"spotify:track:T3","title":"Lost Song","subtitle":"Nobody"}]}}}}}}</script>',
-            ),
-          );
-          return;
-        }
-        handler.reject(
-          DioException(requestOptions: options, type: DioExceptionType.unknown),
-        );
+          if (url.contains('spotify.com/embed')) {
+            handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data:
+                    '<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"state":{"data":{"entity":{"uri":"spotify:playlist:P1","title":"Spot Mix","trackList":[{"uri":"spotify:track:T1","title":"Hit One","subtitle":"Star A"},{"uri":"spotify:track:T2","title":"Hit Two","subtitle":"Star B"},{"uri":"spotify:track:T3","title":"Lost Song","subtitle":"Nobody"}]}}}}}}</script>'));
+            return;
+          }
+        handler.reject(DioException(
+            requestOptions: options, type: DioExceptionType.unknown));
       },
     ),
   );
@@ -108,7 +101,10 @@ void main() {
     expect(preview.title, 'Spot Mix');
     expect(preview.totalRows, 3);
     expect(preview.matchedTracks.length, 2);
-    expect(preview.matchedTracks.map((t) => t.videoId).toList(), ['v1', 'v2']);
+    expect(
+      preview.matchedTracks.map((t) => t.videoId).toList(),
+      ['v1', 'v2'],
+    );
   });
 
   test('garbage, mixes and empty results fail loudly', () async {
@@ -119,24 +115,18 @@ void main() {
     );
     await expectLater(
       previewPlaylistLinkWith(
-        source,
-        _pageDio(),
-        'https://music.youtube.com/playlist?list=RDxyz',
-      ),
+          source, _pageDio(), 'https://music.youtube.com/playlist?list=RDxyz'),
       throwsA(isA<FormatException>()),
     );
     source.playlist = const YouTubePlaylistResult(id: 'PLempty', title: 'E');
     await expectLater(
       previewPlaylistLinkWith(
-        source,
-        _pageDio(),
-        'https://music.youtube.com/playlist?list=PLempty',
-      ),
+          source, _pageDio(), 'https://music.youtube.com/playlist?list=PLempty'),
       throwsA(isA<StateError>()),
     );
   });
 
-  test('importPreview creates playlist with matched tracks only', () async {
+    test('importPreview creates playlist with matched tracks only', () async {
     final writer = _FakeWriter();
     final created = await importPreviewWith(
       writer,
@@ -154,24 +144,19 @@ void main() {
     expect(writer.added.map((t) => t.videoId).toList(), ['v1', 'v2']);
   });
 
-  test(
-    'importPreview refuses an empty preview (never an empty playlist)',
-    () async {
-      final writer = _FakeWriter();
-      await expectLater(
-        importPreviewWith(
-          writer,
-          const PlaylistImportPreview(
-            title: 'Nothing',
-            totalRows: 3,
-            matchedTracks: [],
-          ),
-        ),
-        throwsA(isA<StateError>()),
-      );
-      expect(writer.createdTitle, isNull);
-    },
-  );
+  test('importPreview refuses an empty preview (never an empty playlist)',
+      () async {
+    final writer = _FakeWriter();
+    await expectLater(
+      importPreviewWith(
+        writer,
+        const PlaylistImportPreview(
+            title: 'Nothing', totalRows: 3, matchedTracks: []),
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(writer.createdTitle, isNull);
+  });
 
   test('stalled YouTube fetch fails loudly under the cap', () async {
     final source = _FakeSource();

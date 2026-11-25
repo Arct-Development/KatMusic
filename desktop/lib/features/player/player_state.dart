@@ -16,14 +16,12 @@ class PlayerSnapshot {
   final bool shuffleEnabled;
   final RepeatMode repeatMode;
   final double speed;
-
   /// Independent of [speed]. 1.0 is concert pitch. Range used by the
   /// dock is 0.5–1.5.
   final double pitch;
   final ResolvedStream? stream;
   final String? error;
   final Duration? sleepRemaining;
-
   /// Length the user picked, in minutes. Null while the timer is off.
   /// Stays put as [sleepRemaining] counts down so the menu can keep
   /// the chosen row checked.
@@ -84,29 +82,30 @@ class PlayerSnapshot {
     PcmFormat? outputFormat,
     bool clearOutputFormat = false,
     bool? outputIsFloat,
-  }) => PlayerSnapshot(
-    current: clearCurrent ? null : (current ?? this.current),
-    queue: queue ?? this.queue,
-    currentIndex: currentIndex ?? this.currentIndex,
-    sourceLabel: sourceLabel ?? this.sourceLabel,
-    isPlaying: isPlaying ?? this.isPlaying,
-    isBuffering: isBuffering ?? this.isBuffering,
-    position: position ?? this.position,
-    buffered: buffered ?? this.buffered,
-    duration: duration ?? this.duration,
-    shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
-    repeatMode: repeatMode ?? this.repeatMode,
-    speed: speed ?? this.speed,
-    pitch: pitch ?? this.pitch,
-    stream: clearStream ? null : (stream ?? this.stream),
-    error: clearError ? null : (error ?? this.error),
-    sleepRemaining: clearSleep ? null : (sleepRemaining ?? this.sleepRemaining),
-    sleepMinutes: clearSleep ? null : (sleepMinutes ?? this.sleepMinutes),
-    bitrateKbps: bitrateKbps ?? this.bitrateKbps,
-    volume: volume ?? this.volume,
-    outputFormat: clearOutputFormat
-        ? null
-        : (outputFormat ?? this.outputFormat),
-    outputIsFloat: outputIsFloat ?? this.outputIsFloat,
-  );
+  }) =>
+      PlayerSnapshot(
+        current: clearCurrent ? null : (current ?? this.current),
+        queue: queue ?? this.queue,
+        currentIndex: currentIndex ?? this.currentIndex,
+        sourceLabel: sourceLabel ?? this.sourceLabel,
+        isPlaying: isPlaying ?? this.isPlaying,
+        isBuffering: isBuffering ?? this.isBuffering,
+        position: position ?? this.position,
+        buffered: buffered ?? this.buffered,
+        duration: duration ?? this.duration,
+        shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
+        repeatMode: repeatMode ?? this.repeatMode,
+        speed: speed ?? this.speed,
+        pitch: pitch ?? this.pitch,
+        stream: clearStream ? null : (stream ?? this.stream),
+        error: clearError ? null : (error ?? this.error),
+        sleepRemaining:
+            clearSleep ? null : (sleepRemaining ?? this.sleepRemaining),
+        sleepMinutes: clearSleep ? null : (sleepMinutes ?? this.sleepMinutes),
+        bitrateKbps: bitrateKbps ?? this.bitrateKbps,
+        volume: volume ?? this.volume,
+        outputFormat:
+            clearOutputFormat ? null : (outputFormat ?? this.outputFormat),
+        outputIsFloat: outputIsFloat ?? this.outputIsFloat,
+      );
 }

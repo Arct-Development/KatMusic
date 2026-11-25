@@ -71,4 +71,5 @@ void main() {
     db.cacheClear();
     expect(db.cacheStats(), isEmpty);
   });
+
 }

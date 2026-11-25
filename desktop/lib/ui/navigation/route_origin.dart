@@ -10,11 +10,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// inherit a stale one — those fall back to the plain crossfade.
 ///
 /// Only the pointer position is carried, not the tapped widget's rect: cards
-/// hand their taps straight to `katOpen` from dozens of call sites, a global
+/// hand their taps straight to `waveOpen` from dozens of call sites, a global
 /// key per card would be far more invasive, and for any card actually pressed
 /// the two coincide (the press lands inside the card).
-class KatRouteOrigin {
-  KatRouteOrigin._(this.position, this.recordedAt);
+class WaveRouteOrigin {
+  WaveRouteOrigin._(this.position, this.recordedAt);
 
   /// Pointer position in window coordinates.
   final Offset position;
@@ -24,15 +24,15 @@ class KatRouteOrigin {
   /// How long a recorded anchor stays eligible for consumption.
   static const Duration ttl = Duration(milliseconds: 600);
 
-  static KatRouteOrigin? _last;
+  static WaveRouteOrigin? _last;
 
   /// Called from the shell's single pointer-down listener.
   static void record(Offset position) {
-    _last = KatRouteOrigin._(position, DateTime.now());
+    _last = WaveRouteOrigin._(position, DateTime.now());
   }
 
   /// Consumes the recorded anchor if it is fresh; null otherwise.
-  static KatRouteOrigin? consume() {
+  static WaveRouteOrigin? consume() {
     final last = _last;
     _last = null;
     if (last == null) return null;
@@ -57,6 +57,9 @@ class KatRouteOrigin {
   /// horizontally the page grows symmetrically instead of sliding.
   Alignment alignmentIn(Size size) {
     if (size.width <= 0 || size.height <= 0) return Alignment.center;
-    return Alignment(0, (2 * position.dy / size.height - 1).clamp(-1.0, 1.0));
+    return Alignment(
+      0,
+      (2 * position.dy / size.height - 1).clamp(-1.0, 1.0),
+    );
   }
 }

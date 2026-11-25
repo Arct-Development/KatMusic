@@ -2,15 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_providers.dart';
 
-const _ttmlDoc =
-    '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
+const _ttmlDoc = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
     '<p begin="00:00.10" end="00:02.00">'
     '<span begin="00:00.10" end="00:00.50">Hello</span>'
     '<span begin="00:00.50" end="00:01.00">world</span></p>'
     '</div></body></tt>';
 
-const _karaokeDoc =
-    '[1000,2000](1000,200)Hello (1500,300)world\n'
+const _karaokeDoc = '[1000,2000](1000,200)Hello (1500,300)world\n'
     '[3000,1500](3000,400)Second (3600,300)line\n';
 
 void main() {
@@ -47,7 +45,8 @@ void main() {
   });
 
   test('enhanced LRC falls through the chain', () {
-    const enhanced = '[00:01.00]Hel<00:01.20>lo\n[00:05.00]Wor<00:05.30>ld\n';
+    const enhanced =
+        '[00:01.00]Hel<00:01.20>lo\n[00:05.00]Wor<00:05.30>ld\n';
     final lines = parseBetterDocument(enhanced);
     expect(lines, isNotNull);
     expect(lines!.first.hasSyllables, isTrue);
@@ -61,21 +60,14 @@ void main() {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           if (options.uri.toString().contains('boidu.dev')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: '{"lyrics":"$plainLrc"}',
-              ),
-            );
+                data: '{"lyrics":"$plainLrc"}'));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );

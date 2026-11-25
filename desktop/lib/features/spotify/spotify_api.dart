@@ -2,12 +2,15 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/artwork/animated_artwork_service.dart'
     show normalizeCanvasMatch;
 import '../../core/diagnostics/diagnostics_log.dart';
 import '../../core/storage/prefs.dart';
+import '../performance/performance_controller.dart';
+import '../settings/theme_controller.dart';
 import 'spotify_auth.dart';
 import 'spotify_web_player.dart';
 
@@ -66,6 +69,30 @@ class SpotifyPlaylistContent {
   });
 }
 
+/// One card on Spotify's Home: a playlist, album or artist.
+class SpotifyHomeItem {
+  /// `playlist`, `album` or `artist`.
+  final String kind;
+  final String id;
+  final String name;
+  final String subtitle;
+  final String artworkUrl;
+  const SpotifyHomeItem({
+    required this.kind,
+    required this.id,
+    required this.name,
+    this.subtitle = '',
+    this.artworkUrl = '',
+  });
+}
+
+/// One titled row of Spotify's Home ("Made for you", "Jump back in", …).
+class SpotifyHomeSection {
+  final String title;
+  final List<SpotifyHomeItem> items;
+  const SpotifyHomeSection({required this.title, required this.items});
+}
+
 /// A Spotify Canvas: the short vertical (9:16) looping clip of a track.
 class SpotifyCanvasClip {
   final String url;
@@ -83,7 +110,7 @@ class SpotifyCanvasResult {
 }
 
 /// Spotify web-player GraphQL ("Pathfinder") client: account playlists,
-/// Liked Songs, track search and Canvas. Port of the KatMusic-Native
+/// Liked Songs, track search and Canvas. Port of the KatMusic
 /// Spotify importer / canvas code.
 class SpotifyApi {
   SpotifyApi(this._auth);
@@ -96,6 +123,11 @@ class SpotifyApi {
   static const _canvazEndpoint =
       'https://spclient.wg.spotify.com/canvaz-cache/v0/canvases';
 
+  /// What the web player calls for "Go to song radio": maps a seed track
+  /// to the playlist of its radio.
+  static const _songRadioEndpoint =
+      'https://spclient.wg.spotify.com/inspiredby-mix/v2/seed_to_playlist';
+
   // Last known hashes; the live ones are read from the web player.
   static const _knownCanvasHash =
       '575138ab27cd5c1b3e54da54d0a7cc8d85485402de26340c2145f0f6bb5e7a9f';
@@ -107,7 +139,7 @@ class SpotifyApi {
       '087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240';
 
   /// Native's primary search: `searchTracks` with this fixed hash (proven in
-  /// KatMusic-Native; not read from the player, which no longer declares it).
+  /// KatMusic; not read from the player, which no longer declares it).
   static const _searchTracksHash =
       'bc1ca2fcd0ba1013a0fc88e6cc4f190af501851e3dafd3e1ef85840297694428';
   static const _knownSearchHash =
@@ -163,8 +195,10 @@ class SpotifyApi {
         ),
       );
       if ((res.statusCode ?? 0) ~/ 100 != 2) {
+        final body = (res.data ?? '').replaceAll(RegExp(r'\s+'), ' ');
         DiagnosticsLog.info(
-          'spotify query op=$operation http=${res.statusCode}',
+          'spotify query op=$operation http=${res.statusCode} '
+          'body=${body.length > 160 ? body.substring(0, 160) : body}',
         );
         return null;
       }
@@ -354,6 +388,210 @@ class SpotifyApi {
   // -- canvas -------------------------------------------------------------
 
   /// The Spotify Canvas of a track, or the reason there is none.
+  // -- home -----------------------------------------------------------------
+
+  /// Spotify's own Home feed for the signed-in account, as the web player
+  /// shows it: the `home` query, its hash read from the live player. Empty
+  /// when there is no session or the player no longer declares the query.
+  Future<List<SpotifyHomeSection>> home() async {
+    final hash =
+        await SpotifyWebPlayer.findHash(_dio, SpotifyWebPlayer.homeOperation);
+    if (hash == null) return const [];
+    // Same variables as the web player; without homeEndUserIntegration and
+    // a non-empty sp_t (its anonymous device id) Spotify answers 400.
+    final vars = <String, Object?>{
+      'homeEndUserIntegration': 'INTEGRATION_WEB_PLAYER',
+      'timeZone': _timeZone(),
+      'sp_t': (await _auth.deviceId()).replaceAll('-', ''),
+      'facet': '',
+      'sectionItemsLimit': 10,
+    };
+    final root = await _query(SpotifyWebPlayer.homeOperation, vars, hash) ??
+        await _post(SpotifyWebPlayer.homeOperation, vars, hash);
+    final sections = parseHome(root);
+    DiagnosticsLog.info('spotify home sections=${sections.length}');
+    return sections;
+  }
+
+  // shortcut: Windows reports a display name ("India Standard Time"), not
+  // an IANA zone, so the zone is derived from the UTC offset (common
+  // half-hour zones mapped, whole hours as Etc/GMT±N). Use a timezone
+  // package if Home's time-of-day rows ever need the exact zone.
+  static String _timeZone() {
+    final now = DateTime.now();
+    if (now.timeZoneName.contains('/')) return now.timeZoneName;
+    final minutes = now.timeZoneOffset.inMinutes;
+    const halfHours = {
+      330: 'Asia/Kolkata',
+      345: 'Asia/Kathmandu',
+      390: 'Asia/Yangon',
+      570: 'Australia/Darwin',
+      630: 'Australia/Adelaide',
+      -150: 'America/St_Johns',
+      270: 'Asia/Kabul',
+      210: 'Asia/Tehran',
+    };
+    final named = halfHours[minutes];
+    if (named != null) return named;
+    if (minutes == 0 || minutes % 60 != 0) return 'UTC';
+    final h = minutes ~/ 60;
+    // Etc/GMT signs are inverted: UTC+5 is Etc/GMT-5.
+    return h > 0 ? 'Etc/GMT-$h' : 'Etc/GMT+${-h}';
+  }
+
+  /// `data.home.sectionContainer.sections.items[]` → titled card rows.
+  @visibleForTesting
+  static List<SpotifyHomeSection> parseHome(Map<String, dynamic>? root) {
+    final sections =
+        _at(root, ['data', 'home', 'sectionContainer', 'sections', 'items']);
+    if (sections is! List) return const [];
+    // Group sections by normalized title to combine single-card micro-shelves
+    // (e.g. multiple "Made for you", "Based on your recent listening", or
+    // "More like <Artist>" sections) into rich horizontal rails.
+    final grouped = <String, ({String title, List<SpotifyHomeItem> items, Set<String> seenIds})>{};
+    for (final s in sections) {
+      final rawTitle = _text(_at(s, ['data', 'title', 'transformedLabel'])).isNotEmpty
+          ? _text(_at(s, ['data', 'title', 'transformedLabel']))
+          : _text(_at(s, ['data', 'title', 'text']));
+      final title = rawTitle.trim().isEmpty ? 'For you' : rawTitle.trim();
+      final key = title.toLowerCase();
+
+      final items = _at(s, ['sectionItems', 'items']);
+      if (items is! List) continue;
+      final cards = <SpotifyHomeItem>[];
+      for (final it in items) {
+        final card = _homeItem(_at(it, ['content', 'data']));
+        if (card != null) cards.add(card);
+      }
+      if (cards.isEmpty) continue;
+
+      final entry = grouped.putIfAbsent(
+        key,
+        () => (title: title, items: <SpotifyHomeItem>[], seenIds: <String>{}),
+      );
+      for (final card in cards) {
+        final cardKey = '${card.kind}:${card.id}';
+        if (entry.seenIds.add(cardKey)) {
+          entry.items.add(card);
+        }
+      }
+    }
+    return [
+      for (final entry in grouped.values)
+        if (entry.items.isNotEmpty)
+          SpotifyHomeSection(
+            title: entry.title,
+            items: entry.items,
+          ),
+    ];
+  }
+
+  static SpotifyHomeItem? _homeItem(Object? data) {
+    if (data is! Map) return null;
+    final uri = _text(data['uri']);
+    final parts = uri.split(':');
+    if (parts.length != 3 || parts[0] != 'spotify') return null;
+    final kind = parts[1];
+    final name = _text(data['name']).isNotEmpty
+        ? _text(data['name'])
+        : _text(_at(data, ['profile', 'name']));
+    if (name.isEmpty) return null;
+    switch (kind) {
+      case 'playlist':
+        return SpotifyHomeItem(
+          kind: kind,
+          id: parts[2],
+          name: name,
+          subtitle: _text(_at(data, ['ownerV2', 'data', 'name'])),
+          artworkUrl: _firstImage(data['images']),
+        );
+      case 'album':
+        final artists = _at(data, ['artists', 'items']);
+        return SpotifyHomeItem(
+          kind: kind,
+          id: parts[2],
+          name: name,
+          subtitle: artists is List && artists.isNotEmpty
+              ? _text(_at(artists.first, ['profile', 'name']))
+              : '',
+          artworkUrl: _firstSource(_at(data, ['coverArt', 'sources'])),
+        );
+      case 'artist':
+        return SpotifyHomeItem(
+          kind: kind,
+          id: parts[2],
+          name: name,
+          subtitle: 'Artist',
+          artworkUrl:
+              _firstSource(_at(data, ['visuals', 'avatarImage', 'sources'])),
+        );
+    }
+    return null; // podcasts, episodes, audiobooks: not played here
+  }
+
+  // -- song radio ---------------------------------------------------------
+
+  /// Spotify's own song radio for a track, exactly as the web player builds
+  /// it ("Go to song radio"): the seed's inspired-by-mix playlist, read with
+  /// the same `fetchPlaylist` query as any playlist. Empty when there is no
+  /// session, no match on Spotify, or no radio for the seed.
+  Future<List<SpotifyTrackRow>> songRadio({
+    required String title,
+    required String artist,
+    int durationMs = 0,
+  }) async {
+    final tag = 'spotify-radio "$title" - "$artist"';
+    final match = await _searchTrack(title, artist, durationMs);
+    if (match == null) {
+      DiagnosticsLog.info('$tag stage=search ok=false');
+      return const [];
+    }
+    final headers = await _authHeaders(appPlatform: true);
+    if (headers == null) return const [];
+    try {
+      final res = await _dio.get<String>(
+        '$_songRadioEndpoint/spotify:track:${match.id}',
+        queryParameters: const {'response-format': 'json'},
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: headers,
+          validateStatus: (_) => true,
+        ),
+      );
+      final playlistId = (res.statusCode ?? 0) ~/ 100 == 2
+          ? songRadioPlaylistId(res.data ?? '')
+          : null;
+      DiagnosticsLog.info(
+        '$tag stage=seed http=${res.statusCode} found=${playlistId != null}',
+      );
+      if (playlistId == null) return const [];
+      final playlist = await _playlist(playlistId);
+      return playlist?.tracks ?? const [];
+    } catch (e) {
+      DiagnosticsLog.info('$tag error=${e.runtimeType}');
+      return const [];
+    }
+  }
+
+  /// The radio playlist id in a `seed_to_playlist` answer
+  /// (`{"mediaItems":[{"uri":"spotify:playlist:…"}]}`).
+  @visibleForTesting
+  static String? songRadioPlaylistId(String body) {
+    try {
+      final root = jsonDecode(body);
+      final items = root is Map ? root['mediaItems'] : null;
+      if (items is! List) return null;
+      for (final it in items) {
+        final uri = it is Map ? it['uri']?.toString() ?? '' : '';
+        if (uri.startsWith('spotify:playlist:')) {
+          final id = uri.substring('spotify:playlist:'.length);
+          if (id.isNotEmpty) return id;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<SpotifyCanvasResult> canvas({
     required String title,
     required String artist,
@@ -429,7 +667,7 @@ class SpotifyApi {
     for (final (op, hash) in ops) {
       for (final q in queries) {
         final vars = op == 'searchTracks'
-            // Exactly what KatMusic-Native sends.
+            // Exactly what KatMusic sends.
             ? <String, Object?>{
                 'searchTerm': q,
                 'offset': 0,
@@ -829,6 +1067,18 @@ final spotifyApiProvider = Provider<SpotifyApi>(
   (ref) => SpotifyApi(ref.watch(spotifyAuthProvider)),
 );
 
+/// Spotify's Home feed, loaded only while Spotify is the recommendation
+/// source and an account is connected. Empty otherwise.
+final spotifyHomeProvider =
+    FutureProvider<List<SpotifyHomeSection>>((ref) async {
+  final auth = ref.watch(spotifyAuthProvider);
+  if (!auth.connected) return const [];
+  if (ref.watch(prefsProvider).recommendationSource != 'spotify') {
+    return const [];
+  }
+  return ref.watch(spotifyApiProvider).home();
+});
+
 /// Account playlists (Liked Songs first). Empty when not connected.
 final spotifyPlaylistsProvider = FutureProvider<List<SpotifyPlaylistSummary>>((
   ref,
@@ -855,7 +1105,31 @@ final spotifyPlaylistContentProvider =
       return ref.watch(spotifyApiProvider).playlist(id);
     });
 
+/// Master toggle for looping Canvas & motion artwork across Now Playing
+/// (Settings → Playback). Also forced off while Performance Mode is active.
+final canvasEnabledProvider = Provider<bool>(
+  (ref) {
+    ref.watch(themeControllerProvider);
+    if (ref.watch(performanceModeProvider)) return false;
+    return ref.watch(prefsProvider).canvasEnabled;
+  },
+);
+
 /// Whether Spotify canvases are used (Settings → Integrations).
 final spotifyCanvasEnabledProvider = Provider<bool>(
-  (ref) => ref.watch(prefsProvider).spotifyCanvasEnabled,
+  (ref) {
+    ref.watch(themeControllerProvider);
+    if (ref.watch(performanceModeProvider)) return false;
+    if (!ref.watch(prefsProvider).canvasEnabled) return false;
+    return ref.watch(prefsProvider).spotifyCanvasEnabled;
+  },
+);
+
+/// Whether Full Bleed prefers Spotify Canvas ahead of Apple Music / Tidal
+/// (Settings → Integrations → Spotify).
+final preferSpotifyCanvasProvider = Provider<bool>(
+  (ref) {
+    ref.watch(themeControllerProvider);
+    return ref.watch(prefsProvider).preferSpotifyCanvas;
+  },
 );

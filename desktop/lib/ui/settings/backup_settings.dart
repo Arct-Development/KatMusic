@@ -28,9 +28,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
   Future<void> _export() async {
     setState(() => _busy = true);
     try {
-      final json = ref
-          .read(backupRepositoryProvider)
-          .build(
+      final json = ref.read(backupRepositoryProvider).build(
             prefs: ref.read(prefsProvider),
             db: ref.read(databaseProvider),
             playlists: ref.read(playlistRepositoryProvider),
@@ -63,10 +61,8 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
       allowedExtensions: const ['json'],
     );
     if (picked == null) return;
-    final content = utf8.decode(
-      await picked.readAsBytes(),
-      allowMalformed: true,
-    );
+    final content =
+        utf8.decode(await picked.readAsBytes(), allowMalformed: true);
     final repo = ref.read(backupRepositoryProvider);
     final playlists = ref.read(playlistRepositoryProvider.notifier);
     final parsed = repo.read(content, playlists.all);
@@ -92,11 +88,11 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
             'unless you overwrite them: $names',
           ),
           actions: [
-            KatButton(
+            WaveButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Keep newer'),
             ),
-            KatFilledButton(
+            WaveFilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Overwrite'),
             ),
@@ -138,23 +134,23 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Backup', style: KatType.trackTitle),
+        Text('Backup', style: WaveType.trackTitle),
         const SizedBox(height: 4),
         Text(
           'Playlists, hidden recommendations, home layout and settings. '
           'Accounts, cookies and keys are never included.',
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
         ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            KatFilledButton(
+            WaveFilledButton(
               onPressed: _busy ? null : _export,
               child: const Text('Export backup'),
             ),
-            KatButton(
+            WaveButton(
               onPressed: _busy ? null : _import,
               child: const Text('Import backup'),
             ),
@@ -164,7 +160,7 @@ class _BackupSettingsState extends ConsumerState<BackupSettings> {
           const SizedBox(height: 8),
           Text(
             _status,
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
         ],
       ],

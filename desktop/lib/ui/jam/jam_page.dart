@@ -7,23 +7,24 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/storage/prefs.dart';
 import '../../features/jam/jam_client.dart';
+import '../../features/player/playback_service.dart';
 import '../components/artwork.dart';
 import '../components/buttons.dart';
 import '../components/inputs.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Collaborative listening room. Local playback keeps running if the
 /// server cannot be reached; the error is shown here.
-class KatJamPage extends ConsumerStatefulWidget {
+class WaveJamPage extends ConsumerStatefulWidget {
   final String? initialCode;
-  const KatJamPage({super.key, this.initialCode});
+  const WaveJamPage({super.key, this.initialCode});
 
   @override
-  ConsumerState<KatJamPage> createState() => _KatJamPageState();
+  ConsumerState<WaveJamPage> createState() => _WaveJamPageState();
 }
 
-class _KatJamPageState extends ConsumerState<KatJamPage> {
+class _WaveJamPageState extends ConsumerState<WaveJamPage> {
   late final TextEditingController _name;
   late final TextEditingController _code;
   late final TextEditingController _chat;
@@ -33,32 +34,19 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
   bool _copied = false;
   JamChatLine? _replyTo;
   Timer? _noticeTimer;
-  Timer? _countsTimer;
-  Map<String, int> _counts = const {};
 
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController(text: ref.read(prefsProvider).jamDisplayName);
+    _name = TextEditingController(
+      text: ref.read(prefsProvider).jamDisplayName,
+    );
     _code = TextEditingController(text: widget.initialCode ?? '');
     _chat = TextEditingController();
-    _loadCounts();
-    _countsTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (ref.read(jamControllerProvider).phase != JamPhase.active) {
-        _loadCounts();
-      }
-    });
-  }
-
-  Future<void> _loadCounts() async {
-    final counts = await ref
-        .read(jamControllerProvider.notifier)
-        .fetchRoomCounts();
-    if (mounted && counts.isNotEmpty) setState(() => _counts = counts);
   }
 
   @override
-  void didUpdateWidget(KatJamPage oldWidget) {
+  void didUpdateWidget(WaveJamPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     final code = widget.initialCode;
     if (code != null && code != oldWidget.initialCode) _code.text = code;
@@ -87,14 +75,12 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
     });
   }
 
+  /// Just the link: chat apps turn it into a preview card that opens the
+  /// Jam invite page.
   Future<void> _copyInvite(String code) async {
-    // Just the link: chat apps turn it into a preview card and tapping it
-    // opens the installed KatMusic.
-    await Clipboard.setData(
-      ClipboardData(
-        text: ref.read(jamControllerProvider.notifier).inviteLink(code),
-      ),
-    );
+    await Clipboard.setData(ClipboardData(
+      text: ref.read(jamControllerProvider.notifier).inviteLink(code),
+    ));
     if (!mounted) return;
     setState(() => _copied = true);
     await Future<void>.delayed(const Duration(seconds: 2));
@@ -128,7 +114,6 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
   @override
   void dispose() {
     _noticeTimer?.cancel();
-    _countsTimer?.cancel();
     _name.dispose();
     _code.dispose();
     _chat.dispose();
@@ -144,11 +129,14 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
       jamControllerProvider.select((s) => s.chat.length),
       (_, _) => _scrollChatToEnd(),
     );
-    ref.listen<JamSnapshot>(jamControllerProvider, (prev, next) {
-      if (prev?.notice != next.notice || prev?.retryAtMs != next.retryAtMs) {
-        _scheduleNoticeClear(next);
-      }
-    });
+    ref.listen<JamSnapshot>(
+      jamControllerProvider,
+      (prev, next) {
+        if (prev?.notice != next.notice || prev?.retryAtMs != next.retryAtMs) {
+          _scheduleNoticeClear(next);
+        }
+      },
+    );
     final active = jam.phase == JamPhase.active;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
@@ -157,15 +145,19 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
         children: [
           Row(
             children: [
-              Text('Jam', style: KatType.pageTitle),
+              Text('Jam', style: WaveType.pageTitle),
               if (active) ...[
                 const SizedBox(width: 12),
-                _Pill(label: 'Live', color: KatColors.success, dot: true),
+                _Pill(
+                  label: 'Live',
+                  color: WaveColors.success,
+                  dot: true,
+                ),
               ],
               const Spacer(),
-              KatIconButton(
+              WaveIconButton(
                 tooltip: 'Close',
-                icon: const Icon(KatIcons.close, size: 14),
+                icon: const Icon(WaveIcons.close, size: 14),
                 onPressed: () => context.go('/home'),
               ),
             ],
@@ -174,10 +166,10 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
           Text(
             active
                 ? 'Playback stays in sync with everyone in the room.'
-                : 'Listen together. Rooms run on a hosted Clash Projects '
-                      'server; if it is unreachable, playback on this device '
-                      'keeps going.',
-            style: KatType.body.copyWith(color: katTextSecondary(context)),
+                : 'Listen together. Rooms run on the hosted KatMusic Jam '
+                    'server; if it is unreachable, playback on this device '
+                    'keeps going.',
+            style: WaveType.body.copyWith(color: waveTextSecondary(context)),
           ),
           const SizedBox(height: 20),
           Expanded(child: active ? _room(context, jam) : _entry(context, jam)),
@@ -191,8 +183,10 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
   Widget _entry(BuildContext context, JamSnapshot jam) {
     final busy = jam.phase == JamPhase.connecting;
     final controller = ref.read(jamControllerProvider.notifier);
-    void remember() => ref.read(prefsProvider).setJamDisplayName(_name.text);
+    void remember() =>
+        ref.read(prefsProvider).setJamDisplayName(_name.text);
     return SingleChildScrollView(
+      padding: waveDockPadding(context, EdgeInsets.zero),
       child: Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
@@ -219,7 +213,7 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                     TextBox(
                       controller: _name,
                       placeholder: 'Listener',
-                      decoration: katInputDecoration(),
+                      decoration: waveInputDecoration(),
                     ),
                   ],
                 ),
@@ -229,72 +223,12 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Always-on rooms', style: KatType.sectionTitle),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Open all day. The first person in is the admin.',
-                      style: KatType.meta.copyWith(
-                        color: katTextSecondary(context),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    for (final station in jamStations)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    station.title,
-                                    style: KatType.body.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    _counts[station.code] == null
-                                        ? '${station.blurb} · ${station.code}'
-                                        : '${_counts[station.code]} listening · ${station.code}',
-                                    style: KatType.meta.copyWith(
-                                      color: katTextSecondary(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            KatFilledButton(
-                              onPressed: busy
-                                  ? null
-                                  : () {
-                                      remember();
-                                      controller.joinRoom(
-                                        station.code,
-                                        _name.text,
-                                      );
-                                    },
-                              child: const Text('Join'),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _Card(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Start a room', style: KatType.sectionTitle),
+                    Text('Start a room', style: WaveType.sectionTitle),
                     const SizedBox(height: 4),
                     Text(
                       'You get a code to share with friends.',
-                      style: KatType.meta.copyWith(
-                        color: katTextSecondary(context),
-                      ),
+                      style: WaveType.meta
+                          .copyWith(color: waveTextSecondary(context)),
                     ),
                     const SizedBox(height: 12),
                     ToggleSwitch(
@@ -311,7 +245,7 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                     const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: KatFilledButton(
+                      child: WaveFilledButton(
                         onPressed: busy
                             ? null
                             : () {
@@ -332,13 +266,12 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Join a room', style: KatType.sectionTitle),
+                    Text('Join a room', style: WaveType.sectionTitle),
                     const SizedBox(height: 4),
                     Text(
                       'Enter the code a friend sent you.',
-                      style: KatType.meta.copyWith(
-                        color: katTextSecondary(context),
-                      ),
+                      style: WaveType.meta
+                          .copyWith(color: waveTextSecondary(context)),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -347,7 +280,7 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                           child: TextBox(
                             controller: _code,
                             placeholder: 'ABC123',
-                            decoration: katInputDecoration(),
+                            decoration: waveInputDecoration(),
                             style: const TextStyle(
                               letterSpacing: 3,
                               fontWeight: FontWeight.w600,
@@ -356,17 +289,19 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                                 ? null
                                 : (_) {
                                     remember();
-                                    controller.joinRoom(_code.text, _name.text);
+                                    controller.joinRoom(
+                                        _code.text, _name.text);
                                   },
                           ),
                         ),
                         const SizedBox(width: 8),
-                        KatButton(
+                        WaveButton(
                           onPressed: busy
                               ? null
                               : () {
                                   remember();
-                                  controller.joinRoom(_code.text, _name.text);
+                                  controller.joinRoom(
+                                      _code.text, _name.text);
                                 },
                           child: const Text('Join'),
                         ),
@@ -387,30 +322,33 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
   Widget _room(BuildContext context, JamSnapshot jam) {
     final info = _roomColumn(context, jam);
     final chat = _chatCard(context, jam);
-    final body = LayoutBuilder(
-      builder: (context, box) {
-        if (box.maxWidth < 860) {
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                info,
-                const SizedBox(height: 14),
-                SizedBox(height: 420, child: chat),
-              ],
-            ),
-          );
-        }
-        return Row(
+    final body = LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < 860) {
+        return SingleChildScrollView(
+          padding: waveDockPadding(context, EdgeInsets.zero),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              info,
+              const SizedBox(height: 14),
+              SizedBox(height: 420, child: chat),
+            ],
+          ),
+        );
+      }
+      // Keep the chat input above the floating player bar.
+      return Padding(
+        padding: waveDockPadding(context, EdgeInsets.zero),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(width: 340, child: SingleChildScrollView(child: info)),
             const SizedBox(width: 16),
             Expanded(child: chat),
           ],
-        );
-      },
-    );
+        ),
+      );
+    });
     if (jam.notice.isEmpty) return body;
     final limited = jam.retryAtMs > 0;
     return Column(
@@ -422,7 +360,7 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
             title: Text(
               limited
                   ? 'One pause or change per minute. '
-                        'Try again at ${_clock(jam.retryAtMs)}.'
+                      'Try again at ${_clock(jam.retryAtMs)}.'
                   : jam.notice,
             ),
             severity: InfoBarSeverity.warning,
@@ -436,8 +374,10 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
 
   Widget _roomColumn(BuildContext context, JamSnapshot jam) {
     final controller = ref.read(jamControllerProvider.notifier);
-    final secondary = katTextSecondary(context);
+    final secondary = waveTextSecondary(context);
     final track = jam.track;
+    final localTrack =
+        ref.watch(playbackServiceProvider.select((s) => s.current));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -445,33 +385,29 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Label(
-                jam.roomName.isEmpty ? 'Room code' : 'Room · ${jam.roomCode}',
-              ),
+              _Label('Room code'),
               const SizedBox(height: 8),
               // The code sits in its own tinted tile so it reads at a glance.
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: katAccent(context).withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(KatRadius.menu),
+                  color: waveAccent(context).withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(WaveRadius.menu),
                   border: Border.all(
-                    color: katAccent(context).withValues(alpha: 0.28),
+                    color: waveAccent(context).withValues(alpha: 0.28),
                     width: 0.8,
                   ),
                 ),
                 child: SelectableText(
-                  jam.roomName.isEmpty ? jam.roomCode : jam.roomName,
+                  jam.roomCode,
                   contextMenuBuilder: TextBox.defaultContextMenuBuilder,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: jam.roomName.isEmpty ? 8 : 1,
+                    letterSpacing: 8,
                   ),
                 ),
               ),
@@ -481,28 +417,14 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                 runSpacing: 6,
                 children: [
                   _Pill(
-                    label: jam.radio
-                        ? (jam.isHost ? 'Station admin' : 'Listener')
-                        : jam.isMainHost
+                    label: jam.isMainHost
                         ? 'Host'
                         : jam.isHost
-                        ? 'Co-host'
-                        : 'Guest',
+                            ? 'Co-host'
+                            : 'Guest',
                   ),
-                  if (jam.radio)
-                    _Pill(
-                      label: 'Live station',
-                      color: KatColors.success,
-                      dot: true,
-                    )
-                  else if (jam.permanent)
-                    const _Pill(label: 'Always on'),
                   _Pill(
-                    label: jam.radio
-                        ? (jam.stationAuto
-                              ? 'Auto radio'
-                              : 'Admin controls playback')
-                        : jam.roomMode == jamModeHostOnly
+                    label: jam.roomMode == jamModeHostOnly
                         ? 'Host controls playback'
                         : 'Everyone controls playback',
                   ),
@@ -512,18 +434,26 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
               Row(
                 children: [
                   Expanded(
-                    child: KatFilledButton(
+                    child: WaveFilledButton(
                       onPressed: () => _copyInvite(jam.roomCode),
                       child: Text(_copied ? 'Copied' : 'Copy invite'),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  KatButton(
+                  WaveButton(
                     onPressed: controller.leave,
                     child: const Text('Leave'),
                   ),
                 ],
               ),
+              if (jam.isMainHost) ...[
+                const SizedBox(height: 12),
+                ToggleSwitch(
+                  checked: jam.roomMode == jamModeCollaborative,
+                  onChanged: controller.changeRoomMode,
+                  content: const Text('Collaborative playback'),
+                ),
+              ],
             ],
           ),
         ),
@@ -537,12 +467,12 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
               if (track == null)
                 Text(
                   'Nothing yet. Play a song and it plays for everyone.',
-                  style: KatType.meta.copyWith(color: secondary),
+                  style: WaveType.meta.copyWith(color: secondary),
                 )
               else
                 Row(
                   children: [
-                    KatArtwork(
+                    WaveArtwork(
                       url: track.artworkUrl ?? '',
                       title: track.title,
                       artist: track.artist,
@@ -557,14 +487,14 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                             track.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: KatType.trackTitle,
+                            style: WaveType.trackTitle,
                           ),
                           const SizedBox(height: 2),
                           Text(
                             track.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: KatType.meta.copyWith(color: secondary),
+                            style: WaveType.meta.copyWith(color: secondary),
                           ),
                         ],
                       ),
@@ -574,23 +504,93 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
             ],
           ),
         ),
+        if (!jam.isHost) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: WaveButton(
+              onPressed: localTrack == null || localTrack.videoId.isEmpty
+                  ? null
+                  : () {
+                      controller.suggestTrack(JamTrack(
+                        id: localTrack.videoId,
+                        title: localTrack.title,
+                        artist: localTrack.artist,
+                        album: localTrack.album,
+                        artworkUrl: localTrack.artworkUrl,
+                        durationMs: localTrack.duration.inMilliseconds,
+                      ));
+                    },
+              child: const Text('Suggest my current track'),
+            ),
+          ),
+        ],
+        if (jam.isHost && jam.suggestions.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Label("Friends' suggestions"),
+                const SizedBox(height: 8),
+                for (final suggestion in jam.suggestions)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                suggestion.track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: WaveType.body,
+                              ),
+                              Text(
+                                '${suggestion.track.artist} · suggested by '
+                                '${suggestion.fromName}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: WaveType.meta
+                                    .copyWith(color: secondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        WaveFilledButton(
+                          onPressed: () =>
+                              controller.approveSuggestion(suggestion.id),
+                          child: const Text('Add'),
+                        ),
+                        const SizedBox(width: 6),
+                        WaveButton(
+                          onPressed: () =>
+                              controller.rejectSuggestion(suggestion.id),
+                          child: const Text('Dismiss'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         _Card(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Label(
-                jam.radio && jam.stationAuto
-                    ? 'Up next on the station'
-                    : jam.isMainHost
-                    ? 'Up next · your queue is shared'
-                    : 'Up next · admin queue',
-              ),
+              _Label(jam.isMainHost
+                  ? 'Up next · your queue is shared'
+                  : 'Up next · host queue'),
               const SizedBox(height: 10),
               if (jam.queue.isEmpty)
                 Text(
                   'Nothing queued.',
-                  style: KatType.meta.copyWith(color: secondary),
+                  style: WaveType.meta.copyWith(color: secondary),
                 )
               else ...[
                 for (var i = 0; i < jam.queue.length && i < 5; i++)
@@ -600,10 +600,8 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                       children: [
                         SizedBox(
                           width: 22,
-                          child: Text(
-                            '${i + 1}',
-                            style: KatType.meta.copyWith(color: secondary),
-                          ),
+                          child: Text('${i + 1}',
+                              style: WaveType.meta.copyWith(color: secondary)),
                         ),
                         Expanded(
                           child: Text(
@@ -612,7 +610,7 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                                 : '${jam.queue[i].title} · ${jam.queue[i].artist}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: KatType.body,
+                            style: WaveType.body,
                           ),
                         ),
                       ],
@@ -621,10 +619,8 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                 if (jam.queue.length > 5)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '+${jam.queue.length - 5} more',
-                      style: KatType.meta.copyWith(color: secondary),
-                    ),
+                    child: Text('+${jam.queue.length - 5} more',
+                        style: WaveType.meta.copyWith(color: secondary)),
                   ),
               ],
             ],
@@ -651,41 +647,24 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                               : person.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: KatType.body,
+                          style: WaveType.body,
                         ),
                       ),
                       if (person.isHost)
                         _Pill(
-                          label: jam.radio
-                              ? 'Admin'
-                              : person.isCoHost
-                              ? 'Co-host'
-                              : 'Host',
+                          label: person.isCoHost ? 'Co-host' : 'Host',
                         ),
-                      if (jam.radio &&
-                          jam.isMainHost &&
-                          person.userId != jam.userId) ...[
-                        const SizedBox(width: 8),
-                        KatButton(
-                          onPressed: () =>
-                              controller.transferAdmin(person.userId),
-                          child: const Text('Make admin'),
-                        ),
-                      ],
-                      if (!jam.radio &&
-                          jam.isMainHost &&
+                      if (jam.isMainHost &&
                           person.userId != jam.userId) ...[
                         const SizedBox(width: 8),
                         if (person.isCoHost)
-                          KatButton(
-                            onPressed: () =>
-                                controller.revokeHost(person.userId),
+                          WaveButton(
+                            onPressed: () => controller.revokeHost(person.userId),
                             child: const Text('Remove host'),
                           )
                         else if (jam.coHostId.isEmpty)
-                          KatButton(
-                            onPressed: () =>
-                                controller.grantHost(person.userId),
+                          WaveButton(
+                            onPressed: () => controller.grantHost(person.userId),
                             child: const Text('Make host'),
                           ),
                       ],
@@ -709,15 +688,14 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
             child: _Label('Chat'),
           ),
-          Container(height: 1, color: katDivider(context)),
+          Container(height: 1, color: waveDivider(context)),
           Expanded(
             child: jam.chat.isEmpty
                 ? Center(
                     child: Text(
                       'No messages yet. Say hi.',
-                      style: KatType.meta.copyWith(
-                        color: katTextTertiary(context),
-                      ),
+                      style: WaveType.meta
+                          .copyWith(color: waveTextTertiary(context)),
                     ),
                   )
                 : ListView.builder(
@@ -736,14 +714,14 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                     },
                   ),
           ),
-          Container(height: 1, color: katDivider(context)),
+          Container(height: 1, color: waveDivider(context)),
           if (_replyTo != null)
             Container(
               padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
               decoration: BoxDecoration(
-                color: katAccent(context).withValues(alpha: 0.08),
+                color: waveAccent(context).withValues(alpha: 0.08),
                 border: Border(
-                  left: BorderSide(color: katAccent(context), width: 3),
+                  left: BorderSide(color: waveAccent(context), width: 3),
                 ),
               ),
               child: Row(
@@ -754,8 +732,8 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                       children: [
                         Text(
                           'Replying to ${_replyTo!.userName}',
-                          style: KatType.meta.copyWith(
-                            color: katAccent(context),
+                          style: WaveType.meta.copyWith(
+                            color: waveAccent(context),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -763,14 +741,13 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                           _replyTo!.text,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: KatType.meta.copyWith(
-                            color: katTextSecondary(context),
-                          ),
+                          style: WaveType.meta
+                              .copyWith(color: waveTextSecondary(context)),
                         ),
                       ],
                     ),
                   ),
-                  KatIconButton(
+                  WaveIconButton(
                     tooltip: 'Cancel reply',
                     icon: const Icon(FluentIcons.chrome_close, size: 11),
                     onPressed: () => setState(() => _replyTo = null),
@@ -787,14 +764,17 @@ class _KatJamPageState extends ConsumerState<KatJamPage> {
                     controller: _chat,
                     focusNode: _chatFocus,
                     placeholder: 'Message',
-                    decoration: katInputDecoration(),
+                    decoration: waveInputDecoration(),
                     // onEditingComplete (not onSubmitted) so Enter does not
                     // run the default "unfocus after submit".
                     onEditingComplete: _send,
                   ),
                 ),
                 const SizedBox(width: 8),
-                KatFilledButton(onPressed: _send, child: const Text('Send')),
+                WaveFilledButton(
+                  onPressed: _send,
+                  child: const Text('Send'),
+                ),
               ],
             ),
           ),
@@ -811,8 +791,8 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final base = katSurface(context);
+    final dark = waveIsDark(context);
+    final base = waveSurface(context);
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -821,16 +801,15 @@ class _Card extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             Color.alphaBlend(
-              (dark ? Colors.white : Colors.black).withValues(
-                alpha: dark ? 0.025 : 0.015,
-              ),
+              (dark ? Colors.white : Colors.black)
+                  .withValues(alpha: dark ? 0.025 : 0.015),
               base,
             ),
             base,
           ],
         ),
-        borderRadius: BorderRadius.circular(KatRadius.floating),
-        border: Border.all(color: katDivider(context), width: 0.8),
+        borderRadius: BorderRadius.circular(WaveRadius.floating),
+        border: Border.all(color: waveDivider(context), width: 0.8),
       ),
       child: child,
     );
@@ -843,9 +822,9 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: KatType.overline.copyWith(color: katTextTertiary(context)),
-  );
+        text.toUpperCase(),
+        style: WaveType.overline.copyWith(color: waveTextTertiary(context)),
+      );
 }
 
 class _Pill extends StatelessWidget {
@@ -856,7 +835,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = color ?? katTextSecondary(context);
+    final tone = color ?? waveTextSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -876,7 +855,7 @@ class _Pill extends StatelessWidget {
           ],
           Text(
             label,
-            style: KatType.meta.copyWith(
+            style: WaveType.meta.copyWith(
               color: tone,
               fontWeight: FontWeight.w600,
               fontSize: 11,
@@ -903,11 +882,14 @@ class _Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: katAccent(context).withValues(alpha: 0.18),
+        color: waveAccent(context).withValues(alpha: 0.18),
       ),
       child: Text(
         initial.toUpperCase(),
-        style: TextStyle(fontSize: size * 0.42, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontSize: size * 0.42,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -927,21 +909,20 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = katAccent(context);
+    final accent = waveAccent(context);
     return Padding(
       padding: EdgeInsets.only(top: showName ? 10 : 3),
       child: Column(
-        crossAxisAlignment: mine
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           if (showName && !mine)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 3),
               child: Text(
                 line.isHost ? '${line.userName} · host' : line.userName,
-                style: KatType.meta.copyWith(
-                  color: katTextSecondary(context),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -959,75 +940,80 @@ class _Bubble extends StatelessWidget {
     );
   }
 
-  Widget _replyButton() => KatIconButton(
-    tooltip: 'Reply',
-    icon: const Icon(FluentIcons.reply, size: 12),
-    onPressed: onReply,
-  );
+  Widget _replyButton() => WaveIconButton(
+        tooltip: 'Reply',
+        icon: const Icon(FluentIcons.reply, size: 12),
+        onPressed: onReply,
+      );
 
   Widget _bubble(BuildContext context, Color accent) {
     final reply = line.replyTo;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: mine
-                  ? accent.withValues(alpha: 0.18)
-                  : katSurfaceRaised(context),
-              // Chat-bubble shape: the corner facing the speaker is tight.
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(KatRadius.menu + 4),
-                topRight: const Radius.circular(KatRadius.menu + 4),
-                bottomLeft: Radius.circular(mine ? KatRadius.menu + 4 : 4),
-                bottomRight: Radius.circular(mine ? 4 : KatRadius.menu + 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: mine
+                    ? accent.withValues(alpha: 0.18)
+                    : waveSurfaceRaised(context),
+                // Chat-bubble shape: the corner facing the speaker is tight.
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(WaveRadius.menu + 4),
+                  topRight: const Radius.circular(WaveRadius.menu + 4),
+                  bottomLeft: Radius.circular(
+                      mine ? WaveRadius.menu + 4 : 4),
+                  bottomRight: Radius.circular(
+                      mine ? 4 : WaveRadius.menu + 4),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (reply != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        border: Border(
+                          left: BorderSide(color: accent, width: 3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            reply.userName,
+                            style: WaveType.meta.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            reply.text,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: WaveType.meta.copyWith(
+                              color: waveTextSecondary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  SelectableText(
+                    line.text,
+                    style: WaveType.body,
+                    contextMenuBuilder: TextBox.defaultContextMenuBuilder,
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (reply != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      border: Border(left: BorderSide(color: accent, width: 3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          reply.userName,
-                          style: KatType.meta.copyWith(
-                            color: accent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          reply.text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: KatType.meta.copyWith(
-                            color: katTextSecondary(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                SelectableText(
-                  line.text,
-                  style: KatType.body,
-                  contextMenuBuilder: TextBox.defaultContextMenuBuilder,
-                ),
-              ],
-            ),
           ),
-        ),
       ],
     );
   }

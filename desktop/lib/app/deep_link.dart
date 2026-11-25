@@ -13,52 +13,10 @@ String? jamCodeFromLink(String link) {
   return RegExp(r'^[A-Z0-9]{3,12}$').hasMatch(code) ? code : null;
 }
 
-/// Track carried by a `katmusic://track?v=…` link.
-class SharedTrackLink {
-  final String videoId;
-  final String title;
-  final String artist;
-  final String album;
-  final String artworkUrl;
-
-  const SharedTrackLink({
-    required this.videoId,
-    required this.title,
-    required this.artist,
-    required this.album,
-    required this.artworkUrl,
-  });
-}
-
-SharedTrackLink? trackFromLink(String link) {
-  final uri = Uri.tryParse(link.trim());
-  if (uri == null) return null;
-  final scheme = uri.scheme.toLowerCase();
-  final host = uri.host.toLowerCase();
-  final isCustomScheme = scheme == 'katmusic' &&
-      (host == 'track' || host == 'song' || host == 'play');
-  final isWebShare = (scheme == 'http' || scheme == 'https') &&
-      (host == 'katmusic.pages.dev' || host.endsWith('.katmusic.pages.dev'));
-  if (!isCustomScheme && !isWebShare) return null;
-  final videoId = (uri.queryParameters['v'] ?? '').trim();
-  if (!RegExp(r'^[A-Za-z0-9_-]{6,24}$').hasMatch(videoId)) return null;
-  final art = (uri.queryParameters['art'] ?? '').trim();
-  return SharedTrackLink(
-    videoId: videoId,
-    title: (uri.queryParameters['title'] ?? '').trim(),
-    artist: (uri.queryParameters['artist'] ?? '').trim(),
-    album: (uri.queryParameters['album'] ?? '').trim(),
-    artworkUrl: art.isNotEmpty ? art : 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
-  );
-}
-
 /// In-app route a `katmusic://` link opens, or null for unknown links.
 String? routeForLink(String link) {
   final code = jamCodeFromLink(link);
-  if (code != null) return '/jam?code=$code';
-  final track = trackFromLink(link);
-  if (track == null) return null;
-  return '/shared-track?${Uri(queryParameters: {'v': track.videoId, if (track.title.isNotEmpty) 'title': track.title, if (track.artist.isNotEmpty) 'artist': track.artist, if (track.album.isNotEmpty) 'album': track.album, if (track.artworkUrl.isNotEmpty) 'art': track.artworkUrl}).query}';
+  return code == null ? null : '/jam?code=$code';
 }
 
 /// `katmusic://` links: the one in the launch arguments, plus links that a
@@ -92,11 +50,6 @@ class DeepLinks {
         _controller.add(call.arguments as String);
       }
     });
-    if (Platform.isMacOS) {
-      // Cold-launch NSOpen events can arrive before Dart installs its handler.
-      // The macOS runner holds them until this ready handshake.
-      unawaited(_channel.invokeMethod<void>('ready').catchError((_) {}));
-    }
     if (Platform.isWindows) _registerWindowsScheme();
   }
 
@@ -108,7 +61,10 @@ class DeepLinks {
       const root = r'HKCU\Software\Classes\katmusic';
       const commandKey = root + r'\shell\open\command';
       final command = '"$exe" "%1"';
-      final current = await Process.run('reg', ['query', commandKey, '/ve']);
+      final current = await Process.run(
+        'reg',
+        ['query', commandKey, '/ve'],
+      );
       if (current.exitCode == 0 && '${current.stdout}'.contains(command)) {
         return;
       }

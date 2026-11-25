@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../ui/components/buttons.dart' show KatTooltip;
+import '../../ui/components/buttons.dart' show LWTooltip;
 import '../../ui/theme/tokens.dart';
 import 'equalizer_controller.dart';
 import 'equalizer_models.dart';
@@ -9,16 +9,20 @@ import 'equalizer_models.dart';
 /// Contextual 10-band Equalizer and Studio Master Clarity panel.
 ///
 /// Designed with slide-over drawer styling matching KatMusic design tokens.
-class KatEqualizerPanel extends ConsumerStatefulWidget {
+class WaveEqualizerPanel extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
   final bool embedded;
-  const KatEqualizerPanel({super.key, this.onClose, this.embedded = false});
+  const WaveEqualizerPanel({
+    super.key,
+    this.onClose,
+    this.embedded = false,
+  });
 
   @override
-  ConsumerState<KatEqualizerPanel> createState() => _KatEqualizerPanelState();
+  ConsumerState<WaveEqualizerPanel> createState() => _WaveEqualizerPanelState();
 }
 
-class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
+class _WaveEqualizerPanelState extends ConsumerState<WaveEqualizerPanel> {
   int _selectedTab = 0; // 0 = 10-Band EQ, 1 = Studio Master Clarity
   late final ScrollController _eqScrollController;
   late final ScrollController _clarityScrollController;
@@ -39,7 +43,7 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final eq = ref.watch(equalizerProvider);
     final notifier = ref.read(equalizerProvider.notifier);
 
@@ -47,22 +51,21 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: katSurface(context),
+        // Raised is the opaque floating layer; surface is a film under glass.
+        color: waveSurfaceRaised(context),
         border: widget.embedded
             ? Border.all(
-                color: katDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
+                color: waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
                 width: 1,
               )
             : Border(
                 left: BorderSide(
-                  color: katDivider(context)
-                      .withValues(alpha: dark ? 0.35 : 0.6),
+                  color: waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
                   width: 1,
                 ),
               ),
-        borderRadius: widget.embedded
-            ? BorderRadius.circular(KatRadius.menu)
-            : null,
+        borderRadius:
+            widget.embedded ? BorderRadius.circular(WaveRadius.menu) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,19 +99,18 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
     } else if (eq.studioClarityEnabled && eq.enabled) {
       statusSubtitle = 'Studio Clarity + ${eq.presetName}';
     } else if (eq.studioClarityEnabled) {
-      statusSubtitle =
-          'Studio Master Clarity (${eq.clarityPreset.displayName})';
+      statusSubtitle = 'Studio Master Clarity (${eq.clarityPreset.displayName})';
     } else {
       statusSubtitle = '${eq.presetName} preset active';
     }
 
     return Container(
-      height: KatDensity.titleBar + 12,
+      height: WaveDensity.titleBar + 12,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+            color: waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
           ),
         ),
       ),
@@ -118,8 +120,8 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
             FluentIcons.equalizer,
             size: 18,
             color: eq.isProcessingActive
-                ? KatColors.defaultAccent
-                : katTextSecondary(context),
+                ? WaveColors.defaultAccent
+                : waveTextSecondary(context),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -129,17 +131,17 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
               children: [
                 Text(
                   'Equalizer & Sound FX',
-                  style: KatType.sectionTitle.copyWith(fontSize: 14),
+                  style: WaveType.sectionTitle.copyWith(fontSize: 14),
                 ),
                 Text(
                   statusSubtitle,
-                  style: KatType.meta.copyWith(
+                  style: WaveType.meta.copyWith(
                     fontSize: 11,
                     color: eq.isProcessingActive
                         ? (eq.studioClarityEnabled
-                              ? const Color(0xFFF5A623)
-                              : KatColors.defaultAccent)
-                        : katTextSecondary(context),
+                            ? const Color(0xFFF5A623)
+                            : WaveColors.defaultAccent)
+                        : waveTextSecondary(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -154,13 +156,13 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
           ),
           const SizedBox(width: 8),
           // Reset button
-          KatTooltip(
+          LWTooltip(
             message: 'Reset all bands to flat (0 dB)',
             child: IconButton(
               icon: Icon(
                 FluentIcons.refresh,
                 size: 13,
-                color: katTextSecondary(context),
+                color: waveTextSecondary(context),
               ),
               onPressed: notifier.reset,
             ),
@@ -168,13 +170,13 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
           if (widget.onClose != null) ...[
             const SizedBox(width: 4),
             // Close button
-            KatTooltip(
+            LWTooltip(
               message: 'Close panel',
               child: IconButton(
                 icon: Icon(
                   FluentIcons.chrome_close,
                   size: 12,
-                  color: katTextSecondary(context),
+                  color: waveTextSecondary(context),
                 ),
                 onPressed: widget.onClose,
               ),
@@ -191,7 +193,7 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: katDivider(context).withValues(alpha: dark ? 0.2 : 0.35),
+            color: waveDivider(context).withValues(alpha: dark ? 0.2 : 0.35),
           ),
         ),
       ),
@@ -273,135 +275,133 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
         controller: _clarityScrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         children: [
-          // Studio Master Clarity hero card
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(KatRadius.menu),
+        // Studio Master Clarity hero card
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(WaveRadius.menu),
+            color: active
+                ? (dark ? const Color(0xFF1F1B14) : const Color(0xFFFFF9ED))
+                : (dark ? waveSurfaceRaised(context) : waveSurfaceOverlay(context)),
+            border: Border.all(
               color: active
-                  ? (dark ? const Color(0xFF1F1B14) : const Color(0xFFFFF9ED))
-                  : (dark
-                        ? katSurfaceRaised(context)
-                        : katSurfaceOverlay(context)),
-              border: Border.all(
-                color: active
-                    ? (dark
-                          ? const Color(0xFF8A6D3B).withValues(alpha: 0.8)
-                          : const Color(0xFFE5B760))
-                    : katDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
-                width: active ? 1.5 : 1,
-              ),
+                  ? (dark
+                      ? const Color(0xFF8A6D3B).withValues(alpha: 0.8)
+                      : const Color(0xFFE5B760))
+                  : waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6),
+              width: active ? 1.5 : 1,
             ),
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: active
-                            ? const Color(0xFFF5A623).withValues(alpha: 0.18)
-                            : (dark
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.black.withValues(alpha: 0.05)),
-                      ),
-                      child: Icon(
-                        FluentIcons.favorite_star_fill,
-                        size: 18,
-                        color: active
-                            ? const Color(0xFFF5A623)
-                            : katTextSecondary(context),
-                      ),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: active
+                          ? const Color(0xFFF5A623).withValues(alpha: 0.18)
+                          : (dark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Studio Master Clarity',
-                            style: KatType.body.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: active
-                                  ? (dark
-                                        ? Colors.white
-                                        : const Color(0xFF5A3E00))
-                                  : katTextPrimary(context),
-                            ),
-                          ),
-                          Text(
-                            'Audiophile reference curve ported from KatMusic Native',
-                            style: KatType.meta.copyWith(
-                              fontSize: 11,
-                              color: katTextSecondary(context),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Icon(
+                      FluentIcons.favorite_star_fill,
+                      size: 18,
+                      color: active
+                          ? const Color(0xFFF5A623)
+                          : waveTextSecondary(context),
                     ),
-                    ToggleSwitch(
-                      checked: active,
-                      onChanged: (val) => notifier.setStudioClarityEnabled(val),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Engineered to eliminate low-mid boxiness, tighten sub-bass control, preserve natural vocal body, and introduce a transparent, silky high-frequency air shelf.',
-                  style: KatType.meta.copyWith(
-                    fontSize: 11,
-                    color: katTextSecondary(context),
-                    height: 1.4,
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Studio Master Clarity',
+                          style: WaveType.body.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: active
+                                ? (dark ? Colors.white : const Color(0xFF5A3E00))
+                                : waveTextPrimary(context),
+                          ),
+                        ),
+                        Text(
+                          'Audiophile reference curve ported from KatMusic Native',
+                          style: WaveType.meta.copyWith(
+                            fontSize: 11,
+                            color: waveTextSecondary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ToggleSwitch(
+                    checked: active,
+                    onChanged: (val) => notifier.setStudioClarityEnabled(val),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Engineered to eliminate low-mid boxiness, tighten sub-bass control, preserve natural vocal body, and introduce a transparent, silky high-frequency air shelf.',
+                style: WaveType.meta.copyWith(
+                  fontSize: 11,
+                  color: waveTextSecondary(context),
+                  height: 1.4,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+        ),
+        const SizedBox(height: 14),
 
-          // Acoustic Target Profile Selector
-          Text(
-            'ACOUSTIC TARGET PROFILE',
-            style: KatType.overline.copyWith(color: katTextSecondary(context)),
+        // Acoustic Target Profile Selector
+        Text(
+          'ACOUSTIC TARGET PROFILE',
+          style: WaveType.overline.copyWith(
+            color: waveTextSecondary(context),
           ),
+        ),
+        const SizedBox(height: 8),
+
+        for (final target in ClarityPresets.all) ...[
+          _buildTargetOptionCard(context, dark, target, eq, notifier),
           const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 12),
 
-          for (final target in ClarityPresets.all) ...[
-            _buildTargetOptionCard(context, dark, target, eq, notifier),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 12),
-
-          // Target Frequency Curve Preview
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: dark ? const Color(0xFF101010) : const Color(0xFFF0F0F0),
-              borderRadius: BorderRadius.circular(KatRadius.menu),
-              border: Border.all(
-                color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(KatRadius.menu - 2),
-              child: CustomPaint(
-                painter: _EqCurvePainter(
-                  gainsDb: eq.combinedGainsDb,
-                  active: eq.studioClarityEnabled,
-                  dark: dark,
-                ),
-                child: const SizedBox.expand(),
-              ),
+        // Target Frequency Curve Preview
+        Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF101010) : const Color(0xFFF0F0F0),
+            borderRadius: BorderRadius.circular(WaveRadius.menu),
+            border: Border.all(
+              color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
             ),
           ),
-        ],
-      ),
-    );
-  }
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(WaveRadius.menu - 2),
+            child: CustomPaint(
+              painter: _EqCurvePainter(
+                gainsDb: eq.combinedGainsDb,
+                active: eq.studioClarityEnabled,
+                dark: dark,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildTargetOptionCard(
     BuildContext context,
@@ -416,17 +416,21 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
     return GestureDetector(
       onTap: () => notifier.setClarityPreset(target.key),
       child: AnimatedContainer(
-        duration: katMotion(context, const Duration(milliseconds: 140)),
+        duration: waveMotion(context, const Duration(milliseconds: 140)),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(KatRadius.menu),
+          borderRadius: BorderRadius.circular(WaveRadius.menu),
           color: isSelected
-              ? (dark ? const Color(0xFF2B2418) : const Color(0xFFFFF3D6))
-              : (dark ? katSurfaceRaised(context) : katSurfaceOverlay(context)),
+              ? (dark
+                  ? const Color(0xFF2B2418)
+                  : const Color(0xFFFFF3D6))
+              : (dark
+                  ? waveSurfaceRaised(context)
+                  : waveSurfaceOverlay(context)),
           border: Border.all(
             color: isSelected
                 ? (dark ? const Color(0xFFF5A623) : const Color(0xFFE5B760))
-                : katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+                : waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -440,7 +444,7 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
                 border: Border.all(
                   color: isSelected
                       ? const Color(0xFFF5A623)
-                      : katTextSecondary(context).withValues(alpha: 0.5),
+                      : waveTextSecondary(context).withValues(alpha: 0.5),
                   width: 2,
                 ),
                 color: isSelected && active
@@ -455,22 +459,20 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
                 children: [
                   Text(
                     target.displayName,
-                    style: KatType.body.copyWith(
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w600,
+                    style: WaveType.body.copyWith(
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                       fontSize: 12.5,
                       color: isSelected
                           ? (dark ? Colors.white : const Color(0xFF5A3E00))
-                          : katTextPrimary(context),
+                          : waveTextPrimary(context),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     target.description,
-                    style: KatType.meta.copyWith(
+                    style: WaveType.meta.copyWith(
                       fontSize: 10.5,
-                      color: katTextSecondary(context),
+                      color: waveTextSecondary(context),
                     ),
                   ),
                 ],
@@ -482,19 +484,23 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
     );
   }
 
-  Widget _buildVisualizer(BuildContext context, bool dark, EqualizerState eq) {
+  Widget _buildVisualizer(
+    BuildContext context,
+    bool dark,
+    EqualizerState eq,
+  ) {
     return Container(
       height: 76,
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF101010) : const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(KatRadius.menu),
+        borderRadius: BorderRadius.circular(WaveRadius.menu),
         border: Border.all(
-          color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+          color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(KatRadius.menu - 2),
+        borderRadius: BorderRadius.circular(WaveRadius.menu - 2),
         child: CustomPaint(
           painter: _EqCurvePainter(
             gainsDb: eq.combinedGainsDb,
@@ -529,23 +535,25 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
           return GestureDetector(
             onTap: () => notifier.applyPreset(preset),
             child: AnimatedContainer(
-              duration: katMotion(context, const Duration(milliseconds: 140)),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              duration:
+                  waveMotion(context, const Duration(milliseconds: 140)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 color: isSelected
                     ? (isStudioMaster
-                          ? (dark
-                                ? const Color(0xFF8A6D3B)
-                                : const Color(0xFFE5B760))
-                          : (dark ? Colors.white : Colors.black))
+                        ? (dark
+                            ? const Color(0xFF8A6D3B)
+                            : const Color(0xFFE5B760))
+                        : (dark ? Colors.white : Colors.black))
                     : (dark
-                          ? katSurfaceRaised(context)
-                          : katSurfaceOverlay(context)),
+                        ? waveSurfaceRaised(context)
+                        : waveSurfaceOverlay(context)),
                 border: Border.all(
                   color: isSelected
                       ? Colors.transparent
-                      : katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+                      : waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
                 ),
               ),
               child: Center(
@@ -564,14 +572,13 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
                     ],
                     Text(
                       preset.name,
-                      style: KatType.label.copyWith(
+                      style: WaveType.label.copyWith(
                         fontSize: 11,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
                         color: isSelected
                             ? (dark ? Colors.black : Colors.white)
-                            : katTextSecondary(context),
+                            : waveTextSecondary(context),
                       ),
                     ),
                   ],
@@ -594,10 +601,10 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: dark ? katSurfaceRaised(context) : katSurfaceOverlay(context),
-        borderRadius: BorderRadius.circular(KatRadius.menu),
+        color: dark ? waveSurfaceRaised(context) : waveSurfaceOverlay(context),
+        borderRadius: BorderRadius.circular(WaveRadius.menu),
         border: Border.all(
-          color: katDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
+          color: waveDivider(context).withValues(alpha: dark ? 0.3 : 0.5),
         ),
       ),
       child: Row(
@@ -637,9 +644,7 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
           onTap: () async {
             for (int i = 0; i <= 2; i++) {
               await notifier.setBandGain(
-                i,
-                (eq.gainsDb[i] + 2.0).clamp(-eqMaxGainDb, eqMaxGainDb),
-              );
+                  i, (eq.gainsDb[i] + 2.0).clamp(-eqMaxGainDb, eqMaxGainDb));
             }
           },
           dark: dark,
@@ -650,9 +655,7 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
           onTap: () async {
             for (int i = 7; i <= 9; i++) {
               await notifier.setBandGain(
-                i,
-                (eq.gainsDb[i] + 2.0).clamp(-eqMaxGainDb, eqMaxGainDb),
-              );
+                  i, (eq.gainsDb[i] + 2.0).clamp(-eqMaxGainDb, eqMaxGainDb));
             }
           },
           dark: dark,
@@ -660,16 +663,20 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
         const Spacer(),
         Text(
           'Double-click band to zero',
-          style: KatType.meta.copyWith(
+          style: WaveType.meta.copyWith(
             fontSize: 10,
-            color: katTextSecondary(context).withValues(alpha: 0.7),
+            color: waveTextSecondary(context).withValues(alpha: 0.7),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFooterNote(BuildContext context, bool dark, EqualizerState eq) {
+  Widget _buildFooterNote(
+    BuildContext context,
+    bool dark,
+    EqualizerState eq,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -680,16 +687,20 @@ class _KatEqualizerPanelState extends ConsumerState<KatEqualizerPanel> {
       ),
       child: Row(
         children: [
-          Icon(FluentIcons.info, size: 13, color: katTextSecondary(context)),
+          Icon(
+            FluentIcons.info,
+            size: 13,
+            color: waveTextSecondary(context),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               eq.isProcessingActive
                   ? 'Hardware-accelerated 32-bit float biquad filter applied via libmpv.'
                   : 'Bypassed: Audio stream flows directly to output with bit-perfect integrity.',
-              style: KatType.meta.copyWith(
+              style: WaveType.meta.copyWith(
                 fontSize: 10.5,
-                color: katTextSecondary(context),
+                color: waveTextSecondary(context),
               ),
             ),
           ),
@@ -726,8 +737,7 @@ class _VerticalEqBand extends StatelessWidget {
     // localPos.dy ranges from 0 (top = +eqMaxGainDb) to kTrackHeight (bottom = -eqMaxGainDb)
     final clampedY = localPos.dy.clamp(0.0, kTrackHeight);
     final norm = 1.0 - (clampedY / kTrackHeight); // 0.0 at bottom, 1.0 at top
-    final gain =
-        (norm * 2.0 - 1.0) * eqMaxGainDb; // -eqMaxGainDb .. +eqMaxGainDb
+    final gain = (norm * 2.0 - 1.0) * eqMaxGainDb; // -eqMaxGainDb .. +eqMaxGainDb
     final rounded = (gain * 10).round() / 10.0;
     onChanged(rounded);
   }
@@ -748,11 +758,11 @@ class _VerticalEqBand extends StatelessWidget {
 
     Color activeColor;
     if (gainDb > 0) {
-      activeColor = KatColors.defaultAccent;
+      activeColor = WaveColors.defaultAccent;
     } else if (gainDb < 0) {
       activeColor = const Color(0xFF42A5F5);
     } else {
-      activeColor = katTextSecondary(context);
+      activeColor = waveTextSecondary(context);
     }
 
     return Expanded(
@@ -767,12 +777,12 @@ class _VerticalEqBand extends StatelessWidget {
               child: Center(
                 child: Text(
                   gainText,
-                  style: KatType.meta.copyWith(
+                  style: WaveType.meta.copyWith(
                     fontSize: 9.5,
                     fontWeight: isNonZero ? FontWeight.w700 : FontWeight.normal,
                     color: isNonZero && enabled
                         ? activeColor
-                        : katTextSecondary(context).withValues(alpha: 0.6),
+                        : waveTextSecondary(context).withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -835,9 +845,7 @@ class _VerticalEqBand extends StatelessWidget {
                     if (isNonZero && enabled)
                       Positioned(
                         top: gainDb > 0 ? thumbY : zeroY,
-                        height: gainDb > 0
-                            ? (zeroY - thumbY)
-                            : (thumbY - zeroY),
+                        height: gainDb > 0 ? (zeroY - thumbY) : (thumbY - zeroY),
                         child: Container(
                           width: 5,
                           decoration: BoxDecoration(
@@ -861,20 +869,17 @@ class _VerticalEqBand extends StatelessWidget {
                         height: 16,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: dark ? const Color(0xFF181818) : Colors.white,
+                          color: dark
+                              ? const Color(0xFF181818)
+                              : Colors.white,
                           border: Border.all(
                             color: enabled
                                 ? (isNonZero
-                                      ? activeColor
-                                      : (dark
-                                            ? Colors.white.withValues(
-                                                alpha: 0.7,
-                                              )
-                                            : Colors.black.withValues(
-                                                alpha: 0.87,
-                                              )))
-                                : katTextSecondary(context)
-                                      .withValues(alpha: 0.4),
+                                    ? activeColor
+                                    : (dark
+                                        ? Colors.white.withValues(alpha: 0.7)
+                                        : Colors.black.withValues(alpha: 0.87)))
+                                : waveTextSecondary(context).withValues(alpha: 0.4),
                             width: 2,
                           ),
                           boxShadow: [
@@ -894,8 +899,8 @@ class _VerticalEqBand extends StatelessWidget {
                               color: enabled && isNonZero
                                   ? activeColor
                                   : (dark
-                                        ? Colors.white.withValues(alpha: 0.38)
-                                        : Colors.black.withValues(alpha: 0.38)),
+                                      ? Colors.white.withValues(alpha: 0.38)
+                                      : Colors.black.withValues(alpha: 0.38)),
                             ),
                           ),
                         ),
@@ -921,11 +926,11 @@ class _VerticalEqBand extends StatelessWidget {
               ),
               child: Text(
                 eqBandLabel(freqHz),
-                style: KatType.label.copyWith(
+                style: WaveType.label.copyWith(
                   fontSize: 10,
                   color: isNonZero && enabled
-                      ? katTextPrimary(context)
-                      : katTextSecondary(context),
+                      ? waveTextPrimary(context)
+                      : waveTextSecondary(context),
                   fontWeight: isNonZero && enabled
                       ? FontWeight.w600
                       : FontWeight.normal,
@@ -961,16 +966,18 @@ class _TabButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: katMotion(context, const Duration(milliseconds: 140)),
+        duration: waveMotion(context, const Duration(milliseconds: 140)),
         padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(KatRadius.menu),
+          borderRadius: BorderRadius.circular(WaveRadius.menu),
           color: selected
-              ? (dark ? katSurfaceRaised(context) : Colors.white)
+              ? (dark
+                  ? waveSurfaceRaised(context)
+                  : Colors.white)
               : Colors.transparent,
           border: Border.all(
             color: selected
-                ? katDivider(context).withValues(alpha: dark ? 0.35 : 0.6)
+                ? waveDivider(context).withValues(alpha: dark ? 0.35 : 0.6)
                 : Colors.transparent,
           ),
           boxShadow: selected
@@ -990,20 +997,18 @@ class _TabButton extends StatelessWidget {
               icon,
               size: 13,
               color: selected
-                  ? (badgeActive
-                        ? const Color(0xFFF5A623)
-                        : katTextPrimary(context))
-                  : katTextSecondary(context),
+                  ? (badgeActive ? const Color(0xFFF5A623) : waveTextPrimary(context))
+                  : waveTextSecondary(context),
             ),
             const SizedBox(width: 6),
             Text(
               title,
-              style: KatType.body.copyWith(
+              style: WaveType.body.copyWith(
                 fontSize: 11.5,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 color: selected
-                    ? katTextPrimary(context)
-                    : katTextSecondary(context),
+                    ? waveTextPrimary(context)
+                    : waveTextSecondary(context),
               ),
             ),
             if (badgeActive) ...[
@@ -1047,15 +1052,15 @@ class _QuickActionPill extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.05)
               : Colors.black.withValues(alpha: 0.04),
           border: Border.all(
-            color: katDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
+            color: waveDivider(context).withValues(alpha: dark ? 0.25 : 0.4),
           ),
         ),
         child: Text(
           label,
-          style: KatType.meta.copyWith(
+          style: WaveType.meta.copyWith(
             fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: katTextSecondary(context),
+            color: waveTextSecondary(context),
           ),
         ),
       ),
@@ -1118,8 +1123,8 @@ class _EqCurvePainter extends CustomPainter {
     final accentColor = active
         ? const Color(0xFFE5B760)
         : (dark
-              ? Colors.white.withValues(alpha: 0.54)
-              : Colors.black.withValues(alpha: 0.38));
+            ? Colors.white.withValues(alpha: 0.54)
+            : Colors.black.withValues(alpha: 0.38));
 
     final fillPaint = Paint()
       ..shader = LinearGradient(

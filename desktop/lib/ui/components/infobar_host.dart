@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/network_monitor.dart';
-import '../../features/addons/addon_api.dart';
 import '../../features/downloads/download_manager.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_session_keeper.dart';
@@ -16,35 +17,57 @@ import 'buttons.dart';
 /// Shows (highest priority first):
 /// - offline network
 /// - Last.fm session expired
-/// - addon daily quota spent (falls through to YouTube)
 /// - latest download done/error
 ///
-/// Dismissible per-bar, auto-collapses when clear. Rendered by [KatShell]
+/// Dismissible per-bar, auto-collapses when clear. Rendered by [WaveShell]
 /// directly under the title bar so it never blocks playback.
 /// One-shot "running in the tray" hint, set on first hide-to-tray.
 /// Session-scoped (resets on relaunch) — the pref itself lives in Prefs.
 final trayHintProvider = StateProvider<bool>((_) => false);
 
-class KatInfoBarHost extends ConsumerStatefulWidget {
-  const KatInfoBarHost({super.key});
+class WaveInfoBarHost extends ConsumerStatefulWidget {
+  const WaveInfoBarHost({super.key});
   @override
-  ConsumerState<KatInfoBarHost> createState() => _KatInfoBarHostState();
+  ConsumerState<WaveInfoBarHost> createState() => _WaveInfoBarHostState();
 }
 
-class _KatInfoBarHostState extends ConsumerState<KatInfoBarHost> {
+class _WaveInfoBarHostState extends ConsumerState<WaveInfoBarHost> {
   bool _dismissedOffline = false;
   bool _dismissedAuth = false;
   bool _dismissedYt = false;
   String? _dismissedDownloadKey;
-  String? _dismissedQuotaNotice;
   bool _ytRecovering = false;
+  Timer? _ytRecoverDelay;
 
   @override
   void initState() {
     super.initState();
     // The stale flag may already be set before this host mounts.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && ref.read(ytAuthStaleProvider)) _recoverYt();
+      if (mounted && ref.read(ytAuthStaleProvider)) _scheduleRecoverYt();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ytRecoverDelay?.cancel();
+    super.dispose();
+  }
+
+  /// Defers silent WebView2 session recovery briefly after launch so cold
+  /// Edge WebView2 boot never stalls the UI thread or shows a busy cursor
+  /// right when the user opens a newly downloaded build.
+  void _scheduleRecoverYt() {
+    if (_ytRecovering ||
+        YtSessionKeeper.autoAttempted ||
+        (_ytRecoverDelay?.isActive ?? false)) {
+      return;
+    }
+    _ytRecoverDelay = Timer(const Duration(seconds: 4), () {
+      _ytRecoverDelay = null;
+      if (mounted && ref.read(ytAuthStaleProvider)) {
+        unawaited(_recoverYt());
+      }
     });
   }
 
@@ -66,7 +89,7 @@ class _KatInfoBarHostState extends ConsumerState<KatInfoBarHost> {
   @override
   Widget build(BuildContext context) {
     ref.listen<bool>(ytAuthStaleProvider, (prev, stale) {
-      if (stale && prev != true) _recoverYt();
+      if (stale && prev != true) _scheduleRecoverYt();
     });
     final online = ref.watch(networkMonitorProvider);
     final auth = ref.watch(authRepositoryProvider);
@@ -74,97 +97,66 @@ class _KatInfoBarHostState extends ConsumerState<KatInfoBarHost> {
 
     final bars = <Widget>[];
     if (ref.watch(trayHintProvider)) {
-      bars.add(
-        InfoBar(
-          title: const Text('Playing in the tray'),
-          content: const Text(
-            'Closing hides KatMusic — Quit from the tray menu to exit.',
-          ),
-          severity: InfoBarSeverity.info,
-          isLong: false,
-          onClose: () => ref.read(trayHintProvider.notifier).state = false,
-        ),
-      );
+      bars.add(InfoBar(
+        title: const Text('Playing in the tray'),
+        content: const Text(
+            'Closing hides KatMusic — Quit from the tray menu to exit.'),
+        severity: InfoBarSeverity.info,
+        isLong: false,
+        onClose: () =>
+            ref.read(trayHintProvider.notifier).state = false,
+      ));
     }
     if (!online && !_dismissedOffline) {
-      bars.add(
-        InfoBar(
-          title: const Text('You are offline'),
-          content: const Text('Charts and streaming may be unavailable.'),
-          severity: InfoBarSeverity.warning,
-          isLong: false,
-          onClose: () => setState(() => _dismissedOffline = true),
-        ),
-      );
+      bars.add(InfoBar(
+        title: const Text('You are offline'),
+        content: const Text('Charts and streaming may be unavailable.'),
+        severity: InfoBarSeverity.warning,
+        isLong: false,
+        onClose: () => setState(() => _dismissedOffline = true),
+      ));
     }
     // Guests chose keyless entry — never nag them about Last.fm.
     if (auth.status != AuthStatus.signedIn &&
         auth.status != AuthStatus.guest &&
         !_dismissedAuth) {
-      bars.add(
-        InfoBar(
-          title: const Text('Last.fm disconnected'),
-          content: const Text('Connect to keep scrobbling and picks.'),
-          severity: InfoBarSeverity.warning,
-          isLong: false,
-          action: KatLink(
-            onPressed: () => context.go('/welcome'),
-            child: const Text('Connect'),
-          ),
-          onClose: () => setState(() => _dismissedAuth = true),
+      bars.add(InfoBar(
+        title: const Text('Last.fm disconnected'),
+        content: const Text('Connect to keep scrobbling and picks.'),
+        severity: InfoBarSeverity.warning,
+        isLong: false,
+        action: WaveLink(
+          onPressed: () => context.go('/settings'),
+          child: const Text('Connect'),
         ),
-      );
+        onClose: () => setState(() => _dismissedAuth = true),
+      ));
     }
-    // YouTube Music session the server has rejected. Not silent noise:
-    // library, history and uploads all stay empty until this is fixed.
+    // YouTube Music session refresh runs silently in the background on startup
+    // without pushing the screen down. Only surface a banner if background
+    // recovery has already finished and the session is still stale.
     if (ref.watch(ytConnectionProvider).connected &&
         ref.watch(ytAuthStaleProvider) &&
-        _ytRecovering) {
-      bars.add(
-        const InfoBar(
-          title: Text('Reconnecting YouTube Music…'),
-          content: Text('Refreshing the saved session in the background.'),
-          severity: InfoBarSeverity.info,
-          isLong: false,
-        ),
-      );
-    } else if (ref.watch(ytConnectionProvider).connected &&
-        ref.watch(ytAuthStaleProvider) &&
+        !_ytRecovering &&
+        YtSessionKeeper.autoAttempted &&
         !_dismissedYt) {
-      bars.add(
-        InfoBar(
-          title: const Text('YouTube Music session expired'),
-          content: const Text(
-            'Reconnect to load your library, history and uploads again.',
-          ),
-          severity: InfoBarSeverity.warning,
-          isLong: false,
-          action: KatLink(
-            onPressed: () => context.go('/settings?section=integrations'),
-            child: const Text('Reconnect'),
-          ),
-          onClose: () => setState(() => _dismissedYt = true),
+      bars.add(InfoBar(
+        title: const Text('YouTube Music session expired'),
+        content: const Text(
+            'Reconnect to load your library, history and uploads again.'),
+        severity: InfoBarSeverity.warning,
+        isLong: false,
+        action: WaveLink(
+          onPressed: () => context.go('/settings?section=integrations'),
+          child: const Text('Reconnect'),
         ),
-      );
-    }
-    final quotaNotice = ref.watch(addonNoticeProvider);
-    if (quotaNotice != null && _dismissedQuotaNotice != quotaNotice) {
-      bars.add(
-        InfoBar(
-          title: const Text('Addon quota reached'),
-          content: Text('$quotaNotice Playing from YouTube instead.'),
-          severity: InfoBarSeverity.warning,
-          isLong: false,
-          onClose: () {
-            setState(() => _dismissedQuotaNotice = quotaNotice);
-            ref.read(addonNoticeProvider.notifier).state = null;
-          },
-        ),
-      );
+        onClose: () => setState(() => _dismissedYt = true),
+      ));
     }
     DownloadEntry? latest;
     for (final d in downloads) {
-      if (d.status == DownloadStatus.done || d.status == DownloadStatus.error) {
+      if (d.status == DownloadStatus.done ||
+          d.status == DownloadStatus.error) {
         latest = d;
       }
     }
@@ -175,37 +167,36 @@ class _KatInfoBarHostState extends ConsumerState<KatInfoBarHost> {
         _dismissedDownloadKey != latest.key &&
         announcer.shouldAnnounce(latest.key)) {
       final entry = latest;
-      bars.add(
-        InfoBar(
-          title: Text(
-            entry.status == DownloadStatus.done
-                ? 'Download complete'
-                : 'Download failed',
-          ),
-          content: Text('${entry.title} — ${entry.artist}'),
-          severity: entry.status == DownloadStatus.done
-              ? InfoBarSeverity.success
-              : InfoBarSeverity.error,
-          isLong: false,
-          action: KatLink(
-            onPressed: () => context.go('/downloads'),
-            child: const Text('Open'),
-          ),
-          onClose: () {
-            announcer.muteAnnouncement(entry.key);
-            setState(() => _dismissedDownloadKey = entry.key);
-          },
+      bars.add(InfoBar(
+        title: Text(entry.status == DownloadStatus.done
+            ? 'Download complete'
+            : 'Download failed'),
+        content: Text('${entry.title} — ${entry.artist}'),
+        severity: entry.status == DownloadStatus.done
+            ? InfoBarSeverity.success
+            : InfoBarSeverity.error,
+        isLong: false,
+        action: WaveLink(
+          onPressed: () => context.go('/library?tab=downloads'),
+          child: const Text('Open'),
         ),
-      );
+        onClose: () {
+          announcer.muteAnnouncement(entry.key);
+          setState(() => _dismissedDownloadKey = entry.key);
+        },
+      ));
     }
     if (bars.isEmpty) return const SizedBox.shrink();
     return Container(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: katDivider(context))),
+        border: Border(
+          bottom: BorderSide(color: waveDivider(context)),
+        ),
       ),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
+        constraints:
+            const BoxConstraints(maxWidth: WaveDensity.contentMax),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

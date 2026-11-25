@@ -18,20 +18,14 @@ void main() {
       cacheDir: tmp.path,
     );
     final head = await a.request(
-      key: 'k|s|head',
-      side: AnalysisSide.head,
-      url: fixture,
-    );
+        key: 'k|s|head', side: AnalysisSide.head, url: fixture);
     final tail = await a.request(
-      key: 'k|s|tail',
-      side: AnalysisSide.tail,
-      url: fixture,
-      duration: Duration(
-        milliseconds: int.parse(
-          Platform.environment['AUTOMIX_FIXTURE_MS'] ?? '0',
-        ),
-      ),
-    );
+        key: 'k|s|tail',
+        side: AnalysisSide.tail,
+        url: fixture,
+        duration: Duration(
+            milliseconds:
+                int.parse(Platform.environment['AUTOMIX_FIXTURE_MS'] ?? '0')));
 
     logs.forEach(print);
     expect(head, isNotNull);

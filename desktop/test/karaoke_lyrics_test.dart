@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/core/storage/prefs.dart';
+import 'package:katmusic_desktop/features/lyrics/desktop_lyrics_painter.dart';
 import 'package:katmusic_desktop/features/lyrics/karaoke_lyrics_view.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_models.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_repository.dart';
@@ -35,7 +36,11 @@ void main() {
 
   group('Karaoke Syllable & Line Data Models', () {
     test('syllable timestamps and progressive progress calculation', () {
-      const syl = LyricSyllable(timeMs: 1000, durationMs: 500, text: 'Hello');
+      const syl = LyricSyllable(
+        timeMs: 1000,
+        durationMs: 500,
+        text: 'Hello',
+      );
 
       expect(syl.timeMs, equals(1000));
       expect(syl.durationMs, equals(500));
@@ -43,26 +48,17 @@ void main() {
 
       // Before syllable starts
       const posBefore = 800;
-      final progressBefore = ((posBefore - syl.timeMs) / syl.durationMs).clamp(
-        0.0,
-        1.0,
-      );
+      final progressBefore = ((posBefore - syl.timeMs) / syl.durationMs).clamp(0.0, 1.0);
       expect(progressBefore, equals(0.0));
 
       // Halfway through syllable
       const posMid = 1250;
-      final progressMid = ((posMid - syl.timeMs) / syl.durationMs).clamp(
-        0.0,
-        1.0,
-      );
+      final progressMid = ((posMid - syl.timeMs) / syl.durationMs).clamp(0.0, 1.0);
       expect(progressMid, equals(0.5));
 
       // After syllable ends
       const posAfter = 1600;
-      final progressAfter = ((posAfter - syl.timeMs) / syl.durationMs).clamp(
-        0.0,
-        1.0,
-      );
+      final progressAfter = ((posAfter - syl.timeMs) / syl.durationMs).clamp(0.0, 1.0);
       expect(progressAfter, equals(1.0));
     });
 
@@ -96,10 +92,7 @@ void main() {
       expect(groups.length, equals(2));
       // First group: 'fantastic'
       expect(groups[0].syllables.length, equals(3));
-      expect(
-        groups[0].syllables.map((s) => s.text).join(''),
-        equals('fantastic'),
-      );
+      expect(groups[0].syllables.map((s) => s.text).join(''), equals('fantastic'));
       expect(groups[0].hasTrailingSpace, isTrue);
       // Second group: 'world'
       expect(groups[1].syllables.length, equals(1));
@@ -107,48 +100,34 @@ void main() {
       expect(groups[1].hasTrailingSpace, isFalse);
     });
 
-    test(
-      'groupSyllablesIntoWords preserves whitespace-delimited syllables',
-      () {
-        const syllables = [
-          LyricSyllable(timeMs: 100, durationMs: 200, text: 'Hello '),
-          LyricSyllable(timeMs: 300, durationMs: 200, text: 'there '),
-          LyricSyllable(timeMs: 500, durationMs: 300, text: 'friend'),
-        ];
-        const lineText = 'Hello there friend';
+    test('groupSyllablesIntoWords preserves whitespace-delimited syllables', () {
+      const syllables = [
+        LyricSyllable(timeMs: 100, durationMs: 200, text: 'Hello '),
+        LyricSyllable(timeMs: 300, durationMs: 200, text: 'there '),
+        LyricSyllable(timeMs: 500, durationMs: 300, text: 'friend'),
+      ];
+      const lineText = 'Hello there friend';
 
-        final groups = groupSyllablesIntoWords(syllables, lineText);
-        expect(groups.length, equals(3));
-        expect(groups[0].hasTrailingSpace, isTrue);
-        expect(groups[1].hasTrailingSpace, isTrue);
-        expect(groups[2].hasTrailingSpace, isFalse);
-      },
-    );
+      final groups = groupSyllablesIntoWords(syllables, lineText);
+      expect(groups.length, equals(3));
+      expect(groups[0].hasTrailingSpace, isTrue);
+      expect(groups[1].hasTrailingSpace, isTrue);
+      expect(groups[2].hasTrailingSpace, isFalse);
+    });
 
-    test(
-      'calculateSyllableProgress handles zero and edge duration smoothly',
-      () {
-        const zeroDurSyl = LyricSyllable(
-          timeMs: 1000,
-          durationMs: 0,
-          text: 'hi',
-        );
-        expect(calculateSyllableProgress(zeroDurSyl, 999), equals(0.0));
-        expect(calculateSyllableProgress(zeroDurSyl, 1000), equals(0.0));
-        expect(calculateSyllableProgress(zeroDurSyl, 1001), equals(1.0));
+    test('calculateSyllableProgress handles zero and edge duration smoothly', () {
+      const zeroDurSyl = LyricSyllable(timeMs: 1000, durationMs: 0, text: 'hi');
+      expect(calculateSyllableProgress(zeroDurSyl, 999), equals(0.0));
+      expect(calculateSyllableProgress(zeroDurSyl, 1000), equals(0.0));
+      expect(calculateSyllableProgress(zeroDurSyl, 1001), equals(1.0));
 
-        const standardSyl = LyricSyllable(
-          timeMs: 1000,
-          durationMs: 1000,
-          text: 'hello',
-        );
-        expect(calculateSyllableProgress(standardSyl, 500), equals(0.0));
-        expect(calculateSyllableProgress(standardSyl, 1000), equals(0.0));
-        expect(calculateSyllableProgress(standardSyl, 1500), equals(0.5));
-        expect(calculateSyllableProgress(standardSyl, 2000), equals(1.0));
-        expect(calculateSyllableProgress(standardSyl, 2500), equals(1.0));
-      },
-    );
+      const standardSyl = LyricSyllable(timeMs: 1000, durationMs: 1000, text: 'hello');
+      expect(calculateSyllableProgress(standardSyl, 500), equals(0.0));
+      expect(calculateSyllableProgress(standardSyl, 1000), equals(0.0));
+      expect(calculateSyllableProgress(standardSyl, 1500), equals(0.5));
+      expect(calculateSyllableProgress(standardSyl, 2000), equals(1.0));
+      expect(calculateSyllableProgress(standardSyl, 2500), equals(1.0));
+    });
 
     test('interpolateLineSyllables generates proportional word timing for line-synced lyrics', () {
       final syls = interpolateLineSyllables(
@@ -167,24 +146,21 @@ void main() {
       expect(totalSynthesized, closeTo(4000, 200));
     });
 
-    test(
-      'parseLrc computes duration and synthesizes syllables on line-synced LRC',
-      () {
-        const lrc = '''
+    test('parseLrc computes duration and synthesizes syllables on line-synced LRC', () {
+      const lrc = '''
 [00:10.00] Line one
 [00:14.00] Line two
 [00:18.00] Line three
 ''';
-        final lines = parseLrc(lrc);
-        expect(lines.length, equals(3));
-        expect(lines[0].timeMs, equals(10000));
-        expect(lines[0].durationMs, equals(4000));
-        expect(lines[0].hasSyllables, isTrue);
-        expect(lines[0].syllables.length, equals(2));
-        expect(lines[0].syllables[0].text, equals('Line '));
-        expect(lines[0].syllables[1].text, equals('one'));
-      },
-    );
+      final lines = parseLrc(lrc);
+      expect(lines.length, equals(3));
+      expect(lines[0].timeMs, equals(10000));
+      expect(lines[0].durationMs, equals(4000));
+      expect(lines[0].hasSyllables, isTrue);
+      expect(lines[0].syllables.length, equals(2));
+      expect(lines[0].syllables[0].text, equals('Line '));
+      expect(lines[0].syllables[1].text, equals('one'));
+    });
 
     test('parseLrc does not stretch a short line past the next timestamp', () {
       const lrc = '''
@@ -193,6 +169,65 @@ void main() {
 ''';
       final lines = parseLrc(lrc);
       expect(lines[0].durationMs, equals(400));
+    });
+
+    test('enhanced LRC keeps leading word before first timestamp tag', () {
+      const lrc = '[00:10.00]When <00:10.50>the <00:11.00>night';
+      final lines = parseLrc(lrc);
+      expect(lines.isNotEmpty, isTrue);
+      expect(lines.first.syllables.length, equals(3));
+      expect(lines.first.syllables[0].text, equals('When'));
+      expect(lines.first.syllables[0].timeMs, equals(10000));
+      expect(lines.first.syllables[1].text, equals('the'));
+      expect(lines.first.syllables[1].timeMs, equals(10500));
+      expect(lines.first.syllables[2].text, equals('night'));
+      expect(lines.first.syllables[2].timeMs, equals(11000));
+    });
+
+    test('TTML parses agent and preserves pre-span leading text', () {
+      const ttml = '''
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
+  <body>
+    <div>
+      <p begin="00:01.00" end="00:05.00" ttm:agent="v2">Hello <span begin="00:01.50" end="00:02.00">world</span></p>
+    </div>
+  </body>
+</tt>
+''';
+      final lines = parseTtml(ttml);
+      expect(lines.length, equals(1));
+      expect(lines.first.agent, equals('v2'));
+      expect(lines.first.text, equals('Hello world'));
+      expect(lines.first.syllables.length, equals(2));
+      expect(lines.first.syllables.first.text.trim(), equals('Hello'));
+      expect(lines.first.syllables.first.timeMs, equals(1000));
+    });
+
+    test('assembleStanzas groups musical stanzas, duet roles, and nested background harmonies', () {
+      const lines = [
+        LyricLine(timeMs: 1000, durationMs: 1000, text: 'Lead line 1'),
+        LyricLine(timeMs: 2200, durationMs: 800, text: '(ooh yeah)'),
+        // Gap > 2500ms creates stanza break:
+        LyricLine(timeMs: 6000, durationMs: 1000, text: 'Duet line 2', agent: 'v2'),
+        LyricLine(timeMs: 7200, durationMs: 1000, text: 'Both: All together now'),
+      ];
+
+      final stanzas = assembleStanzas(lines);
+      expect(stanzas.length, equals(2));
+
+      // Stanza 1 has 1 group with 1 background subline
+      expect(stanzas[0].groups.length, equals(1));
+      expect(stanzas[0].groups[0].leadLine.text, equals('Lead line 1'));
+      expect(stanzas[0].groups[0].backgroundSublines.length, equals(1));
+      expect(stanzas[0].groups[0].backgroundSublines.first.text, equals('(ooh yeah)'));
+      expect(stanzas[0].groups[0].role, equals(VocalRole.leadLeft));
+
+      // Stanza 2 has 2 groups: duetRight and unisonCenter
+      expect(stanzas[1].groups.length, equals(2));
+      expect(stanzas[1].groups[0].leadLine.text, equals('Duet line 2'));
+      expect(stanzas[1].groups[0].role, equals(VocalRole.duetRight));
+      expect(stanzas[1].groups[1].leadLine.text, equals('Both: All together now'));
+      expect(stanzas[1].groups[1].role, equals(VocalRole.unisonCenter));
     });
   });
 
@@ -228,28 +263,25 @@ void main() {
       expect(n.lines[1].syllables[0].durationMs, equals(100));
     });
 
-    test(
-      'scales second-based cues so a short song is not already finished',
-      () {
-        const result = LyricsResult(
-          isSynced: true,
-          lines: [
-            LyricLine(timeMs: 8, text: 'One'),
-            LyricLine(timeMs: 22, text: 'Two'),
-            LyricLine(timeMs: 41, text: 'Three'),
-            LyricLine(timeMs: 67, text: 'Four'),
-            LyricLine(timeMs: 154, text: 'Last'),
-          ],
-        );
-        final n = normalizeKaraokeTimings(result);
-        expect(n.lines.first.timeMs, equals(8000));
-        expect(n.lines.last.timeMs, equals(154000));
-        expect(activeLyricLineIndex(n.lines, 0), equals(-1));
-        expect(activeLyricLineIndex(n.lines, 9000), equals(0));
-        expect(lyricFollowAlignment(0, compact: false), equals(0));
-        expect(lyricFollowAlignment(3, compact: false), equals(0.34));
-      },
-    );
+    test('scales second-based cues so a short song is not already finished', () {
+      const result = LyricsResult(
+        isSynced: true,
+        lines: [
+          LyricLine(timeMs: 8, text: 'One'),
+          LyricLine(timeMs: 22, text: 'Two'),
+          LyricLine(timeMs: 41, text: 'Three'),
+          LyricLine(timeMs: 67, text: 'Four'),
+          LyricLine(timeMs: 154, text: 'Last'),
+        ],
+      );
+      final n = normalizeKaraokeTimings(result);
+      expect(n.lines.first.timeMs, equals(8000));
+      expect(n.lines.last.timeMs, equals(154000));
+      expect(activeLyricLineIndex(n.lines, 0), equals(-1));
+      expect(activeLyricLineIndex(n.lines, 9000), equals(0));
+      expect(lyricFollowAlignment(0, compact: false), equals(0));
+      expect(lyricFollowAlignment(3, compact: false), equals(0.34));
+    });
 
     test('leaves millisecond cues unchanged', () {
       const result = LyricsResult(
@@ -277,7 +309,8 @@ void main() {
 
     test('untimed transcripts stay on the opening line, not the last', () {
       final lines = [
-        for (var i = 0; i < 46; i++) LyricLine(timeMs: 0, text: 'Line $i'),
+        for (var i = 0; i < 46; i++)
+          LyricLine(timeMs: 0, text: 'Line $i'),
       ];
       expect(lyricsAreUntimed(lines), isTrue);
       expect(activeLyricLineIndex(lines, 0), equals(-1));
@@ -328,34 +361,19 @@ void main() {
 
   group('Lyrics Title & Artist Sanitization', () {
     test('cleanSongTitle removes common YouTube noise words', () {
-      expect(
-        cleanSongTitle('Bohemian Rhapsody (Official Video)'),
-        equals('Bohemian Rhapsody'),
-      );
+      expect(cleanSongTitle('Bohemian Rhapsody (Official Video)'), equals('Bohemian Rhapsody'));
       expect(cleanSongTitle('Stay [Official Audio]'), equals('Stay'));
-      expect(
-        cleanSongTitle('Hotel California - Remastered 2013'),
-        equals('Hotel California'),
-      );
-      expect(
-        cleanSongTitle('Blinding Lights (Live on SNL)'),
-        equals('Blinding Lights'),
-      );
+      expect(cleanSongTitle('Hotel California - Remastered 2013'), equals('Hotel California'));
+      expect(cleanSongTitle('Blinding Lights (Live on SNL)'), equals('Blinding Lights'));
       expect(cleanSongTitle('Ordinary Song'), equals('Ordinary Song'));
-      expect(
-        cleanSongTitle('Bad Guy | Official Music Video'),
-        equals('Bad Guy'),
-      );
+      expect(cleanSongTitle('Bad Guy | Official Music Video'), equals('Bad Guy'));
       expect(cleanSongTitle('Hello / 4K Video'), equals('Hello'));
       expect(cleanSongTitle("Creepin' feat. The Weeknd"), equals("Creepin'"));
     });
 
     test('cleanSongArtist removes Topic and featuring suffixes', () {
       expect(cleanSongArtist('Queen - Topic'), equals('Queen'));
-      expect(
-        cleanSongArtist('The Weeknd feat. Daft Punk'),
-        equals('The Weeknd'),
-      );
+      expect(cleanSongArtist('The Weeknd feat. Daft Punk'), equals('The Weeknd'));
       expect(cleanSongArtist('Dua Lipa'), equals('Dua Lipa'));
     });
   });
@@ -412,33 +430,24 @@ void main() {
   });
 
   group('Lyrics Provider Racing & Candidate Ranking', () {
-    test(
-      'Curated streaming source (Apple Music) supersedes crowdsourced (LRCLIB)',
-      () {
-        const lrclibRes = LyricsResult(
-          lines: [LyricLine(timeMs: 1000, text: 'Oh Anthonio')],
-          isSynced: true,
-          source: 'lrclib',
-        );
-        const appleMusicRes = LyricsResult(
-          lines: [
-            LyricLine(timeMs: 1000, text: 'Overtime and overdue'),
-            LyricLine(timeMs: 3000, text: 'Ain\'t no sleep that is old news'),
-          ],
-          isSynced: true,
-          source: 'Apple Music',
-        );
+    test('Curated streaming source (Apple Music) supersedes crowdsourced (LRCLIB)', () {
+      const lrclibRes = LyricsResult(
+        lines: [LyricLine(timeMs: 1000, text: 'Oh Anthonio')],
+        isSynced: true,
+        source: 'lrclib',
+      );
+      const appleMusicRes = LyricsResult(
+        lines: [
+          LyricLine(timeMs: 1000, text: 'Overtime and overdue'),
+          LyricLine(timeMs: 3000, text: 'Ain\'t no sleep that is old news'),
+        ],
+        isSynced: true,
+        source: 'Apple Music',
+      );
 
-        expect(
-          LyricsRepository.isBetterCandidate(appleMusicRes, lrclibRes),
-          isTrue,
-        );
-        expect(
-          LyricsRepository.isBetterCandidate(lrclibRes, appleMusicRes),
-          isFalse,
-        );
-      },
-    );
+      expect(LyricsRepository.isBetterCandidate(appleMusicRes, lrclibRes), isTrue);
+      expect(LyricsRepository.isBetterCandidate(lrclibRes, appleMusicRes), isFalse);
+    });
 
     test('Richer song lyrics supersedes short sample loop', () {
       final sampleLoop = LyricsResult(
@@ -470,8 +479,8 @@ void main() {
               text: i % 3 == 0
                   ? 'Oh, Anthonio'
                   : i % 3 == 1
-                  ? 'My Anthonio'
-                  : 'Do you ever...',
+                      ? 'My Anthonio'
+                      : 'Do you ever...',
             ),
         ],
         isSynced: true,
@@ -534,12 +543,15 @@ void main() {
         isSynced: true,
         source: 'lrclib',
       );
+      expect(lyricsBodyLength(complete), greaterThan(lyricsBodyLength(truncated)));
       expect(
-        lyricsBodyLength(complete),
-        greaterThan(lyricsBodyLength(truncated)),
+        LyricsRepository.isBetterCandidate(truncated, complete),
+        isTrue,
       );
-      expect(LyricsRepository.isBetterCandidate(truncated, complete), isTrue);
-      expect(LyricsRepository.isBetterCandidate(complete, truncated), isFalse);
+      expect(
+        LyricsRepository.isBetterCandidate(complete, truncated),
+        isFalse,
+      );
     });
 
     test('packed couplets split once and keep both sung phrases', () {
@@ -596,7 +608,10 @@ void main() {
         source: 'lrclib',
       );
       expect(lyricsLooksLikePlaceholder(placeholder), isTrue);
-      expect(LyricsRepository.isBetterCandidate(real, placeholder), isTrue);
+      expect(
+        LyricsRepository.isBetterCandidate(real, placeholder),
+        isTrue,
+      );
     });
 
     test('True word-synced lyrics always supersedes line-synced lyrics', () {
@@ -613,14 +628,8 @@ void main() {
         source: 'source_b',
       );
 
-      expect(
-        LyricsRepository.isBetterCandidate(wordSynced, lineSynced),
-        isTrue,
-      );
-      expect(
-        LyricsRepository.isBetterCandidate(lineSynced, wordSynced),
-        isFalse,
-      );
+      expect(LyricsRepository.isBetterCandidate(wordSynced, lineSynced), isTrue);
+      expect(LyricsRepository.isBetterCandidate(lineSynced, wordSynced), isFalse);
     });
   });
 
@@ -661,10 +670,8 @@ void main() {
 
     test('instrumental albums are treated as alternate recordings', () {
       expect(
-        lyricsIsAlternateRecording(
-          'All Caps',
-          album: 'Madvillainy Instrumentals',
-        ),
+        lyricsIsAlternateRecording('All Caps',
+            album: 'Madvillainy Instrumentals'),
         isTrue,
       );
       expect(
@@ -686,18 +693,9 @@ void main() {
     });
 
     test('lyricsTitlesMatch matches Artist - Title against Title', () {
-      expect(
-        lyricsTitlesMatch('Shape of You', 'Ed Sheeran - Shape Of You'),
-        isTrue,
-      );
-      expect(
-        lyricsTitlesMatch('Ed Sheeran - Shape Of You', 'Shape of You'),
-        isTrue,
-      );
-      expect(
-        lyricsTitlesMatch('Queen - Bohemian Rhapsody', 'Bohemian Rhapsody'),
-        isTrue,
-      );
+      expect(lyricsTitlesMatch('Shape of You', 'Ed Sheeran - Shape Of You'), isTrue);
+      expect(lyricsTitlesMatch('Ed Sheeran - Shape Of You', 'Shape of You'), isTrue);
+      expect(lyricsTitlesMatch('Queen - Bohemian Rhapsody', 'Bohemian Rhapsody'), isTrue);
     });
   });
 
@@ -716,7 +714,7 @@ void main() {
       await tester.pumpWidget(
         FluentApp(
           home: Center(
-            child: KatKaraokeLyricLine(
+            child: WaveKaraokeLyricLine(
               line: line,
               positionMs: pos.value,
               positionListenable: pos,
@@ -734,9 +732,8 @@ void main() {
       return span is TextSpan ? span.style : null;
     }
 
-    testWidgets('resting syllable does not inherit the active-line glow', (
-      tester,
-    ) async {
+    testWidgets('resting syllable does not inherit the active-line glow',
+        (tester) async {
       final pos = ValueNotifier<int>(500);
       addTearDown(pos.dispose);
       await pumpLine(tester, pos);
@@ -747,17 +744,15 @@ void main() {
       expect(
         style!.shadows ?? const <Shadow>[],
         isEmpty,
-        reason:
-            'Text merges the active-line glow from AnimatedDefaultTextStyle; '
+        reason: 'Text merges the active-line glow from AnimatedDefaultTextStyle; '
             'the unsung style must pin shadows so resting pixels match the '
             'wipe TextPainter (otherwise the word darkens the frame the wipe '
             'front reaches it)',
       );
     });
 
-    testWidgets('wipe uses the painter path and restores glow once sung', (
-      tester,
-    ) async {
+    testWidgets('wipe uses the painter path and restores glow once sung',
+        (tester) async {
       final pos = ValueNotifier<int>(500);
       addTearDown(pos.dispose);
       await pumpLine(tester, pos);
@@ -798,14 +793,19 @@ void main() {
           LyricLine(
             timeMs: 1000,
             durationMs: 2000,
-            text: 'Khalif Malik Ibin Shaman Brown/Louis Russel Bell/Austin Richard Post/William Walsh/Carter Lang/Carl Rosen',
+            text:
+                'Khalif Malik Ibin Shaman Brown/Louis Russel Bell/Austin Richard Post/William Walsh/Carter Lang/Carl Rosen',
           ),
           LyricLine(
             timeMs: 3500,
             durationMs: 2000,
             text: 'Ayy, ayy, ayy, ayy (ooh)',
           ),
-          LyricLine(timeMs: 6000, durationMs: 2000, text: 'Ooh, ooh, ooh, ooh'),
+          LyricLine(
+            timeMs: 6000,
+            durationMs: 2000,
+            text: 'Ooh, ooh, ooh, ooh',
+          ),
         ],
       );
 
@@ -818,38 +818,29 @@ void main() {
       expect(cleaned.lines.first.text, equals('Ayy, ayy, ayy, ayy (ooh)'));
     });
 
-    test(
-      'strips CJK and English labeled credit lines and Title - Artist headers',
-      () {
-        const withCredits = LyricsResult(
-          isSynced: true,
-          lines: [
-            LyricLine(timeMs: 0, text: 'Sunflower - Post Malone & Swae Lee'),
-            LyricLine(timeMs: 1000, text: '词：Khalif Brown / Austin Post'),
-            LyricLine(timeMs: 2000, text: '曲：Louis Bell / Carter Lang'),
-            LyricLine(
-              timeMs: 3000,
-              text: 'Produced by Louis Bell & Carter Lang',
-            ),
-            LyricLine(
-              timeMs: 4000,
-              text: 'Needless to say, I keep her in check',
-            ),
-            LyricLine(timeMs: 7000, text: 'She was a bad-bad, nevertheless'),
-          ],
-        );
+    test('strips CJK and English labeled credit lines and Title - Artist headers', () {
+      const withCredits = LyricsResult(
+        isSynced: true,
+        lines: [
+          LyricLine(timeMs: 0, text: 'Sunflower - Post Malone & Swae Lee'),
+          LyricLine(timeMs: 1000, text: '词：Khalif Brown / Austin Post'),
+          LyricLine(timeMs: 2000, text: '曲：Louis Bell / Carter Lang'),
+          LyricLine(timeMs: 3000, text: 'Produced by Louis Bell & Carter Lang'),
+          LyricLine(timeMs: 4000, text: 'Needless to say, I keep her in check'),
+          LyricLine(timeMs: 7000, text: 'She was a bad-bad, nevertheless'),
+        ],
+      );
 
-        final cleaned = normalizeKaraokeTimings(
-          withCredits,
-          title: 'Sunflower',
-          artist: 'Post Malone & Swae Lee',
-        );
-        expect(cleaned.lines.map((l) => l.text).toList(), [
-          'Needless to say, I keep her in check',
-          'She was a bad-bad, nevertheless',
-        ]);
-      },
-    );
+      final cleaned = normalizeKaraokeTimings(
+        withCredits,
+        title: 'Sunflower',
+        artist: 'Post Malone & Swae Lee',
+      );
+      expect(cleaned.lines.map((l) => l.text).toList(), [
+        'Needless to say, I keep her in check',
+        'She was a bad-bad, nevertheless',
+      ]);
+    });
 
     test('preserves vocal producer tags and repeated lyric slashes', () {
       const tooManyNights = LyricsResult(
@@ -878,52 +869,171 @@ void main() {
   });
 
   group('Apple Music Lyrics Depth-of-Field Blur', () {
-    testWidgets(
-      'inactive lyric line applies ImageFiltered blur while active line stays sharp',
-      (tester) async {
-        const sampleLine = LyricLine(timeMs: 1000, text: 'Diamonds on my mind');
+    testWidgets('inactive lyric line applies ImageFiltered blur while active line stays sharp', (tester) async {
+      const sampleLine = LyricLine(timeMs: 1000, text: 'Diamonds on my mind');
 
-        await tester.pumpWidget(
-          FluentApp(
-            theme: FluentThemeData.dark(),
-            home: const ScaffoldPage(
-              content: Column(
-                children: [
-                  KatKaraokeLyricLine(
-                    key: ValueKey('active_line'),
-                    line: sampleLine,
-                    positionMs: 1200,
-                    isActive: true,
-                    isPast: false,
-                    blurSigma: 3.5,
-                  ),
-                  KatKaraokeLyricLine(
-                    key: ValueKey('inactive_line'),
-                    line: sampleLine,
-                    positionMs: 1200,
-                    isActive: false,
-                    isPast: false,
-                    blurSigma: 3.5,
-                  ),
-                ],
-              ),
+      await tester.pumpWidget(
+        FluentApp(
+          theme: FluentThemeData.dark(),
+          home: const ScaffoldPage(
+            content: Column(
+              children: [
+                WaveKaraokeLyricLine(
+                  key: ValueKey('active_line'),
+                  line: sampleLine,
+                  positionMs: 1200,
+                  isActive: true,
+                  isPast: false,
+                  blurSigma: 3.5,
+                ),
+                WaveKaraokeLyricLine(
+                  key: ValueKey('inactive_line'),
+                  line: sampleLine,
+                  positionMs: 1200,
+                  isActive: false,
+                  isPast: false,
+                  blurSigma: 3.5,
+                ),
+              ],
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        final activeBlurFinder = find.descendant(
-          of: find.byKey(const ValueKey('active_line')),
-          matching: find.byType(ImageFiltered),
-        );
-        final inactiveBlurFinder = find.descendant(
-          of: find.byKey(const ValueKey('inactive_line')),
-          matching: find.byType(ImageFiltered),
-        );
+      final activeBlurFinder = find.descendant(
+        of: find.byKey(const ValueKey('active_line')),
+        matching: find.byType(ImageFiltered),
+      );
+      final inactiveBlurFinder = find.descendant(
+        of: find.byKey(const ValueKey('inactive_line')),
+        matching: find.byType(ImageFiltered),
+      );
 
-        expect(activeBlurFinder, findsNothing);
-        expect(inactiveBlurFinder, findsOneWidget);
-      },
-    );
+      // The filter stays mounted (toggling it remounted the line) but is
+      // disabled on the active line.
+      expect(tester.widget<ImageFiltered>(activeBlurFinder).enabled, isFalse);
+      expect(tester.widget<ImageFiltered>(inactiveBlurFinder).enabled, isTrue);
+    });
+  });
+
+  group('Desktop Lyrics Skia GPU Canvas Engine & Layout Cache', () {
+    test('ParagraphLayoutCache caches and precomputes layout metrics', () {
+      final cache = ParagraphLayoutCache();
+      const line = LyricLine(
+        timeMs: 1000,
+        durationMs: 2000,
+        text: 'Save your tears for another day',
+        syllables: [
+          LyricSyllable(timeMs: 1000, durationMs: 400, text: 'Save '),
+          LyricSyllable(timeMs: 1400, durationMs: 300, text: 'your '),
+          LyricSyllable(timeMs: 1700, durationMs: 500, text: 'tears '),
+          LyricSyllable(timeMs: 2200, durationMs: 300, text: 'for '),
+          LyricSyllable(timeMs: 2500, durationMs: 300, text: 'another '),
+          LyricSyllable(timeMs: 2800, durationMs: 200, text: 'day'),
+        ],
+      );
+
+      const activeStyle = TextStyle(fontSize: 36.0, fontWeight: FontWeight.bold);
+      const idleStyle = TextStyle(fontSize: 36.0, fontWeight: FontWeight.normal);
+
+      final layout1 = cache.getOrCreate(
+        line: line,
+        maxWidth: 800,
+        activeStyle: activeStyle,
+        idleStyle: idleStyle,
+      );
+
+      expect(layout1.width, greaterThan(0));
+      expect(layout1.height, greaterThan(0));
+      expect(layout1.syllableOffsetsX.length, equals(7)); // 0.0 + 6 syllables
+      expect(layout1.syllableOffsetsX.first, equals(0.0));
+      expect(layout1.syllableOffsetsX.last, greaterThan(layout1.syllableOffsetsX.first));
+
+      // Same object returned from cache:
+      final layout2 = cache.getOrCreate(
+        line: line,
+        maxWidth: 800,
+        activeStyle: activeStyle,
+        idleStyle: idleStyle,
+      );
+      expect(identical(layout1, layout2), isTrue);
+
+      cache.clear();
+      final layout3 = cache.getOrCreate(
+        line: line,
+        maxWidth: 800,
+        activeStyle: activeStyle,
+        idleStyle: idleStyle,
+      );
+      expect(identical(layout1, layout3), isFalse);
+    });
+
+    testWidgets('DesktopStanzaWidget renders spatial duet staging and nested background vocals', (tester) async {
+      final cache = ParagraphLayoutCache();
+      final posNotifier = ValueNotifier<int>(1200);
+      addTearDown(posNotifier.dispose);
+
+      const stanza = LyricStanza(
+        timeMs: 1000,
+        durationMs: 4000,
+        groups: [
+          LyricLineGroup(
+            leadLine: LyricLine(timeMs: 1000, durationMs: 2000, text: 'Lead line singing'),
+            backgroundSublines: [
+              LyricLine(timeMs: 1800, durationMs: 1000, text: '(backing harmony)'),
+            ],
+            role: VocalRole.leadLeft,
+          ),
+          LyricLineGroup(
+            leadLine: LyricLine(timeMs: 3000, durationMs: 2000, text: 'Duet partner replying'),
+            role: VocalRole.duetRight,
+          ),
+        ],
+      );
+
+      const activeStyle = TextStyle(fontSize: 36.0, fontWeight: FontWeight.bold, color: Colors.white);
+      const activeUnsungStyle = TextStyle(fontSize: 36.0, fontWeight: FontWeight.bold, color: Color(0x60FFFFFF));
+      const idleStyle = TextStyle(fontSize: 34.0, fontWeight: FontWeight.normal, color: Color(0x60FFFFFF));
+      const backgroundStyle = TextStyle(fontSize: 36.0, fontWeight: FontWeight.normal, color: Color(0x60FFFFFF));
+
+      await tester.pumpWidget(
+        FluentApp(
+          theme: FluentThemeData.dark(),
+          home: ScaffoldPage(
+            content: DesktopStanzaWidget(
+              stanza: stanza,
+              activeLineTimeMs: 1000,
+              positionListenable: posNotifier,
+              layoutCache: cache,
+              activeStyle: activeStyle,
+              activeUnsungStyle: activeUnsungStyle,
+              idleStyle: idleStyle,
+              backgroundStyle: backgroundStyle,
+              selectMode: false,
+              selectedLines: const {},
+              onToggleSelect: (_) {},
+              onSeekLineMs: (_) {},
+              allLines: const [
+                LyricLine(timeMs: 1000, durationMs: 2000, text: 'Lead line singing'),
+                LyricLine(timeMs: 1800, durationMs: 1000, text: '(backing harmony)'),
+                LyricLine(timeMs: 3000, durationMs: 2000, text: 'Duet partner replying'),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Active lead line renders via CustomPaint (DesktopKaraokeLinePainter)
+      final painterFinder = find.byType(CustomPaint);
+      expect(painterFinder, findsWidgets);
+
+      // Backing harmony is present as subordinate text under lead line
+      expect(find.text('(backing harmony)'), findsOneWidget);
+
+      // Duet line is present as text with right alignment
+      expect(find.text('Duet partner replying'), findsOneWidget);
+    });
   });
 }

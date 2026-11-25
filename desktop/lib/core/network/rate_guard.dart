@@ -2,7 +2,7 @@ import 'dart:async';
 
 /// Last.fm rate-limit guard.
 ///
-/// Ported from KatMusic-native `data/network/LastFmRateGuard.kt`:
+/// Ported from KatMusic `data/network/LastFmRateGuard.kt`:
 /// a short cooldown is applied after HTTP 429/503 so clients back off
 /// instead of hammering the API.
 class LastFmRateGuard {
@@ -41,7 +41,7 @@ class LastFmRateGuard {
 }
 
 /// Maps Last.fm error codes to friendly messages.
-/// Ported from `LastFmErrors.friendlyMessage` in KatMusic-native.
+/// Ported from `LastFmErrors.friendlyMessage` in KatMusic.
 String lastFmFriendlyMessage(int? code, String raw) {
   switch (code) {
     case 2:

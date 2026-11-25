@@ -24,7 +24,9 @@ class LocalTaste {
   });
 
   bool get isEmpty =>
-      recentPlays.isEmpty && likedTracks.isEmpty && downloadedTracks.isEmpty;
+      recentPlays.isEmpty &&
+      likedTracks.isEmpty &&
+      downloadedTracks.isEmpty;
 
   /// Seed pool for discovery/personal-mix: recents first (current
   /// taste), then liked, then downloads — deduped, artists capped
@@ -32,7 +34,11 @@ class LocalTaste {
   List<HomeTrack> seedPool({int limit = 12}) {
     final out = <HomeTrack>[];
     final seen = <String>{};
-    for (final t in [...recentPlays, ...likedTracks, ...downloadedTracks]) {
+    for (final t in [
+      ...recentPlays,
+      ...likedTracks,
+      ...downloadedTracks,
+    ]) {
       if (t.name.isEmpty || !seen.add(t.key)) continue;
       out.add(t);
       if (out.length >= limit) break;

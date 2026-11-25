@@ -4,7 +4,8 @@ import 'podcast_models.dart';
 ///
 /// Port of KatMusic Native `PodcastParser`. Episode order is YouTube's.
 class PodcastParser {
-  static const episodeSearchFilter = 'EgWKAQJIAWoSEBEQAxAQEAUQChAOEAkQBBAV';
+  static const episodeSearchFilter =
+      'EgWKAQJIAWoSEBEQAxAQEAUQChAOEAkQBBAV';
 
   static List<PodcastShelf> parseHome(Object? root) {
     final carousels = <Map<String, dynamic>>[];
@@ -19,12 +20,16 @@ class PodcastParser {
           .map(parseShowCard)
           .whereType<PodcastShow>()
           .fold<List<PodcastShow>>([], (list, show) {
-            if (list.every((s) => s.showId != show.showId)) list.add(show);
-            return list;
-          });
+        if (list.every((s) => s.showId != show.showId)) list.add(show);
+        return list;
+      });
       final episodes = _parseEpisodeRenderers(carousel);
       if (shows.isEmpty && episodes.isEmpty) continue;
-      shelves.add(PodcastShelf(title: title, shows: shows, episodes: episodes));
+      shelves.add(PodcastShelf(
+        title: title,
+        shows: shows,
+        episodes: episodes,
+      ));
     }
     if (shelves.isNotEmpty) return shelves;
 
@@ -34,9 +39,9 @@ class PodcastParser {
         .map(parseShowCard)
         .whereType<PodcastShow>()
         .fold<List<PodcastShow>>([], (list, show) {
-          if (list.every((s) => s.showId != show.showId)) list.add(show);
-          return list;
-        });
+      if (list.every((s) => s.showId != show.showId)) list.add(show);
+      return list;
+    });
     if (parsed.isNotEmpty) {
       return [PodcastShelf(title: 'Podcasts', shows: parsed)];
     }
@@ -64,25 +69,24 @@ class PodcastParser {
         ? title
         : (fallbackTitle.isNotEmpty ? fallbackTitle : 'Podcast');
     final episodes = _parseEpisodeRenderers(root)
-        .map(
-          (episode) => episode.copyWith(
-            showId: episode.showId.isEmpty ? showId : episode.showId,
-            showTitle: episode.showTitle.isEmpty
-                ? resolvedTitle
-                : episode.showTitle,
-          ),
-        )
+        .map((episode) => episode.copyWith(
+              showId: episode.showId.isEmpty ? showId : episode.showId,
+              showTitle:
+                  episode.showTitle.isEmpty ? resolvedTitle : episode.showTitle,
+            ))
         .toList();
     return PodcastShowPage(
       show: PodcastShow(
         showId: showId,
         title: resolvedTitle,
-        publisher: header == null ? '' : (_textOf(header['subtitle']) ?? ''),
+        publisher: header == null
+            ? ''
+            : (_textOf(header['subtitle']) ?? ''),
         description: header == null
             ? ''
             : (_textOf(header['description']) ??
-                  _textOf(header['descriptionText']) ??
-                  ''),
+                _textOf(header['descriptionText']) ??
+                ''),
         artworkUrl: header == null ? '' : (_artworkUrl(header) ?? ''),
       ),
       episodes: episodes,
@@ -97,14 +101,11 @@ class PodcastParser {
   }) {
     return PodcastEpisodePage(
       episodes: _parseEpisodeRenderers(root)
-          .map(
-            (episode) => episode.copyWith(
-              showId: episode.showId.isEmpty ? showId : episode.showId,
-              showTitle: episode.showTitle.isEmpty
-                  ? showTitle
-                  : episode.showTitle,
-            ),
-          )
+          .map((episode) => episode.copyWith(
+                showId: episode.showId.isEmpty ? showId : episode.showId,
+                showTitle:
+                    episode.showTitle.isEmpty ? showTitle : episode.showTitle,
+              ))
           .toList(),
       continuation: _episodeContinuation(root),
     );
@@ -203,8 +204,7 @@ class PodcastParser {
   }
 
   static PodcastEpisode? _parseResponsiveEpisode(
-    Map<String, dynamic> renderer,
-  ) {
+      Map<String, dynamic> renderer) {
     final videoId = _episodeVideoId(renderer);
     if (videoId == null) return null;
     final columns = renderer['flexColumns'];
@@ -233,7 +233,8 @@ class PodcastParser {
     if (_hasPodcastMarker(renderer)) return true;
     if (requirePodcastMarker) return false;
     final pageType = _findString(renderer, 'pageType');
-    return pageType == null || !pageType.toUpperCase().contains('PODCAST');
+    return pageType == null ||
+        !pageType.toUpperCase().contains('PODCAST');
   }
 
   static bool _hasPodcastMarker(Map<String, dynamic> renderer) {
@@ -245,8 +246,8 @@ class PodcastParser {
     if (videoType != null && videoType.toUpperCase().contains('PODCAST')) {
       return true;
     }
-    if (_browseIds(renderer)
-        .any((id) => id.startsWith('MPED') || id.startsWith('MPSPPL'))) {
+    if (_browseIds(renderer).any(
+        (id) => id.startsWith('MPED') || id.startsWith('MPSPPL'))) {
       return true;
     }
     final subtitle = _columnText(renderer['flexColumns'], 1);
@@ -267,8 +268,7 @@ class PodcastParser {
       return null;
     }
 
-    final direct =
-        from(renderer['onTap']) ??
+    final direct = from(renderer['onTap']) ??
         from(renderer['navigationEndpoint']) ??
         (renderer['playlistItemData'] is Map
             ? (renderer['playlistItemData'] as Map)['videoId']?.toString()

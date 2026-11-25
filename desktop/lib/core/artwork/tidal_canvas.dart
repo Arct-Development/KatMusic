@@ -66,18 +66,17 @@ class TidalCanvas {
       final rawArtists = item['artists'];
       final artists = rawArtists is List
           ? rawArtists
-                .whereType<Map>()
-                .map((a) => a['name']?.toString() ?? '')
-                .where((s) => s.isNotEmpty)
-                .toList()
+              .whereType<Map>()
+              .map((a) => a['name']?.toString() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toList()
           : const <String>[];
 
       if (!_isMatch(trackTitle, artists, title, artist)) continue;
 
       final albumObj = item['album'];
-      final videoCover = albumObj is Map
-          ? albumObj['videoCover']?.toString()
-          : null;
+      final videoCover =
+          albumObj is Map ? albumObj['videoCover']?.toString() : null;
       if (videoCover == null || videoCover.trim().isEmpty) continue;
       final videoUrl = coverUrl(videoCover.trim());
       if (videoUrl == null) continue;
@@ -127,10 +126,10 @@ class TidalCanvas {
       final rawArtists = item['artists'];
       final artists = rawArtists is List
           ? rawArtists
-                .whereType<Map>()
-                .map((a) => a['name']?.toString() ?? '')
-                .where((s) => s.isNotEmpty)
-                .toList()
+              .whereType<Map>()
+              .map((a) => a['name']?.toString() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toList()
           : const <String>[];
 
       if (!_isMatch(recordTitle, artists, album, artist)) continue;

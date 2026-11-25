@@ -43,37 +43,41 @@ class StoredTrack {
   });
 
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'artist': artist,
-    'artworkUrl': artworkUrl,
-    'videoId': videoId,
-    'album': album,
-    'durationSeconds': durationSeconds,
-    'playbackUrl': playbackUrl,
-    'addedAtMillis': addedAtMillis,
-  };
+        'name': name,
+        'artist': artist,
+        'artworkUrl': artworkUrl,
+        'videoId': videoId,
+        'album': album,
+        'durationSeconds': durationSeconds,
+        'playbackUrl': playbackUrl,
+        'addedAtMillis': addedAtMillis,
+      };
 
-  factory StoredTrack.fromJson(Map<String, dynamic> json) => StoredTrack(
-    name: json['name']?.toString() ?? '',
-    artist: json['artist']?.toString() ?? '',
-    artworkUrl: json['artworkUrl']?.toString() ?? '',
-    videoId:
-        json['videoId']?.toString() ?? json['youtubeVideoId']?.toString() ?? '',
-    album: json['album']?.toString() ?? '',
-    durationSeconds: int.tryParse('${json['durationSeconds'] ?? 0}') ?? 0,
-    playbackUrl: json['playbackUrl']?.toString() ?? '',
-    addedAtMillis: int.tryParse('${json['addedAtMillis'] ?? 0}') ?? 0,
-  );
+  factory StoredTrack.fromJson(Map<String, dynamic> json) =>
+      StoredTrack(
+        name: json['name']?.toString() ?? '',
+        artist: json['artist']?.toString() ?? '',
+        artworkUrl: json['artworkUrl']?.toString() ?? '',
+        videoId: json['videoId']?.toString() ??
+            json['youtubeVideoId']?.toString() ??
+            '',
+        album: json['album']?.toString() ?? '',
+        durationSeconds:
+            int.tryParse('${json['durationSeconds'] ?? 0}') ?? 0,
+        playbackUrl: json['playbackUrl']?.toString() ?? '',
+        addedAtMillis:
+            int.tryParse('${json['addedAtMillis'] ?? 0}') ?? 0,
+      );
 
   PlayableTrack toPlayable() => PlayableTrack(
-    title: name,
-    artist: artist,
-    album: album,
-    artworkUrl: artworkUrl,
-    videoId: videoId,
-    playbackUrl: playbackUrl,
-    duration: Duration(seconds: durationSeconds),
-  );
+        title: name,
+        artist: artist,
+        album: album,
+        artworkUrl: artworkUrl,
+        videoId: videoId,
+        playbackUrl: playbackUrl,
+        duration: Duration(seconds: durationSeconds),
+      );
 }
 
 /// Saved playlist entity. Mirrors Android `SavedPlaylist`.
@@ -93,6 +97,10 @@ class SavedPlaylist {
   static const String localMode = 'local';
   static const String localTitle = 'Local songs';
 
+  /// A playlist made in the Library from songs on this PC. Never mirrored
+  /// to YouTube Music (only `custom` is), and listed only in the Library.
+  static const String libraryMode = 'library';
+
   const SavedPlaylist({
     required this.id,
     required this.title,
@@ -111,6 +119,8 @@ class SavedPlaylist {
 
   bool get isLocal =>
       mode == localMode || title.toLowerCase() == localTitle.toLowerCase();
+
+  bool get isLibrary => mode == libraryMode;
 }
 
 /// Playlist + liked-songs repository backed by SQLite.
@@ -201,9 +211,7 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
   /// keep it monotonic against what the table already holds.
   int _newId() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final row = _db.raw
-        .select('SELECT MAX(id) AS m FROM saved_playlists;')
-        .first;
+    final row = _db.raw.select('SELECT MAX(id) AS m FROM saved_playlists;').first;
     final maxId = (row['m'] as int?) ?? 0;
     return now > maxId ? now : maxId + 1;
   }
@@ -217,14 +225,7 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
     _db.raw.execute(
       'INSERT INTO saved_playlists(id, title, subtitle, mode, tracks_json, created_at_millis, is_pinned) '
       'VALUES(?, ?, ?, ?, ?, ?, 1);',
-      [
-        id,
-        SavedPlaylist.likedTitle,
-        'Your loved tracks',
-        SavedPlaylist.likedMode,
-        '[]',
-        now,
-      ],
+      [id, SavedPlaylist.likedTitle, 'Your loved tracks', SavedPlaylist.likedMode, '[]', now],
     );
     refresh();
     return state.firstWhere((p) => p.isLikedSongs);
@@ -234,7 +235,8 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
     final liked = state.where((p) => p.isLikedSongs);
     if (liked.isEmpty) return const {};
     return liked.first.tracks
-        .map((t) => '${t.name.toLowerCase()}|${t.artist.toLowerCase()}')
+        .map((t) =>
+            '${t.name.toLowerCase()}|${t.artist.toLowerCase()}')
         .toSet();
   }
 
@@ -244,9 +246,8 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
         clean.toLowerCase() == 'liked music') {
       return ensureLikedSongs();
     }
-    final existing = state.where(
-      (p) => p.mode == 'custom' && p.title.toLowerCase() == clean.toLowerCase(),
-    );
+    final existing = state.where((p) =>
+        p.mode == 'custom' && p.title.toLowerCase() == clean.toLowerCase());
     if (existing.isNotEmpty) return existing.first;
 
     final id = _newId();
@@ -261,18 +262,18 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
   }
 
   Future<void> rename(int id, String title) async {
-    _db.raw.execute('UPDATE saved_playlists SET title = ? WHERE id = ?;', [
-      title.trim(),
-      id,
-    ]);
+    _db.raw.execute(
+      'UPDATE saved_playlists SET title = ? WHERE id = ?;',
+      [title.trim(), id],
+    );
     refresh();
   }
 
   Future<void> setPinned(int id, bool pinned) async {
-    _db.raw.execute('UPDATE saved_playlists SET is_pinned = ? WHERE id = ?;', [
-      pinned ? 1 : 0,
-      id,
-    ]);
+    _db.raw.execute(
+      'UPDATE saved_playlists SET is_pinned = ? WHERE id = ?;',
+      [pinned ? 1 : 0, id],
+    );
     refresh();
   }
 
@@ -283,10 +284,10 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
 
   Future<bool> addTrack(int id, StoredTrack track) async {
     final playlist = state.firstWhere((p) => p.id == id);
-    final key = '${track.name.toLowerCase()}|${track.artist.toLowerCase()}';
-    final exists = playlist.tracks.any(
-      (t) => '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' == key,
-    );
+    final key =
+        '${track.name.toLowerCase()}|${track.artist.toLowerCase()}';
+    final exists = playlist.tracks.any((t) =>
+        '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' == key);
     if (exists) return false;
     final stamped = track.addedAtMillis == 0
         ? StoredTrack(
@@ -312,10 +313,9 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
   Future<void> removeTrack(int id, String trackKey) async {
     final playlist = state.firstWhere((p) => p.id == id);
     final updated = playlist.tracks
-        .where(
-          (t) =>
-              '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' != trackKey,
-        )
+        .where((t) =>
+            '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' !=
+            trackKey)
         .toList();
     _db.raw.execute(
       'UPDATE saved_playlists SET tracks_json = ? WHERE id = ?;',
@@ -336,25 +336,22 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
     final playlist = state.firstWhere((p) => p.id == id);
     String keyOf(StoredTrack t) =>
         '${t.name.toLowerCase()}|${t.artist.toLowerCase()}';
-    final updated = playlist.tracks
-        .where((t) => !removeKeys.contains(keyOf(t)))
-        .toList();
+    final updated =
+        playlist.tracks.where((t) => !removeKeys.contains(keyOf(t))).toList();
     final seen = updated.map(keyOf).toSet();
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final t in add) {
       if (!seen.add(keyOf(t))) continue;
-      updated.add(
-        StoredTrack(
-          name: t.name,
-          artist: t.artist,
-          artworkUrl: t.artworkUrl,
-          videoId: t.videoId,
-          album: t.album,
-          durationSeconds: t.durationSeconds,
-          playbackUrl: t.playbackUrl,
-          addedAtMillis: t.addedAtMillis == 0 ? now : t.addedAtMillis,
-        ),
-      );
+      updated.add(StoredTrack(
+        name: t.name,
+        artist: t.artist,
+        artworkUrl: t.artworkUrl,
+        videoId: t.videoId,
+        album: t.album,
+        durationSeconds: t.durationSeconds,
+        playbackUrl: t.playbackUrl,
+        addedAtMillis: t.addedAtMillis == 0 ? now : t.addedAtMillis,
+      ));
     }
     _db.raw.execute(
       'UPDATE saved_playlists SET tracks_json = ? WHERE id = ?;',
@@ -369,6 +366,20 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
       [jsonEncode(tracks.map((t) => t.toJson()).toList()), id],
     );
     refresh();
+  }
+
+  /// New Library playlist (see [SavedPlaylist.libraryMode]).
+  Future<SavedPlaylist> createLibrary(String title) async {
+    final id = _newId();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final clean = title.trim().isEmpty ? 'New playlist' : title.trim();
+    _db.raw.execute(
+      'INSERT INTO saved_playlists(id, title, subtitle, mode, tracks_json, created_at_millis, is_pinned) '
+      'VALUES(?, ?, ?, ?, ?, ?, 0);',
+      [id, clean, 'On this PC', SavedPlaylist.libraryMode, '[]', now],
+    );
+    refresh();
+    return state.firstWhere((p) => p.id == id);
   }
 
   Future<SavedPlaylist> ensureLocalSongs() async {
@@ -397,9 +408,8 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
     List<StoredTrack> tracks,
   ) async {
     final clean = title.trim().isEmpty ? 'Generated mix' : title.trim();
-    final existing = state.where(
-      (p) => p.mode == 'custom' && p.title.toLowerCase() == clean.toLowerCase(),
-    );
+    final existing = state.where((p) =>
+        p.mode == 'custom' && p.title.toLowerCase() == clean.toLowerCase());
     if (existing.isNotEmpty) {
       await replaceTracks(existing.first.id, tracks);
       return state.firstWhere((p) => p.id == existing.first.id);
@@ -427,10 +437,10 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
   /// YtLibrarySync carries the change to YouTube Music.
   Future<bool> toggleLiked(StoredTrack track) async {
     final liked = await ensureLikedSongs();
-    final key = '${track.name.toLowerCase()}|${track.artist.toLowerCase()}';
-    final isLiked = liked.tracks.any(
-      (t) => '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' == key,
-    );
+    final key =
+        '${track.name.toLowerCase()}|${track.artist.toLowerCase()}';
+    final isLiked = liked.tracks.any((t) =>
+        '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' == key);
     final result = !isLiked;
     if (isLiked) {
       await removeTrack(liked.id, key);
@@ -481,6 +491,7 @@ class PlaylistRepository extends StateNotifier<List<SavedPlaylist>> {
 }
 
 final playlistRepositoryProvider =
-    StateNotifierProvider<PlaylistRepository, List<SavedPlaylist>>((ref) {
-      return PlaylistRepository(ref.watch(databaseProvider));
-    });
+    StateNotifierProvider<PlaylistRepository, List<SavedPlaylist>>(
+        (ref) {
+  return PlaylistRepository(ref.watch(databaseProvider));
+});

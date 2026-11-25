@@ -9,7 +9,7 @@ import '../features/feed/feed_repository.dart';
 import '../features/innertube/album_match.dart';
 import '../features/innertube/innertube_api.dart';
 import '../features/player/playback_service.dart';
-import '../ui/navigation/kat_nav.dart';
+import '../ui/navigation/wave_nav.dart';
 
 /// Start the queue; the playback service resolves each track on demand.
 /// Limusic fast path: videoIds are preserved end-to-end so tracks with
@@ -47,34 +47,37 @@ List<GeneratedTrack> mergeYtTracks(
   if (yt.isEmpty) return local;
   final seen = <String>{
     for (final t in local)
-      if (t.videoId.isNotEmpty) 'v:${t.videoId}' else 'k:${t.key}',
+      if (t.videoId.isNotEmpty)
+        'v:${t.videoId}'
+      else
+        'k:${t.key}',
   };
   final out = List<GeneratedTrack>.of(local);
   var added = 0;
   for (final t in yt) {
-    final vKey = t.videoId.isNotEmpty ? 'v:${t.videoId}' : null;
-    final kKey = 'k:${t.title.toLowerCase()}|${t.artist.toLowerCase()}';
-    if ((vKey != null && seen.contains(vKey)) || seen.contains(kKey)) {
+    final vKey =
+        t.videoId.isNotEmpty ? 'v:${t.videoId}' : null;
+    final kKey =
+        'k:${t.title.toLowerCase()}|${t.artist.toLowerCase()}';
+    if ((vKey != null && seen.contains(vKey)) ||
+        seen.contains(kKey)) {
       continue;
     }
     if (vKey != null) seen.add(vKey);
     seen.add(kKey);
     added++;
-    out.add(
-      GeneratedTrack(
-        name: t.title,
-        artist: t.artist,
-        album: t.album,
-        artworkUrl: t.artworkUrl,
-        videoId: t.videoId,
-        durationSeconds: t.durationSeconds,
-      ),
-    );
+    out.add(GeneratedTrack(
+      name: t.title,
+      artist: t.artist,
+      album: t.album,
+      artworkUrl: t.artworkUrl,
+      videoId: t.videoId,
+      durationSeconds: t.durationSeconds,
+    ));
   }
   if (kDebugMode) {
     debugPrint(
-      'mergeYtTracks: local=${local.length} yt=${yt.length} added=$added',
-    );
+        'mergeYtTracks: local=${local.length} yt=${yt.length} added=$added');
   }
   return out;
 }
@@ -138,15 +141,14 @@ Future<void> goToAlbumOfTrack(
       return;
     }
     if (!context.mounted) return;
-    katOpen(
-      context,
-      katAlbumLocation(
-        browseId: browseId,
-        title: match?.name ?? albumName,
-        artist: match?.artist ?? artist,
-        artworkUrl: match?.artworkUrl ?? '',
-      ),
-    );
+    waveOpen(
+        context,
+        waveAlbumLocation(
+          browseId: browseId,
+          title: match?.name ?? albumName,
+          artist: match?.artist ?? artist,
+          artworkUrl: match?.artworkUrl ?? '',
+        ));
   } catch (_) {
     try {
       fallback();
@@ -159,15 +161,16 @@ Future<void> goToAlbumOfTrack(
 /// matcher with nothing but title+artist, so soundtrack rows billed to
 /// the composer could not be identified (and the ±8s duration gate never
 /// ran).
-PlayableTrack playableFromGenerated(GeneratedTrack t) => PlayableTrack(
-  title: t.name,
-  artist: t.artist,
-  album: t.album,
-  artworkUrl: t.artworkUrl,
-  videoId: t.videoId,
-  playbackUrl: t.playbackUrl,
-  duration: Duration(seconds: t.durationSeconds),
-);
+PlayableTrack playableFromGenerated(GeneratedTrack t) =>
+    PlayableTrack(
+      title: t.name,
+      artist: t.artist,
+      album: t.album,
+      artworkUrl: t.artworkUrl,
+      videoId: t.videoId,
+      playbackUrl: t.playbackUrl,
+      duration: Duration(seconds: t.durationSeconds),
+    );
 
 String formatDuration(Duration d) {
   final total = d.inSeconds.clamp(0, 1 << 31);

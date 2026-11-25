@@ -29,9 +29,9 @@ int _linearActiveIndex(List<LyricLine> lines, int positionMs) {
 }
 
 List<LyricLine> _lines(List<int> times) => [
-  for (var i = 0; i < times.length; i++)
-    LyricLine(timeMs: times[i], durationMs: 1500, text: 'line $i'),
-];
+      for (var i = 0; i < times.length; i++)
+        LyricLine(timeMs: times[i], durationMs: 1500, text: 'line $i'),
+    ];
 
 void main() {
   group('activeLyricLineIndex (karaoke lookup)', () {

@@ -6,7 +6,7 @@ import 'package:katmusic_desktop/ui/components/buttons.dart';
 Widget _host({VoidCallback? onTap, double pressedScale = 0.97}) {
   return FluentApp(
     home: Center(
-      child: KatPressable(
+      child: WavePressable(
         onTap: onTap,
         pressedScale: pressedScale,
         child: const SizedBox(width: 80, height: 80),
@@ -18,7 +18,7 @@ Widget _host({VoidCallback? onTap, double pressedScale = 0.97}) {
 double _scale(WidgetTester tester) => tester
     .widget<AnimatedScale>(
       find.descendant(
-        of: find.byType(KatPressable),
+        of: find.byType(WavePressable),
         matching: find.byType(AnimatedScale),
       ),
     )
@@ -26,12 +26,10 @@ double _scale(WidgetTester tester) => tester
 
 MouseCursor _cursor(WidgetTester tester) => tester
     .widget<MouseRegion>(
-      find
-          .descendant(
-            of: find.byType(KatPressable),
-            matching: find.byType(MouseRegion),
-          )
-          .last, // the outer region is the focus detector's
+      find.descendant(
+        of: find.byType(WavePressable),
+        matching: find.byType(MouseRegion),
+      ).last, // the outer region is the focus detector's
     )
     .cursor;
 
@@ -41,14 +39,11 @@ void main() {
     await tester.pumpWidget(_host(onTap: () => taps++));
     expect(_scale(tester), 1.0);
 
-    final centre = tester.getCenter(find.byType(KatPressable));
+    final centre = tester.getCenter(find.byType(WavePressable));
     final gesture = await tester.startGesture(centre);
     await tester.pump(const Duration(milliseconds: 40));
-    expect(
-      _scale(tester),
-      lessThan(1.0),
-      reason: 'the card has to react before the route grows out of it',
-    );
+    expect(_scale(tester), lessThan(1.0),
+        reason: 'the card has to react before the route grows out of it');
 
     await gesture.up();
     await tester.pumpAndSettle();
@@ -56,13 +51,11 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('a cancelled press does not leave the surface dipped', (
-    tester,
-  ) async {
+  testWidgets('a cancelled press does not leave the surface dipped',
+      (tester) async {
     await tester.pumpWidget(_host(onTap: () {}));
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(KatPressable)),
-    );
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.byType(WavePressable)));
     await tester.pump(const Duration(milliseconds: 40));
     expect(_scale(tester), lessThan(1.0));
 
@@ -73,17 +66,15 @@ void main() {
 
   testWidgets('honours a per-surface dip', (tester) async {
     await tester.pumpWidget(_host(onTap: () {}, pressedScale: 0.985));
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(KatPressable)),
-    );
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.byType(WavePressable)));
     await tester.pumpAndSettle();
     expect(_scale(tester), 0.985);
     await gesture.up();
   });
 
-  testWidgets('carries the pointer cursor only when it is tappable', (
-    tester,
-  ) async {
+  testWidgets('carries the pointer cursor only when it is tappable',
+      (tester) async {
     await tester.pumpWidget(_host(onTap: () {}));
     expect(_cursor(tester), SystemMouseCursors.click);
 
@@ -94,16 +85,14 @@ void main() {
   testWidgets('is a named button a screen reader can activate', (tester) async {
     final semantics = tester.ensureSemantics();
     var taps = 0;
-    await tester.pumpWidget(
-      FluentApp(
-        home: Center(
-          child: KatPressable(
-            onTap: () => taps++,
-            child: const Text('Blinding Lights'),
-          ),
+    await tester.pumpWidget(FluentApp(
+      home: Center(
+        child: WavePressable(
+          onTap: () => taps++,
+          child: const Text('Blinding Lights'),
         ),
       ),
-    );
+    ));
     expect(
       tester.getSemantics(find.text('Blinding Lights')),
       isSemantics(

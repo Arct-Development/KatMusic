@@ -35,14 +35,14 @@ class _FakeNetwork extends StateNotifier<bool> implements NetworkMonitor {
 }
 
 List<YouTubeMusicTrack> _songs(String prefix, int n) => [
-  for (var i = 0; i < n; i++)
-    YouTubeMusicTrack(
-      videoId: '$prefix$i',
-      title: '$prefix song $i',
-      artist: '$prefix artist $i',
-      artworkUrl: _art,
-    ),
-];
+      for (var i = 0; i < n; i++)
+        YouTubeMusicTrack(
+          videoId: '$prefix$i',
+          title: '$prefix song $i',
+          artist: '$prefix artist $i',
+          artworkUrl: _art,
+        ),
+    ];
 
 final _shelves = [
   YtHomeShelf(title: 'Listen again', trackCards: _songs('again', 8)),
@@ -102,10 +102,12 @@ Future<void> _pump(
           ),
         ),
         personalMixProvider.overrideWith((ref) async => null),
-        friendsActivityProvider.overrideWith((ref) async => const []),
         podcastHomeProvider.overrideWith((ref) async => const []),
       ],
-      child: const FluentApp(themeMode: ThemeMode.dark, home: KatHomePage()),
+      child: const FluentApp(
+        themeMode: ThemeMode.dark,
+        home: WaveHomePage(),
+      ),
     ),
   );
   await tester.pump();
@@ -121,9 +123,8 @@ void main() {
     final quick = tester.getTopLeft(find.text('Quick picks')).dy;
     final again = tester.getTopLeft(find.text('Listen again')).dy;
     final mix = tester.getTopLeft(find.text('Mixed for you')).dy;
-    final because = tester
-        .getTopLeft(find.text('Because you listened to Fav'))
-        .dy;
+    final because =
+        tester.getTopLeft(find.text('Because you listened to Fav')).dy;
     final releases = tester.getTopLeft(find.text('New releases')).dy;
     final videos = tester.getTopLeft(find.text('Music videos for you')).dy;
     expect(quick, lessThan(again));

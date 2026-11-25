@@ -24,13 +24,13 @@ extension on StoredTrack {
 }
 
 StoredTrack _storedFrom(YouTubeMusicTrack t) => StoredTrack(
-  name: t.title,
-  artist: t.artist,
-  album: t.album,
-  artworkUrl: t.artworkUrl,
-  videoId: t.videoId,
-  durationSeconds: t.durationSeconds,
-);
+      name: t.title,
+      artist: t.artist,
+      album: t.album,
+      artworkUrl: t.artworkUrl,
+      videoId: t.videoId,
+      durationSeconds: t.durationSeconds,
+    );
 
 /// What one merge wants done. [nextBase] is the agreed set assuming the
 /// remote writes fail; the caller adds [addRemote] entries that succeed and
@@ -54,9 +54,9 @@ class SyncPlan {
 }
 
 Iterable<String> baseEntries(StoredTrack t) => [
-  if (t.videoId.isNotEmpty) t.videoId,
-  'k:${t.syncKey}',
-];
+      if (t.videoId.isNotEmpty) t.videoId,
+      'k:${t.syncKey}',
+    ];
 
 /// Three-way merge of a track list against the last agreed state.
 ///
@@ -162,20 +162,20 @@ class _Link {
   }) : base = base ?? <String>{};
 
   Map<String, dynamic> toJson() => {
-    'remoteId': remoteId,
-    'base': base.toList(),
-    'title': title,
-    'remoteCount': remoteCount,
-    'localSig': localSig,
-  };
+        'remoteId': remoteId,
+        'base': base.toList(),
+        'title': title,
+        'remoteCount': remoteCount,
+        'localSig': localSig,
+      };
 
   factory _Link.fromJson(Map json) => _Link(
-    remoteId: json['remoteId']?.toString() ?? '',
-    base: {for (final e in (json['base'] as List? ?? const [])) '$e'},
-    title: json['title']?.toString() ?? '',
-    remoteCount: json['remoteCount']?.toString() ?? '',
-    localSig: json['localSig']?.toString() ?? '',
-  );
+        remoteId: json['remoteId']?.toString() ?? '',
+        base: {for (final e in (json['base'] as List? ?? const [])) '$e'},
+        title: json['title']?.toString() ?? '',
+        remoteCount: json['remoteCount']?.toString() ?? '',
+        localSig: json['localSig']?.toString() ?? '',
+      );
 }
 
 class _Account {
@@ -189,16 +189,18 @@ class _Account {
     this.likedSeeded = false,
     Map<int, _Link>? links,
     Set<String>? notOwned,
-  }) : likedBase = likedBase ?? <String>{},
-       links = links ?? <int, _Link>{},
-       notOwned = notOwned ?? <String>{};
+  })  : likedBase = likedBase ?? <String>{},
+        links = links ?? <int, _Link>{},
+        notOwned = notOwned ?? <String>{};
 
   Map<String, dynamic> toJson() => {
-    'likedBase': likedBase.toList(),
-    'likedSeeded': likedSeeded,
-    'links': {for (final e in links.entries) '${e.key}': e.value.toJson()},
-    'notOwned': notOwned.toList(),
-  };
+        'likedBase': likedBase.toList(),
+        'likedSeeded': likedSeeded,
+        'links': {
+          for (final e in links.entries) '${e.key}': e.value.toJson(),
+        },
+        'notOwned': notOwned.toList(),
+      };
 
   factory _Account.fromJson(Map json) {
     final links = <int, _Link>{};
@@ -215,7 +217,9 @@ class _Account {
       },
       likedSeeded: json['likedSeeded'] == true,
       links: links,
-      notOwned: {for (final e in (json['notOwned'] as List? ?? const [])) '$e'},
+      notOwned: {
+        for (final e in (json['notOwned'] as List? ?? const [])) '$e',
+      },
     );
   }
 }
@@ -259,11 +263,11 @@ class YtLibrarySync {
     void Function({required bool libraryChanged})? onSynced,
     Duration likePacing = const Duration(milliseconds: 150),
     DateTime Function()? now,
-  }) : _enabled = enabled,
-       _onStatus = onStatus ?? _noStatus,
-       _onSynced = onSynced ?? _noSynced,
-       _likePacing = likePacing,
-       _now = now ?? DateTime.now;
+  })  : _enabled = enabled,
+        _onStatus = onStatus ?? _noStatus,
+        _onSynced = onSynced ?? _noSynced,
+        _likePacing = likePacing,
+        _now = now ?? DateTime.now;
 
   static void _noStatus(YtSyncStatus _) {}
   static void _noSynced({required bool libraryChanged}) {}
@@ -287,7 +291,8 @@ class YtLibrarySync {
   final Set<String> _unresolvable = {};
   bool _disposed = false;
 
-  static String bareId(String id) => id.startsWith('VL') ? id.substring(2) : id;
+  static String bareId(String id) =>
+      id.startsWith('VL') ? id.substring(2) : id;
 
   void start() {
     _ticker ??= Timer.periodic(tickEvery, (_) => unawaited(run()));
@@ -339,14 +344,12 @@ class YtLibrarySync {
 
   void _publish({required bool running, String message = ''}) {
     if (_disposed) return;
-    _onStatus(
-      YtSyncStatus(
-        running: running,
-        message: message,
-        heldRemovals: _held,
-        linkedRemoteIds: _linkedIds,
-      ),
-    );
+    _onStatus(YtSyncStatus(
+      running: running,
+      message: message,
+      heldRemovals: _held,
+      linkedRemoteIds: _linkedIds,
+    ));
   }
 
   /// One sync pass. Concurrent calls collapse into one follow-up pass.
@@ -376,7 +379,10 @@ class YtLibrarySync {
       await _handleAccountSwitch(state, key);
       state.lastAccount = key;
 
-      final moreLikes = await _syncLiked(account, force: force || localDirty);
+      final moreLikes = await _syncLiked(
+        account,
+        force: force || localDirty,
+      );
       final playlistsChanged = await _syncPlaylists(
         state,
         account,
@@ -396,8 +402,8 @@ class YtLibrarySync {
       message = _held > 0
           ? 'Held back $_held removals because that is a lot at once. Nothing was deleted.'
           : _failures > 0
-          ? "Some changes didn't reach YouTube Music. Retrying."
-          : 'Up to date.';
+              ? "Some changes didn't reach YouTube Music. Retrying."
+              : 'Up to date.';
     } catch (e) {
       if (kDebugMode) debugPrint('YtLibrarySync: run failed ${e.runtimeType}');
       message = 'Sync failed. Retrying shortly.';
@@ -419,14 +425,11 @@ class YtLibrarySync {
   /// Returns true when more like writes are queued for a later pass.
   Future<bool> _syncLiked(_Account account, {required bool force}) async {
     final now = _now();
-    final due =
-        _lastLikedFull == null ||
+    final due = _lastLikedFull == null ||
         now.difference(_lastLikedFull!) >= fullReadEvery;
     if (!force && !due) {
-      final probe = await _tube.fetchOwnedPlaylistItems(
-        'LM',
-        firstPageOnly: true,
-      );
+      final probe =
+          await _tube.fetchOwnedPlaylistItems('LM', firstPageOnly: true);
       if (probe.items.isEmpty) return false;
       if (_headOf(probe.items) == _likedHead) return false;
     }
@@ -452,8 +455,7 @@ class YtLibrarySync {
       remoteComplete: owned.complete,
       grace: _activeGrace(),
     );
-    final hold =
-        !_bulkApproved &&
+    final hold = !_bulkApproved &&
         isBulkRemoval(
           plan.removals,
           liked.tracks.length > remote.length
@@ -540,18 +542,16 @@ class YtLibrarySync {
         continue;
       }
       changed = true;
-      tracks.add(
-        StoredTrack(
-          name: t.name,
-          artist: t.artist,
-          artworkUrl: t.artworkUrl,
-          videoId: hit.videoId,
-          album: t.album,
-          durationSeconds: t.durationSeconds,
-          playbackUrl: t.playbackUrl,
-          addedAtMillis: t.addedAtMillis,
-        ),
-      );
+      tracks.add(StoredTrack(
+        name: t.name,
+        artist: t.artist,
+        artworkUrl: t.artworkUrl,
+        videoId: hit.videoId,
+        album: t.album,
+        durationSeconds: t.durationSeconds,
+        playbackUrl: t.playbackUrl,
+        addedAtMillis: t.addedAtMillis,
+      ));
     }
     if (!changed) return playlist;
     _applyingLocal = true;
@@ -629,10 +629,8 @@ class YtLibrarySync {
             s.title.toLowerCase() != row.title.toLowerCase()) {
           continue;
         }
-        final probe = await _tube.fetchOwnedPlaylistItems(
-          bare,
-          firstPageOnly: true,
-        );
+        final probe =
+            await _tube.fetchOwnedPlaylistItems(bare, firstPageOnly: true);
         if (probe.editable) {
           remote = bare;
           break;
@@ -666,8 +664,7 @@ class YtLibrarySync {
       // (`SavedPlaylist.isLikedSongs`), so importing would merge into it.
       // Such a playlist stays in the YouTube section instead.
       final lowered = s.title.toLowerCase();
-      if (lowered == SavedPlaylist.likedTitle.toLowerCase() ||
-          lowered == 'liked music') {
+      if (lowered == SavedPlaylist.likedTitle.toLowerCase() || lowered == 'liked music') {
         continue;
       }
       final owned = await _tube.fetchOwnedPlaylistItems(bare);
@@ -752,8 +749,7 @@ class YtLibrarySync {
 
       final sig = _localSig(current);
       final count = summary?.trackCountText ?? '';
-      final needsRead =
-          force ||
+      final needsRead = force ||
           justCreated ||
           roundRobin.contains(id) ||
           sig != link.localSig ||
@@ -857,8 +853,7 @@ class YtLibrarySync {
           if (doomed.contains(item.videoId) && item.setVideoId.isNotEmpty)
             (setVideoId: item.setVideoId, videoId: item.videoId),
       ];
-      final ok =
-          removals.isNotEmpty &&
+      final ok = removals.isNotEmpty &&
           await _tube.removeVideosFromRemotePlaylist(link.remoteId, removals);
       if (ok) {
         doomed.forEach(_markWritten);
@@ -870,7 +865,8 @@ class YtLibrarySync {
       }
     }
     link.base = next;
-    link.localSig = _localSig(_repo.all.firstWhere((p) => p.id == row.id));
+    link.localSig =
+        _localSig(_repo.all.firstWhere((p) => p.id == row.id));
   }
 
   // ---- Persistence and account handling ---------------------------------
@@ -968,18 +964,16 @@ class _SyncState {
   final Map<String, _Account> accounts = {};
   final Map<int, String> legacyRemotes = {};
 
-  bool ownedByOther(int localId, String key) => accounts.entries.any(
-    (e) => e.key != key && e.value.links.containsKey(localId),
-  );
+  bool ownedByOther(int localId, String key) => accounts.entries
+      .any((e) => e.key != key && e.value.links.containsKey(localId));
 
   /// A playlist the old manual "Sync now" already uploaded.
   String? legacyRemoteFor(int localId) => legacyRemotes[localId];
 }
 
 /// Live sync state for Settings and the Playlists page.
-final ytSyncStatusProvider = StateProvider<YtSyncStatus>(
-  (_) => const YtSyncStatus(),
-);
+final ytSyncStatusProvider =
+    StateProvider<YtSyncStatus>((_) => const YtSyncStatus());
 
 final ytLibrarySyncProvider = Provider<YtLibrarySync>((ref) {
   final sync = YtLibrarySync(

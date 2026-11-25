@@ -16,7 +16,7 @@ class SecureStore {
   final Map<String, String> _memoryFallback = {};
 
   SecureStore([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ?? const FlutterSecureStorage();
 
   Future<String?> _read(String key) async {
     try {
@@ -42,6 +42,10 @@ class SecureStore {
     } catch (_) {}
   }
 
+  Future<String?> read(String key) => _read(key);
+  Future<void> write(String key, String? value) => _write(key, value);
+  Future<void> delete(String key) => _write(key, null);
+
   Future<String?> readSessionKey() => _read(_sessionKey);
   Future<void> writeSessionKey(String? v) => _write(_sessionKey, v);
 
@@ -52,7 +56,8 @@ class SecureStore {
   /// (`{"email": ..., "pageId": ...}`). The active jar itself stays in
   /// [_ytCookies], so single-profile behavior is unchanged.
   Future<String?> readYtProfiles() => _read(_ytProfiles);
-  Future<void> writeYtProfiles(String? v) => _write(_ytProfiles, v);
+  Future<void> writeYtProfiles(String? v) =>
+      _write(_ytProfiles, v);
 
   Future<String?> readYtActive() => _read(_ytActive);
   Future<void> writeYtActive(String? v) => _write(_ytActive, v);

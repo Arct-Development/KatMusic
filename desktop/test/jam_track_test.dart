@@ -20,10 +20,7 @@ void main() {
   });
 
   test('missing and string fields do not throw', () {
-    final track = JamTrack.fromJson({
-      'title': 'Only a title',
-      'duration_ms': '5000',
-    });
+    final track = JamTrack.fromJson({'title': 'Only a title', 'duration_ms': '5000'});
     expect(track.id, '');
     expect(track.artist, '');
     expect(track.durationMs, 5000);

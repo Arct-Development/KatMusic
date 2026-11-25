@@ -10,44 +10,44 @@ import '../../app/track_actions.dart' show playGenerated, relativeTime;
 import '../../features/feed/feed_repository.dart';
 import '../../features/innertube/album_match.dart';
 import '../../features/innertube/innertube_api.dart' show innerTubeProvider;
+import '../../features/scrobblers/extra_scrobblers.dart';
 import '../../features/stats/stats_providers.dart';
 import '../genres/genres_page.dart';
 import '../components/artist_line.dart';
 import '../components/artwork.dart';
 import '../components/buttons.dart';
-import '../components/shelf.dart' show KatSectionHeader;
+import '../components/shelf.dart' show LWSectionHeader;
 import '../components/states.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 enum StatsViewTab {
   overview('Overview', FluentIcons.b_i_dashboard),
   tracks('Top Tracks', FluentIcons.music_in_collection),
   artists('Top Artists', FluentIcons.microphone),
-  albums('Top Albums', KatIcons.albums),
-  history('History', KatIcons.history),
-  genres('Genres', KatIcons.genres);
+  albums('Top Albums', WaveIcons.albums),
+  history('History', WaveIcons.history),
+  genres('Genres', WaveIcons.genres);
 
   final String label;
   final IconData icon;
   const StatsViewTab(this.label, this.icon);
 }
 
-final _statsTabProvider = StateProvider.autoDispose<StatsViewTab>(
-  (ref) => StatsViewTab.overview,
-);
+final _statsTabProvider =
+    StateProvider.autoDispose<StatsViewTab>((ref) => StatsViewTab.overview);
 
-/// KatStatsPage — listening statistics, kept deliberately quiet.
+/// WaveStatsPage — listening statistics, kept deliberately quiet.
 ///
 /// Hierarchy: title + period + refresh, tabs, a one-line Last.fm strip, then
 /// the tab body. Overview = three period-scoped metric tiles (each names its
 /// window), two on-device activity charts, and Top Tracks / Top Artists /
 /// Recently played previews. Every section is a [_StatsCard]; one accent
 /// colour; rank badges keep their gold / silver / bronze.
-class KatStatsPage extends ConsumerWidget {
-  const KatStatsPage({super.key});
+class WaveStatsPage extends ConsumerWidget {
+  const WaveStatsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,23 +56,19 @@ class KatStatsPage extends ConsumerWidget {
     final activeTab = ref.watch(_statsTabProvider);
     final viewport = MediaQuery.sizeOf(context).width;
 
-    final pad = viewport < 900
-        ? 16.0
-        : viewport < 1300
-        ? 24.0
-        : 28.0;
+    final pad = viewport < 900 ? 16.0 : viewport < 1300 ? 24.0 : 28.0;
     final side =
-        ((viewport - KatDensity.contentMax) / 2).clamp(0, double.infinity) +
-        pad;
+        ((viewport - WaveDensity.contentMax) / 2).clamp(0, double.infinity) +
+            pad;
 
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       start: statsAsync.hasValue,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
             padding: EdgeInsets.fromLTRB(side, 22, side, 0),
             sliver: SliverToBoxAdapter(
-              child: KatEntrance(
+              child: WaveEntrance(
                 local: true,
                 rise: 10,
                 child: _StatsHeader(
@@ -92,13 +88,13 @@ class KatStatsPage extends ConsumerWidget {
             loading: () => SliverPadding(
               padding: EdgeInsets.fromLTRB(side, 36, side, 40),
               sliver: const SliverToBoxAdapter(
-                child: KatLoading(label: 'Syncing your music statistics…'),
+                child: WaveLoading(label: 'Syncing your music statistics…'),
               ),
             ),
             error: (err, _) => SliverPadding(
               padding: EdgeInsets.fromLTRB(side, 36, side, 40),
               sliver: SliverToBoxAdapter(
-                child: KatError(
+                child: WaveError(
                   title: 'Could not load statistics',
                   message: '$err',
                   onRetry: () => ref.invalidate(listeningStatsProvider),
@@ -114,31 +110,28 @@ class KatStatsPage extends ConsumerWidget {
                     children: [
                       // 1. Last.fm Profile & Sync Hub
                       _LastFmProfileHub(stats: stats),
+                      const _OtherScrobblerStrips(),
                       const SizedBox(height: 20),
 
                       // 2. Active Tab Content
                       switch (activeTab) {
                         StatsViewTab.overview => _OverviewTab(
-                          stats: stats,
-                          viewportWidth: viewport,
-                          onSwitchTab: (t) =>
-                              ref.read(_statsTabProvider.notifier).state = t,
-                        ),
-                        StatsViewTab.tracks => _TracksTab(
-                          tracks: stats.topTracks,
-                        ),
-                        StatsViewTab.artists => _ArtistsTab(
-                          artists: stats.topArtists,
-                        ),
-                        StatsViewTab.albums => _AlbumsTab(
-                          albums: stats.topAlbums,
-                        ),
-                        StatsViewTab.history => _HistoryTab(
-                          recentPlays: stats.recentPlays,
-                        ),
-                        StatsViewTab.genres => const KatGenresPage(
-                          embedded: true,
-                        ),
+                            stats: stats,
+                            viewportWidth: viewport,
+                            onSwitchTab: (t) => ref
+                                .read(_statsTabProvider.notifier)
+                                .state = t,
+                          ),
+                        StatsViewTab.tracks => _TracksTab(tracks: stats.topTracks),
+                        StatsViewTab.artists =>
+                          _ArtistsTab(artists: stats.topArtists),
+                        StatsViewTab.albums =>
+                          _AlbumsTab(albums: stats.topAlbums),
+                        StatsViewTab.history =>
+                          _HistoryTab(recentPlays: stats.recentPlays),
+                        StatsViewTab.genres => const WaveGenresPage(
+                            embedded: true,
+                          ),
                       },
                     ],
                   ),
@@ -146,6 +139,7 @@ class KatStatsPage extends ConsumerWidget {
               );
             },
           ),
+          const WaveDockSpacer(),
         ],
       ),
     );
@@ -173,11 +167,9 @@ class _StatsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 800;
 
-    final title = Text(
-      'Statistics',
-      style: KatType.pageTitle.copyWith(fontSize: 27),
-    );
-    final refresh = KatIconButton(
+    final title = Text('Statistics',
+        style: WaveType.pageTitle.copyWith(fontSize: 27));
+    final refresh = WaveIconButton(
       tooltip: 'Refresh statistics & scrobbles',
       icon: const Icon(FluentIcons.refresh, size: 14),
       onPressed: onRefresh,
@@ -256,26 +248,28 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: katMotion(context, KatMotion.fast),
-          curve: KatMotion.standard,
+          duration: waveMotion(context, WaveMotion.fast),
+          curve: WaveMotion.standard,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: selected
-                ? (dark ? Colors.white.withValues(alpha: 0.15) : Colors.white)
-                : katSurface(context),
-            borderRadius: KatRadius.controlsRadius,
+                ? (dark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.white)
+                : waveSurface(context),
+            borderRadius: WaveRadius.controlsRadius,
             border: Border.all(
               color: selected
                   ? accent.withValues(alpha: 0.4)
-                  : katDivider(context),
+                  : waveDivider(context),
               width: selected ? 1.2 : 0.8,
             ),
             boxShadow: selected && !dark
@@ -294,40 +288,38 @@ class _TabButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 13,
-                color: selected ? accent : katTextTertiary(context),
+                color: selected ? accent : waveTextTertiary(context),
               ),
               const SizedBox(width: 7),
               Text(
                 label,
-                style: KatType.label.copyWith(
+                style: WaveType.label.copyWith(
                   fontSize: 12.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
-                      ? katTextPrimary(context)
-                      : katTextSecondary(context),
+                      ? waveTextPrimary(context)
+                      : waveTextSecondary(context),
                 ),
               ),
               if (count != null && count! > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5.5,
-                    vertical: 1,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1),
                   decoration: BoxDecoration(
                     color: selected
                         ? accent.withValues(alpha: 0.18)
                         : (dark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06)),
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06)),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$count',
-                    style: KatType.overline.copyWith(
+                    style: WaveType.overline.copyWith(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
-                      color: selected ? accent : katTextTertiary(context),
+                      color: selected ? accent : waveTextTertiary(context),
                     ),
                   ),
                 ),
@@ -351,14 +343,17 @@ class _PeriodPillSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
 
     return Container(
       padding: const EdgeInsets.all(3.5),
       decoration: BoxDecoration(
-        color: dark ? katSurfaceRaised(context) : katOutlineSoft(context),
-        borderRadius: KatRadius.floatingRadius,
-        border: Border.all(color: katDivider(context), width: 0.8),
+        color: dark ? waveSurfaceRaised(context) : waveOutlineSoft(context),
+        borderRadius: WaveRadius.floatingRadius,
+        border: Border.all(
+          color: waveDivider(context),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -369,8 +364,8 @@ class _PeriodPillSwitch extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onChanged(p),
               child: AnimatedContainer(
-                duration: katMotion(context, KatMotion.fast),
-                curve: KatMotion.standard,
+                duration: waveMotion(context, WaveMotion.fast),
+                curve: WaveMotion.standard,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 6,
@@ -378,28 +373,29 @@ class _PeriodPillSwitch extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? (dark
-                            ? Colors.white.withValues(alpha: 0.16)
-                            : Colors.white)
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : Colors.white)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(KatRadius.floating - 2),
+                  borderRadius: BorderRadius.circular(WaveRadius.floating - 2),
                   boxShadow: isSelected && !dark
                       ? [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
-                          ),
+                          )
                         ]
                       : null,
                 ),
                 child: Text(
                   p.label,
-                  style: KatType.label.copyWith(
+                  style: WaveType.label.copyWith(
                     fontSize: 12,
                     color: isSelected
-                        ? katTextPrimary(context)
-                        : katTextTertiary(context),
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ? waveTextPrimary(context)
+                        : waveTextTertiary(context),
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -425,7 +421,7 @@ class _LastFmProfileHub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final isConnected = stats.isLastFmConnected;
     final formatter = NumberFormat('#,###');
 
@@ -433,8 +429,8 @@ class _LastFmProfileHub extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: dark ? katSurfaceRaised(context) : katSurface(context),
-          borderRadius: KatRadius.floatingRadius,
+          color: dark ? waveSurfaceRaised(context) : waveSurface(context),
+          borderRadius: WaveRadius.floatingRadius,
           border: Border.all(
             color: const Color(0xFFE0506A).withValues(alpha: 0.25),
             width: 0.9,
@@ -473,7 +469,7 @@ class _LastFmProfileHub extends StatelessWidget {
                 children: [
                   Text(
                     'Connect Last.fm for Cross-Device Scrobbling & Global Charts',
-                    style: KatType.trackTitle.copyWith(
+                    style: WaveType.trackTitle.copyWith(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -481,8 +477,8 @@ class _LastFmProfileHub extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Scrobble every song in real-time, preserve lifetime stats, and unlock full album and artist rankings.',
-                    style: KatType.meta.copyWith(
-                      color: katTextSecondary(context),
+                    style: WaveType.meta.copyWith(
+                      color: waveTextSecondary(context),
                       fontSize: 12,
                     ),
                   ),
@@ -490,7 +486,7 @@ class _LastFmProfileHub extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            KatGhostButton(
+            WaveGhostButton(
               label: 'Connect Last.fm',
               icon: FluentIcons.settings,
               onPressed: () => context.go('/settings?section=lastfm'),
@@ -506,15 +502,15 @@ class _LastFmProfileHub extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: katSurface(context),
-        borderRadius: KatRadius.floatingRadius,
-        border: Border.all(color: katDivider(context), width: 0.8),
+        color: waveSurface(context),
+        borderRadius: WaveRadius.floatingRadius,
+        border: Border.all(color: waveDivider(context), width: 0.8),
       ),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: KatRadius.artworkRadius,
-            child: KatArtwork(
+            borderRadius: WaveRadius.artworkRadius,
+            child: WaveArtwork(
               url: stats.lastFmAvatarUrl,
               size: 32,
               kind: ArtworkKind.artist,
@@ -531,29 +527,26 @@ class _LastFmProfileHub extends StatelessWidget {
                     '@${stats.lastFmUsername}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: KatType.trackTitle.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: WaveType.trackTitle
+                        .copyWith(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Text(
                   '${formatter.format(stats.lastFmScrobbles)} scrobbles · all time',
-                  style: KatType.meta.copyWith(
-                    color: katTextSecondary(context),
-                  ),
+                  style: WaveType.meta
+                      .copyWith(color: waveTextSecondary(context)),
                 ),
               ],
             ),
           ),
-          KatIconButton(
+          WaveIconButton(
             tooltip: 'View profile on Last.fm',
             icon: const Icon(FluentIcons.open_in_new_window, size: 14),
             onPressed: () => _openLastFmWeb(stats.lastFmUsername),
           ),
           const SizedBox(width: 4),
-          KatIconButton(
+          WaveIconButton(
             tooltip: 'Last.fm Settings',
             icon: const Icon(FluentIcons.settings, size: 14),
             onPressed: () => context.go('/settings?section=lastfm'),
@@ -654,10 +647,10 @@ class _MetricsGrid extends StatelessWidget {
   /// "this week" / "last 30 days" / "all time" — every tile states the
   /// window it covers so the numbers can be compared at a glance.
   String get _scope => switch (stats.period) {
-    StatsPeriod.week => 'this week',
-    StatsPeriod.month => 'last 30 days',
-    StatsPeriod.allTime => 'all time',
-  };
+        StatsPeriod.week => 'this week',
+        StatsPeriod.month => 'last 30 days',
+        StatsPeriod.allTime => 'all time',
+      };
 
   String get _peakPhase {
     final h = stats.peakListeningHour;
@@ -700,16 +693,16 @@ class _MetricsGrid extends StatelessWidget {
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = (constraints.maxWidth - (cols - 1) * 12) / cols;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: cards.map((c) => SizedBox(width: width, child: c)).toList(),
-        );
-      },
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = (constraints.maxWidth - (cols - 1) * 12) / cols;
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: cards
+            .map((c) => SizedBox(width: width, child: c))
+            .toList(),
+      );
+    });
   }
 }
 
@@ -728,10 +721,10 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
 
-    final accent = katAccent(context);
-    final base = katSurface(context);
+    final accent = waveAccent(context);
+    final base = waveSurface(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
@@ -741,15 +734,12 @@ class _MetricTile extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.alphaBlend(
-              accent.withValues(alpha: dark ? 0.07 : 0.05),
-              base,
-            ),
+            Color.alphaBlend(accent.withValues(alpha: dark ? 0.07 : 0.05), base),
             base,
           ],
         ),
-        borderRadius: KatRadius.floatingRadius,
-        border: Border.all(color: katDivider(context), width: 0.8),
+        borderRadius: WaveRadius.floatingRadius,
+        border: Border.all(color: waveDivider(context), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,9 +760,9 @@ class _MetricTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   title.toUpperCase(),
-                  style: KatType.overline.copyWith(
+                  style: WaveType.overline.copyWith(
                     fontSize: 10,
-                    color: katTextTertiary(context),
+                    color: waveTextTertiary(context),
                   ),
                 ),
               ),
@@ -783,10 +773,10 @@ class _MetricTile extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: KatType.numeral.copyWith(
+            style: WaveType.numeral.copyWith(
               fontSize: 30,
               letterSpacing: -0.4,
-              color: katTextPrimary(context),
+              color: waveTextPrimary(context),
             ),
           ),
           const SizedBox(height: 5),
@@ -794,9 +784,9 @@ class _MetricTile extends StatelessWidget {
             subtext,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: KatType.meta.copyWith(
+            style: WaveType.meta.copyWith(
               fontSize: 11.5,
-              color: katTextSecondary(context),
+              color: waveTextSecondary(context),
             ),
           ),
         ],
@@ -809,7 +799,10 @@ class _ChartsSection extends StatelessWidget {
   final ListeningStatsData stats;
   final bool twoColumns;
 
-  const _ChartsSection({required this.stats, required this.twoColumns});
+  const _ChartsSection({
+    required this.stats,
+    required this.twoColumns,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -841,17 +834,21 @@ class _ChartsSection extends StatelessWidget {
 
     if (twoColumns) {
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 3, child: activityCard),
-          const SizedBox(width: 18),
-          Expanded(flex: 2, child: rhythmCard),
-        ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: activityCard),
+            const SizedBox(width: 18),
+            Expanded(flex: 2, child: rhythmCard),
+          ],
       );
     }
 
     return Column(
-      children: [activityCard, const SizedBox(height: 18), rhythmCard],
+      children: [
+        activityCard,
+        const SizedBox(height: 18),
+        rhythmCard,
+      ],
     );
   }
 }
@@ -868,7 +865,7 @@ class _DailyActivityBarChart extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           'Start listening to build your daily activity history.',
-          style: KatType.meta.copyWith(color: katTextTertiary(context)),
+          style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
         ),
       );
     }
@@ -889,8 +886,7 @@ class _DailyActivityBarChart extends StatelessWidget {
               ? DateFormat('E').format(parsedDate).substring(0, 1)
               : '';
           final dayNum = parsedDate != null ? '${parsedDate.day}' : '';
-          final isToday =
-              parsedDate != null &&
+          final isToday = parsedDate != null &&
               DateFormat('yyyy-MM-dd').format(DateTime.now()) == item.date;
 
           return Expanded(
@@ -903,9 +899,9 @@ class _DailyActivityBarChart extends StatelessWidget {
                   children: [
                     Text(
                       item.count > 0 ? '${item.count}' : '',
-                      style: KatType.overline.copyWith(
+                      style: WaveType.overline.copyWith(
                         fontSize: 8.5,
-                        color: katTextTertiary(context),
+                        color: waveTextTertiary(context),
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -918,11 +914,11 @@ class _DailyActivityBarChart extends StatelessWidget {
                             decoration: BoxDecoration(
                               // One accent: today solid, other days muted.
                               color: item.count == 0
-                                  ? katDivider(context).withValues(alpha: 0.3)
+                                  ? waveDivider(context).withValues(alpha: 0.3)
                                   : (isToday
-                                        ? katAccent(context)
-                                        : katAccent(context)
-                                              .withValues(alpha: 0.45)),
+                                      ? waveAccent(context)
+                                      : waveAccent(context)
+                                          .withValues(alpha: 0.45)),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -932,12 +928,13 @@ class _DailyActivityBarChart extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       '$dayLabel $dayNum',
-                      style: KatType.label.copyWith(
+                      style: WaveType.label.copyWith(
                         fontSize: 9.0,
                         color: isToday
-                            ? katTextPrimary(context)
-                            : katTextTertiary(context),
-                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                            ? waveTextPrimary(context)
+                            : waveTextTertiary(context),
+                        fontWeight:
+                            isToday ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
                   ],
@@ -980,10 +977,10 @@ class _HourlyDistributionChart extends StatelessWidget {
 
               // One accent: the peak hour solid, other hours muted.
               final color = isPeak
-                  ? katAccent(context)
+                  ? waveAccent(context)
                   : (count > 0
-                        ? katAccent(context).withValues(alpha: 0.45)
-                        : katDivider(context).withValues(alpha: 0.2));
+                      ? waveAccent(context).withValues(alpha: 0.45)
+                      : waveDivider(context).withValues(alpha: 0.2));
 
               return Expanded(
                 child: Padding(
@@ -1012,41 +1009,21 @@ class _HourlyDistributionChart extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '12 AM · Night',
-              style: KatType.overline.copyWith(
-                fontSize: 8.5,
-                color: katTextTertiary(context),
-              ),
-            ),
-            Text(
-              '6 AM · Morning',
-              style: KatType.overline.copyWith(
-                fontSize: 8.5,
-                color: katTextTertiary(context),
-              ),
-            ),
-            Text(
-              '12 PM · Afternoon',
-              style: KatType.overline.copyWith(
-                fontSize: 8.5,
-                color: katTextTertiary(context),
-              ),
-            ),
-            Text(
-              '6 PM · Evening',
-              style: KatType.overline.copyWith(
-                fontSize: 8.5,
-                color: katTextTertiary(context),
-              ),
-            ),
-            Text(
-              '11 PM',
-              style: KatType.overline.copyWith(
-                fontSize: 8.5,
-                color: katTextTertiary(context),
-              ),
-            ),
+            Text('12 AM · Night',
+                style: WaveType.overline.copyWith(
+                    fontSize: 8.5, color: waveTextTertiary(context))),
+            Text('6 AM · Morning',
+                style: WaveType.overline.copyWith(
+                    fontSize: 8.5, color: waveTextTertiary(context))),
+            Text('12 PM · Afternoon',
+                style: WaveType.overline.copyWith(
+                    fontSize: 8.5, color: waveTextTertiary(context))),
+            Text('6 PM · Evening',
+                style: WaveType.overline.copyWith(
+                    fontSize: 8.5, color: waveTextTertiary(context))),
+            Text('11 PM',
+                style: WaveType.overline.copyWith(
+                    fontSize: 8.5, color: waveTextTertiary(context))),
           ],
         ),
       ],
@@ -1077,9 +1054,9 @@ class _StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
 
-    final base = katSurface(context);
+    final base = waveSurface(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
@@ -1089,31 +1066,29 @@ class _StatsCard extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             Color.alphaBlend(
-              (dark ? Colors.white : Colors.black).withValues(
-                alpha: dark ? 0.025 : 0.015,
-              ),
+              (dark ? Colors.white : Colors.black)
+                  .withValues(alpha: dark ? 0.025 : 0.015),
               base,
             ),
             base,
           ],
         ),
-        borderRadius: KatRadius.floatingRadius,
-        border: Border.all(color: katDivider(context), width: 0.8),
+        borderRadius: WaveRadius.floatingRadius,
+        border: Border.all(color: waveDivider(context), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          KatSectionHeader(
+          LWSectionHeader(
             title: title,
             actionLabel: actionLabel,
             onAction: onAction,
           ),
           if (note != null) ...[
             const SizedBox(height: 2),
-            Text(
-              note!,
-              style: KatType.meta.copyWith(color: katTextTertiary(context)),
-            ),
+            Text(note!,
+                style:
+                    WaveType.meta.copyWith(color: waveTextTertiary(context))),
           ],
           const SizedBox(height: 14),
           child,
@@ -1130,12 +1105,11 @@ class _CardEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    child: Text(
-      text,
-      style: KatType.meta.copyWith(color: katTextSecondary(context)),
-    ),
-  );
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Text(text,
+            style:
+                WaveType.meta.copyWith(color: waveTextSecondary(context))),
+      );
 }
 
 class _TopTracksPreview extends StatelessWidget {
@@ -1196,10 +1170,8 @@ class _TopArtistsPreview extends StatelessWidget {
 }
 
 class _RecentHistoryPreview extends StatelessWidget {
-  final List<
-    ({String title, String artist, int timestampMillis, String artworkUrl})
-  >
-  recentPlays;
+  final List<({String title, String artist, int timestampMillis, String artworkUrl})>
+      recentPlays;
   final VoidCallback onViewAll;
 
   const _RecentHistoryPreview({
@@ -1274,26 +1246,24 @@ class _ArtistsTab extends StatelessWidget {
       note: '${artists.length} artists',
       child: artists.isEmpty
           ? const _CardEmpty('No artists recorded during this period.')
-          : LayoutBuilder(
-              builder: (context, c) {
-                final cols = _gridColumns(c.maxWidth);
-                final itemWidth = (c.maxWidth - (cols - 1) * 14) / cols;
+          : LayoutBuilder(builder: (context, c) {
+              final cols = _gridColumns(c.maxWidth);
+              final itemWidth = (c.maxWidth - (cols - 1) * 14) / cols;
 
-                return Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  children: artists.asMap().entries.map((entry) {
-                    return SizedBox(
-                      width: itemWidth,
-                      child: _ArtistGridCard(
-                        artist: entry.value,
-                        rank: entry.key + 1,
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+              return Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: artists.asMap().entries.map((entry) {
+                  return SizedBox(
+                    width: itemWidth,
+                    child: _ArtistGridCard(
+                      artist: entry.value,
+                      rank: entry.key + 1,
+                    ),
+                  );
+                }).toList(),
+              );
+            }),
     );
   }
 }
@@ -1307,49 +1277,44 @@ class _AlbumsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StatsCard(
       title: 'Top albums',
-      icon: KatIcons.albums,
+      icon: WaveIcons.albums,
       note: '${albums.length} albums',
       child: albums.isEmpty
           ? const _CardEmpty(
-              'No album scrobbles found for this period. Connect Last.fm or listen to full albums.',
-            )
-          : LayoutBuilder(
-              builder: (context, c) {
-                final cols = _gridColumns(c.maxWidth);
-                final itemWidth = (c.maxWidth - (cols - 1) * 14) / cols;
+              'No album scrobbles found for this period. Connect Last.fm or listen to full albums.')
+          : LayoutBuilder(builder: (context, c) {
+              final cols = _gridColumns(c.maxWidth);
+              final itemWidth = (c.maxWidth - (cols - 1) * 14) / cols;
 
-                return Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  children: albums.asMap().entries.map((entry) {
-                    return SizedBox(
-                      width: itemWidth,
-                      child: _AlbumGridCard(
-                        album: entry.value,
-                        rank: entry.key + 1,
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+              return Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: albums.asMap().entries.map((entry) {
+                  return SizedBox(
+                    width: itemWidth,
+                    child: _AlbumGridCard(
+                      album: entry.value,
+                      rank: entry.key + 1,
+                    ),
+                  );
+                }).toList(),
+              );
+            }),
     );
   }
 }
 
 /// Full History View Tab
 class _HistoryTab extends StatelessWidget {
-  final List<
-    ({String title, String artist, int timestampMillis, String artworkUrl})
-  >
-  recentPlays;
+  final List<({String title, String artist, int timestampMillis, String artworkUrl})>
+      recentPlays;
   const _HistoryTab({required this.recentPlays});
 
   @override
   Widget build(BuildContext context) {
     return _StatsCard(
       title: 'Recently played',
-      icon: KatIcons.history,
+      icon: WaveIcons.history,
       note: '${recentPlays.length} plays',
       actionLabel: 'Full history →',
       onAction: () => context.go('/history'),
@@ -1393,15 +1358,15 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
     final track = widget.track;
     final rank = widget.rank;
     final isTop3 = rank <= 3;
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
 
     final rankColor = rank == 1
         ? const Color(0xFFFFD700)
         : (rank == 2
-              ? const Color(0xFFC0C0C0)
-              : (rank == 3
-                    ? const Color(0xFFCD7F32)
-                    : katTextTertiary(context)));
+            ? const Color(0xFFC0C0C0)
+            : (rank == 3
+                ? const Color(0xFFCD7F32)
+                : waveTextTertiary(context)));
 
     final ratio = widget.maxPlays > 0
         ? (track.playCount / widget.maxPlays).clamp(0.04, 1.0)
@@ -1427,14 +1392,14 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
       child: GestureDetector(
         onTap: play,
         child: AnimatedContainer(
-          duration: katMotion(context, KatMotion.fast),
+          duration: waveMotion(context, WaveMotion.fast),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: KatRadius.controlsRadius,
+            borderRadius: WaveRadius.controlsRadius,
             color: _hover
                 ? (dark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04))
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.04))
                 : Colors.transparent,
           ),
           child: Row(
@@ -1443,7 +1408,7 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
                 width: 28,
                 child: Text(
                   '$rank',
-                  style: KatType.label.copyWith(
+                  style: WaveType.label.copyWith(
                     fontSize: isTop3 ? 14 : 12.5,
                     color: rankColor,
                     fontWeight: isTop3 ? FontWeight.w800 : FontWeight.w600,
@@ -1452,10 +1417,10 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
               ),
               Stack(
                 children: [
-                  KatArtwork(
+                  WaveArtwork(
                     url: track.artworkUrl,
                     size: 44,
-                    radius: KatRadius.artwork,
+                    radius: WaveRadius.artwork,
                     title: track.name,
                     artist: track.artist,
                     label: track.name,
@@ -1463,18 +1428,15 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
                   Positioned.fill(
                     child: AnimatedOpacity(
                       opacity: _hover ? 1.0 : 0.0,
-                      duration: katMotion(context, KatMotion.fast),
+                      duration: waveMotion(context, WaveMotion.fast),
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: KatRadius.artworkRadius,
+                          borderRadius: WaveRadius.artworkRadius,
                         ),
                         child: const Center(
-                          child: Icon(
-                            KatIcons.play,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                          child: Icon(WaveIcons.play,
+                              size: 16, color: Colors.white),
                         ),
                       ),
                     ),
@@ -1490,13 +1452,13 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
                       track.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(
+                      style: WaveType.trackTitle.copyWith(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    KatArtistLine(artist: track.artist),
+                    WaveArtistLine(artist: track.artist),
                     const SizedBox(height: 4),
                     // Relative popularity gauge bar
                     ClipRRect(
@@ -1514,7 +1476,7 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
                             child: Container(
                               color: rank == 1
                                   ? const Color(0xFFFFD700)
-                                  : katAccent(context).withValues(alpha: 0.65),
+                                  : waveAccent(context).withValues(alpha: 0.65),
                             ),
                           ),
                         ),
@@ -1525,29 +1487,27 @@ class _TrackRowItemState extends ConsumerState<_TrackRowItem> {
               ),
               const SizedBox(width: 16),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8.5,
-                  vertical: 4,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8.5, vertical: 4),
                 decoration: BoxDecoration(
-                  color: katAccent(context).withValues(alpha: 0.08),
+                  color: waveAccent(context).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: katAccent(context).withValues(alpha: 0.2),
+                    color: waveAccent(context).withValues(alpha: 0.2),
                     width: 0.8,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(KatIcons.play, size: 9, color: katAccent(context)),
+                    Icon(WaveIcons.play, size: 9, color: waveAccent(context)),
                     const SizedBox(width: 4),
                     Text(
                       '${track.playCount} ${track.playCount == 1 ? 'play' : 'plays'}',
-                      style: KatType.label.copyWith(
+                      style: WaveType.label.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: katAccent(context),
+                        color: waveAccent(context),
                       ),
                     ),
                   ],
@@ -1573,19 +1533,19 @@ class _ArtistRowItem extends StatelessWidget {
     final rankColor = rank == 1
         ? const Color(0xFFFFD700)
         : (rank == 2
-              ? const Color(0xFFC0C0C0)
-              : (rank == 3
-                    ? const Color(0xFFCD7F32)
-                    : katTextTertiary(context)));
+            ? const Color(0xFFC0C0C0)
+            : (rank == 3
+                ? const Color(0xFFCD7F32)
+                : waveTextTertiary(context)));
 
-    return KatPressable(
+    return WavePressable(
       onTap: () {
-        katOpen(context, '/artist/${Uri.encodeComponent(artist.name)}');
+        waveOpen(context, '/artist/${Uri.encodeComponent(artist.name)}');
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: KatRadius.controlsRadius,
+          borderRadius: WaveRadius.controlsRadius,
           color: Colors.transparent,
         ),
         child: Row(
@@ -1594,10 +1554,11 @@ class _ArtistRowItem extends StatelessWidget {
               width: 28,
               child: Text(
                 '$rank',
-                style: KatType.label.copyWith(
+                style: WaveType.label.copyWith(
                   fontSize: isTop3 ? 14 : 12.5,
                   color: rankColor,
-                  fontWeight: isTop3 ? FontWeight.w800 : FontWeight.w600,
+                  fontWeight:
+                      isTop3 ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
             ),
@@ -1607,12 +1568,12 @@ class _ArtistRowItem extends StatelessWidget {
                 border: Border.all(
                   color: isTop3
                       ? rankColor.withValues(alpha: 0.6)
-                      : katDivider(context),
+                      : waveDivider(context),
                   width: isTop3 ? 1.5 : 1.0,
                 ),
               ),
               child: ClipOval(
-                child: KatArtwork(
+                child: WaveArtwork(
                   url: artist.artworkUrl,
                   size: 42,
                   kind: ArtworkKind.artist,
@@ -1628,7 +1589,7 @@ class _ArtistRowItem extends StatelessWidget {
                 artist.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.trackTitle.copyWith(
+                style: WaveType.trackTitle.copyWith(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1636,21 +1597,22 @@ class _ArtistRowItem extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.5, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8.5, vertical: 4),
               decoration: BoxDecoration(
-                color: katAccent(context).withValues(alpha: 0.08),
+                color: waveAccent(context).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: katAccent(context).withValues(alpha: 0.2),
+                  color: waveAccent(context).withValues(alpha: 0.2),
                   width: 0.8,
                 ),
               ),
               child: Text(
                 '${artist.playCount} ${artist.playCount == 1 ? 'play' : 'plays'}',
-                style: KatType.label.copyWith(
+                style: WaveType.label.copyWith(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: katAccent(context),
+                  color: waveAccent(context),
                 ),
               ),
             ),
@@ -1678,17 +1640,19 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final a = widget.artist;
     final isTop3 = widget.rank <= 3;
     final medalColor = widget.rank == 1
         ? const Color(0xFFFFD700)
         : (widget.rank == 2
-              ? const Color(0xFFC0C0C0)
-              : (widget.rank == 3 ? const Color(0xFFCD7F32) : Colors.white));
+            ? const Color(0xFFC0C0C0)
+            : (widget.rank == 3
+                ? const Color(0xFFCD7F32)
+                : Colors.white));
 
     final radius = BorderRadius.circular(
-      _hover ? KatRadius.floating : _size / 2,
+      _hover ? WaveRadius.floating : _size / 2,
     );
 
     return MouseRegion(
@@ -1702,24 +1666,25 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () => katOpen(context, '/artist/${Uri.encodeComponent(a.name)}'),
+        onTap: () =>
+            waveOpen(context, '/artist/${Uri.encodeComponent(a.name)}'),
         child: Column(
           children: [
             AnimatedScale(
               scale: _pressed ? 0.97 : (_hover ? 1.04 : 1.0),
-              duration: katMotion(context, KatMotion.fast),
+              duration: waveMotion(context, WaveMotion.fast),
               curve: Curves.easeOutCubic,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   AnimatedContainer(
-                    duration: katMotion(context, KatMotion.normal),
+                    duration: waveMotion(context, WaveMotion.normal),
                     curve: Curves.easeOutCubic,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       borderRadius: radius,
                       boxShadow: [
-                        if (_hover) ...KatElevation.lift(dark),
+                        if (_hover) ...WaveElevation.lift(dark),
                         if (isTop3)
                           BoxShadow(
                             color: medalColor.withValues(alpha: 0.25),
@@ -1732,14 +1697,14 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
                       border: Border.all(
                         color: isTop3
                             ? medalColor.withValues(alpha: 0.6)
-                            : katDivider(context),
+                            : waveDivider(context),
                         width: isTop3 ? 1.5 : 1.0,
                       ),
                     ),
-                    child: KatArtwork(
+                    child: WaveArtwork(
                       url: a.artworkUrl,
                       size: _size,
-                      radius: KatRadius.structural,
+                      radius: WaveRadius.structural,
                       kind: ArtworkKind.artist,
                       label: a.name,
                       title: a.name,
@@ -1751,9 +1716,7 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
                     top: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
+                          horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: isTop3
                             ? medalColor
@@ -1768,7 +1731,7 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
                       ),
                       child: Text(
                         '#${widget.rank}',
-                        style: KatType.label.copyWith(
+                        style: WaveType.label.copyWith(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
                           color: isTop3 ? Colors.black : Colors.white,
@@ -1785,7 +1748,7 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: KatType.trackTitle.copyWith(
+              style: WaveType.trackTitle.copyWith(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -1794,15 +1757,15 @@ class _ArtistGridCardState extends State<_ArtistGridCard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: katAccent(context).withValues(alpha: 0.08),
+                color: waveAccent(context).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 '${a.playCount} plays',
-                style: KatType.meta.copyWith(
+                style: WaveType.meta.copyWith(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
-                  color: katAccent(context),
+                  color: waveAccent(context),
                 ),
               ),
             ),
@@ -1822,21 +1785,17 @@ class _AlbumGridCard extends ConsumerWidget {
   /// Last.fm gives no browseId, and `/album/` with an empty one is a
   /// dead route — resolve it, else fall back to a search.
   Future<void> _open(BuildContext context, WidgetRef ref) async {
-    final bid = await resolveAlbumBrowseId(
-      ref.read(innerTubeProvider),
-      title: album.name,
-      artist: album.artist,
-    );
+    final bid = await resolveAlbumBrowseId(ref.read(innerTubeProvider),
+        title: album.name, artist: album.artist);
     if (!context.mounted) return;
     if (bid.isEmpty) {
       context.go(
-        '/search?q=${Uri.encodeComponent('${album.artist} ${album.name}')}',
-      );
+          '/search?q=${Uri.encodeComponent('${album.artist} ${album.name}')}');
       return;
     }
-    katOpen(
+    waveOpen(
       context,
-      katAlbumLocation(
+      waveAlbumLocation(
         browseId: bid,
         title: album.name,
         artist: album.artist,
@@ -1847,9 +1806,9 @@ class _AlbumGridCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
 
-    return KatPressable(
+    return WavePressable(
       onTap: () => _open(context, ref),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1858,7 +1817,7 @@ class _AlbumGridCard extends ConsumerWidget {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: KatRadius.artworkRadius,
+                  borderRadius: WaveRadius.artworkRadius,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: dark ? 0.35 : 0.12),
@@ -1867,10 +1826,10 @@ class _AlbumGridCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-                child: KatArtwork(
+                child: WaveArtwork(
                   url: album.artworkUrl,
                   size: 140,
-                  radius: KatRadius.artwork,
+                  radius: WaveRadius.artwork,
                   title: album.name,
                   artist: album.artist,
                   kind: ArtworkKind.album,
@@ -1881,17 +1840,15 @@ class _AlbumGridCard extends ConsumerWidget {
                 left: 6,
                 top: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6.5,
-                    vertical: 2.5,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2.5),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '#$rank',
-                    style: KatType.label.copyWith(
+                    style: WaveType.label.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -1906,23 +1863,23 @@ class _AlbumGridCard extends ConsumerWidget {
             album.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: KatType.trackTitle.copyWith(
+            style: WaveType.trackTitle.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 1),
-          KatArtistLine(
+          WaveArtistLine(
             artist: album.artist,
-            style: KatType.meta.copyWith(fontSize: 11.5),
+            style: WaveType.meta.copyWith(fontSize: 11.5),
           ),
           const SizedBox(height: 2),
           Text(
             '${album.playCount} plays',
-            style: KatType.meta.copyWith(
+            style: WaveType.meta.copyWith(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
-              color: katTextTertiary(context),
+              color: waveTextTertiary(context),
             ),
           ),
         ],
@@ -1932,13 +1889,12 @@ class _AlbumGridCard extends ConsumerWidget {
 }
 
 class _RecentPlayItem extends ConsumerWidget {
-  final ({String title, String artist, int timestampMillis, String artworkUrl})
-  item;
+  final ({String title, String artist, int timestampMillis, String artworkUrl}) item;
   const _RecentPlayItem({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return KatPressable(
+    return WavePressable(
       onTap: () {
         playGenerated(
           ref,
@@ -1954,15 +1910,15 @@ class _RecentPlayItem extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          borderRadius: KatRadius.controlsRadius,
+          borderRadius: WaveRadius.controlsRadius,
           color: Colors.transparent,
         ),
         child: Row(
           children: [
-            KatArtwork(
+            WaveArtwork(
               url: item.artworkUrl,
               size: 40,
-              radius: KatRadius.artwork,
+              radius: WaveRadius.artwork,
               title: item.title,
               artist: item.artist,
               label: item.title,
@@ -1976,13 +1932,13 @@ class _RecentPlayItem extends ConsumerWidget {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: KatType.trackTitle.copyWith(
+                    style: WaveType.trackTitle.copyWith(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 1),
-                  KatArtistLine(artist: item.artist),
+                  WaveArtistLine(artist: item.artist),
                 ],
               ),
             ),
@@ -1990,23 +1946,107 @@ class _RecentPlayItem extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: katTextTertiary(context).withValues(alpha: 0.1),
+                color: waveTextTertiary(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 relativeTime(
                   DateTime.fromMillisecondsSinceEpoch(item.timestampMillis),
                 ),
-                style: KatType.meta.copyWith(
+                style: WaveType.meta.copyWith(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: katTextSecondary(context),
+                  color: waveTextSecondary(context),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One strip per connected ListenBrainz / Libre.fm account, styled like
+/// the Last.fm strip: identity, lifetime listens, profile + settings.
+class _OtherScrobblerStrips extends ConsumerWidget {
+  const _OtherScrobblerStrips();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(extraScrobblersRevisionProvider);
+    final connected = [
+      for (final s in ref.watch(extraScrobblersProvider).services)
+        if (s.connected) s,
+    ];
+    if (connected.isEmpty) return const SizedBox.shrink();
+    final formatter = NumberFormat('#,###');
+    return Column(
+      children: [
+        for (final s in connected)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: waveSurface(context),
+                borderRadius: WaveRadius.floatingRadius,
+                border: Border.all(color: waveDivider(context), width: 0.8),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: WaveRadius.artworkRadius,
+                    child: WaveArtwork(
+                      url: '',
+                      size: 32,
+                      label: s.username,
+                      upgrade: false,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '@${s.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: WaveType.trackTitle.copyWith(
+                                fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          switch (ref.watch(extraScrobbleCountProvider(s.name))) {
+                            AsyncData(:final value?) =>
+                              '${formatter.format(value)} scrobbles · all time · ${s.name}',
+                            _ => s.name,
+                          },
+                          style: WaveType.meta
+                              .copyWith(color: waveTextSecondary(context)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  WaveIconButton(
+                    tooltip: 'View profile on ${s.name}',
+                    icon: const Icon(FluentIcons.open_in_new_window, size: 14),
+                    onPressed: () => launchUrl(s.profileUrl,
+                        mode: LaunchMode.externalApplication),
+                  ),
+                  const SizedBox(width: 4),
+                  WaveIconButton(
+                    tooltip: '${s.name} settings',
+                    icon: const Icon(FluentIcons.settings, size: 14),
+                    onPressed: () => context.go('/settings?section=lastfm'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

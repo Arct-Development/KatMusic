@@ -70,46 +70,46 @@ class SnapshotCodec<T> {
 // -- GeneratedTrack / FeedData ---------------------------------------------
 
 Map<String, dynamic> _trackToJson(GeneratedTrack t) => {
-  'n': t.name,
-  'a': t.artist,
-  'al': t.album,
-  'art': t.artworkUrl,
-  'v': t.videoId,
-  'l': t.listeners,
-  'm': t.match,
-  'd': t.durationSeconds,
-  'p': t.playbackUrl,
-};
+      'n': t.name,
+      'a': t.artist,
+      'al': t.album,
+      'art': t.artworkUrl,
+      'v': t.videoId,
+      'l': t.listeners,
+      'm': t.match,
+      'd': t.durationSeconds,
+      'p': t.playbackUrl,
+    };
 
 GeneratedTrack _trackFromJson(Map<String, dynamic> j) => GeneratedTrack(
-  name: j['n']?.toString() ?? '',
-  artist: j['a']?.toString() ?? '',
-  album: j['al']?.toString() ?? '',
-  artworkUrl: j['art']?.toString() ?? '',
-  videoId: j['v']?.toString() ?? '',
-  listeners: j['l']?.toString() ?? '',
-  match: j['m']?.toString() ?? '',
-  durationSeconds: (j['d'] as num?)?.toInt() ?? 0,
-  playbackUrl: j['p']?.toString() ?? '',
-);
+      name: j['n']?.toString() ?? '',
+      artist: j['a']?.toString() ?? '',
+      album: j['al']?.toString() ?? '',
+      artworkUrl: j['art']?.toString() ?? '',
+      videoId: j['v']?.toString() ?? '',
+      listeners: j['l']?.toString() ?? '',
+      match: j['m']?.toString() ?? '',
+      durationSeconds: (j['d'] as num?)?.toInt() ?? 0,
+      playbackUrl: j['p']?.toString() ?? '',
+    );
 
 List<GeneratedTrack> _tracksFrom(Object? raw) => [
-  for (final e in (raw as List? ?? const []))
-    if (e is Map) _trackFromJson(e.cast<String, dynamic>()),
-];
+      for (final e in (raw as List? ?? const []))
+        if (e is Map) _trackFromJson(e.cast<String, dynamic>()),
+    ];
 
 String _encodeFeed(FeedData f) => jsonEncode({
-  'v': _version,
-  'quick': f.quickPicks.map(_trackToJson).toList(),
-  'heavy': f.heavyRotation.map(_trackToJson).toList(),
-  'fresh': f.freshFinds.map(_trackToJson).toList(),
-  'jump': f.jumpBackIn.map(_trackToJson).toList(),
-  'because': f.becauseYouListened.map(_trackToJson).toList(),
-  'charts': f.charts.map(_trackToJson).toList(),
-  'tags': f.tasteTags,
-  'seed': f.becauseSeed,
-  'aff': f.tasteAffinities,
-});
+      'v': _version,
+      'quick': f.quickPicks.map(_trackToJson).toList(),
+      'heavy': f.heavyRotation.map(_trackToJson).toList(),
+      'fresh': f.freshFinds.map(_trackToJson).toList(),
+      'jump': f.jumpBackIn.map(_trackToJson).toList(),
+      'because': f.becauseYouListened.map(_trackToJson).toList(),
+      'charts': f.charts.map(_trackToJson).toList(),
+      'tags': f.tasteTags,
+      'seed': f.becauseSeed,
+      'aff': f.tasteAffinities,
+    });
 
 FeedData? _decodeFeed(String raw) {
   try {
@@ -145,34 +145,35 @@ final feedSnapshotCodec = SnapshotCodec<FeedData>(
 // -- YtHomeShelf -------------------------------------------------------------
 
 Map<String, dynamic> _ytTrackToJson(YouTubeMusicTrack t) => {
-  'v': t.videoId,
-  'n': t.title,
-  'a': t.artist,
-  'al': t.album,
-  'art': t.artworkUrl,
-  'd': t.durationSeconds,
-  'ab': t.albumBrowseId,
-};
+      'v': t.videoId,
+      'n': t.title,
+      'a': t.artist,
+      'al': t.album,
+      'art': t.artworkUrl,
+      'd': t.durationSeconds,
+      'ab': t.albumBrowseId,
+    };
 
-YouTubeMusicTrack _ytTrackFromJson(Map<String, dynamic> j) => YouTubeMusicTrack(
-  videoId: j['v']?.toString() ?? '',
-  title: j['n']?.toString() ?? '',
-  artist: j['a']?.toString() ?? '',
-  album: j['al']?.toString() ?? '',
-  artworkUrl: j['art']?.toString() ?? '',
-  durationSeconds: (j['d'] as num?)?.toInt() ?? 0,
-  albumBrowseId: j['ab']?.toString() ?? '',
-);
+YouTubeMusicTrack _ytTrackFromJson(Map<String, dynamic> j) =>
+    YouTubeMusicTrack(
+      videoId: j['v']?.toString() ?? '',
+      title: j['n']?.toString() ?? '',
+      artist: j['a']?.toString() ?? '',
+      album: j['al']?.toString() ?? '',
+      artworkUrl: j['art']?.toString() ?? '',
+      durationSeconds: (j['d'] as num?)?.toInt() ?? 0,
+      albumBrowseId: j['ab']?.toString() ?? '',
+    );
 
 Map<String, dynamic> _entityToJson(YouTubeMusicEntity e) => {
-  'k': e.kind.name,
-  'n': e.name,
-  'a': e.artist,
-  's': e.subtitle,
-  'b': e.browseId,
-  'p': e.playlistId,
-  'art': e.artworkUrl,
-};
+      'k': e.kind.name,
+      'n': e.name,
+      'a': e.artist,
+      's': e.subtitle,
+      'b': e.browseId,
+      'p': e.playlistId,
+      'art': e.artworkUrl,
+    };
 
 YouTubeMusicEntity _entityFromJson(Map<String, dynamic> j) =>
     YouTubeMusicEntity(
@@ -189,23 +190,23 @@ YouTubeMusicEntity _entityFromJson(Map<String, dynamic> j) =>
     );
 
 List<T> _listOf<T>(Object? raw, T Function(Map<String, dynamic>) read) => [
-  for (final e in (raw as List? ?? const []))
-    if (e is Map) read(e.cast<String, dynamic>()),
-];
+      for (final e in (raw as List? ?? const []))
+        if (e is Map) read(e.cast<String, dynamic>()),
+    ];
 
 String _encodeShelves(List<YtHomeShelf> shelves) => jsonEncode({
-  'v': _version,
-  'shelves': [
-    for (final s in shelves)
-      {
-        'title': s.title,
-        'sub': s.subtitle,
-        'tracks': s.tracks.map(_ytTrackToJson).toList(),
-        'cards': s.trackCards.map(_ytTrackToJson).toList(),
-        'ents': s.entities.map(_entityToJson).toList(),
-      },
-  ],
-});
+      'v': _version,
+      'shelves': [
+        for (final s in shelves)
+          {
+            'title': s.title,
+            'sub': s.subtitle,
+            'tracks': s.tracks.map(_ytTrackToJson).toList(),
+            'cards': s.trackCards.map(_ytTrackToJson).toList(),
+            'ents': s.entities.map(_entityToJson).toList(),
+          },
+      ],
+    });
 
 List<YtHomeShelf>? _decodeShelves(String raw) {
   try {
@@ -344,28 +345,26 @@ String homeNewAlbumsSnapshotKey({
   required bool connected,
   required String profileEmail,
   required String activePageId,
-}) => connected
-    ? 'home_albums_v1|${profileEmail.trim().toLowerCase()}|$activePageId'
-    : 'home_albums_v1|public';
+}) =>
+    connected
+        ? 'home_albums_v1|${profileEmail.trim().toLowerCase()}|$activePageId'
+        : 'home_albums_v1|public';
 
 /// Cache key for the personal mix; null when signed out (no mix exists).
 String? homePersonalMixSnapshotKey({
   required bool connected,
   required String profileEmail,
   required String activePageId,
-}) => connected
-    ? 'home_mix_v1|${profileEmail.trim().toLowerCase()}|$activePageId'
-    : null;
-
-/// Cache key for the friends strip; null without a Last.fm user.
-String? homeFriendsSnapshotKey(String username) {
-  final u = username.trim().toLowerCase();
-  return u.isEmpty ? null : 'home_friends_v1|$u';
-}
+}) =>
+    connected
+        ? 'home_mix_v1|${profileEmail.trim().toLowerCase()}|$activePageId'
+        : null;
 
 final entitiesSnapshotCodec = SnapshotCodec<List<YouTubeMusicEntity>>(
-  encode: (list) =>
-      jsonEncode({'v': _version, 'items': list.map(_entityToJson).toList()}),
+  encode: (list) => jsonEncode({
+    'v': _version,
+    'items': list.map(_entityToJson).toList(),
+  }),
   decode: (raw) {
     try {
       final j = jsonDecode(raw);
@@ -443,8 +442,10 @@ const cacheGroupAlbum = 'album';
 const libraryCacheMaxAge = Duration(days: 30);
 
 final ytTracksSnapshotCodec = SnapshotCodec<List<YouTubeMusicTrack>>(
-  encode: (list) =>
-      jsonEncode({'v': _version, 'items': list.map(_ytTrackToJson).toList()}),
+  encode: (list) => jsonEncode({
+    'v': _version,
+    'items': list.map(_ytTrackToJson).toList(),
+  }),
   decode: (raw) {
     try {
       final j = jsonDecode(raw);
@@ -459,39 +460,39 @@ final ytTracksSnapshotCodec = SnapshotCodec<List<YouTubeMusicTrack>>(
 
 final ytPlaylistSummariesSnapshotCodec =
     SnapshotCodec<List<YouTubePlaylistSummary>>(
-      encode: (list) => jsonEncode({
-        'v': _version,
-        'items': [
-          for (final p in list)
-            {
-              'id': p.id,
-              't': p.title,
-              'a': p.author,
-              'c': p.trackCountText,
-              'art': p.artworkUrl,
-            },
-        ],
-      }),
-      decode: (raw) {
-        try {
-          final j = jsonDecode(raw);
-          if (j is! Map || j['v'] != _version) return null;
-          return _listOf(
-            j['items'],
-            (m) => YouTubePlaylistSummary(
-              id: m['id']?.toString() ?? '',
-              title: m['t']?.toString() ?? '',
-              author: m['a']?.toString() ?? '',
-              trackCountText: m['c']?.toString() ?? '',
-              artworkUrl: m['art']?.toString() ?? '',
-            ),
-          );
-        } catch (_) {
-          return null;
-        }
-      },
-      isEmpty: (list) => list.isEmpty,
-    );
+  encode: (list) => jsonEncode({
+    'v': _version,
+    'items': [
+      for (final p in list)
+        {
+          'id': p.id,
+          't': p.title,
+          'a': p.author,
+          'c': p.trackCountText,
+          'art': p.artworkUrl,
+        },
+    ],
+  }),
+  decode: (raw) {
+    try {
+      final j = jsonDecode(raw);
+      if (j is! Map || j['v'] != _version) return null;
+      return _listOf(
+        j['items'],
+        (m) => YouTubePlaylistSummary(
+          id: m['id']?.toString() ?? '',
+          title: m['t']?.toString() ?? '',
+          author: m['a']?.toString() ?? '',
+          trackCountText: m['c']?.toString() ?? '',
+          artworkUrl: m['art']?.toString() ?? '',
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  },
+  isEmpty: (list) => list.isEmpty,
+);
 
 /// Stand-in for "playlist unavailable" ([swrLoad] needs a non-null value;
 /// the provider maps it back to null).

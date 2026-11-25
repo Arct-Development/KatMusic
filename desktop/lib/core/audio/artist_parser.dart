@@ -36,9 +36,10 @@ String primaryArtistName(String artist) {
   if (knownBandsWithDelimiters.contains(lower)) return s;
 
   s = s
-      .split(
-        RegExp(r'\s+[(\[]?(?:feat\.?|ft\.?|featuring)\b', caseSensitive: false),
-      )
+      .split(RegExp(
+        r'\s+[(\[]?(?:feat\.?|ft\.?|featuring)\b',
+        caseSensitive: false,
+      ))
       .first
       .trim();
   if (RegExp(r',\s*(the|and)\b', caseSensitive: false).hasMatch(s) &&
@@ -47,10 +48,7 @@ String primaryArtistName(String artist) {
       !s.contains(' ft')) {
     return s;
   }
-  final cut = s
-      .split(RegExp(r'\s*[,;&/]\s*|\s+[xX]\s+|\s+and\s+'))
-      .first
-      .trim();
+  final cut = s.split(RegExp(r'\s*[,;&/]\s*|\s+[xX]\s+|\s+and\s+')).first.trim();
   return cut.isNotEmpty ? cut : s;
 }
 
@@ -77,7 +75,7 @@ Iterable<String> splitArtistCredits(String artist) sync* {
   }
 
   final delimiterRegex = RegExp(
-    r'(?:\s*[,;]\s*|\s+&\s+|\s+and\s+|\s+/\s+|\s+[xX]\s+|\s+[(\[]?(?:feat\.?|ft\.?|featuring|with)\b[)\]]?\s*)',
+    r'(?:\s*[,;]\s*|\s+&\s+|\s+and\s+|\s+/\s+|\s+[xX]\s+|\s+[(\[]?(?:feat\b\.?|ft\b\.?|featuring\b|with\b)[)\]]?\s*)',
     caseSensitive: false,
   );
 
@@ -86,12 +84,9 @@ Iterable<String> splitArtistCredits(String artist) sync* {
   for (final raw in parts) {
     var p = raw.trim();
     p = p.replaceAll(RegExp(r'^[(\[]+|[)\]]+$'), '').trim();
-    p = p
-        .replaceFirst(
-          RegExp(r'^(?:feat\.?|ft\.?|featuring|with)\s+', caseSensitive: false),
-          '',
-        )
-        .trim();
+    p = p.replaceFirst(
+        RegExp(r'^(?:feat\.?|ft\.?|featuring|with)\s+', caseSensitive: false),
+        '').trim();
     if (p.isEmpty) continue;
     final pLow = p.toLowerCase();
     if (pLow == 'the' || pLow == 'and' || pLow == '&') continue;

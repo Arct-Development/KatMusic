@@ -12,13 +12,9 @@ void main() {
   test('binds glibc mallopt on Linux', () {
     if (!Platform.isLinux) return;
     applyAllocatorTuning();
-    expect(
-      allocatorTuningApplied,
-      isTrue,
-      reason:
-          'mallopt(M_TRIM_THRESHOLD/M_MMAP_THRESHOLD) should be '
-          'reachable on a glibc Linux host',
-    );
+    expect(allocatorTuningApplied, isTrue,
+        reason: 'mallopt(M_TRIM_THRESHOLD/M_MMAP_THRESHOLD) should be '
+            'reachable on a glibc Linux host');
   });
 
   test('is idempotent', () {

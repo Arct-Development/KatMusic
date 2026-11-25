@@ -6,7 +6,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../audio/artist_parser.dart';
 
-/// Desktop persistent storage. Schema mirrors KatMusic-native
+/// Desktop persistent storage. Schema mirrors KatMusic
 /// `AppDatabase` (Room, v12) tables plus desktop additions:
 /// - `artwork_cache`, `recommendation_exclusions`, `saved_playlists`,
 ///   `downloaded_tracks` (same logical columns)
@@ -46,6 +46,10 @@ class AppDatabase {
 
   void _migrate() {
     _db.execute('PRAGMA journal_mode=WAL;');
+    _db.execute('PRAGMA synchronous=NORMAL;');
+    _db.execute('PRAGMA cache_size=-2000;');
+    _db.execute('PRAGMA mmap_size=0;');
+    _db.execute('PRAGMA temp_store=FILE;');
     final version =
         _db.select('PRAGMA user_version;').first['user_version'] as int;
     if (version < 1) {
@@ -162,7 +166,8 @@ class AppDatabase {
   // -- kv helpers ------------------------------------------------------
 
   String? kvGet(String key) {
-    final rows = _db.select('SELECT v FROM kv_store WHERE k = ?', [key]);
+    final rows =
+        _db.select('SELECT v FROM kv_store WHERE k = ?', [key]);
     if (rows.isEmpty) return null;
     return rows.first['v'] as String;
   }
@@ -221,13 +226,15 @@ class AppDatabase {
   Set<String> loadExclusionKeys() {
     return {
       for (final r in _db.select(
-        'SELECT track_key FROM recommendation_exclusions;',
-      ))
+          'SELECT track_key FROM recommendation_exclusions;'))
         (r['track_key'] as String?) ?? '',
     }..remove('');
   }
 
-  void addExclusion({required String name, required String artist}) {
+  void addExclusion({
+    required String name,
+    required String artist,
+  }) {
     _db.execute(
       'INSERT OR REPLACE INTO recommendation_exclusions '
       '(track_key, excluded_at_millis, track_name, artist_name) '
@@ -242,9 +249,9 @@ class AppDatabase {
   }
 
   void removeExclusion(String key) {
-    _db.execute('DELETE FROM recommendation_exclusions WHERE track_key = ?;', [
-      key,
-    ]);
+    _db.execute(
+        'DELETE FROM recommendation_exclusions WHERE track_key = ?;',
+        [key]);
   }
 
   List<({String key, String name, String artist})> listExclusions() {
@@ -254,13 +261,11 @@ class AppDatabase {
           'FROM recommendation_exclusions '
           'ORDER BY excluded_at_millis DESC;',
         )
-        .map(
-          (r) => (
-            key: (r['track_key'] as String?) ?? '',
-            name: (r['track_name'] as String?) ?? '',
-            artist: (r['artist_name'] as String?) ?? '',
-          ),
-        )
+        .map((r) => (
+              key: (r['track_key'] as String?) ?? '',
+              name: (r['track_name'] as String?) ?? '',
+              artist: (r['artist_name'] as String?) ?? '',
+            ))
         .where((e) => e.key.isNotEmpty)
         .toList();
   }
@@ -355,7 +360,9 @@ class AppDatabase {
 
   List<String> localFolders() {
     return _db
-        .select('SELECT path FROM local_folders ORDER BY added_at_millis ASC;')
+        .select(
+          'SELECT path FROM local_folders ORDER BY added_at_millis ASC;',
+        )
         .map((r) => (r['path'] as String?) ?? '')
         .where((path) => path.isNotEmpty)
         .toList();
@@ -377,8 +384,7 @@ class AppDatabase {
 
   Map<String, dynamic> loadPlaybackSession() {
     final rows = _db.select(
-      'SELECT payload_json FROM playback_session WHERE id = 1;',
-    );
+        'SELECT payload_json FROM playback_session WHERE id = 1;');
     if (rows.isEmpty) return const {};
     try {
       final decoded = jsonDecode(rows.first['payload_json'] as String);
@@ -538,11 +544,7 @@ class AppDatabase {
       'ON snapshot_cache(grp, hit_at);',
     );
     // Artist pages and the first Home snapshots lived in kv_store.
-    for (final prefix in const [
-      'artist_detail_v2|',
-      'home_feed_v1|',
-      'home_yt_v1|',
-    ]) {
+    for (final prefix in const ['artist_detail_v2|', 'home_feed_v1|', 'home_yt_v1|']) {
       try {
         _db.execute('DELETE FROM kv_store WHERE k LIKE ?;', ['$prefix%']);
       } catch (_) {}
@@ -575,10 +577,7 @@ class AppDatabase {
     if (rows.isEmpty) return null;
     final at = (now ?? DateTime.now()).millisecondsSinceEpoch;
     try {
-      _db.execute('UPDATE snapshot_cache SET hit_at = ? WHERE k = ?;', [
-        at,
-        key,
-      ]);
+      _db.execute('UPDATE snapshot_cache SET hit_at = ? WHERE k = ?;', [at, key]);
     } catch (_) {}
     return (
       value: rows.first['v'] as String,
@@ -628,7 +627,10 @@ class AppDatabase {
     );
     return {
       for (final r in rows)
-        r['grp'] as String: (entries: r['n'] as int, chars: r['chars'] as int),
+        r['grp'] as String: (
+          entries: r['n'] as int,
+          chars: r['chars'] as int,
+        ),
     };
   }
 
@@ -673,9 +675,8 @@ class AppDatabase {
 
   Map<String, dynamic> getLocalStatsSummary({int? sinceMillis}) {
     try {
-      final whereClause = sinceMillis != null
-          ? 'WHERE played_at_millis >= $sinceMillis'
-          : '';
+      final whereClause =
+          sinceMillis != null ? 'WHERE played_at_millis >= $sinceMillis' : '';
 
       // Total plays
       final totalRow = _db.select(
@@ -718,13 +719,11 @@ class AppDatabase {
         "GROUP BY lower(title || '|' || artist) ORDER BY cnt DESC LIMIT 20;",
       );
       final topTracks = topTracksRows
-          .map(
-            (r) => (
-              title: (r['title'] as String?) ?? '',
-              artist: (r['artist'] as String?) ?? '',
-              count: (r['cnt'] as int?) ?? 0,
-            ),
-          )
+          .map((r) => (
+                title: (r['title'] as String?) ?? '',
+                artist: (r['artist'] as String?) ?? '',
+                count: (r['cnt'] as int?) ?? 0,
+              ))
           .where((t) => t.title.isNotEmpty)
           .toList();
 
@@ -748,12 +747,10 @@ class AppDatabase {
         'COUNT(*) as cnt FROM local_plays $whereClause GROUP BY dt ORDER BY dt DESC LIMIT 30;',
       );
       final daily = dailyRows
-          .map(
-            (r) => (
-              date: (r['dt'] as String?) ?? '',
-              count: (r['cnt'] as int?) ?? 0,
-            ),
-          )
+          .map((r) => (
+                date: (r['dt'] as String?) ?? '',
+                count: (r['cnt'] as int?) ?? 0,
+              ))
           .where((d) => d.date.isNotEmpty)
           .toList();
 
@@ -781,13 +778,12 @@ class AppDatabase {
             'ORDER BY id DESC LIMIT ?;',
             [limit],
           )
-          .map(
-            (r) => (
-              title: (r['title'] as String?) ?? '',
-              artist: (r['artist'] as String?) ?? '',
-              atMillis: (r['played_at_millis'] as int?) ?? 0,
-            ),
-          )
+          .map((r) => (
+                title: (r['title'] as String?) ?? '',
+                artist: (r['artist'] as String?) ?? '',
+                atMillis:
+                    (r['played_at_millis'] as int?) ?? 0,
+              ))
           .where((p) => p.title.isNotEmpty)
           .toList();
     } catch (_) {
@@ -907,7 +903,10 @@ class AppDatabase {
 
   void deleteStreamEntries(String videoId) {
     try {
-      _db.execute('DELETE FROM stream_cache WHERE video_id = ?;', [videoId]);
+      _db.execute(
+        'DELETE FROM stream_cache WHERE video_id = ?;',
+        [videoId],
+      );
     } catch (_) {}
   }
 
@@ -974,7 +973,10 @@ class AppDatabase {
 
   void deleteMatchesForVideo(String videoId) {
     try {
-      _db.execute('DELETE FROM match_cache WHERE video_id = ?;', [videoId]);
+      _db.execute(
+        'DELETE FROM match_cache WHERE video_id = ?;',
+        [videoId],
+      );
     } catch (_) {}
   }
 
@@ -1032,6 +1034,13 @@ class AppDatabase {
         'timestamp_millis = excluded.timestamp_millis;',
         [cacheKey, url, provider, now],
       );
+    } catch (_) {}
+  }
+
+  /// Flush WAL log to disk and truncate it to reduce file handles and memory.
+  void checkpoint() {
+    try {
+      _db.execute('PRAGMA wal_checkpoint(TRUNCATE);');
     } catch (_) {}
   }
 

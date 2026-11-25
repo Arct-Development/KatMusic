@@ -37,7 +37,10 @@ class PodcastEpisode {
     this.publishedLabel = '',
   });
 
-  PodcastEpisode copyWith({String? showId, String? showTitle}) =>
+  PodcastEpisode copyWith({
+    String? showId,
+    String? showTitle,
+  }) =>
       PodcastEpisode(
         videoId: videoId,
         title: title,
@@ -78,5 +81,8 @@ class PodcastEpisodePage {
   final List<PodcastEpisode> episodes;
   final String? continuation;
 
-  const PodcastEpisodePage({this.episodes = const [], this.continuation});
+  const PodcastEpisodePage({
+    this.episodes = const [],
+    this.continuation,
+  });
 }

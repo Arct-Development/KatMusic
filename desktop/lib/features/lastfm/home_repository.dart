@@ -5,7 +5,7 @@ import '../../core/storage/prefs.dart';
 import 'auth_repository.dart';
 
 /// Track/artist/album/user models for Last.fm data.
-/// Mirrors `data/model/*` in KatMusic-native (subset used by desktop).
+/// Mirrors `data/model/*` in KatMusic (subset used by desktop).
 class HomeTrack {
   final String name;
   final String artist;
@@ -38,32 +38,9 @@ class HomeStats {
   });
 }
 
-class FriendEntry {
-  final String name;
-  final String realName;
-  final String avatarUrl;
-  const FriendEntry({
-    required this.name,
-    this.realName = '',
-    this.avatarUrl = '',
-  });
-}
-
-/// Browsing profile state (own vs. friend), mirrors
-/// `ViewingProfileState` in KatMusic-native.
-class ViewingProfile extends StateNotifier<String?> {
-  ViewingProfile() : super(null);
-  void view(String? username) => state = username;
-  void clear() => state = null;
-}
-
-final viewingProfileProvider = StateNotifierProvider<ViewingProfile, String?>(
-  (_) => ViewingProfile(),
-);
-
 /// Profile/stats/home repository.
 ///
-/// Ported from KatMusic-native `data/repository/HomeRepository.kt`.
+/// Ported from KatMusic `data/repository/HomeRepository.kt`.
 class HomeRepository {
   final LastFmApiService _api;
   final Prefs _prefs;
@@ -127,14 +104,13 @@ class HomeRepository {
           ? (t['artist'] as Map)['#text']?.toString() ?? ''
           : t['artist']?.toString() ?? '';
       final date = _asMap(t['date'])['uts']?.toString() ?? '';
-      out.add(
-        HomeTrack(
-          name: t['name']?.toString() ?? '',
-          artist: artist,
-          artworkUrl: _bestImage(t['image']),
-          timestampMillis: int.tryParse(date)?.let((s) => s * 1000),
-        ),
-      );
+      out.add(HomeTrack(
+        name: t['name']?.toString() ?? '',
+        artist: artist,
+        artworkUrl: _bestImage(t['image']),
+        timestampMillis:
+            int.tryParse(date)?.let((s) => s * 1000),
+      ));
     }
     return out.where((t) => t.name.isNotEmpty).toList();
   }
@@ -143,7 +119,11 @@ class HomeRepository {
     final user = _effectiveUser(viewingAs);
     if (user == null) return const HomeStats();
     final results = await Future.wait([
-      _api.get({'method': 'user.getinfo', 'user': user, 'api_key': _apiKey}),
+      _api.get({
+        'method': 'user.getinfo',
+        'user': user,
+        'api_key': _apiKey,
+      }),
       _api.get({
         'method': 'user.gettoptracks',
         'user': user,
@@ -216,23 +196,20 @@ class HomeRepository {
       'limit': '$limit',
     });
     return _asList(_asMap(json['toptracks'])['track'])
-        .map(
-          (t) => HomeTrack(
-            name: t['name']?.toString() ?? '',
-            artist:
-                _asMap(t['artist'])['name']?.toString() ??
-                t['artist']?.toString() ??
-                '',
-            artworkUrl: _bestImage(t['image']),
-            playCount: int.tryParse(t['playcount']?.toString() ?? '') ?? 0,
-          ),
-        )
+        .map((t) => HomeTrack(
+              name: t['name']?.toString() ?? '',
+              artist: _asMap(t['artist'])['name']?.toString() ??
+                  t['artist']?.toString() ??
+                  '',
+              artworkUrl: _bestImage(t['image']),
+              playCount:
+                  int.tryParse(t['playcount']?.toString() ?? '') ?? 0,
+            ))
         .where((t) => t.name.isNotEmpty)
         .toList();
   }
 
-  Future<List<({String name, int playCount, String artworkUrl})>>
-  fetchTopArtists({
+  Future<List<({String name, int playCount, String artworkUrl})>> fetchTopArtists({
     String? viewingAs,
     String period = '7day',
     int limit = 20,
@@ -248,13 +225,11 @@ class HomeRepository {
         'limit': '$limit',
       });
       return _asList(_asMap(json['topartists'])['artist'])
-          .map(
-            (a) => (
-              name: a['name']?.toString() ?? '',
-              playCount: int.tryParse(a['playcount']?.toString() ?? '') ?? 0,
-              artworkUrl: _bestImage(a['image']),
-            ),
-          )
+          .map((a) => (
+                name: a['name']?.toString() ?? '',
+                playCount: int.tryParse(a['playcount']?.toString() ?? '') ?? 0,
+                artworkUrl: _bestImage(a['image']),
+              ))
           .where((a) => a.name.isNotEmpty)
           .toList();
     } catch (_) {
@@ -262,8 +237,7 @@ class HomeRepository {
     }
   }
 
-  Future<List<({String name, String artist, int playCount, String artworkUrl})>>
-  fetchTopAlbums({
+  Future<List<({String name, String artist, int playCount, String artworkUrl})>> fetchTopAlbums({
     String? viewingAs,
     String period = '7day',
     int limit = 20,
@@ -280,8 +254,7 @@ class HomeRepository {
       });
       return _asList(_asMap(json['topalbums'])['album'])
           .map((a) {
-            final artist =
-                _asMap(a['artist'])['name']?.toString() ??
+            final artist = _asMap(a['artist'])['name']?.toString() ??
                 a['artist']?.toString() ??
                 '';
             return (
@@ -297,37 +270,6 @@ class HomeRepository {
       return const [];
     }
   }
-
-  Future<List<FriendEntry>> fetchFriends({String? viewingAs}) async {
-    final user = _effectiveUser(viewingAs);
-    if (user == null) {
-      return const [];
-    }
-    try {
-      final json = await _api.get({
-        'method': 'user.getfriends',
-        'user': user,
-        'api_key': _apiKey,
-        'limit': '50',
-      });
-      // Last.fm returns error 6 ("no such page") when a user has 0 friends.
-      if (json['error'] == 6) {
-        return const [];
-      }
-      return _asList(_asMap(json['friends'])['user'])
-          .map(
-            (u) => FriendEntry(
-              name: u['name']?.toString() ?? '',
-              realName: u['realname']?.toString() ?? '',
-              avatarUrl: _bestImage(u['image']),
-            ),
-          )
-          .where((f) => f.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return const [];
-    }
-  }
 }
 
 extension _Let<T> on T {
@@ -335,5 +277,8 @@ extension _Let<T> on T {
 }
 
 final homeRepositoryProvider = Provider<HomeRepository>((ref) {
-  return HomeRepository(ref.watch(lastFmApiProvider), ref.watch(prefsProvider));
+  return HomeRepository(
+    ref.watch(lastFmApiProvider),
+    ref.watch(prefsProvider),
+  );
 });

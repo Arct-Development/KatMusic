@@ -46,7 +46,12 @@ class CommunityCanvas {
   }) async {
     final index = await _manifest(dio);
     if (index.isEmpty) return null;
-    return _matchFromIndex(index, title: title, artist: artist, album: album);
+    return _matchFromIndex(
+      index,
+      title: title,
+      artist: artist,
+      album: album,
+    );
   }
 
   /// Synchronous check against the already-loaded manifest (0 network calls).
@@ -85,8 +90,7 @@ class CommunityCanvas {
         wantTitle: title,
         gotTitle: entry.song,
       );
-      final albumOk =
-          listed.isEmpty ||
+      final albumOk = listed.isEmpty ||
           wantAlbum == null ||
           wantAlbum.isEmpty ||
           canvasTitlesMatch(album!, entry.album);
@@ -189,7 +193,12 @@ class CommunityCanvas {
         final url = item['url']?.toString().trim() ?? '';
         if (song.isEmpty || artist.isEmpty || url.isEmpty) continue;
         parsed.add(
-          _CommunityEntry(song: song, artist: artist, album: album, url: url),
+          _CommunityEntry(
+            song: song,
+            artist: artist,
+            album: album,
+            url: url,
+          ),
         );
       }
       if (parsed.isNotEmpty) {

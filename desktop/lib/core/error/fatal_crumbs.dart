@@ -19,7 +19,8 @@ String fatalCrumb(Object error, [StackTrace? stack]) {
         .toString()
         .split('\n')
         .map((l) => l.trim())
-        .firstWhere((l) => l.contains('package:katmusic'), orElse: () => '');
+        .firstWhere((l) => l.contains('package:katmusic'),
+            orElse: () => '');
     if (frame.isNotEmpty) out += ' @ $frame';
   }
   return out;

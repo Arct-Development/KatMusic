@@ -2,11 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_models.dart';
 
 LyricLine _line(int endMs, {int start = 0}) => LyricLine(
-  timeMs: start,
-  durationMs: endMs - start,
-  text: 'x',
-  syllables: [LyricSyllable(timeMs: start, durationMs: 10, text: 'x')],
-);
+      timeMs: start,
+      durationMs: endMs - start,
+      text: 'x',
+      syllables: [LyricSyllable(timeMs: start, durationMs: 10, text: 'x')],
+    );
 
 void main() {
   test('sameVersion rejects live/remix, accepts remaster', () {
@@ -22,9 +22,8 @@ void main() {
     expect(lyricsTitlesMatchStrict('Love Me Like You Do', 'Love'), isFalse);
     expect(lyricsTitlesMatchStrict('Love', 'Love Me Like You Do'), isFalse);
     expect(
-      lyricsTitlesMatchStrict('Shape of You', 'Ed Sheeran - Shape Of You'),
-      isTrue,
-    );
+        lyricsTitlesMatchStrict('Shape of You', 'Ed Sheeran - Shape Of You'),
+        isTrue);
     expect(lyricsTitlesMatchStrict('Shape of You', 'Shape of You'), isTrue);
   });
 
@@ -67,8 +66,7 @@ void main() {
   test('parseEnhancedLrc empty for plain LRC', () {
     expect(parseEnhancedLrc('[00:01.00]Hello\n[00:05.00]World\n'), isEmpty);
     expect(
-      parseEnhancedLrc('[00:01.00]Hel<00:01.20>lo\n[00:05.00]World\n')
-          .isNotEmpty,
+      parseEnhancedLrc('[00:01.00]Hel<00:01.20>lo\n[00:05.00]World\n').isNotEmpty,
       isTrue,
     );
   });
@@ -96,45 +94,36 @@ void main() {
     expect(calculateSyllableProgress(syl, 1207), 1.0);
   });
 
-  test(
-    'activeLyricLineIndex resolves line index correctly across micro-ticks',
-    () {
-      final lines = [
-        const LyricLine(timeMs: 0, durationMs: 1000, text: 'line 1'),
-        const LyricLine(timeMs: 1000, durationMs: 1500, text: 'line 2'),
-        const LyricLine(timeMs: 2500, durationMs: 1000, text: 'line 3'),
-      ];
-      expect(activeLyricLineIndex(lines, 0), 0);
-      expect(activeLyricLineIndex(lines, 500), 0);
-      expect(activeLyricLineIndex(lines, 1000), 1);
-      expect(activeLyricLineIndex(lines, 2499), 1);
-      expect(activeLyricLineIndex(lines, 2500), 2);
-      expect(activeLyricLineIndex(lines, 9999), 2);
-      expect(activeLyricLineIndex(lines, -100), -1);
+  test('activeLyricLineIndex resolves line index correctly across micro-ticks', () {
+    final lines = [
+      const LyricLine(timeMs: 0, durationMs: 1000, text: 'line 1'),
+      const LyricLine(timeMs: 1000, durationMs: 1500, text: 'line 2'),
+      const LyricLine(timeMs: 2500, durationMs: 1000, text: 'line 3'),
+    ];
+    expect(activeLyricLineIndex(lines, 0), 0);
+    expect(activeLyricLineIndex(lines, 500), 0);
+    expect(activeLyricLineIndex(lines, 1000), 1);
+    expect(activeLyricLineIndex(lines, 2499), 1);
+    expect(activeLyricLineIndex(lines, 2500), 2);
+    expect(activeLyricLineIndex(lines, 9999), 2);
+    expect(activeLyricLineIndex(lines, -100), -1);
 
-      final introLines = [
-        const LyricLine(timeMs: 0, durationMs: 500, text: 'intro 1'),
-        const LyricLine(timeMs: 0, durationMs: 500, text: 'intro 2'),
-        const LyricLine(timeMs: 3000, durationMs: 1000, text: 'verse 1'),
-      ];
-      expect(activeLyricLineIndex(introLines, 0), 0);
-      expect(activeLyricLineIndex(introLines, 1500), 0);
-      expect(activeLyricLineIndex(introLines, 3000), 2);
-    },
-  );
+    final introLines = [
+      const LyricLine(timeMs: 0, durationMs: 500, text: 'intro 1'),
+      const LyricLine(timeMs: 0, durationMs: 500, text: 'intro 2'),
+      const LyricLine(timeMs: 3000, durationMs: 1000, text: 'verse 1'),
+    ];
+    expect(activeLyricLineIndex(introLines, 0), 0);
+    expect(activeLyricLineIndex(introLines, 1500), 0);
+    expect(activeLyricLineIndex(introLines, 3000), 2);
+  });
 
-  test(
-    'parseLrc parses mm:ss:xx 3-part timestamps without hour misinterpretation',
-    () {
-      final lines = parseLrc('[01:23:45]Hello world\n');
-      expect(lines.length, 1);
-      expect(
-        lines.first.timeMs,
-        83450,
-      ); // 1m 23s 450ms, NOT 1h 23m 45s (5025000ms)
-      expect(lines.first.text, 'Hello world');
-    },
-  );
+  test('parseLrc parses mm:ss:xx 3-part timestamps without hour misinterpretation', () {
+    final lines = parseLrc('[01:23:45]Hello world\n');
+    expect(lines.length, 1);
+    expect(lines.first.timeMs, 83450); // 1m 23s 450ms, NOT 1h 23m 45s (5025000ms)
+    expect(lines.first.text, 'Hello world');
+  });
 
   test('parseTtml parses start, startTime, from, to, and suffixed times', () {
     const xml = '''
@@ -173,41 +162,17 @@ void main() {
 
   group('Lyrics Multi-Artist Billing & Punctuation', () {
     test('artists match across conjunctions, commas, &, and x', () {
-      expect(
-        lyricsArtistsMatchStrict(
-          'Calvin Harris, Dua Lipa',
-          'Calvin Harris & Dua Lipa',
-        ),
-        isTrue,
-      );
-      expect(
-        lyricsArtistsMatchStrict('Marshmello x Khalid', 'Marshmello & Khalid'),
-        isTrue,
-      );
-      expect(
-        lyricsArtistsMatchStrict(
-          'Post Malone ft. Swae Lee',
-          'Post Malone, Swae Lee',
-        ),
-        isTrue,
-      );
+      expect(lyricsArtistsMatchStrict('Calvin Harris, Dua Lipa', 'Calvin Harris & Dua Lipa'), isTrue);
+      expect(lyricsArtistsMatchStrict('Marshmello x Khalid', 'Marshmello & Khalid'), isTrue);
+      expect(lyricsArtistsMatchStrict('Post Malone ft. Swae Lee', 'Post Malone, Swae Lee'), isTrue);
       expect(lyricsArtistsMatchStrict('Drake', 'Drake, 21 Savage'), isTrue);
-      expect(
-        lyricsArtistsMatchStrict('Taylor Swift', 'Taylor Swift feat. Bon Iver'),
-        isTrue,
-      );
+      expect(lyricsArtistsMatchStrict('Taylor Swift', 'Taylor Swift feat. Bon Iver'), isTrue);
     });
 
     test('titles match across apostrophe and quote variations', () {
-      expect(
-        lyricsTitlesMatchStrict("Don't Stop Believin'", 'Dont Stop Believin'),
-        isTrue,
-      );
+      expect(lyricsTitlesMatchStrict("Don't Stop Believin'", 'Dont Stop Believin'), isTrue);
       expect(lyricsTitlesMatchStrict("Rock 'N' Roll", 'Rock N Roll'), isTrue);
-      expect(
-        lyricsTitlesMatchStrict("Ain't No Mountain", 'Aint No Mountain'),
-        isTrue,
-      );
+      expect(lyricsTitlesMatchStrict("Ain't No Mountain", 'Aint No Mountain'), isTrue);
     });
 
     test('rejects similarly named songs to prevent false positives', () {
@@ -222,3 +187,4 @@ void main() {
     });
   });
 }
+

@@ -15,7 +15,7 @@
   #define MyAppVersionNum "1.0.0.0"
 #endif
 #define MyAppName "KatMusic"
-#define MyAppPublisher "Arct-Development"
+#define MyAppPublisher "Arct Developments"
 #define MyAppURL "https://github.com/Arct-Development/KatMusic"
 #define MyAppExeName "katmusic.exe"
 #define MyAppId "{{E8B4F6A2-7C3D-4A1E-9F5B-2D6A8C4E1A3B5}"
@@ -72,3 +72,4 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+

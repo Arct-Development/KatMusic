@@ -108,11 +108,9 @@ AppInstallType detectCurrentInstallType() {
       final exePath = Platform.resolvedExecutable;
       final exeDir = p.dirname(exePath);
       // Inno Setup places unins000.exe or unins001.exe in the installation folder
-      final hasUninstaller =
-          File(p.join(exeDir, 'unins000.exe')).existsSync() ||
+      final hasUninstaller = File(p.join(exeDir, 'unins000.exe')).existsSync() ||
           File(p.join(exeDir, 'unins001.exe')).existsSync();
-      final inPrograms =
-          exePath.toLowerCase().contains(r'programs\katmusic') ||
+      final inPrograms = exePath.toLowerCase().contains(r'programs\katmusic') ||
           exePath.toLowerCase().contains(r'program files');
 
       if (hasUninstaller || inPrograms) {
@@ -137,15 +135,11 @@ AppInstallType detectCurrentInstallType() {
         return AppInstallType.linuxRpm;
       }
       if (File('/etc/os-release').existsSync()) {
-        final content = File('/etc/os-release')
-            .readAsStringSync()
-            .toLowerCase();
+        final content = File('/etc/os-release').readAsStringSync().toLowerCase();
         if (content.contains('ubuntu') || content.contains('debian')) {
           return AppInstallType.linuxDeb;
         }
-        if (content.contains('fedora') ||
-            content.contains('rhel') ||
-            content.contains('suse')) {
+        if (content.contains('fedora') || content.contains('rhel') || content.contains('suse')) {
           return AppInstallType.linuxRpm;
         }
       }
@@ -190,9 +184,8 @@ class AppUpdateInfo {
     final changelog = json['body'] as String? ?? '';
     final htmlUrl = json['html_url'] as String? ?? '';
     final rawPublished = json['published_at'] as String?;
-    final publishedAt = rawPublished != null
-        ? DateTime.tryParse(rawPublished)
-        : null;
+    final publishedAt =
+        rawPublished != null ? DateTime.tryParse(rawPublished) : null;
 
     final rawAssets = json['assets'] as List<dynamic>? ?? const [];
     final assets = rawAssets
@@ -289,8 +282,8 @@ class AppUpdateInfo {
 class UpdateService {
   final Dio _dio;
 
-  static const String repoOwner = 'Clash-Projects';
-  static const String repoName = 'KatMusic-Desktop';
+  static const String repoOwner = 'Arct-Development';
+  static const String repoName = 'KatMusic';
   static const String releasesLatestUrl =
       'https://api.github.com/repos/$repoOwner/$repoName/releases/latest';
 
@@ -301,7 +294,11 @@ class UpdateService {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         releasesLatestUrl,
-        options: Options(headers: {'Accept': 'application/vnd.github.v3+json'}),
+        options: Options(
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        ),
       );
 
       final data = response.data;
@@ -378,8 +375,19 @@ class UpdateService {
     } else if (Platform.isLinux) {
       if (savePath.toLowerCase().endsWith('.appimage')) {
         Process.runSync('chmod', ['+x', savePath]);
+        // Update the AppImage the user launched, in place. Launching the
+        // download from the temp folder made AppImageLauncher treat it as
+        // a new app: a second, versioned launcher next to the old one.
+        final current = Platform.environment['APPIMAGE'] ?? '';
+        final launch = current.isNotEmpty &&
+                await replaceAppImageInPlace(
+                  downloaded: savePath,
+                  current: current,
+                )
+            ? current
+            : savePath;
         await _runBeforeExit(beforeExit);
-        await Process.start(savePath, [], mode: ProcessStartMode.detached);
+        await Process.start(launch, [], mode: ProcessStartMode.detached);
         await Future<void>.delayed(const Duration(milliseconds: 400));
         exit(0);
       } else if (savePath.toLowerCase().endsWith('.deb') ||
@@ -398,6 +406,37 @@ class UpdateService {
       }
     }
   }
+}
+
+/// Swaps the AppImage at [current] for [downloaded], keeping its path, so
+/// launchers and AppImageLauncher (which key on the path) keep one entry.
+///
+/// Stages a copy beside [current] (the download usually sits on another
+/// filesystem, e.g. tmpfs) and renames it over the original, which is
+/// atomic; the running process keeps the old file open. False, with
+/// nothing changed, when the folder isn't writable: the caller then
+/// launches the download as before.
+@visibleForTesting
+Future<bool> replaceAppImageInPlace({
+  required String downloaded,
+  required String current,
+}) async {
+  final staged = File('$current.update');
+  try {
+    await File(downloaded).copy(staged.path);
+    if (!Platform.isWindows) Process.runSync('chmod', ['+x', staged.path]);
+    await staged.rename(current);
+  } catch (e) {
+    debugPrint('AppImage in-place update failed: $e');
+    try {
+      if (staged.existsSync()) staged.deleteSync();
+    } catch (_) {}
+    return false;
+  }
+  try {
+    File(downloaded).deleteSync();
+  } catch (_) {}
+  return true;
 }
 
 Future<void> _runBeforeExit(Future<void> Function()? hook) async {

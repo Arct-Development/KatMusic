@@ -18,7 +18,6 @@ import 'package:katmusic_desktop/core/storage/prefs.dart';
 import 'package:katmusic_desktop/features/downloads/download_manager.dart';
 import 'package:katmusic_desktop/features/innertube/innertube_api.dart';
 import 'package:katmusic_desktop/features/lastfm/scrobble_repository.dart';
-import 'package:katmusic_desktop/features/lossless/lossless_source.dart';
 import 'package:katmusic_desktop/features/player/playback_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,29 +28,18 @@ class _Tube extends Fake implements InnerTubeMusicApi {
   void reportPlaybackFailure(String videoId) {}
 }
 
-class _Lossless extends Fake implements LosslessSource {
-  @override
-  bool get isConfigured => false;
-  @override
-  void invalidateStream({required String title, required String artist}) {}
-  @override
-  void clearStreamCache() {}
-}
-
 class _Scrobbler extends Fake implements ScrobbleRepository {
   @override
-  Future<ScrobbleOutcome> updateNowPlaying({
-    required String artist,
-    required String track,
-    String album = '',
-  }) async => ScrobbleOutcome.noSession;
+  Future<ScrobbleOutcome> updateNowPlaying(
+          {required String artist, required String track, String album = ''}) async =>
+      ScrobbleOutcome.noSession;
   @override
-  Future<ScrobbleOutcome> scrobble({
-    required String artist,
-    required String track,
-    String album = '',
-    required int timestampSec,
-  }) async => ScrobbleOutcome.noSession;
+  Future<ScrobbleOutcome> scrobble(
+          {required String artist,
+          required String track,
+          String album = '',
+          required int timestampSec}) async =>
+      ScrobbleOutcome.noSession;
 }
 
 class _Downloads extends Fake implements DownloadManager {
@@ -82,8 +70,7 @@ File writeDrums(String path, double bpm, double seconds) {
     final s = (t * sr).round();
     for (var k = 0; k < 0.15 * sr && s + k < n; k++) {
       final tt = k / sr;
-      x[s + k] +=
-          math.sin(2 * math.pi * (55 + 90 * math.exp(-tt * 30)) * tt) *
+      x[s + k] += math.sin(2 * math.pi * (55 + 90 * math.exp(-tt * 30)) * tt) *
           math.exp(-tt * 12) *
           (i % 4 == 0 ? 1.0 : 0.7);
     }
@@ -96,10 +83,12 @@ File writeDrums(String path, double bpm, double seconds) {
     x[k] += 0.1 * math.sin(2 * math.pi * 220 * k / sr);
   }
   final b = BytesBuilder();
-  void u32(int v) =>
-      b.add((ByteData(4)..setUint32(0, v, Endian.little)).buffer.asUint8List());
-  void u16(int v) =>
-      b.add((ByteData(2)..setUint16(0, v, Endian.little)).buffer.asUint8List());
+  void u32(int v) => b.add((ByteData(4)..setUint32(0, v, Endian.little))
+      .buffer
+      .asUint8List());
+  void u16(int v) => b.add((ByteData(2)..setUint16(0, v, Endian.little))
+      .buffer
+      .asUint8List());
   b.add('RIFF'.codeUnits);
   u32(36 + n * 2);
   b.add('WAVEfmt '.codeUnits);
@@ -114,11 +103,8 @@ File writeDrums(String path, double bpm, double seconds) {
   u32(n * 2);
   final pcm = ByteData(n * 2);
   for (var k = 0; k < n; k++) {
-    pcm.setInt16(
-      k * 2,
-      (x[k].clamp(-1.6, 1.6) / 1.6 * 30000).round(),
-      Endian.little,
-    );
+    pcm.setInt16(k * 2, (x[k].clamp(-1.6, 1.6) / 1.6 * 30000).round(),
+        Endian.little);
   }
   b.add(pcm.buffer.asUint8List());
   return File(path)..writeAsBytesSync(b.toBytes());
@@ -127,87 +113,74 @@ File writeDrums(String path, double bpm, double seconds) {
 void main() {
   final hasMpv = File('/usr/lib/x86_64-linux-gnu/libmpv.so.2').existsSync();
 
-  test(
-    'two AutoMix hand-offs keep volume, audibility and decks sane',
-    () async {
-      final dir = await Directory.systemTemp.createTemp('automix-e2e');
-      final tracks = [
-        for (final (i, bpm) in [124.0, 126.0, 128.0].indexed)
-          PlayableTrack(
-            title: 'Track $i',
-            artist: 'Artist $i',
-            playbackUrl: writeDrums('${dir.path}/t$i.wav', bpm, 64).path,
-          ),
-      ];
-      SharedPreferences.setMockInitialValues({
-        'kat_automix_enabled': true,
-        'kat_automix_seconds': 14,
-        'kat_automix_spectral': true,
-      });
-      final prefs = Prefs(await SharedPreferences.getInstance());
-      PlaybackService.debugAudioOutput = 'null';
-      final svc = PlaybackService(
-        _Tube(),
-        _Lossless(),
-        _Scrobbler(),
-        _Downloads(),
-        PrefsHandle(prefs),
-        _Sessions(),
-      );
-      await svc.ensurePlayer();
-      await svc.setVolume(0.7);
-      await svc.playQueue(tracks, 0);
+  test('two AutoMix hand-offs keep volume, audibility and decks sane',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('automix-e2e');
+    final tracks = [
+      for (final (i, bpm) in [124.0, 126.0, 128.0].indexed)
+        PlayableTrack(
+          title: 'Track $i',
+          artist: 'Artist $i',
+          playbackUrl: writeDrums('${dir.path}/t$i.wav', bpm, 64).path,
+        ),
+    ];
+    SharedPreferences.setMockInitialValues({
+      'lw_automix_enabled': true,
+      'lw_automix_seconds': 14,
+      'lw_automix_spectral': true,
+    });
+    final prefs = Prefs(await SharedPreferences.getInstance());
+    PlaybackService.debugAudioOutput = 'null';
+    final svc = PlaybackService(_Tube(), _Scrobbler(), _Downloads(),
+        PrefsHandle(prefs), _Sessions());
+    await svc.ensurePlayer();
+    await svc.setVolume(0.7);
+    await svc.playQueue(tracks, 0);
 
-      Future<void> until(bool Function() ok, Duration max) async {
-        final end = DateTime.now().add(max);
-        while (!ok()) {
-          if (DateTime.now().isAfter(end)) fail('timed out');
-          await Future<void>.delayed(const Duration(milliseconds: 100));
-        }
+    Future<void> until(bool Function() ok, Duration max) async {
+      final end = DateTime.now().add(max);
+      while (!ok()) {
+        if (DateTime.now().isAfter(end)) fail('timed out');
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
+    }
 
-      for (var hop = 1; hop <= 2; hop++) {
-        await until(
-          () => svc.state.duration > Duration.zero,
-          const Duration(seconds: 10),
-        );
-        // Past the analysis threshold, well before the mix window.
-        await Future<void>.delayed(const Duration(seconds: 1));
-        await svc.seek(const Duration(seconds: 38));
-        var maxIncoming = 0.0;
-        var sawMix = false;
-        final end = DateTime.now().add(const Duration(seconds: 40));
-        while (svc.state.currentIndex != hop) {
-          if (DateTime.now().isAfter(end)) fail('no hand-off to $hop');
-          final m = svc.debugMixState;
-          if (m.mixing) {
-            sawMix = true;
-            maxIncoming = math.max(maxIncoming, m.standbyVolume ?? 0);
-          }
-          // The listener's volume never moves during a mix.
-          expect(svc.state.volume, 0.7);
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-        }
-        print('hop $hop: mixed=$sawMix max_incoming_volume=$maxIncoming');
-        expect(sawMix, isTrue, reason: 'hop $hop should be an overlap');
-        expect(
-          maxIncoming,
-          greaterThan(50),
-          reason: 'incoming song must be audible during mix $hop',
-        );
-        // Settled: one deck at full level, the other silent.
-        await Future<void>.delayed(const Duration(milliseconds: 600));
+    for (var hop = 1; hop <= 2; hop++) {
+      await until(() => svc.state.duration > Duration.zero,
+          const Duration(seconds: 10));
+      // Past the analysis threshold, well before the mix window.
+      await Future<void>.delayed(const Duration(seconds: 1));
+      await svc.seek(const Duration(seconds: 38));
+      var maxIncoming = 0.0;
+      var sawMix = false;
+      final end = DateTime.now().add(const Duration(seconds: 40));
+      while (svc.state.currentIndex != hop) {
+        if (DateTime.now().isAfter(end)) fail('no hand-off to $hop');
         final m = svc.debugMixState;
-        expect(m.primaryVolume, closeTo(70, 1));
-        expect(m.standbyVolume ?? 0, lessThan(0.5));
+        if (m.mixing) {
+          sawMix = true;
+          maxIncoming = math.max(maxIncoming, m.standbyVolume ?? 0);
+        }
+        // The listener's volume never moves during a mix.
         expect(svc.state.volume, 0.7);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
       }
-      // Let the watchdog take a few looks at the settled state.
-      await Future<void>.delayed(const Duration(seconds: 3));
-      expect(svc.debugMixState.faults, 0);
-      await svc.disposePlayer();
-    },
-    skip: !hasMpv,
-    timeout: const Timeout(Duration(minutes: 3)),
-  );
+      print('hop $hop: mixed=$sawMix max_incoming_volume=$maxIncoming');
+      expect(sawMix, isTrue, reason: 'hop $hop should be an overlap');
+      expect(maxIncoming, greaterThan(50),
+          reason: 'incoming song must be audible during mix $hop');
+      // Settled: one deck at full level, the other silent.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      final m = svc.debugMixState;
+      expect(m.primaryVolume, closeTo(70, 1));
+      expect(m.standbyVolume ?? 0, lessThan(0.5));
+      expect(svc.state.volume, 0.7);
+    }
+    // Let the watchdog take a few looks at the settled state.
+    await Future<void>.delayed(const Duration(seconds: 3));
+    expect(svc.debugMixState.faults, 0);
+    await svc.disposePlayer();
+  },
+      skip: !hasMpv,
+      timeout: const Timeout(Duration(minutes: 3)));
 }

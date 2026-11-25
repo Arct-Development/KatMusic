@@ -1,5 +1,5 @@
 name: katmusic_desktop
-description: "KatMusic Desktop — a KatMusic-native desktop music player for Windows, Linux and macOS."
+description: "KatMusic Desktop — a native desktop music player for Windows, Linux and macOS, by Arct Developments."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -59,6 +59,11 @@ dependencies:
   url_launcher: ^6.3.2
   path_provider: ^2.1.6
   cached_network_image: ^4.0.0
+  # Dedicated artwork disk cache (lib/core/artwork/artwork_cache.dart):
+  # larger object budget than the 200-entry default, stored under app
+  # support instead of %TEMP% so Storage Sense cannot wipe it.
+  flutter_cache_manager: ^3.4.2
+  file: ^7.0.1
   palette_generator: ^0.3.3+7
   scrollable_positioned_list: ^0.3.8
   flutter_animate: ^4.5.2
@@ -78,8 +83,6 @@ dependencies:
   meta: ^1.19.0
   flutter_lyric: ^3.0.7
   adaptive_aura: 0.0.4
-  liquid_glass_widgets: ^1.16.1
-  cupertino_icons: ^1.0.8
   # Discord Rich Presence transport (hand-rolled named-pipe IPC in
   # lib/features/presence/discord_ipc.dart). win32/ffi are direct deps
   # because the transport imports them; versions match the resolved tree.
@@ -88,7 +91,6 @@ dependencies:
   dbus: ^0.7.11
   ffi: ^2.1.0
   pointycastle: ^4.0.0
-  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -116,18 +118,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Glassmorphism backdrop (lib/ui/components/glass_stage.dart).
+  shaders:
+    - shaders/glass_stage.frag
+
   # BotGuard page for the desktop poToken engine (same asset as
-  # KatMusic-native; loaded into a hidden system WebView).
+  # KatMusic; loaded into a hidden system WebView).
   assets:
     - assets/po_token.html
     - assets/icons/
     - assets/brand/
-    - assets/fonts/
-
-  fonts:
-    - family: Figtree
-      fonts:
-        - asset: assets/fonts/figtree.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

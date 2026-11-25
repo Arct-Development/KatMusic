@@ -57,8 +57,7 @@ void applyAllocatorTuning() {
     const threshold = 128 * 1024;
     const trimThreshold = -1;
     const mmapThreshold = -3;
-    _succeeded =
-        mallopt(trimThreshold, threshold) != 0 &&
+    _succeeded = mallopt(trimThreshold, threshold) != 0 &&
         mallopt(mmapThreshold, threshold) != 0;
   } catch (_) {
     // Not glibc, or the symbol is not exported — leave the allocator
@@ -76,3 +75,32 @@ bool _succeeded = false;
 
 typedef _MalloptNative = Int32 Function(Int32, Int32);
 typedef _MalloptDart = int Function(int, int);
+
+typedef _SetProcessWorkingSetSizeNative = Int32 Function(IntPtr, IntPtr, IntPtr);
+typedef _SetProcessWorkingSetSizeDart = int Function(int, int, int);
+
+/// Proactively release idle/uncommitted native CRT, media_kit buffer, and Direct3D
+/// pages back to the operating system.
+///
+/// On Windows, the OS Heap Manager retains peak working set pages indefinitely
+/// after large media buffer frees. Invoking SetProcessWorkingSetSize(-1, -1) flushes
+/// idle pages back to the OS without terminating any handles.
+/// On Linux, invokes malloc_trim(0).
+void trimProcessMemory() {
+  if (Platform.isWindows) {
+    try {
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final setWorkingSet = kernel32.lookupFunction<
+          _SetProcessWorkingSetSizeNative,
+          _SetProcessWorkingSetSizeDart>('SetProcessWorkingSetSize');
+      // Pass pseudo-handle GetCurrentProcess() (-1) with -1, -1 to trim working set
+      setWorkingSet(-1, -1, -1);
+    } catch (_) {}
+  } else if (Platform.isLinux) {
+    try {
+      final mallocTrim = DynamicLibrary.process()
+          .lookupFunction<Int32 Function(IntPtr), int Function(int)>('malloc_trim');
+      mallocTrim(0);
+    } catch (_) {}
+  }
+}

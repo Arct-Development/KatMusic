@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
+import '../../core/artwork/artwork_cache.dart';
 import '../../core/artwork/artwork_resolver.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 export '../../core/artwork/artwork_resolver.dart' show ArtworkKind;
 
@@ -25,7 +26,7 @@ export '../../core/artwork/artwork_resolver.dart' show ArtworkKind;
 /// the background (iTunes store covers for tracks/albums, Deezer press
 /// photos for artists) and hot-swapped in — the original image keeps
 /// showing until then and remains as fallback.
-class KatArtwork extends StatefulWidget {
+class WaveArtwork extends StatefulWidget {
   final String url;
   final String videoId;
   final List<String> fallbackUrls;
@@ -46,22 +47,29 @@ class KatArtwork extends StatefulWidget {
   /// search on the label would swap in an unrelated artist's photo.
   final bool upgrade;
 
-  const KatArtwork({
+  /// Logical edge the URL + decode are sized for, when it differs from
+  /// [size]. Tiles whose [size] tracks a live layout (the Now Playing hero
+  /// inside an animating column) pass a fixed value here so the request —
+  /// and its cache key — stays put while the tile resizes.
+  final double? decodeExtent;
+
+  const WaveArtwork({
     super.key,
     required this.url,
     this.videoId = '',
     this.fallbackUrls = const [],
     required this.size,
-    this.radius = KatRadius.artwork,
+    this.radius = WaveRadius.artwork,
     this.isCircle = false,
     this.label = '',
     this.title = '',
     this.artist = '',
     this.kind,
     this.upgrade = true,
+    this.decodeExtent,
   });
 
-  const KatArtwork.circle({
+  const WaveArtwork.circle({
     super.key,
     required this.url,
     this.videoId = '',
@@ -71,15 +79,16 @@ class KatArtwork extends StatefulWidget {
     this.title = '',
     this.artist = '',
     this.upgrade = true,
-  }) : radius = 999,
-       isCircle = true,
-       kind = ArtworkKind.artist;
+    this.decodeExtent,
+  })  : radius = 999,
+        isCircle = true,
+        kind = ArtworkKind.artist;
 
   @override
-  State<KatArtwork> createState() => _KatArtworkState();
+  State<WaveArtwork> createState() => _WaveArtworkState();
 }
 
-class _KatArtworkState extends State<KatArtwork> {
+class _WaveArtworkState extends State<WaveArtwork> {
   int _gen = 0;
   int _attempt = 0;
   int _chainIndex = 0;
@@ -93,9 +102,10 @@ class _KatArtworkState extends State<KatArtwork> {
 
   /// Effective content kind: explicit hint, else circle ⇒ artist.
   ArtworkKind get _kind =>
-      widget.kind ?? (widget.isCircle ? ArtworkKind.artist : ArtworkKind.track);
+      widget.kind ??
+      (widget.isCircle ? ArtworkKind.artist : ArtworkKind.track);
 
-  /// [KatArtwork.url] minus images that load fine but show nothing: the
+  /// [WaveArtwork.url] minus images that load fine but show nothing: the
   /// Last.fm star placeholder and Deezer's blank-artist silhouette.
   String get _primaryUrl {
     final u = widget.url;
@@ -205,11 +215,15 @@ class _KatArtworkState extends State<KatArtwork> {
       _resolvedUrl = hit.artworkUrl;
       _resolveFailed = false;
       _isResolving = false;
-      final target = (widget.size * _lastDpr).clamp(64, 1024).toDouble();
+      final target = _targetPx(_lastDpr);
       _chain = ArtworkResolver.resolve(
         ArtworkRequest(
           kind: _kind,
-          candidates: [hit.artworkUrl, _primaryUrl, ...widget.fallbackUrls],
+          candidates: [
+            hit.artworkUrl,
+            _primaryUrl,
+            ...widget.fallbackUrls,
+          ],
           label: widget.label,
           targetPx: target,
           videoId: widget.videoId,
@@ -230,15 +244,24 @@ class _KatArtworkState extends State<KatArtwork> {
     }
   }
 
+  /// Physical px the URL + decode are sized for (pre-ladder).
+  double _targetPx(double dpr) =>
+      ((widget.decodeExtent ?? widget.size) * dpr).clamp(64, 1024).toDouble();
+
   @override
-  void didUpdateWidget(KatArtwork old) {
+  void didUpdateWidget(WaveArtwork old) {
     super.didUpdateWidget(old);
+    // A size change only matters when it crosses a ladder step; animating
+    // tiles otherwise re-resolved (and re-requested) on every frame.
+    final oldBucket = ArtworkCache.bucket(
+        ((old.decodeExtent ?? old.size) * _lastDpr).clamp(64, 1024));
+    final newBucket = ArtworkCache.bucket(_targetPx(_lastDpr));
     if (old.url != widget.url ||
         old.title != widget.title ||
         old.artist != widget.artist ||
         old.videoId != widget.videoId ||
         !_fallbacksEqual(old.fallbackUrls, widget.fallbackUrls) ||
-        old.size != widget.size ||
+        oldBucket != newBucket ||
         old.upgrade != widget.upgrade ||
         old.label != widget.label) {
       if (old.url != widget.url ||
@@ -262,7 +285,7 @@ class _KatArtworkState extends State<KatArtwork> {
     final dpr =
         dprOverride ?? MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
     _lastDpr = dpr;
-    final target = (widget.size * dpr).clamp(64, 1024).toDouble();
+    final target = _targetPx(dpr);
     final candidates = [
       if (_resolvedUrl != null && _resolvedUrl!.isNotEmpty) _resolvedUrl!,
       _primaryUrl,
@@ -279,7 +302,7 @@ class _KatArtworkState extends State<KatArtwork> {
 
     // Store-search kickoff runs post-frame, not in the build phase:
     // a fresh page mounts N artworks in one frame (the settings-open
-    // trace showed ~7 KatArtwork subtrees in a single BUILD), and
+    // trace showed ~7 WaveArtwork subtrees in a single BUILD), and
     // starting N iTunes/Deezer resolutions synchronously inside that
     // frame's didChangeDependencies piles store machinery onto the
     // navigation frame. One frame later is visually identical.
@@ -321,7 +344,9 @@ class _KatArtworkState extends State<KatArtwork> {
       if (OfficialArtworkService.isOfficialArtistPhoto(_primaryUrl)) {
         return;
       }
-    } else if (OfficialArtworkService.isOfficialArtwork(widget.url)) {
+    } else if (OfficialArtworkService.isOfficialArtwork(widget.url) ||
+        (widget.url.contains('googleusercontent.com') &&
+            widget.url.contains('='))) {
       return;
     }
     _upgradeAttempted = true;
@@ -339,68 +364,59 @@ class _KatArtworkState extends State<KatArtwork> {
     // Route by content kind: artist circles → Deezer press photos,
     // albums → iTunes album catalog, tracks → iTunes song catalog.
     final Future<OfficialArtworkResult?> task = switch (_kind) {
-      ArtworkKind.artist => service.resolveArtistArtwork(
-        artist.isNotEmpty ? artist : title,
-      ),
-      ArtworkKind.album => service.resolveAlbumArtwork(
-        album: title,
-        artist: artist,
-        allowFallback: true,
-      ),
-      ArtworkKind.track => service.resolveOfficialArtwork(
-        title: title,
-        artist: artist,
-        allowFallback: true,
-      ),
+      ArtworkKind.artist => service
+          .resolveArtistArtwork(artist.isNotEmpty ? artist : title),
+      ArtworkKind.album =>
+        service.resolveAlbumArtwork(
+            album: title, artist: artist, allowFallback: true),
+      ArtworkKind.track =>
+        service.resolveOfficialArtwork(
+            title: title, artist: artist, allowFallback: true),
     };
-    task
-        .then((res) {
-          if (!mounted) return;
-          _isResolving = false;
-          if (res != null && res.artworkUrl.isNotEmpty) {
-            final usable = _kind == ArtworkKind.artist
-                // Deezer photo, or the YouTube Music portrait fallback.
-                ? res.artworkUrl.startsWith('http')
-                : _kind != ArtworkKind.artist
+    task.then((res) {
+      if (!mounted) return;
+      _isResolving = false;
+      if (res != null && res.artworkUrl.isNotEmpty) {
+        final usable = _kind == ArtworkKind.artist
+            // Deezer photo, or the YouTube Music portrait fallback.
+            ? res.artworkUrl.startsWith('http')
+            : _kind != ArtworkKind.artist
                 // Store cover, or the YouTube Music cover fallback.
                 ? res.artworkUrl.startsWith('http')
                 : OfficialArtworkService.isOfficialArtwork(res.artworkUrl);
-            if (!usable) {
-              _resolveFailed = true;
-              return;
-            }
-            if (res.artworkUrl == _resolvedUrl) return;
-            setState(() {
-              _resolvedUrl = res.artworkUrl;
-              final target = (widget.size * _lastDpr)
-                  .clamp(64, 1024)
-                  .toDouble();
-              // Official URL leads; previous candidates stay as fallbacks.
-              final req = ArtworkRequest(
-                kind: _kind,
-                candidates: [
-                  res.artworkUrl,
-                  _primaryUrl,
-                  ...widget.fallbackUrls,
-                ],
-                label: widget.label,
-                targetPx: target,
-                videoId: widget.videoId,
-              );
-              _chain = ArtworkResolver.resolve(req).urls;
-              _chainIndex = 0;
-              _attempt = 0;
-            });
-          } else {
-            _failAndRetryLater();
-          }
-        })
-        .catchError((_) {
-          if (mounted) {
-            _isResolving = false;
-            _failAndRetryLater();
-          }
+        if (!usable) {
+          _resolveFailed = true;
+          return;
+        }
+        if (res.artworkUrl == _resolvedUrl) return;
+        setState(() {
+          _resolvedUrl = res.artworkUrl;
+          final target = _targetPx(_lastDpr);
+          // Official URL leads; previous candidates stay as fallbacks.
+          final req = ArtworkRequest(
+            kind: _kind,
+            candidates: [
+              res.artworkUrl,
+              _primaryUrl,
+              ...widget.fallbackUrls,
+            ],
+            label: widget.label,
+            targetPx: target,
+            videoId: widget.videoId,
+          );
+          _chain = ArtworkResolver.resolve(req).urls;
+          _chainIndex = 0;
+          _attempt = 0;
         });
+      } else {
+        _failAndRetryLater();
+      }
+    }).catchError((_) {
+      if (mounted) {
+        _isResolving = false;
+        _failAndRetryLater();
+      }
+    });
   }
 
   bool _retriedResolve = false;
@@ -456,8 +472,8 @@ class _KatArtworkState extends State<KatArtwork> {
       dark ? 0.14 : 0.72,
     ).toColor();
     return AnimatedContainer(
-      duration: katMotion(context, KatMotion.normal),
-      curve: KatMotion.standard,
+      duration: waveMotion(context, WaveMotion.normal),
+      curve: WaveMotion.standard,
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
@@ -466,9 +482,8 @@ class _KatArtworkState extends State<KatArtwork> {
           end: Alignment.bottomRight,
           colors: [base, deep],
         ),
-        borderRadius: widget.isCircle
-            ? null
-            : BorderRadius.circular(widget.radius),
+        borderRadius:
+            widget.isCircle ? null : BorderRadius.circular(widget.radius),
         shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
       ),
       child: Center(
@@ -478,7 +493,7 @@ class _KatArtworkState extends State<KatArtwork> {
             if (initials.isNotEmpty)
               Text(
                 initials,
-                style: KatType.sectionTitle.copyWith(
+                style: WaveType.sectionTitle.copyWith(
                   fontSize: widget.size * 0.24,
                   fontWeight: FontWeight.w700,
                   color: dark
@@ -488,7 +503,7 @@ class _KatArtworkState extends State<KatArtwork> {
               )
             else
               Icon(
-                KatIcons.music,
+                WaveIcons.music,
                 size: widget.size * 0.30,
                 color: dark
                     ? Colors.white.withValues(alpha: 0.55)
@@ -499,10 +514,9 @@ class _KatArtworkState extends State<KatArtwork> {
               width: widget.size * 0.22,
               height: 2,
               decoration: BoxDecoration(
-                borderRadius: KatRadius.tinyRadius,
-                color: (dark ? Colors.white : Colors.black).withValues(
-                  alpha: 0.35,
-                ),
+                borderRadius: WaveRadius.tinyRadius,
+                color: (dark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.35),
               ),
             ),
           ],
@@ -512,9 +526,7 @@ class _KatArtworkState extends State<KatArtwork> {
   }
 
   Future<void> _onError(int gen, int index, int attempt) async {
-    if (!mounted ||
-        gen != _gen ||
-        index != _chainIndex ||
+    if (!mounted || gen != _gen || index != _chainIndex ||
         attempt != _attempt) {
       return;
     }
@@ -524,9 +536,7 @@ class _KatArtworkState extends State<KatArtwork> {
     _failedUrls.add(_chain[index]);
     _shownUrls.remove(_chain[index]);
     await ArtworkResolver.evict(_chain[index]);
-    if (!mounted ||
-        gen != _gen ||
-        index != _chainIndex ||
+    if (!mounted || gen != _gen || index != _chainIndex ||
         attempt != _attempt) {
       return;
     }
@@ -544,24 +554,6 @@ class _KatArtworkState extends State<KatArtwork> {
     } else if (!_isResolving && _resolvedUrl == null) {
       _checkAndResolveArtwork();
     }
-  }
-
-  /// Grid the requested decode edge snaps up to, in physical pixels.
-  static const int _decodeStep = 16;
-
-  /// Decode edge for [needed] physical px, snapped up to [_decodeStep].
-  ///
-  /// Snapping keeps a stable cache key per tile size instead of a new
-  /// decode for every fractional layout width, while staying within one
-  /// step of what the tile can actually paint — which is what keeps
-  /// `debugInvertOversizedImages` quiet (see the comment in [build]).
-  /// Never capped: the display size is the correct memory bound, and a
-  /// cap below it would leave the CDN's 1400px master to be decoded at
-  /// full size (the exact waste this replaces).
-  static int? _decodeBucket(int needed) {
-    if (needed <= 0) return null;
-    final snapped = ((needed + _decodeStep - 1) ~/ _decodeStep) * _decodeStep;
-    return snapped < _decodeStep ? _decodeStep : snapped;
   }
 
   /// Local cover: a filesystem path or a `file://` URI. Network URLs stay
@@ -584,8 +576,7 @@ class _KatArtworkState extends State<KatArtwork> {
     }
     if (url.contains('://')) return null;
     final windowsDrive = RegExp(r'^[a-zA-Z]:[\\/]');
-    final looksLikePath =
-        url.contains('\\') ||
+    final looksLikePath = url.contains('\\') ||
         url.startsWith('/') ||
         url.startsWith(r'\\') ||
         windowsDrive.hasMatch(url);
@@ -596,16 +587,27 @@ class _KatArtworkState extends State<KatArtwork> {
   Widget? _fileImage(BuildContext context, bool dark) {
     final path = _fileArtworkPath(widget.url);
     if (path == null) return null;
-    final file = File(path);
-    final image = file.existsSync()
-        ? Image.file(
-            file,
-            width: widget.size,
-            height: widget.size,
-            fit: BoxFit.cover,
-            errorBuilder: (context, _, _) => _fallback(context, dark),
-          )
-        : _fallback(context, dark);
+    // Decoded at display size, like network art: embedded/folder covers
+    // are often 1500–3000px (9–36 MB RGBA each) and a 48px row used to
+    // pin that full decode. No existsSync() here — a sync disk stat on
+    // the UI thread per build; a missing file lands in errorBuilder.
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final decode = ArtworkCache.bucket(_targetPx(dpr));
+    final ImageProvider<Object> base = FileImage(File(path));
+    final image = Image(
+      image: decode == null
+          ? base
+          : ResizeImage(
+              base,
+              width: decode,
+              height: decode,
+              policy: ResizeImagePolicy.fit,
+            ),
+      width: widget.size,
+      height: widget.size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, _, _) => _fallback(context, dark),
+    );
     if (widget.isCircle) {
       return SizedBox(
         width: widget.size,
@@ -625,7 +627,7 @@ class _KatArtworkState extends State<KatArtwork> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final local = _fileImage(context, dark);
     if (local != null) return local;
     if (_chain.isEmpty || _chainIndex >= _chain.length) {
@@ -635,34 +637,15 @@ class _KatArtworkState extends State<KatArtwork> {
     final index = _chainIndex;
     final attempt = _attempt;
     final currentUrl = _chain[_chainIndex];
-    // DPR-aware decode sizing: decode at most the pixels we can paint.
-    //
-    // Never decode at the CDN's native size — official covers ship at
-    // 1400×1400 (≈7.8 MB RGBA each) even though the largest tile in the
-    // app is a ~480px now-playing hero; that pinned the imageCache to a
-    // handful of entries and made scrolling re-decode constantly.
-    //
-    // The requested edge is `size × dpr` snapped UP to [_decodeStep] so
-    // neighbouring sizes share a cache key. The step is deliberately fine
-    // (16px) rather than the old 320 / 640 / 1024 ladder: the ladder's
-    // 320px floor made a 112px artist tile decode 9× the pixels it can
-    // ever show, and that is exactly what Flutter's debug
-    // `debugInvertOversizedImages` ("Highlight oversized images" in
-    // DevTools / the rendering debug toggles) punishes — every image that
-    // decodes with ≥128 KB more than its display size is painted colour-
-    // inverted and mirrored. Artists For You, the artist grid and the
-    // artist page hero are all small tiles, so they flipped while larger
-    // covers mostly stayed under the allowance. Snapping to a 16px grid
-    // bounds the overshoot at ~32 × edge px², well inside the 32 768 px²
-    // (128 KB) allowance, so the toggle now highlights nothing.
-    final double logicalExtent = widget.size;
-    final double dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
-    final int targetPhysical = (logicalExtent * dpr).ceil();
-    final int? targetCacheWidth = _decodeBucket(targetPhysical);
-    // On-disk copy must never be smaller than the decode bucket, or the
-    // smallest tier would decode by upscaling a 512px file. Keeps the
-    // original 512/1024 split.
-    final int diskCache = targetPhysical <= 320 ? 512 : 1024;
+    // DPR-aware decode sizing on the shared ladder (ArtworkCache.ladder):
+    // never the CDN's native 1400px master (≈7.8 MB RGBA), and one decode
+    // per size class instead of one per layout width. The ladder is coarse
+    // on purpose — resizing/animating tiles reuse the same decode — at the
+    // price of a bounded overshoot that debug "highlight oversized images"
+    // may flag on in-between sizes.
+    final double dpr =
+        MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final int? targetCacheWidth = ArtworkCache.bucket(_targetPx(dpr));
     final isSmall = widget.size <= 56;
     final isResolved = _resolvedUrl != null;
     if (currentUrl != _shownUrl) {
@@ -678,42 +661,46 @@ class _KatArtworkState extends State<KatArtwork> {
         imageUrl: currentUrl,
         width: widget.size,
         height: widget.size,
+        // One original per URL on disk (no PNG re-encoded resize copies);
+        // downsampling happens only at decode via memCacheWidth.
+        cacheManager: ArtworkCache.instance,
         memCacheWidth: targetCacheWidth,
         memCacheHeight: targetCacheWidth,
-        maxWidthDiskCache: diskCache,
-        maxHeightDiskCache: diskCache,
         fit: BoxFit.cover,
         useOldImageOnUrlChange: true,
-        fadeInDuration: noFade ? Duration.zero : KatMotion.fast,
-        fadeOutDuration: noFade ? Duration.zero : KatMotion.fast,
+        fadeInDuration: noFade ? Duration.zero : WaveMotion.fast,
+        fadeOutDuration: noFade ? Duration.zero : WaveMotion.fast,
         placeholderFadeInDuration: Duration.zero,
-        placeholder: (context, _) => seenBefore
-            ? SizedBox(
-                width: widget.size,
-                height: widget.size,
-                child: ColoredBox(color: katSurfaceOverlay(context)),
-              )
-            : _fallback(context, dark),
+        placeholder: (context, _) => SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: ColoredBox(color: waveSurfaceOverlay(context)),
+        ),
         errorWidget: (context, _, _) {
           WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _onError(gen, index, attempt),
-          );
-          return _fallback(context, dark);
+              (_) => _onError(gen, index, attempt));
+          return _chainIndex + 1 < _chain.length
+              ? SizedBox(
+                  width: widget.size,
+                  height: widget.size,
+                  child: ColoredBox(color: waveSurfaceOverlay(context)),
+                )
+              : _fallback(context, dark);
         },
       ),
     );
     if (widget.isCircle) {
       return AnimatedContainer(
-        duration: katMotion(context, KatMotion.normal),
-        curve: KatMotion.standard,
+        duration: waveMotion(context, WaveMotion.normal),
+        curve: WaveMotion.standard,
         width: widget.size,
         height: widget.size,
         child: ClipOval(child: image),
       );
     }
     return AnimatedContainer(
-      duration: katMotion(context, KatMotion.normal),
-      curve: KatMotion.standard,
+      duration: waveMotion(context, WaveMotion.normal),
+      curve: WaveMotion.standard,
       width: widget.size,
       height: widget.size,
       child: ClipRRect(

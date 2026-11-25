@@ -4,25 +4,22 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/track_actions.dart' show playGenerated, playableFromGenerated;
+import '../../app/track_actions.dart'
+    show playGenerated, playableFromGenerated;
 import '../../features/feed/feed_repository.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_library_providers.dart';
 import '../../features/lastfm/auth_repository.dart';
 import '../../features/lastfm/home_repository.dart';
 import '../../features/lastfm/lastfm_snapshot.dart';
+import '../../features/lastfm/profile_providers.dart';
 import '../../features/home/home_snapshot.dart';
 import '../../core/storage/prefs.dart';
-import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../components/artwork.dart';
-import '../components/buttons.dart';
 import '../components/states.dart';
-import 'friends_page.dart' show localFriendsProvider;
 import '../components/track_row.dart';
 import '../theme/tokens.dart';
-
-export 'friends_page.dart' show KatFriendsPage;
 
 /// Secondary pages re-homed in the Fluent system.
 ///
@@ -32,45 +29,26 @@ export 'friends_page.dart' show KatFriendsPage;
 /// Top tracks query: friend view (or self) + Last.fm period.
 typedef _TopQuery = ({String? viewing, String period});
 
-final _profileStatsProvider = FutureProvider.autoDispose
-    .family<HomeStats, String?>((ref, viewing) {
-      final home = ref.watch(homeRepositoryProvider);
-      return swrLoad<HomeStats>(
-        ref,
-        key: lastFmCacheKey(
-          'stats',
-          ref.read(prefsProvider).username,
-          viewing: viewing,
-        ),
-        codec: homeStatsSnapshotCodec,
-        group: cacheGroupLastFm,
-        maxAge: lastFmCacheMaxAge,
-        everyBuild: true,
-        fetch: () => home.fetchStats(viewingAs: viewing),
-      );
-    });
+final _profileStatsProvider = userProfileStatsProvider;
 
 final _waveTopTracksProvider =
-    FutureProvider.family<List<HomeTrack>, _TopQuery>((ref, q) {
-      final home = ref.watch(homeRepositoryProvider);
-      return swrLoad<List<HomeTrack>>(
-        ref,
-        key: lastFmCacheKey(
-          'top',
-          ref.read(prefsProvider).username,
-          viewing: q.viewing,
-          extra: q.period,
-        ),
-        codec: homeTracksSnapshotCodec,
-        group: cacheGroupLastFm,
-        maxAge: lastFmCacheMaxAge,
-        fetch: () => home.fetchTopTracks(
-          viewingAs: q.viewing,
-          period: q.period,
-          limit: 100,
-        ),
-      );
-    });
+    FutureProvider.family<List<HomeTrack>, _TopQuery>(
+        (ref, q) {
+  final home = ref.watch(homeRepositoryProvider);
+  return swrLoad<List<HomeTrack>>(
+    ref,
+    key: lastFmCacheKey('top', ref.read(prefsProvider).username,
+        viewing: q.viewing, extra: q.period),
+    codec: homeTracksSnapshotCodec,
+    group: cacheGroupLastFm,
+    maxAge: lastFmCacheMaxAge,
+    fetch: () => home.fetchTopTracks(
+      viewingAs: q.viewing,
+      period: q.period,
+      limit: 100,
+    ),
+  );
+});
 
 const _topPeriods = ['7day', '1month', '12month', 'overall'];
 
@@ -80,59 +58,71 @@ const _topPeriods = ['7day', '1month', '12month', 'overall'];
 /// LAST chain entry via `videoIdOf` (official covers always win).
 /// Matches are disk-cached, so repeat views resolve instantly.
 /// Bounded parallel (4 at a time), fail-soft per track.
-final _waveTopTrackVideoIdsProvider = FutureProvider.autoDispose
-    .family<Map<String, String>, _TopQuery>((ref, q) async {
-      final tracks = await ref.watch(_waveTopTracksProvider(q).future);
-      final need = tracks.take(30).where((t) => t.artworkUrl.isEmpty).toList();
-      if (need.isEmpty) return const {};
-      final tube = ref.watch(innerTubeProvider);
-      final out = <String, String>{};
-      for (var i = 0; i < need.length; i += 4) {
-        final batch = need.sublist(i, (i + 4).clamp(0, need.length));
-        final hits = await Future.wait(
-          batch.map((t) async {
-            try {
-              final m = await tube
-                  .findBestMatchOrNull(t.name, t.artist)
-                  .timeout(const Duration(seconds: 15));
-              final id = m?.videoId ?? '';
-              return MapEntry(t.key, id);
-            } catch (_) {
-              return MapEntry(t.key, '');
-            }
-          }),
-        );
-        for (final h in hits) {
-          if (h.value.isNotEmpty) out[h.key] = h.value;
-        }
+final _waveTopTrackVideoIdsProvider =
+    FutureProvider.autoDispose.family<Map<String, String>, _TopQuery>(
+        (ref, q) async {
+  final tracks = await ref.watch(_waveTopTracksProvider(q).future);
+  final need =
+      tracks.take(30).where((t) => t.artworkUrl.isEmpty).toList();
+  if (need.isEmpty) return const {};
+  final tube = ref.watch(innerTubeProvider);
+  final out = <String, String>{};
+  for (var i = 0; i < need.length; i += 4) {
+    final batch =
+        need.sublist(i, (i + 4).clamp(0, need.length));
+    final hits = await Future.wait(batch.map((t) async {
+      try {
+        final m = await tube
+            .findBestMatchOrNull(t.name, t.artist)
+            .timeout(const Duration(seconds: 15));
+        final id = m?.videoId ?? '';
+        return MapEntry(t.key, id);
+      } catch (_) {
+        return MapEntry(t.key, '');
       }
-      return out;
-    });
+    }));
+    for (final h in hits) {
+      if (h.value.isNotEmpty) out[h.key] = h.value;
+    }
+  }
+  return out;
+});
 
 String _topPeriodLabel(String period) => switch (period) {
-  '7day' => '7 days',
-  '1month' => 'Month',
-  '12month' => 'Year',
-  _ => 'All time',
-};
+      '7day' => '7 days',
+      '1month' => 'Month',
+      '12month' => 'Year',
+      _ => 'All time',
+    };
 
-class KatProfilePage extends ConsumerStatefulWidget {
-  const KatProfilePage({super.key});
+class WaveProfilePage extends ConsumerStatefulWidget {
+  const WaveProfilePage({super.key});
 
   @override
-  ConsumerState<KatProfilePage> createState() => _KatProfilePageState();
+  ConsumerState<WaveProfilePage> createState() =>
+      _WaveProfilePageState();
 }
 
-class _KatProfilePageState extends ConsumerState<KatProfilePage> {
+class _WaveProfilePageState
+    extends ConsumerState<WaveProfilePage> {
   String _period = '7day';
+
+  @override
+  void initState() {
+    super.initState();
+    // If stats previously failed (e.g. offline during title bar initial fetch),
+    // entering /profile immediately retries a fresh fetch.
+    if (ref.read(_profileStatsProvider(null)).hasError) {
+      ref.invalidate(_profileStatsProvider(null));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authRepositoryProvider);
-    final viewing = ref.watch(viewingProfileProvider);
-    final user = viewing ?? auth.username;
+    final user = auth.username;
     if (user.isEmpty) {
-      return KatEmpty(
+      return WaveEmpty(
         icon: FluentIcons.contact,
         title: 'No profile selected',
         subtitle: 'Connect Last.fm in Settings to see your profile.',
@@ -141,113 +131,91 @@ class _KatProfilePageState extends ConsumerState<KatProfilePage> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: waveDockPadding(context, const EdgeInsets.fromLTRB(24, 20, 24, 24)),
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
+          constraints: const BoxConstraints(
+            maxWidth: WaveDensity.contentMax,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
-                'SOCIAL',
-                style: KatType.overline.copyWith(color: katAccent(context)),
+                'PROFILE',
+                style: WaveType.overline.copyWith(
+                  color: waveAccent(context),
+                ),
               ),
-              Builder(
-                builder: (context) {
-                  final stats = ref
-                      .watch(_profileStatsProvider(viewing))
-                      .valueOrNull;
-                  final isFriend =
-                      viewing != null &&
-                      ref
-                          .watch(localFriendsProvider)
-                          .any((n) => n.toLowerCase() == viewing.toLowerCase());
-                  String n(int v) => v.toString().replaceAllMapped(
-                    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-                    (m) => ',',
-                  );
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      KatArtwork.circle(
-                        url: stats?.avatarUrl ?? '',
-                        size: 88,
-                        label: user,
-                        title: user,
-                        artist: user,
-                        upgrade: false,
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(user, style: KatType.pageTitle),
-                            const SizedBox(height: 4),
+              Builder(builder: (context) {
+                final statsAsync = ref.watch(_profileStatsProvider(null));
+                final stats = statsAsync.valueOrNull;
+                String n(int v) => v.toString().replaceAllMapped(
+                      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+                      (m) => ',',
+                    );
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    WaveArtwork.circle(
+                      url: stats?.avatarUrl ?? '',
+                      size: 88,
+                      label: user,
+                      title: user,
+                      artist: user,
+                      upgrade: false,
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(user, style: WaveType.pageTitle),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Your Last.fm profile',
+                            style: WaveType.body.copyWith(
+                              color: waveTextSecondary(context),
+                            ),
+                          ),
+                          if (stats != null) ...[
+                            const SizedBox(height: 6),
                             Text(
-                              viewing != null
-                                  ? 'Last.fm profile'
-                                  : 'Your Last.fm profile',
-                              style: KatType.body.copyWith(
-                                color: katTextSecondary(context),
+                              [
+                                '${n(stats.scrobbles)} scrobbles',
+                                '${n(stats.artistCount)} artists',
+                                '${n(stats.albumCount)} albums',
+                                '${n(stats.trackCount)} tracks',
+                              ].join(' · '),
+                              style: WaveType.meta.copyWith(
+                                color: waveTextTertiary(context),
                               ),
                             ),
-                            if (stats != null) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                [
-                                  '${n(stats.scrobbles)} scrobbles',
-                                  '${n(stats.artistCount)} artists',
-                                  '${n(stats.albumCount)} albums',
-                                  '${n(stats.trackCount)} tracks',
-                                ].join(' · '),
-                                style: KatType.meta.copyWith(
-                                  color: katTextTertiary(context),
+                          ] else if (statsAsync.hasError) ...[
+                            const SizedBox(height: 6),
+                            GestureDetector(
+                              onTap: () =>
+                                  ref.invalidate(_profileStatsProvider(null)),
+                              child: Text(
+                                'Failed to load stats · Tap to retry',
+                                style: WaveType.meta.copyWith(
+                                  color: waveAccent(context),
                                 ),
                               ),
-                            ],
-                            if (viewing != null) ...[
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  if (isFriend)
-                                    KatGhostButton(
-                                      label: 'Remove friend',
-                                      onPressed: () => ref
-                                          .read(localFriendsProvider.notifier)
-                                          .remove(viewing),
-                                    )
-                                  else
-                                    KatPrimaryButton(
-                                      label: 'Add friend',
-                                      icon: FluentIcons.add,
-                                      onPressed: () => ref
-                                          .read(localFriendsProvider.notifier)
-                                          .add(viewing),
-                                    ),
-                                  KatButton(
-                                    onPressed: () => ref
-                                        .read(viewingProfileProvider.notifier)
-                                        .clear(),
-                                    child: const Text('Back to my profile'),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+                  ],
+                );
+              }),
               const SizedBox(height: 16),
               _TopTracksSection(
-                viewing: viewing,
+                viewing: null,
                 period: _period,
-                onPeriod: (v) => setState(() => _period = v),
+                onPeriod: (v) =>
+                    setState(() => _period = v),
               ),
             ],
           ),
@@ -273,49 +241,54 @@ class _TopTracksSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final topAsync = ref.watch(
-      _waveTopTracksProvider((viewing: viewing, period: period)),
-    );
+    final topAsync = ref
+        .watch(_waveTopTracksProvider((viewing: viewing, period: period)));
     // YT fallback ids for rows without art (resolves in background,
     // empty until ready — rows show the tonal fallback meanwhile).
-    final ytIds =
-        ref
-            .watch(
-              _waveTopTrackVideoIdsProvider((viewing: viewing, period: period)),
-            )
+    final ytIds = ref
+            .watch(_waveTopTrackVideoIdsProvider(
+                (viewing: viewing, period: period)))
             .valueOrNull ??
         const <String, String>{};
     // Own YouTube library for overlap badges (self view only).
     final ytKeys = viewing == null
         ? {
-            for (final t
-                in ref.watch(ytLikedSongsProvider).valueOrNull ?? const [])
+            for (final t in ref
+                    .watch(ytLikedSongsProvider)
+                    .valueOrNull ??
+                const [])
               '${t.title.toLowerCase()}|${t.artist.toLowerCase()}',
-            for (final t
-                in ref.watch(ytHistoryProvider).valueOrNull ?? const [])
+            for (final t in ref
+                    .watch(ytHistoryProvider)
+                    .valueOrNull ??
+                const [])
               '${t.title.toLowerCase()}|${t.artist.toLowerCase()}',
           }
         : const <String>{};
     final ytByKey = viewing == null
         ? <String, GeneratedTrack>{
-            for (final t
-                in ref.watch(ytLikedSongsProvider).valueOrNull ?? const [])
+            for (final t in ref
+                    .watch(ytLikedSongsProvider)
+                    .valueOrNull ??
+                const [])
               '${t.title.toLowerCase()}|${t.artist.toLowerCase()}':
                   GeneratedTrack(
-                    name: t.title,
-                    artist: t.artist,
-                    artworkUrl: t.artworkUrl,
-                    videoId: t.videoId,
-                  ),
-            for (final t
-                in ref.watch(ytHistoryProvider).valueOrNull ?? const [])
+                name: t.title,
+                artist: t.artist,
+                artworkUrl: t.artworkUrl,
+                videoId: t.videoId,
+              ),
+            for (final t in ref
+                    .watch(ytHistoryProvider)
+                    .valueOrNull ??
+                const [])
               '${t.title.toLowerCase()}|${t.artist.toLowerCase()}':
                   GeneratedTrack(
-                    name: t.title,
-                    artist: t.artist,
-                    artworkUrl: t.artworkUrl,
-                    videoId: t.videoId,
-                  ),
+                name: t.title,
+                artist: t.artist,
+                artworkUrl: t.artworkUrl,
+                videoId: t.videoId,
+              ),
           }
         : const <String, GeneratedTrack>{};
     return Column(
@@ -323,7 +296,8 @@ class _TopTracksSection extends ConsumerWidget {
       children: [
         Text(
           'TOP TRACKS',
-          style: KatType.overline.copyWith(color: katAccent(context)),
+          style: WaveType.overline
+              .copyWith(color: waveAccent(context)),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -339,25 +313,28 @@ class _TopTracksSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         topAsync.when(
-          loading: () => const KatLoading(label: 'Loading top tracks…'),
-          error: (e, _) => KatError(
+          loading: () => const WaveLoading(
+            label: 'Loading top tracks…',
+          ),
+          error: (e, _) => WaveError(
             title: 'Could not load top tracks',
             message: '$e',
-            onRetry: () => ref.invalidate(
-              _waveTopTracksProvider((viewing: viewing, period: period)),
-            ),
+            onRetry: () => ref.invalidate(_waveTopTracksProvider(
+                (viewing: viewing, period: period))),
           ),
           data: (all) {
             final tracks = all.take(30).toList();
             if (tracks.isEmpty) {
-              return const KatEmpty(
+              return const WaveEmpty(
                 icon: FluentIcons.music_note,
                 title: 'No top tracks yet',
-                subtitle: 'Scrobble more to fill this chart.',
+                subtitle:
+                    'Scrobble more to fill this chart.',
               );
             }
             final playingKey = ref.watch(
-              playbackServiceProvider.select((s) => s.current?.queueKey),
+              playbackServiceProvider.select(
+                  (s) => s.current?.queueKey),
             );
             List<GeneratedTrack> asGenerated() => tracks
                 .map(
@@ -379,9 +356,10 @@ class _TopTracksSection extends ConsumerWidget {
                 if (!topKeys.contains(e.key)) e.value,
             ];
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                KatDesktopTable<HomeTrack>(
+                WaveDesktopTable<HomeTrack>(
                   items: tracks,
                   keyOf: (t) =>
                       '${t.name.toLowerCase()}|${t.artist.toLowerCase()}',
@@ -390,10 +368,8 @@ class _TopTracksSection extends ConsumerWidget {
                     final plays = t.playCount > 0
                         ? ' · ${t.playCount} plays'
                         : '';
-                    final yt =
-                        ytKeys.contains(
-                          '${t.name.toLowerCase()}|${t.artist.toLowerCase()}',
-                        )
+                    final yt = ytKeys.contains(
+                            '${t.name.toLowerCase()}|${t.artist.toLowerCase()}')
                         ? ' · on YouTube'
                         : '';
                     return '${t.artist}$plays$yt';
@@ -407,22 +383,23 @@ class _TopTracksSection extends ConsumerWidget {
                   artworkArtistOf: (t) => t.artist,
                   videoIdOf: (t) => ytIds[t.key] ?? '',
                   playableOf: (t) => playableFromGenerated(
-                    GeneratedTrack(
-                      name: t.name,
-                      artist: t.artist,
-                      artworkUrl: t.artworkUrl,
-                    ),
-                  ),
+                      GeneratedTrack(
+                    name: t.name,
+                    artist: t.artist,
+                    artworkUrl: t.artworkUrl,
+                  )),
                   durationOf: (_) => '',
                   durationSortOf: (_) => 0,
                   titleSortOf: (t) => t.name.toLowerCase(),
-                  artistSortOf: (t) => t.artist.toLowerCase(),
+                  artistSortOf: (t) =>
+                      t.artist.toLowerCase(),
                   isCurrent: (t) =>
                       playingKey ==
                       '${t.name.toLowerCase()}|${t.artist.toLowerCase()}',
                   isPlaying: (t) {
                     final playing = ref.watch(
-                      playbackServiceProvider.select((p) => p.isPlaying),
+                      playbackServiceProvider.select(
+                          (p) => p.isPlaying),
                     );
                     return playingKey ==
                             '${t.name.toLowerCase()}|${t.artist.toLowerCase()}' &&
@@ -444,18 +421,23 @@ class _TopTracksSection extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     'ONLY ON YOUTUBE',
-                    style: KatType.overline.copyWith(color: katAccent(context)),
+                    style: WaveType.overline.copyWith(
+                        color: waveAccent(context)),
                   ),
                   const SizedBox(height: 8),
-                  for (var i = 0; i < ytOnly.length.clamp(0, 10); i++)
-                    KatTrackRow(
+                  for (var i = 0;
+                      i < ytOnly.length.clamp(0, 10);
+                      i++)
+                    WaveTrackRow(
                       index: i + 1,
                       title: ytOnly[i].name,
                       artist: ytOnly[i].artist,
                       artworkUrl: ytOnly[i].artworkUrl,
                       videoId: ytOnly[i].videoId,
-                      playing: playingKey == ytOnly[i].key,
-                      isCurrent: playingKey == ytOnly[i].key,
+                      playing: playingKey ==
+                          ytOnly[i].key,
+                      isCurrent: playingKey ==
+                          ytOnly[i].key,
                       onTap: () => playGenerated(
                         ref,
                         context,
@@ -467,300 +449,6 @@ class _TopTracksSection extends ConsumerWidget {
               ],
             );
           },
-        ),
-      ],
-    );
-  }
-}
-
-/// Friends page (search + add + profiles) lives in friends_page.dart.
-class KatMixLabPage extends ConsumerStatefulWidget {
-  const KatMixLabPage({super.key});
-
-  @override
-  ConsumerState<KatMixLabPage> createState() => _KatMixLabPageState();
-}
-
-class _KatMixLabPageState extends ConsumerState<KatMixLabPage> {
-  static const _modes = <(MixMode, String)>[
-    (MixMode.top, 'Top tracks'),
-    (MixMode.recent, 'Recent'),
-    (MixMode.similarTracks, 'Song radio'),
-    (MixMode.similarArtists, 'Similar artists'),
-    (MixMode.tag, 'Tag'),
-    (MixMode.mix, 'Mix'),
-    (MixMode.recommendations, 'Recommendations'),
-    (MixMode.neverHeard, 'Never heard'),
-    (MixMode.library, 'Library'),
-  ];
-  static const _periods = <(String, String)>[
-    ('overall', 'Overall'),
-    ('12month', '12 months'),
-    ('6month', '6 months'),
-    ('3month', '3 months'),
-    ('1month', '1 month'),
-    ('7day', '7 days'),
-  ];
-
-  MixMode _mode = MixMode.mix;
-  String _period = 'overall';
-  int _length = 25;
-  bool _busy = false;
-  String? _error;
-  List<GeneratedTrack> _tracks = const [];
-  final _seedTrack = TextEditingController();
-  final _seedArtist = TextEditingController();
-  final _tag = TextEditingController();
-
-  bool get _periodMatters => switch (_mode) {
-    MixMode.top ||
-    MixMode.recent ||
-    MixMode.similarArtists ||
-    MixMode.neverHeard ||
-    MixMode.library => true,
-    _ => false,
-  };
-
-  bool get _lengthLocked => _mode == MixMode.recommendations;
-  int get _count => _lengthLocked ? 35 : _length;
-
-  @override
-  void dispose() {
-    _seedTrack.dispose();
-    _seedArtist.dispose();
-    _tag.dispose();
-    super.dispose();
-  }
-
-  String get _modeLabel => _modes.firstWhere((m) => m.$1 == _mode).$2;
-
-  Future<void> _generate() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final tracks = await ref
-          .read(feedRepositoryProvider)
-          .generate(
-            mode: _mode,
-            total: _count,
-            period: _period,
-            seedTrack: _seedTrack.text,
-            seedArtist: _seedArtist.text,
-            tag: _tag.text,
-          );
-      if (!mounted) return;
-      setState(() {
-        _tracks = tracks;
-        _busy = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = '$e';
-      });
-    }
-  }
-
-  Future<void> _save() async {
-    if (_tracks.isEmpty) return;
-    final name = TextEditingController(text: _modeLabel);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => ContentDialog(
-        title: const Text('Save playlist'),
-        content: TextBox(controller: name, placeholder: 'Playlist name'),
-        actions: [
-          KatButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          KatFilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    final title = name.text.trim();
-    name.dispose();
-    if (ok != true || !mounted) return;
-    final saved = await ref
-        .read(playlistRepositoryProvider.notifier)
-        .saveGenerated(title.isEmpty ? _modeLabel : title, [
-          for (final t in _tracks)
-            StoredTrack(
-              name: t.name,
-              artist: t.artist,
-              album: t.album,
-              artworkUrl: t.artworkUrl,
-              videoId: t.videoId,
-              durationSeconds: t.durationSeconds,
-              playbackUrl: t.playbackUrl,
-            ),
-        ]);
-    if (mounted) context.go('/playlists/${saved.id}');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final playingKey = ref.watch(
-      playbackServiceProvider.select((s) => s.current?.queueKey),
-    );
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'LISTEN',
-                style: KatType.overline.copyWith(color: katAccent(context)),
-              ),
-              const Text('Mix Lab', style: KatType.pageTitle),
-              const SizedBox(height: 2),
-              Text(
-                '$_count tracks · $_modeLabel',
-                style: KatType.body.copyWith(color: katTextSecondary(context)),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final mode in _modes)
-                    ToggleButton(
-                      checked: _mode == mode.$1,
-                      onChanged: (_) => setState(() => _mode = mode.$1),
-                      child: Text(mode.$2),
-                    ),
-                ],
-              ),
-              if (_periodMatters) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final period in _periods)
-                      ToggleButton(
-                        checked: _period == period.$1,
-                        onChanged: (_) => setState(() => _period = period.$1),
-                        child: Text(period.$2),
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 92,
-                    child: Text('$_count tracks', style: KatType.meta),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: _count.toDouble(),
-                      min: 5,
-                      max: 35,
-                      divisions: 30,
-                      onChanged: _lengthLocked
-                          ? null
-                          : (v) => setState(() => _length = v.round()),
-                    ),
-                  ),
-                ],
-              ),
-              if (_mode == MixMode.similarTracks) ...[
-                const SizedBox(height: 8),
-                TextBox(controller: _seedTrack, placeholder: 'Song'),
-                const SizedBox(height: 8),
-                TextBox(controller: _seedArtist, placeholder: 'Artist'),
-              ],
-              if (_mode == MixMode.similarArtists) ...[
-                const SizedBox(height: 8),
-                TextBox(controller: _seedArtist, placeholder: 'Artist'),
-              ],
-              if (_mode == MixMode.tag) ...[
-                const SizedBox(height: 8),
-                TextBox(controller: _tag, placeholder: 'Tag'),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  KatPrimaryButton(
-                    label: _busy ? 'Generating…' : 'Generate',
-                    icon: FluentIcons.refresh,
-                    onPressed: _busy ? null : _generate,
-                  ),
-                  if (_tracks.isNotEmpty) ...[
-                    KatGhostButton(
-                      label: 'Play',
-                      icon: FluentIcons.play,
-                      onPressed: () => playGenerated(
-                        ref,
-                        context,
-                        _tracks.first,
-                        sourceLabel: 'Mix Lab',
-                        queueAll: _tracks,
-                      ),
-                    ),
-                    KatGhostButton(
-                      label: 'Save playlist',
-                      icon: FluentIcons.save,
-                      onPressed: _save,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (_busy)
-                const KatLoading(label: 'Generating mix…')
-              else if (_error != null)
-                KatError(
-                  title: 'Mix failed',
-                  message: _error!,
-                  onRetry: _generate,
-                )
-              else if (_tracks.isEmpty)
-                const KatEmpty(
-                  icon: FluentIcons.lightbulb,
-                  title: 'No mix yet',
-                  subtitle:
-                      'Pick a mode and generate a playlist from your taste.',
-                )
-              else
-                Column(
-                  children: [
-                    const KatTrackTableHeader(showAlbum: false),
-                    for (var i = 0; i < _tracks.length; i++)
-                      KatTrackRow(
-                        index: i + 1,
-                        title: _tracks[i].name,
-                        artist: _tracks[i].artist,
-                        artworkUrl: _tracks[i].artworkUrl,
-                        videoId: _tracks[i].videoId,
-                        playing: playingKey == _tracks[i].key,
-                        isCurrent: playingKey == _tracks[i].key,
-                        onTap: () => playGenerated(
-                          ref,
-                          context,
-                          _tracks[i],
-                          sourceLabel: 'Mix Lab',
-                          queueAll: _tracks,
-                          startIndex: i,
-                        ),
-                      ),
-                  ],
-                ),
-            ],
-          ),
         ),
       ],
     );

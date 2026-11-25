@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import '../components/inputs.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// One jump target in Settings search.
 ///
@@ -32,7 +32,16 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'general',
     title: 'Behaviour',
     subtitle: 'Startup and window defaults',
-    keywords: 'close button minimize tray background window startup',
+    keywords: 'close button minimize tray background window startup '
+        'miniplayer mini player style compact card ambient classic lyrics',
+  ),
+  SettingsSearchEntry(
+    id: 'general.language',
+    section: 'general',
+    title: 'Language',
+    subtitle: 'Select the interface and innerTube language',
+    keywords:
+        'language locale english hindi spanish french german russian turkish chinese translation l10n',
   ),
   SettingsSearchEntry(
     id: 'general.backup',
@@ -73,10 +82,8 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     id: 'audio.quality',
     section: 'audio',
     title: 'Streaming and Download quality',
-    subtitle: 'Lossless-first with YouTube fallback',
-    keywords:
-        'lossless hi-res flac opus prefer lossless streaming '
-        'download quality bitrate data saver',
+    subtitle: 'YouTube audio quality',
+    keywords: 'opus streaming download quality bitrate data saver',
   ),
   SettingsSearchEntry(
     id: 'audio.loudness',
@@ -111,8 +118,7 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'downloads',
     title: 'Offline',
     subtitle: 'Download behaviour, save location and folder layout',
-    keywords:
-        'download lyrics lrc save location folder layout artist album '
+    keywords: 'download lyrics lrc save location folder layout artist album '
         'year reorganize directory',
   ),
   SettingsSearchEntry(
@@ -120,9 +126,15 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'library',
     title: 'Library',
     subtitle: 'YouTube Music sync, podcasts and hidden tracks',
-    keywords:
-        'sync youtube music playlists liked songs two-way podcasts '
+    keywords: 'sync youtube music playlists liked songs two-way podcasts '
         'hidden exclusions restore sync now',
+  ),
+  SettingsSearchEntry(
+    id: 'lyrics.animation',
+    section: 'lyrics',
+    title: 'Lyrics animation',
+    subtitle: 'Visual animation style for synced lyrics',
+    keywords: 'lyrics animation style apple fluid glow bounce pulse smooth fade karaoke',
   ),
   SettingsSearchEntry(
     id: 'lyrics.timing',
@@ -135,9 +147,10 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     id: 'appearance.theme',
     section: 'appearance',
     title: 'Theme',
-    subtitle: 'Midnight, Pearl, or your own colours',
+    subtitle: 'Midnight, Pearl, artwork, or your own colours',
     keywords:
-        'dark light midnight pearl custom theme background base tint '
+        'dark light midnight pearl custom artwork cover theme background base tint '
+        'glass glassmorphism frosted translucent blur '
         'accent colour color picker palette mode personalize',
   ),
   SettingsSearchEntry(
@@ -146,6 +159,22 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     title: 'Haze material',
     subtitle: 'Blur and translucency of panels',
     keywords: 'haze blur acrylic mica glass transparency intensity solid',
+  ),
+  SettingsSearchEntry(
+    id: 'appearance.now_playing_style',
+    section: 'appearance',
+    title: 'Now Playing style',
+    subtitle: 'Layout and presentation for the player screen',
+    keywords:
+        'now playing style layout standard full bleed minimal edge to edge duet lyrics cover artwork',
+  ),
+  SettingsSearchEntry(
+    id: 'appearance.now_playing_autohide',
+    section: 'appearance',
+    title: 'Auto-hide Now Playing controls',
+    subtitle: 'Fade out the top buttons after mouse inactivity',
+    keywords:
+        'auto-hide autohide now playing controls fade buttons inactivity seconds timeout mouse',
   ),
   SettingsSearchEntry(
     id: 'appearance.ambient',
@@ -157,11 +186,25 @@ const settingsSearchEntries = <SettingsSearchEntry>[
         'now playing lyrics colours colors',
   ),
   SettingsSearchEntry(
+    id: 'appearance.scale',
+    section: 'appearance',
+    title: 'Interface scale',
+    subtitle: 'Adjust app zoom for display resolution or preference (Ctrl +/-)',
+    keywords: 'zoom scale interface size display resolution dpi ctrl+ ctrl- magnify window',
+  ),
+  SettingsSearchEntry(
     id: 'appearance.surfaces',
     section: 'appearance',
     title: 'Surfaces',
     subtitle: 'Contrast and artwork tinting',
     keywords: 'amoled black dynamic artwork theme tint now playing contrast',
+  ),
+  SettingsSearchEntry(
+    id: 'appearance.font',
+    section: 'appearance',
+    title: 'Font',
+    subtitle: 'The typeface used across the app',
+    keywords: 'font typeface typography text inter poppins geist manrope',
   ),
   SettingsSearchEntry(
     id: 'lastfm.connection',
@@ -180,17 +223,24 @@ const settingsSearchEntries = <SettingsSearchEntry>[
   SettingsSearchEntry(
     id: 'lastfm.scrobbling',
     section: 'lastfm',
-    title: 'Last.fm scrobbling',
-    subtitle: 'Thresholds mirror Last.fm rules',
+    title: 'Scrobbler rules',
+    subtitle: 'Thresholds apply across all connected scrobblers',
     keywords: 'scrobble scrobbler now playing threshold percent history',
+  ),
+  SettingsSearchEntry(
+    id: 'lastfm.others',
+    section: 'lastfm',
+    title: 'ListenBrainz & Libre.fm',
+    subtitle: 'Connect accounts to scrobble simultaneously with KatMusic',
+    keywords: 'listenbrainz libre.fm librefm gnu fm maloja koito scrobble '
+        'token self-hosted',
   ),
   SettingsSearchEntry(
     id: 'integrations.ytm',
     section: 'integrations',
     title: 'YouTube Music',
     subtitle: 'Personal library, history and uploads',
-    keywords:
-        'youtube music ytm google account sign in cookies brand '
+    keywords: 'youtube music ytm google account sign in cookies brand '
         'channel sync listening history liked songs',
   ),
   SettingsSearchEntry(
@@ -198,9 +248,8 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'integrations',
     title: 'Spotify',
     subtitle: 'Your playlists, Liked Songs and Canvas',
-    keywords:
-        'spotify sp_dc cookie sign in login webview canvas playlists '
-        'liked songs',
+    keywords: 'spotify sp_dc cookie sign in login webview canvas playlists '
+        'liked songs recommendations algorithm radio autoplay youtube music',
   ),
   SettingsSearchEntry(
     id: 'integrations.discord',
@@ -221,8 +270,7 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'about',
     title: 'About KatMusic',
     subtitle: 'Build and project links',
-    keywords:
-        'version update check updates github links bug report issue feedback',
+    keywords: 'version update check updates github links',
   ),
 ];
 
@@ -264,8 +312,9 @@ class SettingsSpotlight extends InheritedWidget {
     required super.child,
   });
 
-  static String? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<SettingsSpotlight>()?.activeId;
+  static String? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<SettingsSpotlight>()
+      ?.activeId;
 
   @override
   bool updateShouldNotify(SettingsSpotlight oldWidget) =>
@@ -317,12 +366,12 @@ class _SettingsTargetState extends State<SettingsTarget> {
   @override
   Widget build(BuildContext context) {
     final active = SettingsSpotlight.of(context) == widget.id;
-    final accent = katAccent(context);
+    final accent = waveAccent(context);
     return AnimatedContainer(
       key: _key,
       duration: const Duration(milliseconds: 180),
       foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(KatRadius.floating),
+        borderRadius: BorderRadius.circular(WaveRadius.floating),
         border: Border.all(
           color: active ? accent : const Color(0x00000000),
           width: 1.5,
@@ -370,9 +419,9 @@ class _SettingsSearchBoxState extends State<SettingsSearchBox> {
           placeholder: 'Search settings',
           prefix: const Padding(
             padding: EdgeInsets.only(left: 10),
-            child: Icon(KatIcons.search, size: 13),
+            child: Icon(WaveIcons.search, size: 13),
           ),
-          decoration: katInputDecoration(),
+          decoration: waveInputDecoration(),
           onChanged: (value) => setState(() => _query = value),
           // Enter opens the best match.
           onSubmitted: (_) {
@@ -386,7 +435,9 @@ class _SettingsSearchBoxState extends State<SettingsSearchBox> {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Text(
                 'No settings match "${_query.trim()}".',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
             )
           else
@@ -407,6 +458,6 @@ class _SettingsSearchBoxState extends State<SettingsSearchBox> {
 }
 
 String _sectionLabel(String id) => switch (id) {
-  'lastfm' => 'Last.fm',
-  _ => '${id[0].toUpperCase()}${id.substring(1)}',
-};
+      'lastfm' => 'Scrobbler',
+      _ => '${id[0].toUpperCase()}${id.substring(1)}',
+    };

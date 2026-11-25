@@ -7,9 +7,7 @@ void main() {
     expect(lyricsSourceToProviderId('Apple Music (Word-Sync)'), 'apple_music');
     expect(lyricsSourceToProviderId('Apple Music'), 'apple_music');
     expect(
-      lyricsSourceToProviderId('BetterLyrics (Line-Sync)'),
-      'better_lyrics',
-    );
+        lyricsSourceToProviderId('BetterLyrics (Line-Sync)'), 'better_lyrics');
     expect(lyricsSourceToProviderId('Kugou KRC (Word-Sync)'), 'kugou');
     expect(lyricsSourceToProviderId('Video-Match (Word-Sync)'), 'simp_music');
     expect(lyricsSourceToProviderId('Catalog (Line-Sync)'), 'musixmatch');
@@ -60,9 +58,7 @@ void main() {
   test('retry adds current to exclusions, keeps override', () {
     expect(
       retryLyricsExcludingCurrent(
-        currentId: 'kugou',
-        excludes: const {'apple_music'},
-      ),
+          currentId: 'kugou', excludes: const {'apple_music'}),
       {'apple_music', 'kugou'},
     );
     expect(

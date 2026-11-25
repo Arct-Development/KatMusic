@@ -12,8 +12,7 @@ void main() {
 
   test('ensureDirExists creates missing dirs and never throws', () async {
     final dir = Directory(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}katmusic-test-cache-probe',
-    );
+        '${Directory.systemTemp.path}${Platform.pathSeparator}katmusic-test-cache-probe');
     if (await dir.exists()) await dir.delete(recursive: true);
     await ensureDirExists(dir.path);
     expect(await dir.exists(), isTrue);

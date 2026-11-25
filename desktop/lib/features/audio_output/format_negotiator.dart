@@ -60,15 +60,12 @@ class FormatNegotiator {
       );
     }
 
-    final sameRate =
-        device.formats
-            .where(
-              (f) =>
-                  f.sampleRateHz == source.sampleRateHz &&
-                  f.channels == source.channels,
-            )
-            .toList()
-          ..sort((a, b) => b.bitDepth.compareTo(a.bitDepth));
+    final sameRate = device.formats
+        .where((f) =>
+            f.sampleRateHz == source.sampleRateHz &&
+            f.channels == source.channels)
+        .toList()
+      ..sort((a, b) => b.bitDepth.compareTo(a.bitDepth));
     if (sameRate.isNotEmpty) {
       final pick = _closestDepth(sameRate, source.bitDepth);
       return FormatDecision(
@@ -81,15 +78,11 @@ class FormatNegotiator {
       );
     }
 
-    final sameDepth =
-        device.formats
-            .where(
-              (f) =>
-                  f.bitDepth == source.bitDepth &&
-                  f.channels == source.channels,
-            )
-            .toList()
-          ..sort((a, b) => a.sampleRateHz.compareTo(b.sampleRateHz));
+    final sameDepth = device.formats
+        .where((f) =>
+            f.bitDepth == source.bitDepth && f.channels == source.channels)
+        .toList()
+      ..sort((a, b) => a.sampleRateHz.compareTo(b.sampleRateHz));
     if (sameDepth.isNotEmpty) {
       final pick = _closestRate(sameDepth, source.sampleRateHz);
       return FormatDecision(
@@ -190,8 +183,7 @@ class FormatNegotiator {
     PcmFormat best = options.first;
     var bestScore = 1 << 30;
     for (final f in options) {
-      final score =
-          (f.sampleRateHz - source.sampleRateHz).abs() +
+      final score = (f.sampleRateHz - source.sampleRateHz).abs() +
           (f.bitDepth - source.bitDepth).abs() * 4000;
       if (score < bestScore) {
         best = f;

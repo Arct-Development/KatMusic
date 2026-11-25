@@ -28,7 +28,7 @@ Widget _host(int index, {bool reducedMotion = false}) {
   return FluentApp(
     home: MediaQuery(
       data: MediaQueryData(disableAnimations: reducedMotion),
-      child: KatBranchSwitcher(
+      child: WaveBranchSwitcher(
         currentIndex: index,
         children: const [_KeepAlive('a'), _KeepAlive('b')],
       ),
@@ -40,23 +40,21 @@ void main() {
   testWidgets('settles on the active branch only', (tester) async {
     await tester.pumpWidget(_host(0));
     expect(find.text('a:0'), findsOneWidget);
-    expect(
-      find.text('b:0'),
-      findsNothing,
-      reason: 'inactive branches stay offstage',
-    );
+    expect(find.text('b:0'), findsNothing,
+        reason: 'inactive branches stay offstage');
   });
 
-  testWidgets('fades the incoming branch under the outgoing one', (
-    tester,
-  ) async {
+  testWidgets('fades the incoming branch under the outgoing one',
+      (tester) async {
     await tester.pumpWidget(_host(0));
     await tester.pumpWidget(_host(1));
     await tester.pump();
 
     // Mid-flight both branches are painted, the incoming one not yet opaque.
     final mid = tester.widget<Opacity>(
-      find.ancestor(of: find.text('b:0'), matching: find.byType(Opacity)).first,
+      find
+          .ancestor(of: find.text('b:0'), matching: find.byType(Opacity))
+          .first,
     );
     expect(mid.opacity, lessThan(1.0));
     expect(find.text('a:0'), findsOneWidget);
@@ -78,13 +76,9 @@ void main() {
 
     await tester.pumpWidget(_host(0));
     await tester.pumpAndSettle();
-    expect(
-      find.text('a:1'),
-      findsOneWidget,
-      reason:
-          'wrapper shape must not change between frames, or the branch '
-          'element is rebuilt and its state is lost',
-    );
+    expect(find.text('a:1'), findsOneWidget,
+        reason: 'wrapper shape must not change between frames, or the branch '
+            'element is rebuilt and its state is lost');
   });
 
   testWidgets('reduce motion switches instantly', (tester) async {

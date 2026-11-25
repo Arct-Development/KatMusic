@@ -6,14 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/diagnostics/diagnostics_log.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../../core/audio/stream_models.dart';
 import '../../core/network/dio_factory.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/storage/prefs.dart';
 import '../innertube/innertube_api.dart';
-import '../addons/addon_api.dart';
-import '../lossless/lossless_source.dart';
 import '../library/local_audio_tags.dart';
 import '../lyrics/lyrics_models.dart';
 import '../lyrics/lyrics_repository.dart';
@@ -68,25 +67,25 @@ class DownloadEntry {
     String? tagNote,
     String? filePath,
     String? error,
-  }) => DownloadEntry(
-    key: key,
-    title: title,
-    artist: artist,
-    artworkUrl: artworkUrl,
-    status: status ?? this.status,
-    progress: progress ?? this.progress,
-    badge: badge ?? this.badge,
-    tagNote: tagNote ?? this.tagNote,
-    filePath: filePath ?? this.filePath,
-    error: error ?? this.error,
-  );
+  }) =>
+      DownloadEntry(
+        key: key,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        badge: badge ?? this.badge,
+        tagNote: tagNote ?? this.tagNote,
+        filePath: filePath ?? this.filePath,
+        error: error ?? this.error,
+      );
 }
 
 /// Offline download manager.
 ///
 /// Ports the behaviour of Android `TrackDownloadManager` for desktop:
-/// lossless-first resolution (configurable quality), YouTube Opus
-/// fallback, embedded metadata (title/artist/album/lyrics/cover —
+/// YouTube Opus resolution, embedded metadata (title/artist/album/lyrics/cover —
 /// `.opus` via WebM remux, FLAC/MP3/M4A tagged in place), `.lrc`
 /// sidecar lyrics, SQLite registry, files under the custom download
 /// folder when set, else `Music/KatMusic` (or app documents when
@@ -95,11 +94,9 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
   final Dio _dio;
   final AppDatabase _db;
   final Prefs _prefs;
-  final LosslessSource _lossless;
   final InnerTubeMusicApi _tube;
   final LyricsRepository _lyrics;
   final Set<String> _active = {};
-
   /// Bumped by [cancelDownload]. An in-flight [downloadTrack] snapshots the
   /// value at start and treats a mismatch as a cancel, so a later download
   /// of the same track is not skipped.
@@ -114,12 +111,11 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
   DownloadManager(
     this._db,
     this._prefs,
-    this._lossless,
     this._tube,
     this._lyrics, [
     Dio? dio,
-  ]) : _dio = dio ?? DioFactory.create(),
-       super(const []) {
+  ])  : _dio = dio ?? DioFactory.create(),
+        super(const []) {
     _loadExisting();
   }
 
@@ -141,19 +137,17 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
       );
     }
     state = rows
-        .map(
-          (r) => DownloadEntry(
-            key: r['track_key'] as String? ?? '',
-            title: r['title'] as String? ?? '',
-            artist: r['artist'] as String? ?? '',
-            status: DownloadStatus.done,
-            progress: 1,
-            badge: r['format_badge'] as String? ?? '',
-            tagNote: r['tag_status'] as String? ?? '',
-            filePath: r['file_path'] as String?,
-            artworkUrl: _artOf(r),
-          ),
-        )
+        .map((r) => DownloadEntry(
+              key: r['track_key'] as String? ?? '',
+              title: r['title'] as String? ?? '',
+              artist: r['artist'] as String? ?? '',
+              status: DownloadStatus.done,
+              progress: 1,
+              badge: r['format_badge'] as String? ?? '',
+              tagNote: r['tag_status'] as String? ?? '',
+              filePath: r['file_path'] as String?,
+              artworkUrl: _artOf(r),
+            ))
         .toList();
     // Restored rows are history, not news — never announce them.
     _muted.addAll(state.map((e) => e.key));
@@ -368,7 +362,7 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
     state = [entry, ...others];
   }
 
-  /// Audio payload for a resolved stream: local addon files are read,
+  /// Audio payload for a resolved stream: local files are read,
   /// http sources stream into memory with progress on the entry.
   Future<Uint8List> _fetchAudioBytes(
     ResolvedStream stream,
@@ -381,7 +375,8 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
   }) async {
     if (cancelled?.call() == true) throw const DownloadCancelled();
     if (!stream.url.startsWith('http')) {
-      final bytes = Uint8List.fromList(await File(stream.url).readAsBytes());
+      final bytes =
+          Uint8List.fromList(await File(stream.url).readAsBytes());
       if (cancelled?.call() == true) throw const DownloadCancelled();
       return bytes;
     }
@@ -398,16 +393,14 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
           return;
         }
         if (total > 0) {
-          _upsert(
-            DownloadEntry(
-              key: key,
-              title: title,
-              artist: artist,
-              status: DownloadStatus.downloading,
-              progress: received / total,
-              badge: badge,
-            ),
-          );
+          _upsert(DownloadEntry(
+            key: key,
+            title: title,
+            artist: artist,
+            status: DownloadStatus.downloading,
+            progress: received / total,
+            badge: badge,
+          ));
         }
       },
     );
@@ -436,7 +429,8 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
       try {
         final match = await _tube
             .findBestMatchOrNull(title, artist)
-            .timeout(const Duration(seconds: 8), onTimeout: () => null);
+            .timeout(const Duration(seconds: 8),
+                onTimeout: () => null);
         url = match?.artworkUrl ?? '';
       } catch (_) {}
     }
@@ -460,12 +454,26 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
     }
   }
 
+  /// Strict title + artist match first, then the looser best-effort one
+  /// (same order as the history matcher), so a row without a video id
+  /// still finds the song the player would have played.
+  Future<String?> _matchVideoId(String title, String artist) async {
+    final strict = await _tube.findBestMatchOrNull(title, artist);
+    if (strict != null) return strict.videoId;
+    final loose = await _tube.findBestEffortMatchOrNull(title, artist);
+    return loose?.videoId;
+  }
+
   Future<void> downloadTrack({
     required String title,
     required String artist,
     String album = '',
     String artworkUrl = '',
     String year = '',
+    /// The YouTube video the row already plays. Used as-is when given:
+    /// re-searching by title + artist missed tracks with long credits or
+    /// soundtrack titles, so they played fine but failed to download.
+    String videoId = '',
   }) async {
     final key = keyOf(title, artist);
     final generation = _cancelGeneration[key] ?? 0;
@@ -478,57 +486,36 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
     // A fresh download is news again, even if an old entry for this
     // track was muted (restored at boot or dismissed earlier).
     _muted.remove(key);
-    _upsert(
-      DownloadEntry(
-        key: key,
-        title: title,
-        artist: artist,
-        status: DownloadStatus.downloading,
-      ),
-    );
+    _upsert(DownloadEntry(
+      key: key,
+      title: title,
+      artist: artist,
+      status: DownloadStatus.downloading,
+    ));
     String? writtenPath;
     var committed = false;
     try {
       if (cancelled()) throw const DownloadCancelled();
-      ResolvedStream? stream;
       var badge = '';
-      var isLossless = false;
-      var fromAddon = false;
       var ytCodecHint = '';
-
-      if (_prefs.preferLossless &&
-          _prefs.downloadQuality != AudioQualityTiers.youtubeOnly &&
-          _lossless.isConfigured) {
-        try {
-          stream = await _lossless
-              .resolveStream(
-                title: title,
-                artist: artist,
-                album: album,
-                preferredQuality: _prefs.downloadQuality,
-              )
-              .timeout(const Duration(seconds: 30));
-        } catch (_) {
-          stream = null;
-        }
-        if (stream != null) {
-          isLossless = stream.isLossless;
-          fromAddon = true;
-          badge = stream.qualityBadge;
-        }
+      final id = videoId.isNotEmpty
+          ? videoId
+          : await _matchVideoId(title, artist);
+      if (id == null) {
+        DiagnosticsLog.info(
+            'download "$title" - "$artist" stage=match ok=false');
+        throw Exception('No playable source found');
       }
-      if (stream == null) {
-        final match = await _tube.findBestMatchOrNull(title, artist);
-        if (match == null) {
-          throw Exception('No playable source found');
-        }
-        // Opus-first: YouTube's best lossy codec, probed before use.
-        final opus = await _tube.resolveOpusDownloadStream(match.videoId);
-        final yt = opus ?? await _tube.resolveAudioStream(match.videoId);
-        if (yt == null) throw Exception('Stream unavailable');
-        stream = yt;
-        ytCodecHint = yt.audioCodec.toUpperCase();
+      // Opus-first: YouTube's best lossy codec, probed before use.
+      final opus = await _tube.resolveOpusDownloadStream(id);
+      final yt = opus ?? await _tube.resolveAudioStream(id);
+      if (yt == null) {
+        DiagnosticsLog.info(
+            'download "$title" - "$artist" stage=stream video=$id ok=false');
+        throw Exception('Stream unavailable');
       }
+      final stream = yt;
+      ytCodecHint = yt.audioCodec.toUpperCase();
 
       if (cancelled()) throw const DownloadCancelled();
       // Audio bytes (progress surfaced on the entry for http sources).
@@ -554,23 +541,28 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
               album: album,
               wordByWord: false,
             )
-            .timeout(
-              const Duration(seconds: 20),
-              onTimeout: () => const LyricsResult.empty(),
-            ),
+            .timeout(const Duration(seconds: 20),
+                onTimeout: () => const LyricsResult.empty()),
         _fetchCoverBytes(title, artist, artworkUrl),
       ]);
       final lyrics = fetched[0] as LyricsResult;
-      final cover = fetched[1] as ({Uint8List bytes, String mime})?;
+      final cover =
+          fetched[1] as ({Uint8List bytes, String mime})?;
 
       // Lyrics sidecar content (synced lines only, as before).
       String? lrcContent;
-      if (_prefs.downloadLyrics && lyrics.isSynced && lyrics.lines.isNotEmpty) {
+      if (_prefs.downloadLyrics &&
+          lyrics.isSynced &&
+          lyrics.lines.isNotEmpty) {
         final buf = StringBuffer();
         for (final line in lyrics.lines) {
           final m = (line.timeMs ~/ 60000).toString().padLeft(2, '0');
-          final s = ((line.timeMs % 60000) ~/ 1000).toString().padLeft(2, '0');
-          final ms = ((line.timeMs % 1000) ~/ 10).toString().padLeft(2, '0');
+          final s = ((line.timeMs % 60000) ~/ 1000)
+              .toString()
+              .padLeft(2, '0');
+          final ms = ((line.timeMs % 1000) ~/ 10)
+              .toString()
+              .padLeft(2, '0');
           buf.writeln('[$m:$s.$ms]${line.text}');
         }
         lrcContent = buf.toString();
@@ -601,7 +593,8 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
       var tagStatus = 'raw:unknown-container';
       try {
         if (container == 'webm') {
-          outBytes = MediaTagger.remuxWebmOpusToOgg(audioBytes, tags);
+          outBytes =
+              MediaTagger.remuxWebmOpusToOgg(audioBytes, tags);
           finalExt = 'opus';
         } else if (container == 'mp4') {
           // FLAC-in-MP4 (addon DASH assemblies) must not stay `.m4a`:
@@ -611,7 +604,8 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
           // in the outer catch only.
           if (MediaTagger.isFlacInMp4(audioBytes)) {
             try {
-              outBytes = MediaTagger.remuxFlacInMp4ToFlac(audioBytes, tags);
+              outBytes =
+                  MediaTagger.remuxFlacInMp4ToFlac(audioBytes, tags);
               finalExt = 'flac';
             } catch (_) {
               outBytes = MediaTagger.tagM4a(audioBytes, tags);
@@ -632,30 +626,28 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
         }
         tagStatus = tags.hasCover ? 'full' : 'text';
         if (kDebugMode) {
-          debugPrint(
-            'KatMusicDownload tagged $finalExt '
-            '($tagStatus): $title — $artist',
-          );
+          debugPrint('KatMusicDownload tagged $finalExt '
+              '($tagStatus): $title — $artist');
         }
       } catch (e) {
         outBytes = audioBytes;
         finalExt = container == 'mp4'
             ? 'm4a'
             : container == 'flac'
-            ? 'flac'
-            : container == 'mp3'
-            ? 'mp3'
-            : 'webm';
-        tagStatus = 'raw:${e is TaggerSkip ? e.reason : 'tag-failed'}';
+                ? 'flac'
+                : container == 'mp3'
+                    ? 'mp3'
+                    : 'webm';
+        tagStatus =
+            'raw:${e is TaggerSkip ? e.reason : 'tag-failed'}';
         if (kDebugMode) {
-          debugPrint('KatMusicDownload tag skipped ($title — $artist): $e');
+          debugPrint(
+              'KatMusicDownload tag skipped ($title — $artist): $e');
         }
       }
-      if (!fromAddon) {
-        badge = container == 'webm'
-            ? 'OPUS'
-            : (ytCodecHint.isNotEmpty ? ytCodecHint : 'AUDIO');
-      }
+      badge = container == 'webm'
+          ? 'OPUS'
+          : (ytCodecHint.isNotEmpty ? ytCodecHint : 'AUDIO');
 
       if (cancelled()) throw const DownloadCancelled();
       var folderYear = year;
@@ -707,7 +699,7 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
             stat.size,
             badge,
             tagStatus,
-            isLossless ? 1 : 0,
+            0,
             lrcPath.isNotEmpty ? 1 : 0,
             lrcPath,
             DateTime.now().millisecondsSinceEpoch,
@@ -731,26 +723,24 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
             file.path,
             stat.size,
             badge,
-            isLossless ? 1 : 0,
+            0,
             lrcPath.isNotEmpty ? 1 : 0,
             lrcPath,
             DateTime.now().millisecondsSinceEpoch,
           ],
         );
       }
-      _upsert(
-        DownloadEntry(
-          key: key,
-          title: title,
-          artist: artist,
-          status: DownloadStatus.done,
-          progress: 1,
-          badge: badge,
-          tagNote: tagStatus,
-          filePath: file.path,
-          artworkUrl: artworkUrl,
-        ),
-      );
+      _upsert(DownloadEntry(
+        key: key,
+        title: title,
+        artist: artist,
+        status: DownloadStatus.done,
+        progress: 1,
+        badge: badge,
+        tagNote: tagStatus,
+        filePath: file.path,
+        artworkUrl: artworkUrl,
+      ));
       committed = true;
     } catch (e) {
       if (_wasCancelled(e, cancelled)) {
@@ -764,15 +754,13 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
         }
         _dropInProgress(key);
       } else {
-        _upsert(
-          DownloadEntry(
-            key: key,
-            title: title,
-            artist: artist,
-            status: DownloadStatus.error,
-            error: e.toString(),
-          ),
-        );
+        _upsert(DownloadEntry(
+          key: key,
+          title: title,
+          artist: artist,
+          status: DownloadStatus.error,
+          error: e.toString(),
+        ));
       }
     } finally {
       _active.remove(key);
@@ -791,9 +779,10 @@ class DownloadManager extends StateNotifier<List<DownloadEntry>> {
         await File('$filePath.lrc').delete();
       } catch (_) {}
     }
-    _db.raw.execute('DELETE FROM downloaded_tracks WHERE track_key = ?;', [
-      key,
-    ]);
+    _db.raw.execute(
+      'DELETE FROM downloaded_tracks WHERE track_key = ?;',
+      [key],
+    );
     state = state.where((e) => e.key != key).toList();
   }
 }
@@ -803,12 +792,12 @@ extension _FirstOrNull<T> on Iterable<T> {
 }
 
 final downloadManagerProvider =
-    StateNotifierProvider<DownloadManager, List<DownloadEntry>>((ref) {
-      return DownloadManager(
-        ref.watch(databaseProvider),
-        ref.watch(prefsProvider),
-        ref.watch(losslessApiProvider),
-        ref.watch(innerTubeProvider),
-        ref.watch(lyricsRepositoryProvider),
-      );
-    });
+    StateNotifierProvider<DownloadManager, List<DownloadEntry>>(
+        (ref) {
+  return DownloadManager(
+    ref.watch(databaseProvider),
+    ref.watch(prefsProvider),
+    ref.watch(innerTubeProvider),
+    ref.watch(lyricsRepositoryProvider),
+  );
+});

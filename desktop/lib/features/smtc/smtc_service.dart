@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/storage/prefs.dart';
 import '../player/playback_service.dart';
 import '../player/player_state.dart';
 
@@ -53,8 +54,7 @@ Map<String, Object>? smtcUpdateFor(PlayerSnapshot? prev, PlayerSnapshot next) {
     // User seek on the same track: position jumped further than the
     // snapshot cadence explains while the play state held steady.
     final delta = (next.position - prev.position).abs();
-    changed =
-        prev.current?.mediaId == track?.mediaId &&
+    changed = prev.current?.mediaId == track?.mediaId &&
         delta > smtcSeekThreshold &&
         prev.isPlaying == next.isPlaying;
   }
@@ -76,36 +76,76 @@ Map<String, Object>? smtcUpdateFor(PlayerSnapshot? prev, PlayerSnapshot next) {
   };
 }
 
-/// Windows System Media Transport Controls endpoint — the Windows
-/// counterpart to the MPRIS service on Linux.
+/// System media transport endpoint for Windows (SMTC) and macOS
+/// (Now Playing) — the counterpart to the MPRIS service on Linux.
 ///
 /// Pushes now-playing metadata + transport state to the native
-/// `katmusic/smtc` channel (volume flyout, lock screen, Bluetooth,
+/// `katmusic/smtc` channel (Windows: volume flyout, lock screen;
+/// macOS: menu bar Now Playing, Control Center; both: Bluetooth and
 /// hardware media keys) and routes button presses back into
-/// [PlaybackService]. Windows only; every failure degrades to silence.
+/// [PlaybackService]. The native side lives in
+/// `windows/runner/smtc_channel.cpp` and
+/// `macos/Runner/NowPlayingChannel.swift`. Every failure degrades to
+/// silence.
 class SmtcService {
+  static const _stoppedUpdate = <String, Object>{
+    'title': '',
+    'artist': '',
+    'album': '',
+    'artUrl': '',
+    'status': smtcStatusStopped,
+    'positionMs': 0,
+    'durationMs': 0,
+    'rate': 0.0,
+    'hasTrack': false,
+    'canNext': false,
+    'canPrev': false,
+  };
+
   final Ref _ref;
   final MethodChannel _channel = const MethodChannel('katmusic/smtc');
   PlayerSnapshot? _last;
   bool _handlerSet = false;
   bool _disposed = false;
+  bool _cleared = false;
 
   SmtcService(this._ref);
+
+  /// Platforms whose runner implements the `katmusic/smtc` channel.
+  static bool get isSupported => Platform.isWindows || Platform.isMacOS;
 
   PlaybackService get _player => _ref.read(playbackServiceProvider.notifier);
 
   Future<void> startup() async {
-    if (!Platform.isWindows || _disposed) return;
+    if (!isSupported || _disposed) return;
     if (!_handlerSet) {
       _handlerSet = true;
       _channel.setMethodCallHandler(_onNativeCall);
     }
+    refresh();
+  }
+
+  /// Re-applies the current preference and snapshot after a settings change.
+  void refresh() {
+    if (!isSupported || _disposed) return;
     _last = null;
+    _cleared = false;
     onSnapshot(_ref.read(playbackServiceProvider));
   }
 
   void onSnapshot(PlayerSnapshot snap) {
-    if (!Platform.isWindows || _disposed) return;
+    if (!isSupported || _disposed) return;
+    if (Platform.isMacOS && !_ref.read(prefsProvider).macOSNowPlaying) {
+      _last = snap;
+      if (!_cleared) {
+        _cleared = true;
+        unawaited(
+          _channel.invokeMethod('update', _stoppedUpdate).catchError((_) {}),
+        );
+      }
+      return;
+    }
+    _cleared = false;
     final update = smtcUpdateFor(_last, snap);
     _last = snap;
     if (update == null) return;
@@ -113,8 +153,18 @@ class SmtcService {
   }
 
   Future<dynamic> _onNativeCall(MethodCall call) async {
-    if (call.method != 'onButton') return null;
     final player = _player;
+    if (call.method == 'onSeek') {
+      // macOS Control Center scrubber; position in milliseconds.
+      final ms = call.arguments;
+      if (ms is int && ms >= 0) {
+        try {
+          await player.seek(Duration(milliseconds: ms));
+        } catch (_) {}
+      }
+      return null;
+    }
+    if (call.method != 'onButton') return null;
     try {
       switch (call.arguments as String?) {
         case 'play':
@@ -138,15 +188,18 @@ class SmtcService {
   void dispose() {
     _disposed = true;
     _last = null;
+    if (Platform.isMacOS) {
+      unawaited(
+        _channel.invokeMethod('update', _stoppedUpdate).catchError((_) {}),
+      );
+    }
   }
 }
 
 final smtcProvider = Provider<SmtcService>((ref) {
   final svc = SmtcService(ref);
   ref.listen<PlayerSnapshot>(
-    playbackServiceProvider,
-    (prev, next) => svc.onSnapshot(next),
-  );
+      playbackServiceProvider, (prev, next) => svc.onSnapshot(next));
   ref.onDispose(svc.dispose);
   return svc;
 });

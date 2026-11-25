@@ -69,9 +69,10 @@ class LyricsTranslator {
         end++;
       }
       final slice = slots.sublist(start, end);
-      final translated = await _batch([
-        for (final index in slice) lines[index],
-      ], target);
+      final translated = await _batch(
+        [for (final index in slice) lines[index]],
+        target,
+      );
       if (translated == null || translated.length != slice.length) {
         return out;
       }
@@ -128,11 +129,7 @@ class LyricsTranslator {
           joined.write(segment.first?.toString() ?? '');
         }
       }
-      final parts = joined
-          .toString()
-          .split(marker)
-          .map((s) => s.trim())
-          .toList();
+      final parts = joined.toString().split(marker).map((s) => s.trim()).toList();
       if (parts.length != texts.length || parts.any((s) => s.isEmpty)) {
         return null;
       }
@@ -149,12 +146,14 @@ final lyricsTranslatorProvider = Provider<LyricsTranslator>((ref) {
 
 final lyricsTranslationProvider = FutureProvider.autoDispose
     .family<List<String?>, LyricsTranslationKey>((ref, key) async {
-      if (key.target == 'off') return const [];
-      final lines = key.fingerprint.split('\n');
-      return ref
-          .watch(lyricsTranslatorProvider)
-          .translate(trackKey: key.trackKey, target: key.target, lines: lines);
-    });
+  if (key.target == 'off') return const [];
+  final lines = key.fingerprint.split('\n');
+  return ref.watch(lyricsTranslatorProvider).translate(
+        trackKey: key.trackKey,
+        target: key.target,
+        lines: lines,
+      );
+});
 
 /// Builds the provider key from the open track. Empty fingerprint when
 /// translation is off, so the view does not start a request.

@@ -9,15 +9,17 @@ import 'accessibility.dart';
 import '../core/artwork/animated_artwork_session.dart';
 import '../core/diagnostics/diagnostics_log.dart';
 import '../core/network/network_monitor.dart';
+import '../core/platform/windows_memory.dart';
 import '../core/storage/prefs.dart';
 import '../features/player/playback_service.dart';
 import '../features/presence/discord_presence_service.dart';
+import '../features/search/shared_providers.dart';
 import '../ui/components/infobar_host.dart';
 
 /// App-scoped window + tray lifecycle owner.
 ///
 /// Mounted above the router (see [KatMusicApp]) so the handlers exist on
-/// EVERY route — including `/welcome`, which renders outside [KatShell].
+/// EVERY route — including `/welcome`, which renders outside [WaveShell].
 /// Previously these listeners lived in the shell, so with
 /// `setPreventClose(true)` active the welcome-page × button was swallowed
 /// with zero handlers and tray menu clicks hit zero listeners.
@@ -35,6 +37,7 @@ class WindowLifecycle extends ConsumerStatefulWidget {
 class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
     with TrayListener, WindowListener {
   bool _quitting = false;
+  Timer? _memoryHygieneTimer;
 
   @override
   void initState() {
@@ -44,7 +47,25 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
     } catch (_) {}
     try {
       windowManager.addListener(this);
+      windowManager.isMaximized().then((m) {
+        if (mounted) ref.read(windowMaximizedProvider.notifier).state = m;
+      }).catchError((_) {});
     } catch (_) {}
+    _startMemoryHygiene();
+  }
+
+  void _startMemoryHygiene() {
+    _memoryHygieneTimer?.cancel();
+    // Periodically (every 45s) trim unreferenced live image caches and
+    // reclaim committed native working set memory on Windows.
+    _memoryHygieneTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      try {
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
+      try {
+        trimWindowsWorkingSet();
+      } catch (_) {}
+    });
   }
 
   /// Ordered shutdown: await libmpv stop/dispose while Dart is alive
@@ -59,7 +80,9 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
     try {
       await Future(() async {
         try {
-          await ref.read(playbackServiceProvider.notifier).disposePlayer();
+          await ref
+              .read(playbackServiceProvider.notifier)
+              .disposePlayer();
         } catch (_) {}
         try {
           // Best-effort: clear Discord status before the pipe dies.
@@ -123,14 +146,22 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
       ref.read(animatedArtworkSessionProvider).setBackgrounded(!visible);
     } catch (_) {}
     try {
-      ref.read(canvasPanelSessionProvider).setBackgrounded(!visible);
-    } catch (_) {}
-    try {
       // Back the connectivity probe cadence off while minimized /
       // tray-hidden (and re-probe immediately on restore). Playback is
       // unaffected — stream failures are handled by mpv, not this flag.
       ref.read(networkMonitorProvider.notifier).setVisible(visible);
     } catch (_) {}
+    if (!visible) {
+      try {
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
+      try {
+        ref.read(databaseProvider).checkpoint();
+      } catch (_) {}
+      try {
+        trimWindowsWorkingSet();
+      } catch (_) {}
+    }
   }
 
   @override
@@ -143,7 +174,33 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
   }
 
   @override
-  void onWindowMaximize() => _setWindowVisible(true);
+  void onWindowMaximize() {
+    _setWindowVisible(true);
+    try {
+      ref.read(windowMaximizedProvider.notifier).state = true;
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    try {
+      ref.read(windowMaximizedProvider.notifier).state = false;
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    try {
+      ref.read(windowMaximizedProvider.notifier).state = true;
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    try {
+      ref.read(windowMaximizedProvider.notifier).state = false;
+    } catch (_) {}
+  }
 
   /// A window that takes focus is on screen. Only repairs a stale
   /// "hidden" flag — e.g. Linux MPRIS `Raise` shows the window from the
@@ -171,10 +228,7 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
     switch (menuItem.key) {
       case 'show':
         _setWindowVisible(true);
-        windowManager
-            .show()
-            .then((_) => windowManager.focus())
-            .catchError((_) {});
+        windowManager.show().then((_) => windowManager.focus()).catchError((_) {});
       case 'toggle':
         ref.read(playbackServiceProvider.notifier).toggle();
       case 'next':
@@ -202,6 +256,7 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
 
   @override
   void dispose() {
+    _memoryHygieneTimer?.cancel();
     try {
       trayManager.removeListener(this);
     } catch (_) {}
@@ -223,3 +278,6 @@ class _WindowLifecycleState extends ConsumerState<WindowLifecycle>
 /// never touch this. Playback state always keeps flowing. Defaults true
 /// (window.dart shows at launch).
 final windowVisibleProvider = StateProvider<bool>((ref) => true);
+
+/// True while the window is maximized or fullscreen (disables edge resize handles).
+final windowMaximizedProvider = StateProvider<bool>((ref) => false);

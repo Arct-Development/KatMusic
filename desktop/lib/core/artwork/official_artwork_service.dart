@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -102,7 +101,8 @@ class OfficialArtworkService {
   final List<void Function()> _listeners = [];
 
   void addListener(void Function() listener) => _listeners.add(listener);
-  void removeListener(void Function() listener) => _listeners.remove(listener);
+  void removeListener(void Function() listener) =>
+      _listeners.remove(listener);
   void _notify() {
     for (final l in List<void Function()>.of(_listeners)) {
       l();
@@ -134,7 +134,8 @@ class OfficialArtworkService {
     );
     final changed = _cache[key]?.artworkUrl != artworkUrl;
     _cache[key] = result;
-    _db?.saveArtworkEntry(cacheKey: key, url: artworkUrl, provider: 'remember');
+    _db?.saveArtworkEntry(
+        cacheKey: key, url: artworkUrl, provider: 'remember');
     if (changed) _notify();
   }
 
@@ -200,15 +201,13 @@ class OfficialArtworkService {
     final completer = Completer<T>();
     void run() {
       _activeRequests++;
-      task()
-          .then(completer.complete)
-          .catchError(completer.completeError)
+      task().then(completer.complete).catchError(completer.completeError)
           .whenComplete(() {
-            _activeRequests--;
-            if (_requestQueue.isNotEmpty) {
-              _requestQueue.removeAt(0)();
-            }
-          });
+        _activeRequests--;
+        if (_requestQueue.isNotEmpty) {
+          _requestQueue.removeAt(0)();
+        }
+      });
     }
 
     if (_activeRequests < _maxParallel) {
@@ -222,8 +221,8 @@ class OfficialArtworkService {
   }
 
   OfficialArtworkService([Dio? dio, AppDatabase? db, InnerTubeMusicApi? tube])
-    : _dio = dio ?? _createArtworkDio(),
-      _db = db;
+      : _dio = dio ?? _createArtworkDio(),
+        _db = db;
 
   /// Dedicated client: no debug 403 logger, 4xx does not throw, browser
   /// UA without the KatMusic token (Apple Search 403s that).
@@ -289,13 +288,13 @@ class OfficialArtworkService {
       final uri = Uri.parse(url);
       final host = uri.host.toLowerCase();
       final path = uri.path.toLowerCase();
-      final deezer =
-          host == 'deezer.com' ||
+      final deezer = host == 'deezer.com' ||
           host.endsWith('.deezer.com') ||
           host == 'dzcdn.net' ||
           host.endsWith('.dzcdn.net');
       if (!deezer) return false;
-      return path.contains('/images/artist/') || path.contains('/artist/');
+      return path.contains('/images/artist/') ||
+          path.contains('/artist/');
     } catch (_) {
       return false;
     }
@@ -317,30 +316,24 @@ class OfficialArtworkService {
     // and return completely unrelated results.
     s = s.replaceAll(RegExp(r"['’ʼ`´]"), '');
     s = s.replaceAll(
-      RegExp(
-        r'\s*-\s*(?:official|video|audio|remaster|remastered|lyrics?).*$',
-        caseSensitive: false,
-      ),
-      '',
-    );
+        RegExp(
+            r'\s*-\s*(?:official|video|audio|remaster|remastered|lyrics?).*$',
+            caseSensitive: false),
+        '');
     // Explicit/clean tags are version noise like remasters: Last.fm
     // bills "CHUSAMBA [Explicit]" while the store lists "CHUSAMBA" —
     // without stripping, the title score never clears the bar and the
     // tile falls back to initials.
     s = s.replaceAll(
-      RegExp(
-        r'\s*\([^)]*(?:feat|ft\.?|featuring|official|video|audio|remaster|visualizer|lyrics?|explicit|clean)[^)]*\)',
-        caseSensitive: false,
-      ),
-      '',
-    );
+        RegExp(
+            r'\s*\([^)]*(?:feat|ft\.?|featuring|official|video|audio|remaster|visualizer|lyrics?|explicit|clean)[^)]*\)',
+            caseSensitive: false),
+        '');
     s = s.replaceAll(
-      RegExp(
-        r'\s*\[[^\]]*(?:feat|ft\.?|featuring|official|video|audio|remaster|visualizer|lyrics?|explicit|clean)[^\]]*\]',
-        caseSensitive: false,
-      ),
-      '',
-    );
+        RegExp(
+            r'\s*\[[^\]]*(?:feat|ft\.?|featuring|official|video|audio|remaster|visualizer|lyrics?|explicit|clean)[^\]]*\]',
+            caseSensitive: false),
+        '');
     s = s.replaceAll(RegExp(r'^\s*[\w&.\- ]+\s*-\s+'), '');
     s = s.replaceAll(RegExp(r'\$(?=\d)'), '');
     s = s.replaceAll(r'$', 's');
@@ -386,10 +379,11 @@ class OfficialArtworkService {
           dbEntry['url'] != null &&
           dbEntry['url']!.isNotEmpty) {
         final url = dbEntry['url']!;
-        // Old rows could store a YouTube video still as "official"
-        // (InnerTube fallback). Those must not win over a real store
-        // cover — ignore and re-resolve.
-        if (isOfficialArtwork(url) && !_isDeezerBlank(url)) {
+        // Valid if official CDN or a Google studio cover, and not a Deezer blank
+        if (!_isDeezerBlank(url) &&
+            (isOfficialArtwork(url) ||
+                url.contains('googleusercontent.com') ||
+                url.contains('ggpht.com'))) {
           final cached = OfficialArtworkResult(artworkUrl: url);
           _cache[cacheKey] = cached;
           return cached;
@@ -464,11 +458,15 @@ class OfficialArtworkService {
       final url = await fallback(title, artist);
       if (url.isEmpty) return null;
       final result = OfficialArtworkResult(
-        artworkUrl: url,
-        artist: artist,
-        title: title,
-      );
+          artworkUrl: url, artist: artist, title: title);
       _rememberFallback(key, result);
+      if (_db != null) {
+        _db!.saveArtworkEntry(
+          cacheKey: key,
+          url: url,
+          provider: 'fallback',
+        );
+      }
       return result;
     } catch (_) {
       return null;
@@ -512,6 +510,13 @@ class OfficialArtworkService {
       if (url.isEmpty) return null;
       final result = OfficialArtworkResult(artworkUrl: url, artist: artist);
       _rememberFallback(key, result);
+      if (_db != null) {
+        _db!.saveArtworkEntry(
+          cacheKey: key,
+          url: url,
+          provider: 'fallback',
+        );
+      }
       return result;
     } catch (_) {
       return null;
@@ -551,6 +556,13 @@ class OfficialArtworkService {
       if (url.isEmpty) return null;
       final result = OfficialArtworkResult(artworkUrl: url, artist: primary);
       _rememberFallback(key, result);
+      if (_db != null) {
+        _db!.saveArtworkEntry(
+          cacheKey: key,
+          url: url,
+          provider: 'fallback',
+        );
+      }
       return result;
     } catch (_) {
       return null;
@@ -565,8 +577,7 @@ class OfficialArtworkService {
   /// an empty hash (`/images/artist//1000x1000…`). It loads fine, so it
   /// would never trigger an image fallback.
   static bool _isDeezerBlank(String url) =>
-      url.contains('/artist//') ||
-      url.contains('d41d8cd98f00b204e9800998ecf8427e');
+      url.contains('/artist//') || url.contains('d41d8cd98f00b204e9800998ecf8427e');
 
   /// Shared iTunes Search API round; returns the raw result list.
   /// 403/429 do not throw (validateStatus). After a couple of blocks
@@ -593,8 +604,7 @@ class OfficialArtworkService {
       if (code == 403 || code == 429) {
         _itunes403Streak++;
         if (_itunes403Streak >= 2) {
-          _itunesSkipUntilMs =
-              DateTime.now().millisecondsSinceEpoch +
+          _itunesSkipUntilMs = DateTime.now().millisecondsSinceEpoch +
               const Duration(minutes: 15).inMilliseconds;
         }
         return const [];
@@ -620,10 +630,8 @@ class OfficialArtworkService {
   Future<List<Map<String, dynamic>>> _deezerTrackHits(String query) async {
     if (query.trim().isEmpty) return const [];
     try {
-      final rawData = await _deezerGet('/search', {
-        'q': query.trim(),
-        'limit': '15',
-      });
+      final rawData =
+          await _deezerGet('/search', {'q': query.trim(), 'limit': '15'});
       final data = rawData is Map ? rawData : null;
       final items = data != null && data['data'] is List
           ? (data['data'] as List).whereType<Map<String, dynamic>>()
@@ -634,15 +642,14 @@ class OfficialArtworkService {
         final album = item['album'];
         final cover = album is Map
             ? (album['cover_xl'] ?? album['cover_big'] ?? album['cover'])
-                      ?.toString() ??
-                  ''
+                ?.toString() ??
+                ''
             : '';
         return <String, dynamic>{
           'trackName': item['title']?.toString() ?? '',
           'artistName': artist is Map ? artist['name']?.toString() ?? '' : '',
-          'collectionName': album is Map
-              ? album['title']?.toString() ?? ''
-              : '',
+          'collectionName':
+              album is Map ? album['title']?.toString() ?? '' : '',
           'artworkUrl100': cover,
           'releaseDate': album is Map
               ? album['release_date']?.toString() ?? ''
@@ -664,12 +671,10 @@ class OfficialArtworkService {
     Map<String, dynamic>? best;
     var bestScore = -999;
     for (final item in items) {
-      final collection = normalizeForSearch(
-        item['collectionName']?.toString() ?? '',
-      );
-      final artistName = normalizeForSearch(
-        item['artistName']?.toString() ?? '',
-      );
+      final collection =
+          normalizeForSearch(item['collectionName']?.toString() ?? '');
+      final artistName =
+          normalizeForSearch(item['artistName']?.toString() ?? '');
       if (collection.isEmpty) continue;
       final titleScore = artworkTitleScore(collection, cleanAlbum);
       if (titleScore < 90) continue;
@@ -708,19 +713,18 @@ class OfficialArtworkService {
     Map<String, dynamic>? best;
     var bestScore = -999;
     for (final item in items) {
-      final collection = normalizeForSearch(
-        item['collectionName']?.toString() ?? '',
-      );
-      final artistName = normalizeForSearch(
-        item['artistName']?.toString() ?? '',
-      );
+      final collection =
+          normalizeForSearch(item['collectionName']?.toString() ?? '');
+      final artistName =
+          normalizeForSearch(item['artistName']?.toString() ?? '');
       if (collection.isEmpty) continue;
       final titleScore = artworkTitleScore(collection, cleanAlbum);
       if (titleScore < 90) continue;
       final artistScore = artworkArtistScore(artistName, cleanArtist);
       if (artistScore < 80) continue;
       var score = titleScore + artistScore;
-      final trackName = normalizeForSearch(item['trackName']?.toString() ?? '');
+      final trackName =
+          normalizeForSearch(item['trackName']?.toString() ?? '');
       final noise = '$trackName $collection';
       if (noise.contains('instrumental') ||
           noise.contains('karaoke') ||
@@ -744,7 +748,8 @@ class OfficialArtworkService {
     final rawArt = item['artworkUrl100']?.toString() ?? '';
     if (rawArt.isEmpty) return null;
     return OfficialArtworkResult(
-      artworkUrl: rawArt.replaceAll(RegExp(r'\d+x\d+bb'), '1400x1400bb'),
+      artworkUrl:
+          rawArt.replaceAll(RegExp(r'\d+x\d+bb'), '1400x1400bb'),
       albumTitle: item['collectionName']?.toString() ?? rawAlbum,
       artist: item['artistName']?.toString() ?? rawArtist,
     );
@@ -767,10 +772,7 @@ class OfficialArtworkService {
       cleanAlbum,
     }) {
       final hit = _matchAlbum(
-        await _itunesSearch(term, 'album', '25'),
-        cleanAlbum,
-        cleanArtist,
-      );
+          await _itunesSearch(term, 'album', '25'), cleanAlbum, cleanArtist);
       if (hit != null) hits.add(hit);
     }
 
@@ -811,20 +813,25 @@ class OfficialArtworkService {
         final items = data != null && data['data'] is List
             ? (data['data'] as List).whereType<Map<String, dynamic>>()
             : const <Map<String, dynamic>>[];
-        final mapped = items.map((item) {
-          final artist = item['artist'];
-          return <String, dynamic>{
-            'collectionName': item['title']?.toString() ?? '',
-            'artistName': artist is Map ? artist['name']?.toString() ?? '' : '',
-            'artworkUrl100':
-                (item['cover_xl'] ?? item['cover_big'] ?? item['cover'])
+        final mapped = items
+            .map((item) {
+              final artist = item['artist'];
+              return <String, dynamic>{
+                'collectionName': item['title']?.toString() ?? '',
+                'artistName':
+                    artist is Map ? artist['name']?.toString() ?? '' : '',
+                'artworkUrl100': (item['cover_xl'] ??
+                        item['cover_big'] ??
+                        item['cover'])
                     ?.toString() ??
-                '',
-          };
-        }).toList();
+                    '',
+              };
+            })
+            .toList();
         final hit = _matchAlbum(mapped, cleanAlbum, cleanArtist);
         if (hit != null) {
-          final result = _albumResultFrom(hit.item, rawAlbum, rawArtist);
+          final result =
+              _albumResultFrom(hit.item, rawAlbum, rawArtist);
           if (result != null) return result;
         }
       }
@@ -886,13 +893,13 @@ class OfficialArtworkService {
     final searchName = rawPrimary.isNotEmpty ? rawPrimary : raw;
     final cleanSearchName = normalizeForSearch(searchName);
     try {
-      final rawData = await _deezerGet('/search/artist', {
-        'q': searchName,
-        'limit': '10',
-      });
+      final rawData = await _deezerGet(
+          '/search/artist', {'q': searchName, 'limit': '10'});
       final data = rawData is Map ? rawData : null;
       final items = data != null && data['data'] is List
-          ? (data['data'] as List).whereType<Map<String, dynamic>>().toList()
+          ? (data['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .toList()
           : <Map<String, dynamic>>[];
       if (items.isNotEmpty) {
         // Deezer ranks keyword-spam and tribute acts above real artists.
@@ -922,10 +929,10 @@ class OfficialArtworkService {
           var containFans = -1;
           for (final item in items) {
             final fans = (item['nb_fan'] as num?)?.toInt() ?? 0;
-            final name = normalizeForSearch(item['name']?.toString() ?? '');
+            final name =
+                normalizeForSearch(item['name']?.toString() ?? '');
             if (name.isEmpty) continue;
-            final matchesEither =
-                (name.length >= 4 &&
+            final matchesEither = (name.length >= 4 &&
                     clean.length >= 4 &&
                     (name.contains(clean) || clean.contains(name))) ||
                 (name.length >= 4 &&
@@ -939,10 +946,14 @@ class OfficialArtworkService {
           }
         }
         best ??= mostPopular ?? items.first;
-        final pic =
-            [best['picture_xl'], best['picture_big'], best['picture_medium']]
-                .map((e) => e?.toString() ?? '')
-                .firstWhere((e) => e.isNotEmpty, orElse: () => '');
+        final pic = [
+          best['picture_xl'],
+          best['picture_big'],
+          best['picture_medium'],
+        ].map((e) => e?.toString() ?? '').firstWhere(
+              (e) => e.isNotEmpty,
+              orElse: () => '',
+            );
         if (pic.isNotEmpty &&
             !_isDeezerBlank(pic) &&
             !await _deezerPhotoIsStock(pic)) {
@@ -978,20 +989,27 @@ class OfficialArtworkService {
       _deezerTrackHits(rawTitle),
     ]);
     final allItems = catalogs.expand((e) => e).toList();
-    var match = _findBestMatch(allItems, cleanTitle, cleanArtist);
+    var match = _findBestMatch(
+      allItems,
+      cleanTitle,
+      cleanArtist,
+    );
     if (match == null &&
         cleanPrimary.isNotEmpty &&
         cleanPrimary != cleanArtist) {
-      match = _findBestMatch(allItems, cleanTitle, cleanPrimary);
+      match = _findBestMatch(
+        allItems,
+        cleanTitle,
+        cleanPrimary,
+      );
     }
     if (match != null) {
-      final rawArt =
-          match['artworkUrl100']?.toString() ??
+      final rawArt = match['artworkUrl100']?.toString() ??
           match['artworkUrl60']?.toString() ??
           '';
       if (rawArt.isNotEmpty) {
-        final highResArt =
-            rawArt.contains('mzstatic.com') || rawArt.contains('apple.com')
+        final highResArt = rawArt.contains('mzstatic.com') ||
+                rawArt.contains('apple.com')
             ? rawArt.replaceAll(RegExp(r'\d+x\d+bb'), '1400x1400bb')
             : rawArt;
         return OfficialArtworkResult(
@@ -1029,15 +1047,7 @@ class OfficialArtworkService {
   }
 
   static const _artistStopwords = {
-    'the',
-    'a',
-    'an',
-    'and',
-    'of',
-    'feat',
-    'ft',
-    'with',
-    'x',
+    'the', 'a', 'an', 'and', 'of', 'feat', 'ft', 'with', 'x',
   };
 
   static Set<String> _nameTokens(String s) => s
@@ -1130,11 +1140,12 @@ class OfficialArtworkService {
     List<Map<String, dynamic>> items, {
     required String title,
     required String artist,
-  }) => _findBestMatch(
-    items,
-    normalizeForSearch(title),
-    normalizeForSearch(artist),
-  );
+  }) =>
+      _findBestMatch(
+        items,
+        normalizeForSearch(title),
+        normalizeForSearch(artist),
+      );
 
   static Map<String, dynamic>? _findBestMatch(
     List<Map<String, dynamic>> items,
@@ -1151,12 +1162,10 @@ class OfficialArtworkService {
     for (final item in items) {
       final rawArtistName = item['artistName']?.toString() ?? '';
       final trackName = item['trackName']?.toString() ?? '';
-      final collection = normalizeForSearch(
-        item['collectionName']?.toString() ?? '',
-      );
-      final collectionArtist = normalizeForSearch(
-        item['collectionArtistName']?.toString() ?? '',
-      );
+      final collection =
+          normalizeForSearch(item['collectionName']?.toString() ?? '');
+      final collectionArtist =
+          normalizeForSearch(item['collectionArtistName']?.toString() ?? '');
       final titleScore = artworkTitleScore(trackName, targetTitle);
       if (titleScore < 90) continue;
       final artistScore = artworkArtistScore(rawArtistName, targetArtist);
@@ -1174,8 +1183,7 @@ class OfficialArtworkService {
         score -= 80;
       }
 
-      final looksLikeCompilation =
-          collectionArtist == 'various artists' ||
+      final looksLikeCompilation = collectionArtist == 'various artists' ||
           collection.contains('greatest hits') ||
           collection.contains('best of') ||
           collection.contains('essential') ||
@@ -1189,10 +1197,8 @@ class OfficialArtworkService {
       // (feat. …)" row from another film ties with the plain "Sirens"
       // and used to win on the earliest-release tie-break. A bare title
       // beats a featured one when nothing else separates them.
-      if (RegExp(
-        r'[(\[]\s*(?:feat|ft\.?|featuring)\b',
-        caseSensitive: false,
-      ).hasMatch(trackName)) {
+      if (RegExp(r'[(\[]\s*(?:feat|ft\.?|featuring)\b', caseSensitive: false)
+          .hasMatch(trackName)) {
         score -= 5;
       }
 
@@ -1246,7 +1252,8 @@ class OfficialArtworkService {
   }
 }
 
-final officialArtworkServiceProvider = Provider<OfficialArtworkService>((ref) {
+final officialArtworkServiceProvider =
+    Provider<OfficialArtworkService>((ref) {
   final db = ref.watch(databaseProvider);
   final tube = ref.watch(innerTubeProvider);
   final service = OfficialArtworkService.instance;

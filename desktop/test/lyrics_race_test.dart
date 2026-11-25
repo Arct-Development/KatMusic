@@ -6,42 +6,42 @@ import 'package:katmusic_desktop/features/lyrics/lyrics_models.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_repository.dart';
 
 LyricsResult _word(String source) => LyricsResult(
-  lines: [
-    LyricLine(
-      timeMs: 1000,
-      durationMs: 3000,
-      text: 'Hello world',
-      syllables: const [
-        LyricSyllable(timeMs: 1000, durationMs: 500, text: 'Hello '),
-        LyricSyllable(timeMs: 1500, durationMs: 500, text: 'world'),
+      lines: [
+        LyricLine(
+          timeMs: 1000,
+          durationMs: 3000,
+          text: 'Hello world',
+          syllables: const [
+            LyricSyllable(timeMs: 1000, durationMs: 500, text: 'Hello '),
+            LyricSyllable(timeMs: 1500, durationMs: 500, text: 'world'),
+          ],
+        ),
+        LyricLine(
+          timeMs: 5000,
+          durationMs: 3000,
+          text: 'Second line',
+          syllables: const [
+            LyricSyllable(timeMs: 5000, durationMs: 500, text: 'Second '),
+            LyricSyllable(timeMs: 5500, durationMs: 500, text: 'line'),
+          ],
+        ),
       ],
-    ),
-    LyricLine(
-      timeMs: 5000,
-      durationMs: 3000,
-      text: 'Second line',
-      syllables: const [
-        LyricSyllable(timeMs: 5000, durationMs: 500, text: 'Second '),
-        LyricSyllable(timeMs: 5500, durationMs: 500, text: 'line'),
-      ],
-    ),
-  ],
-  isSynced: true,
-  isWordSynced: true,
-  plainLyrics: 'Hello world\nSecond line',
-  source: source,
-);
+      isSynced: true,
+      isWordSynced: true,
+      plainLyrics: 'Hello world\nSecond line',
+      source: source,
+    );
 
 LyricsResult _line(String source) => LyricsResult(
-  lines: const [
-    LyricLine(timeMs: 1000, durationMs: 3000, text: 'Hello world'),
-    LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
-  ],
-  isSynced: true,
-  isWordSynced: false,
-  plainLyrics: 'Hello world\nSecond line',
-  source: source,
-);
+      lines: const [
+        LyricLine(timeMs: 1000, durationMs: 3000, text: 'Hello world'),
+        LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
+      ],
+      isSynced: true,
+      isWordSynced: false,
+      plainLyrics: 'Hello world\nSecond line',
+      source: source,
+    );
 
 /// Repository with stubbed providers and short timeouts.
 class _StubRepo extends LyricsRepository {
@@ -50,12 +50,12 @@ class _StubRepo extends LyricsRepository {
   final Map<String, Duration> delays;
 
   _StubRepo(this.results, {this.delays = const {}})
-    : super(
-        Dio(),
-        const Duration(milliseconds: 200),
-        const Duration(seconds: 2),
-      ) {
-    katGap = Duration.zero;
+      : super(
+          Dio(),
+          const Duration(milliseconds: 200),
+          const Duration(seconds: 2),
+        ) {
+    waveGap = Duration.zero;
   }
 
   @override
@@ -76,51 +76,47 @@ class _StubRepo extends LyricsRepository {
 }
 
 void main() {
-  test(
-    'word beats faster line; explicit preferred line outranks race line',
-    () async {
-      // Preferred better (line, slow) vs apple line (fast): preferred wins.
-      final repo = _StubRepo(
-        {
-          'better_lyrics': _line('BetterLyrics (Line-Sync)'),
-          'apple_music': _line('Apple Music (Line-Sync)'),
-        },
-        delays: {'better_lyrics': const Duration(milliseconds: 100)},
-      );
-      final picked = await repo.getLyrics(
-        title: 'T',
-        artist: 'A',
-        preferredProviderId: 'better_lyrics',
-      );
-      expect(picked.source, contains('BetterLyrics'));
+  test('word beats faster line; explicit preferred line outranks race line',
+      () async {
+    // Preferred better (line, slow) vs apple line (fast): preferred wins.
+    final repo = _StubRepo({
+      'better_lyrics': _line('BetterLyrics (Line-Sync)'),
+      'apple_music': _line('Apple Music (Line-Sync)'),
+    }, delays: {
+      'better_lyrics': const Duration(milliseconds: 100),
+    });
+    final picked = await repo.getLyrics(
+      title: 'T',
+      artist: 'A',
+      preferredProviderId: 'better_lyrics',
+    );
+    expect(picked.source, contains('BetterLyrics'));
 
-      // Kugou word (slow) beats apple line (fast) in Auto.
-      final auto = _StubRepo(
-        {
-          'kugou': _word('Kugou KRC (Word-Sync)'),
-          'apple_music': _line('Apple Music (Line-Sync)'),
-        },
-        delays: {'kugou': const Duration(milliseconds: 300)},
-      );
-      final word = await auto.getLyrics(title: 'T', artist: 'A');
-      expect(word.isWordSynced, isTrue);
-      expect(word.source, contains('Kugou'));
-    },
-  );
+    // Kugou word (slow) beats apple line (fast) in Auto.
+    final auto = _StubRepo({
+      'kugou': _word('Kugou KRC (Word-Sync)'),
+      'apple_music': _line('Apple Music (Line-Sync)'),
+    }, delays: {
+      'kugou': const Duration(milliseconds: 300),
+    });
+    final word = await auto.getLyrics(title: 'T', artist: 'A');
+    expect(word.isWordSynced, isTrue);
+    expect(word.source, contains('Kugou'));
+  });
 
   test('concurrent identical lookups share one race', () async {
-    final repo = _StubRepo(
-      {'kugou': _word('Kugou KRC (Word-Sync)')},
-      delays: {'kugou': const Duration(milliseconds: 100)},
-    );
+    final repo = _StubRepo({
+      'kugou': _word('Kugou KRC (Word-Sync)'),
+    }, delays: {
+      'kugou': const Duration(milliseconds: 100),
+    });
     final partials = <String>[];
     final results = await Future.wait([
       repo.getLyrics(title: 'T', artist: 'A'),
       repo.getLyrics(
-        title: 'T',
-        artist: 'A',
-        onPartialResult: (p) => partials.add(p.source),
-      ),
+          title: 'T',
+          artist: 'A',
+          onPartialResult: (p) => partials.add(p.source)),
     ]);
     expect(results[0].source, contains('Kugou'));
     expect(results[1].source, contains('Kugou'));
@@ -151,7 +147,8 @@ void main() {
     expect(repo.calls['kugou'], 1);
     await repo.getLyrics(title: 'T', artist: 'A');
     expect(repo.calls['kugou'], 1); // served from cache
-    await repo.getLyrics(title: 'T', artist: 'A', preferredProviderId: 'kugou');
+    await repo.getLyrics(
+        title: 'T', artist: 'A', preferredProviderId: 'kugou');
     expect(repo.calls['kugou'], 2); // new key → refetch
     await repo.getLyrics(title: 'T', artist: 'A', durationSeconds: 200);
     expect(repo.calls['kugou'], 3); // duration is part of the key
@@ -203,47 +200,38 @@ void main() {
     expect(repo.calls.containsKey('lrclib'), isTrue);
   });
 
-  test(
-    'line mode never caches empty over a fetched preferred result',
-    () async {
-      final repo = _StubRepo({'lrclib': _line('lrclib')});
-      final first = await repo.getLyrics(
-        title: 'T',
-        artist: 'A',
-        wordByWord: false,
-        preferredProviderId: 'lrclib',
-      );
-      expect(first.isEmpty, isFalse);
-      expect(first.source, contains('lrclib'));
-      await repo.getLyrics(
-        title: 'T',
-        artist: 'A',
-        wordByWord: false,
-        preferredProviderId: 'lrclib',
-      );
-      expect(repo.calls['lrclib'], 1);
-    },
-  );
+  test('line mode never caches empty over a fetched preferred result',
+      () async {
+    final repo = _StubRepo({
+      'lrclib': _line('lrclib'),
+    });
+    final first = await repo.getLyrics(
+      title: 'T',
+      artist: 'A',
+      wordByWord: false,
+      preferredProviderId: 'lrclib',
+    );
+    expect(first.isEmpty, isFalse);
+    expect(first.source, contains('lrclib'));
+    await repo.getLyrics(
+      title: 'T',
+      artist: 'A',
+      wordByWord: false,
+      preferredProviderId: 'lrclib',
+    );
+    expect(repo.calls['lrclib'], 1);
+  });
 
   test('synced lines beat longer unsynced text (static must lose)', () {
     final synced = LyricsResult(
       lines: const [
-        LyricLine(
-          timeMs: 10000,
-          durationMs: 3000,
-          text: 'Alpha verse one here',
-        ),
+        LyricLine(timeMs: 10000, durationMs: 3000, text: 'Alpha verse one here'),
         LyricLine(timeMs: 15000, durationMs: 3000, text: 'Beta verse two here'),
-        LyricLine(
-          timeMs: 20000,
-          durationMs: 3000,
-          text: 'Gamma verse three here',
-        ),
+        LyricLine(timeMs: 20000, durationMs: 3000, text: 'Gamma verse three here'),
       ],
       isSynced: true,
       isWordSynced: false,
-      plainLyrics:
-          'Alpha verse one here Beta verse two here Gamma verse three here',
+      plainLyrics: 'Alpha verse one here Beta verse two here Gamma verse three here',
       source: 'lrclib',
     );
     final unsynced = LyricsResult(
@@ -263,24 +251,17 @@ void main() {
       ],
       isSynced: false,
       isWordSynced: false,
-      plainLyrics:
-          'Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron',
+      plainLyrics: 'Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron',
       source: 'Apple Music',
     );
     expect(
-      LyricsRepository.isBetterCandidate(
-        unsynced,
-        synced,
-        queryTitle: 'Xyzt Distinct',
-      ),
+      LyricsRepository.isBetterCandidate(unsynced, synced,
+          queryTitle: 'Xyzt Distinct'),
       isFalse,
     );
     expect(
-      LyricsRepository.isBetterCandidate(
-        synced,
-        unsynced,
-        queryTitle: 'Xyzt Distinct',
-      ),
+      LyricsRepository.isBetterCandidate(synced, unsynced,
+          queryTitle: 'Xyzt Distinct'),
       isTrue,
     );
   });
@@ -294,37 +275,19 @@ void main() {
     );
     final full = LyricsResult(
       lines: const [
-        LyricLine(
-          timeMs: 0,
-          text: 'A much longer complete transcript follows here',
-        ),
-        LyricLine(
-          timeMs: 0,
-          text: 'Second full verse of the complete transcript here',
-        ),
-        LyricLine(
-          timeMs: 0,
-          text: 'Third full verse of the complete transcript here',
-        ),
-        LyricLine(
-          timeMs: 0,
-          text: 'Fourth full verse of the complete transcript here',
-        ),
-        LyricLine(
-          timeMs: 0,
-          text: 'Fifth full verse of the complete transcript here',
-        ),
+        LyricLine(timeMs: 0, text: 'A much longer complete transcript follows here'),
+        LyricLine(timeMs: 0, text: 'Second full verse of the complete transcript here'),
+        LyricLine(timeMs: 0, text: 'Third full verse of the complete transcript here'),
+        LyricLine(timeMs: 0, text: 'Fourth full verse of the complete transcript here'),
+        LyricLine(timeMs: 0, text: 'Fifth full verse of the complete transcript here'),
       ],
       isSynced: false,
       plainLyrics: 'A much longer complete transcript follows here and on',
       source: 'Apple Music',
     );
     expect(
-      LyricsRepository.isBetterCandidate(
-        full,
-        short,
-        queryTitle: 'Xyzt Distinct',
-      ),
+      LyricsRepository.isBetterCandidate(full, short,
+          queryTitle: 'Xyzt Distinct'),
       isTrue,
     );
   });
@@ -334,11 +297,11 @@ class _HangingRepo extends LyricsRepository {
   final Future<LyricsResult?> hanging;
   final LyricsResult line;
   _HangingRepo(this.hanging, {required this.line})
-    : super(
-        Dio(),
-        const Duration(milliseconds: 50),
-        const Duration(milliseconds: 300),
-      );
+      : super(
+          Dio(),
+          const Duration(milliseconds: 50),
+          const Duration(milliseconds: 300),
+        );
 
   @override
   Future<LyricsResult?> fetchFromProvider(

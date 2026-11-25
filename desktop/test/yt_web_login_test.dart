@@ -16,8 +16,7 @@ void main() {
     expect(YtWebLogin.isPasskeyVerificationStall('Sign in'), isFalse);
     expect(
       YtWebLogin.isPasskeyVerificationStall(
-        'Verify it\'s you\nEnter your password',
-      ),
+          'Verify it\'s you\nEnter your password'),
       isFalse,
     );
     expect(YtWebLogin.isPasskeyVerificationStall(''), isFalse);
@@ -26,8 +25,7 @@ void main() {
   test('matching is case-insensitive', () {
     expect(
       YtWebLogin.isPasskeyVerificationStall(
-        'VERIFYING THAT IT\'S YOU — use passkey',
-      ),
+          'VERIFYING THAT IT\'S YOU — use passkey'),
       isTrue,
     );
   });
@@ -61,7 +59,10 @@ void main() {
       isTrue,
     );
     // Typographic apostrophe variant.
-    expect(YtWebLogin.isBrowserBlockedPage('Couldn’t sign you in'), isTrue);
+    expect(
+      YtWebLogin.isBrowserBlockedPage('Couldn’t sign you in'),
+      isTrue,
+    );
     // Ordinary pages must not be mistaken for the block.
     expect(
       YtWebLogin.isBrowserBlockedPage('Sign in\nUse your Google Account'),
@@ -117,7 +118,8 @@ void main() {
       expect(header, isNot(contains('junk=')));
     });
 
-    test('rejects a mid-redirect jar that only has Google-scoped cookies', () {
+    test('rejects a mid-redirect jar that only has Google-scoped cookies',
+        () {
       final header = YtWebLogin.buildCookieHeader([
         c('SAPISID', 's', '.google.com'),
         c('SID', 'x', '.google.com'),
@@ -134,7 +136,8 @@ void main() {
       ]);
       expect(header, isNull);
       expect(
-        YtWebLogin.missingMarkerNames(['SAPISID', 'SID', '__Secure-3PSID']),
+        YtWebLogin.missingMarkerNames(
+            ['SAPISID', 'SID', '__Secure-3PSID']),
         ['LOGIN_INFO or __Secure-*PSIDTS'],
       );
     });
@@ -148,10 +151,10 @@ void main() {
         ]),
         isEmpty,
       );
-      expect(YtWebLogin.missingMarkerNames(['LOGIN_INFO']), [
-        'SAPISID or __Secure-3PAPISID',
-        'SID or __Secure-3PSID',
-      ]);
+      expect(
+        YtWebLogin.missingMarkerNames(['LOGIN_INFO']),
+        ['SAPISID or __Secure-3PAPISID', 'SID or __Secure-3PSID'],
+      );
     });
 
     test('output order is deterministic', () {

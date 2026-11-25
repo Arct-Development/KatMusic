@@ -40,8 +40,7 @@ const _searchPayload = {
   'total': 3,
 };
 
-const _wordTtml =
-    '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
+const _wordTtml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
     '<p begin="00:09.73" end="00:12.00">'
     '<span begin="00:09.73" end="00:10.00">The</span>'
     '<span begin="00:10.00" end="00:10.40">club</span></p>'
@@ -65,7 +64,11 @@ Dio _stubDio() {
         }
         if (url.startsWith('https://lrc.red/s/')) {
           handler.resolve(
-            Response(requestOptions: options, statusCode: 200, data: _wordTtml),
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: _wordTtml,
+            ),
           );
           return;
         }
@@ -98,17 +101,14 @@ void main() {
     final hits = _hits();
     final wrongArtist = hits[2];
     expect(
-      scoreLrcRedHit(wrongArtist, title: 'Shape of You', artist: 'Ed Sheeran'),
+      scoreLrcRedHit(wrongArtist,
+          title: 'Shape of You', artist: 'Ed Sheeran'),
       lessThan(5),
     );
     final remix = hits[1];
     expect(
-      selectLrcRedBest(
-        [remix],
-        title: 'Shape of You',
-        artist: 'Ed Sheeran',
-        durationSeconds: 238,
-      ),
+      selectLrcRedBest([remix],
+          title: 'Shape of You', artist: 'Ed Sheeran', durationSeconds: 238),
       isNull,
     );
   });
@@ -134,8 +134,7 @@ void main() {
         onRequest: (options, handler) {
           final url = options.uri.toString();
           if (url.startsWith('https://lrc.red/api/v1')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: {
@@ -149,32 +148,22 @@ void main() {
                       'timing_type': 'line',
                     },
                   ],
-                },
-              ),
-            );
+                }));
             return;
           }
           if (url.startsWith('https://lrc.red/s/')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 // Line-timed TTML: <p> rows without word spans.
-                data:
-                    '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
+                data: '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
                     '<p begin="00:09.73" end="00:12.00">The club</p>'
                     '<p begin="00:15.12" end="00:18.00">So the bar</p>'
-                    '</div></body></tt>',
-              ),
-            );
+                    '</div></body></tt>'));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );

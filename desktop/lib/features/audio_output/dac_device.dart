@@ -32,7 +32,8 @@ class DacDevice {
   String get mpvDeviceName =>
       id.isEmpty ? 'auto' : (id.startsWith('wasapi/') ? id : 'wasapi/$id');
 
-  bool supports(PcmFormat format) => formats.any((f) => f.matches(format));
+  bool supports(PcmFormat format) =>
+      formats.any((f) => f.matches(format));
 
   String get supportedSummary {
     if (formats.isEmpty) return 'No exclusive PCM formats reported';
@@ -41,14 +42,10 @@ class DacDevice {
       byDepth.putIfAbsent(f.bitDepth, () => []).add(f.sampleRateHz);
     }
     final depths = byDepth.keys.toList()..sort();
-    return depths
-        .map((d) {
-          final rates = (byDepth[d]!..sort())
-              .map(PcmFormat.rateLabel)
-              .join(' / ');
-          return '$d-bit: $rates';
-        })
-        .join('\n');
+    return depths.map((d) {
+      final rates = (byDepth[d]!..sort()).map(PcmFormat.rateLabel).join(' / ');
+      return '$d-bit: $rates';
+    }).join('\n');
   }
 
   factory DacDevice.fromJson(Map<dynamic, dynamic> json) {

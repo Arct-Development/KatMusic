@@ -19,13 +19,14 @@ void main() {
       PcmFormat(sampleRateHz: 176400, bitDepth: 24),
       PcmFormat(sampleRateHz: 192000, bitDepth: 24),
     ],
-  }) => DacDevice(
-    id: 'dac',
-    name: 'FiiO K7',
-    exclusiveSupported: exclusive,
-    hardwareVolume: true,
-    formats: formats,
-  );
+  }) =>
+      DacDevice(
+        id: 'dac',
+        name: 'FiiO K7',
+        exclusiveSupported: exclusive,
+        hardwareVolume: true,
+        formats: formats,
+      );
 
   group('native format match', () {
     test('16/44.1 stays 16/44.1', () {
@@ -88,12 +89,10 @@ void main() {
       const source = PcmFormat(sampleRateHz: 44100, bitDepth: 24);
       final d = negotiator.negotiate(
         source: source,
-        device: dac(
-          formats: const [
-            PcmFormat(sampleRateHz: 48000, bitDepth: 24),
-            PcmFormat(sampleRateHz: 96000, bitDepth: 24),
-          ],
-        ),
+        device: dac(formats: const [
+          PcmFormat(sampleRateHz: 48000, bitDepth: 24),
+          PcmFormat(sampleRateHz: 96000, bitDepth: 24),
+        ]),
         exclusiveRequested: true,
       );
       expect(d.nativeMatch, isFalse);
@@ -126,10 +125,10 @@ void main() {
 
   group('bit-perfect state machine', () {
     FormatDecision native() => negotiator.negotiate(
-      source: const PcmFormat(sampleRateHz: 96000, bitDepth: 24),
-      device: dac(),
-      exclusiveRequested: true,
-    );
+          source: const PcmFormat(sampleRateHz: 96000, bitDepth: 24),
+          device: dac(),
+          exclusiveRequested: true,
+        );
 
     test('exclusive + native + no DSP + unity volume = bit-perfect', () {
       expect(
@@ -223,9 +222,9 @@ void main() {
       const source = PcmFormat(sampleRateHz: 44100, bitDepth: 24);
       final d = negotiator.negotiate(
         source: source,
-        device: dac(
-          formats: const [PcmFormat(sampleRateHz: 96000, bitDepth: 24)],
-        ),
+        device: dac(formats: const [
+          PcmFormat(sampleRateHz: 96000, bitDepth: 24),
+        ]),
         exclusiveRequested: true,
       );
       expect(d.resampling, isTrue);
@@ -237,9 +236,9 @@ void main() {
       const source = PcmFormat(sampleRateHz: 96000, bitDepth: 24);
       final d = negotiator.negotiate(
         source: source,
-        device: dac(
-          formats: const [PcmFormat(sampleRateHz: 192000, bitDepth: 24)],
-        ),
+        device: dac(formats: const [
+          PcmFormat(sampleRateHz: 192000, bitDepth: 24),
+        ]),
         exclusiveRequested: true,
       );
       expect(d.resampling, isTrue);
@@ -260,10 +259,10 @@ void main() {
 
   group('status reasons', () {
     FormatDecision native() => negotiator.negotiate(
-      source: const PcmFormat(sampleRateHz: 96000, bitDepth: 24),
-      device: dac(),
-      exclusiveRequested: true,
-    );
+          source: const PcmFormat(sampleRateHz: 96000, bitDepth: 24),
+          device: dac(),
+          exclusiveRequested: true,
+        );
 
     test('exclusive failure is exclusiveUnavailable', () {
       expect(
@@ -364,13 +363,11 @@ void main() {
       const source = PcmFormat(sampleRateHz: 44100, bitDepth: 24);
       final d = negotiator.negotiate(
         source: source,
-        device: dac(
-          formats: const [
-            PcmFormat(sampleRateHz: 44100, bitDepth: 16),
-            PcmFormat(sampleRateHz: 44100, bitDepth: 24),
-            PcmFormat(sampleRateHz: 44100, bitDepth: 32),
-          ],
-        ),
+        device: dac(formats: const [
+          PcmFormat(sampleRateHz: 44100, bitDepth: 16),
+          PcmFormat(sampleRateHz: 44100, bitDepth: 24),
+          PcmFormat(sampleRateHz: 44100, bitDepth: 32),
+        ]),
         exclusiveRequested: true,
       );
       expect(d.nativeMatch, isTrue);

@@ -6,13 +6,13 @@ import '../../ui/theme/tokens.dart';
 import 'output_path_status.dart';
 
 /// Compact WinUI 3 stream-path summary for Settings.
-class KatStreamPathPanel extends StatelessWidget {
+class WaveStreamPathPanel extends StatelessWidget {
   final OutputPathStatus path;
-  const KatStreamPathPanel({super.key, required this.path});
+  const WaveStreamPathPanel({super.key, required this.path});
 
   @override
   Widget build(BuildContext context) {
-    final secondary = katTextSecondary(context);
+    final secondary = waveTextSecondary(context);
     Widget row(String key, String value) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -22,7 +22,7 @@ class KatStreamPathPanel extends StatelessWidget {
               width: 72,
               child: Text(
                 key,
-                style: KatType.overline.copyWith(color: secondary),
+                style: WaveType.overline.copyWith(color: secondary),
               ),
             ),
             Expanded(
@@ -30,7 +30,7 @@ class KatStreamPathPanel extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.meta,
+                style: WaveType.meta,
               ),
             ),
           ],
@@ -48,8 +48,14 @@ class KatStreamPathPanel extends StatelessWidget {
           Platform.isWindows ? 'WASAPI' : 'Mode',
           path.exclusiveActive ? 'Exclusive' : 'Shared',
         ),
-        row('Mixer', path.exclusiveActive ? 'Bypassed' : 'In path'),
-        row('DSP', path.dspActive || path.peqActive ? 'Active' : 'Bypassed'),
+        row(
+          'Mixer',
+          path.exclusiveActive ? 'Bypassed' : 'In path',
+        ),
+        row(
+          'DSP',
+          path.dspActive || path.peqActive ? 'Active' : 'Bypassed',
+        ),
         row(
           'Volume',
           path.hardwareVolume
@@ -59,15 +65,15 @@ class KatStreamPathPanel extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           path.bitPerfect ? 'Bit-Perfect' : path.reason.label,
-          style: KatType.label.copyWith(
-            color: path.bitPerfect ? KatColors.success : KatColors.warn,
+          style: WaveType.label.copyWith(
+            color: path.bitPerfect ? WaveColors.success : WaveColors.warn,
           ),
         ),
         if (path.error != null) ...[
           const SizedBox(height: 4),
           Text(
             path.error!,
-            style: KatType.meta.copyWith(color: KatColors.danger),
+            style: WaveType.meta.copyWith(color: WaveColors.danger),
           ),
         ],
       ],

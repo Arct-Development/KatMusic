@@ -2,7 +2,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
-import '../../app/track_actions.dart' show playGenerated, relativeTime;
+import '../../app/track_actions.dart'
+    show playGenerated, relativeTime;
 import '../../features/feed/feed_repository.dart';
 import '../../features/innertube/yt_library_providers.dart';
 import '../../core/storage/prefs.dart';
@@ -14,22 +15,18 @@ import '../components/states.dart';
 import '../components/track_row.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
-final _waveHistoryProvider = FutureProvider<List<HomeTrack>>((ref) {
-  final viewing = ref.watch(viewingProfileProvider);
+final _waveHistoryProvider =
+    FutureProvider<List<HomeTrack>>((ref) {
   final home = ref.watch(homeRepositoryProvider);
   return swrLoad<List<HomeTrack>>(
     ref,
-    key: lastFmCacheKey(
-      'recent',
-      ref.read(prefsProvider).username,
-      viewing: viewing,
-    ),
+    key: lastFmCacheKey('recent', ref.read(prefsProvider).username),
     codec: homeTracksSnapshotCodec,
     group: cacheGroupLastFm,
     maxAge: lastFmCacheMaxAge,
-    fetch: () => home.fetchRecentTracks(viewingAs: viewing, limit: 100),
+    fetch: () => home.fetchRecentTracks(limit: 100),
   );
 });
 
@@ -46,24 +43,30 @@ String _dayGroup(DateTime? dt) {
 
 /// History: LAST.FM overline + count header + date groups
 /// (Today / Yesterday / Earlier) with relative timestamps.
-class KatHistoryPage extends ConsumerWidget {
-  const KatHistoryPage({super.key});
+class WaveHistoryPage extends ConsumerWidget {
+  const WaveHistoryPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(_waveHistoryProvider);
     // Signed-in YouTube Music watch history (own section below).
-    final ytTracks = ref.watch(ytHistoryProvider).value ?? const [];
+    final ytTracks =
+        ref.watch(ytHistoryProvider).value ?? const [];
     return history.when(
-      loading: () => const KatLoading(label: 'Loading history…'),
-      error: (e, _) => KatError(
+      loading: () => const WaveLoading(
+        label: 'Loading history…',
+      ),
+      error: (e, _) => WaveError(
         title: 'Could not load history',
         message: '$e',
-        onRetry: () => ref.invalidate(_waveHistoryProvider),
+        onRetry: () =>
+            ref.invalidate(_waveHistoryProvider),
       ),
       data: (tracks) {
         final playingKey = ref.watch(
-          playbackServiceProvider.select((s) => s.current?.queueKey),
+          playbackServiceProvider.select(
+            (s) => s.current?.queueKey,
+          ),
         );
         // Group by date, preserving order.
         final groups = <String, List<int>>{};
@@ -71,176 +74,208 @@ class KatHistoryPage extends ConsumerWidget {
           final t = tracks[i];
           final dt = t.timestampMillis == null
               ? null
-              : DateTime.fromMillisecondsSinceEpoch(t.timestampMillis!);
+              : DateTime.fromMillisecondsSinceEpoch(
+                  t.timestampMillis!);
           final g = _dayGroup(dt);
           (groups[g] ??= []).add(i);
         }
         final orderedGroups = [
           if (groups.containsKey('Today')) 'Today',
-          if (groups.containsKey('Yesterday')) 'Yesterday',
+          if (groups.containsKey('Yesterday'))
+            'Yesterday',
           if (groups.containsKey('Earlier')) 'Earlier',
         ];
-        return KatEntranceGroup(
+        return WaveEntranceGroup(
           child: CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-                  child: KatEntrance(
-                    rise: 10,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'LAST.FM',
-                          style: KatType.overline.copyWith(
-                            color: katAccent(context),
-                          ),
-                        ),
-                        const Text('History', style: KatType.pageTitle),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${tracks.length} scrobbles · most recent first',
-                          style: KatType.body.copyWith(
-                            color: katTextSecondary(context),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const KatTrackTableHeader(showAlbum: false),
-                      ],
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  24,
+                  20,
+                  24,
+                  4,
+                ),
+                child: WaveEntrance(
+                  rise: 10,
+                  child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LAST.FM',
+                      style: WaveType.overline.copyWith(
+                        color: waveAccent(context),
+                      ),
                     ),
+                    const Text(
+                      'History',
+                      style: WaveType.pageTitle,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${tracks.length} scrobbles · most recent first',
+                      style: WaveType.body.copyWith(
+                        color: waveTextSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const WaveTrackTableHeader(
+                      showAlbum: false,
+                    ),
+                  ],
                   ),
                 ),
               ),
-              if (tracks.isEmpty)
-                const SliverToBoxAdapter(
-                  child: KatEmpty(
-                    icon: KatIcons.history,
-                    title: 'No history yet',
-                    subtitle: 'Scrobbled tracks will appear here once you connect Last.fm.',
-                  ),
-                )
-              else
-                for (final g in orderedGroups) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 2),
-                      child: KatEntrance(
-                        index: groups[g]!.first,
-                        rise: 8,
-                        child: Text(
-                          g,
-                          style: KatType.sectionTitle.copyWith(fontSize: 13),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SuperSliverList.builder(
-                    itemCount: groups[g]!.length,
-                    itemBuilder: (context, j) {
-                      final i = groups[g]![j];
-                      final t = tracks[i];
-                      final when = t.timestampMillis == null
-                          ? ''
-                          : relativeTime(
-                              DateTime.fromMillisecondsSinceEpoch(
-                                t.timestampMillis!,
-                              ),
-                            );
-                      return KatEntrance(
-                        index: i,
-                        rise: 10,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: KatTrackRow(
-                            index: i + 1,
-                            title: t.name,
-                            artist: t.artist,
-                            artworkUrl: t.artworkUrl,
-                            meta: when,
-                            playing: playingKey == t.key,
-                            isCurrent: playingKey == t.key,
-                            onTap: () => playGenerated(
-                              ref,
-                              context,
-                              GeneratedTrack(
-                                name: t.name,
-                                artist: t.artist,
-                                artworkUrl: t.artworkUrl,
-                              ),
-                              sourceLabel: 'History',
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              if (ytTracks.isNotEmpty) ...[
+            ),
+            if (tracks.isEmpty)
+              const SliverToBoxAdapter(
+                child: WaveEmpty(
+                  icon: WaveIcons.history,
+                  title: 'No history yet',
+                  subtitle:
+                      'Scrobbled tracks will appear here once you connect Last.fm.',
+                ),
+              )
+            else
+              for (final g in orderedGroups) ...[
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 2),
-                    child: KatEntrance(
+                    padding: const EdgeInsets.fromLTRB(
+                        24, 12, 24, 2),
+                    child: WaveEntrance(
+                      index: groups[g]!.first,
                       rise: 8,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'YOUTUBE MUSIC',
-                            style: KatType.overline.copyWith(
-                              color: katAccent(context),
-                            ),
-                          ),
-                          Text(
-                            'YouTube History',
-                            style: KatType.sectionTitle.copyWith(fontSize: 13),
-                          ),
-                          Text(
-                            '${ytTracks.length} recent plays',
-                            style: KatType.body.copyWith(
-                              color: katTextSecondary(context),
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: Text(g,
+                          style: WaveType.sectionTitle
+                              .copyWith(fontSize: 13)),
                     ),
                   ),
                 ),
                 SuperSliverList.builder(
-                  itemCount: ytTracks.length.clamp(0, 100),
+                  itemCount: groups[g]!.length,
                   itemBuilder: (context, j) {
-                    final t = ytTracks[j];
-                    return KatEntrance(
-                      index: j,
+                    final i = groups[g]![j];
+                    final t = tracks[i];
+                    final when = t.timestampMillis ==
+                            null
+                        ? ''
+                        : relativeTime(
+                            DateTime
+                                .fromMillisecondsSinceEpoch(
+                              t.timestampMillis!,
+                            ),
+                          );
+                    return WaveEntrance(
+                      index: i,
                       rise: 10,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: KatTrackRow(
-                          index: j + 1,
-                          title: t.title,
-                          artist: t.artist,
-                          artworkUrl: t.artworkUrl,
-                          meta: 'YouTube Music',
-                          playing: false,
-                          isCurrent: false,
-                          onTap: () => playGenerated(
-                            ref,
-                            context,
-                            GeneratedTrack(
-                              name: t.title,
-                              artist: t.artist,
-                              artworkUrl: t.artworkUrl,
-                              videoId: t.videoId,
-                            ),
-                            sourceLabel: 'YouTube History',
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      child: WaveTrackRow(
+                        index: i + 1,
+                        title: t.name,
+                        artist: t.artist,
+                        artworkUrl: t.artworkUrl,
+                        meta: when,
+                        playing: playingKey == t.key,
+                        isCurrent: playingKey == t.key,
+                        onTap: () => playGenerated(
+                          ref,
+                          context,
+                          GeneratedTrack(
+                            name: t.name,
+                            artist: t.artist,
+                            artworkUrl: t.artworkUrl,
                           ),
+                          sourceLabel: 'History',
                         ),
+                      ),
                       ),
                     );
                   },
                 ),
               ],
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            if (ytTracks.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      24, 16, 24, 2),
+                  child: WaveEntrance(
+                    rise: 8,
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'YOUTUBE MUSIC',
+                          style:
+                              WaveType.overline.copyWith(
+                            color:
+                                waveAccent(context),
+                          ),
+                        ),
+                        Text(
+                          'YouTube History',
+                          style: WaveType.sectionTitle
+                              .copyWith(fontSize: 13),
+                        ),
+                        Text(
+                          '${ytTracks.length} recent plays',
+                          style: WaveType.body.copyWith(
+                            color: waveTextSecondary(
+                                context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SuperSliverList.builder(
+                itemCount: ytTracks.length.clamp(0, 100),
+                itemBuilder: (context, j) {
+                  final t = ytTracks[j];
+                  return WaveEntrance(
+                    index: j,
+                    rise: 10,
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      child: WaveTrackRow(
+                        index: j + 1,
+                        title: t.title,
+                        artist: t.artist,
+                        artworkUrl: t.artworkUrl,
+                        meta: 'YouTube Music',
+                        playing: false,
+                        isCurrent: false,
+                        onTap: () => playGenerated(
+                          ref,
+                          context,
+                          GeneratedTrack(
+                            name: t.title,
+                            artist: t.artist,
+                            artworkUrl: t.artworkUrl,
+                            videoId: t.videoId,
+                          ),
+                          sourceLabel:
+                              'YouTube History',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 24),
+            ),
+              const WaveDockSpacer(),
             ],
           ),
         );

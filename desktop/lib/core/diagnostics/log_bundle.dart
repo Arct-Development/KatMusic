@@ -47,8 +47,7 @@ class LogBundle {
         out['crash-trail/mpv-ops.log'] = redact(_read(mirror));
       }
       final mpvLog = File(
-        '${TraceCrumb.directory}${Platform.pathSeparator}mpv.log',
-      );
+          '${TraceCrumb.directory}${Platform.pathSeparator}mpv.log');
       try {
         if (mpvLog.existsSync() && mpvLog.lengthSync() > 0) {
           out['crash-trail/mpv.log'] = redact(_read(mpvLog));

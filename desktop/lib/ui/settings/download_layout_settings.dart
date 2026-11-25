@@ -23,11 +23,11 @@ class DownloadLayoutSettings extends ConsumerWidget {
           'This does not run on its own.',
         ),
         actions: [
-          KatButton(
+          WaveButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          KatFilledButton(
+          WaveFilledButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Reorganize'),
           ),
@@ -35,9 +35,8 @@ class DownloadLayoutSettings extends ConsumerWidget {
       ),
     );
     if (go != true || !context.mounted) return;
-    final result = await ref
-        .read(downloadManagerProvider.notifier)
-        .reorganize();
+    final result =
+        await ref.read(downloadManagerProvider.notifier).reorganize();
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,
@@ -45,7 +44,7 @@ class DownloadLayoutSettings extends ConsumerWidget {
         title: const Text('Reorganize downloads'),
         content: Text('Moved ${result.moved}. Skipped ${result.skipped}.'),
         actions: [
-          KatFilledButton(
+          WaveFilledButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
           ),
@@ -62,20 +61,20 @@ class DownloadLayoutSettings extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Folder layout', style: KatType.trackTitle),
+        Text('Folder layout', style: WaveType.trackTitle),
         const SizedBox(height: 4),
         Text(
           'Applies to new downloads. Existing files stay where they are '
           'until you reorganize.',
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
         ),
         const SizedBox(height: 8),
-        KatSelect<DownloadFolderLayout>(
+        WaveSelect<DownloadFolderLayout>(
           expanded: true,
           value: current,
           options: [
             for (final layout in DownloadFolderLayout.values)
-              KatSelectOption(
+              WaveSelectOption(
                 value: layout,
                 label: layout.label,
                 hint: layout.example,
@@ -87,7 +86,7 @@ class DownloadLayoutSettings extends ConsumerWidget {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: KatButton(
+          child: WaveButton(
             onPressed: () => _reorganize(context, ref),
             child: const Text('Reorganize existing downloads'),
           ),

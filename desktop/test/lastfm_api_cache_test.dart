@@ -8,19 +8,11 @@ class _Adapter implements HttpClientAdapter {
   String body = '{"ok":1}';
 
   @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<List<int>>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<List<int>>? requestStream, Future<void>? cancelFuture) async {
     calls++;
-    return ResponseBody.fromString(
-      body,
-      200,
-      headers: {
-        Headers.contentTypeHeader: ['application/json'],
-      },
-    );
+    return ResponseBody.fromString(body, 200,
+        headers: {Headers.contentTypeHeader: ['application/json']});
   }
 
   @override

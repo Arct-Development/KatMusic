@@ -1,7 +1,9 @@
 # KatMusic Desktop
 
+**KatMusic By Arct Developments**
+
 The Windows, Linux and macOS build of KatMusic. It is a Flutter desktop player
-with YouTube Music and lossless streaming, Last.fm authentication/scrobbling,
+with YouTube Music streaming, Last.fm authentication/scrobbling,
 synced and word-by-word lyrics, downloads, local files, group Jam rooms,
 Spotify Canvas, tray controls and MPRIS/SMTC integration.
 
@@ -46,8 +48,8 @@ flutter run -d windows   # linux | macos
 ```
 
 `dart tool/obfuscate_secrets.dart` reads an optional local `.env` (copy
-`.env.example`) and writes the gitignored `lib/core/env/secrets.g.dart`. The app
-starts without addon credentials; keyed addon calls fail closed.
+`.env.example`) and writes the gitignored `lib/core/env/secrets.g.dart`. All
+public providers work without a key.
 
 Last.fm is bring-your-own-key: sign in from the welcome screen and enter your
 own API key and shared secret. They stay on this device.
@@ -69,7 +71,6 @@ packages to the matching GitHub release.
 
 - `lib/features/player`: media_kit/libmpv playback, queue, crossfade and AutoMix.
 - `lib/features/innertube`: YouTube Music browsing, library sync and playback.
-- `lib/features/lossless`: lossless/addon sources.
 - `lib/features/lyrics`: timed lyrics plus provider fallback.
 - `lib/features/jam`: synchronized listening rooms.
 - `lib/ui`: Fluent shell, Kat design tokens, Liquid Glass chrome.

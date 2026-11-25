@@ -7,9 +7,8 @@ import 'package:katmusic_desktop/features/library/yt_library_sync.dart';
 StoredTrack _t(String id, [String? name]) =>
     StoredTrack(name: name ?? 'Song $id', artist: 'A', videoId: id);
 
-Set<String> _base(Iterable<StoredTrack> tracks) => {
-  for (final t in tracks) ...baseEntries(t),
-};
+Set<String> _base(Iterable<StoredTrack> tracks) =>
+    {for (final t in tracks) ...baseEntries(t)};
 
 /// In-memory YouTube Music account.
 class _FakeTube implements InnerTubeMusicApi {
@@ -28,10 +27,10 @@ class _FakeTube implements InnerTubeMusicApi {
   YtConnection get connection => conn;
 
   YtOwnedPlaylistItem _item(String id) => YtOwnedPlaylistItem(
-    videoId: id,
-    setVideoId: 'set-$id',
-    track: YouTubeMusicTrack(videoId: id, title: 'Song $id', artist: 'A'),
-  );
+        videoId: id,
+        setVideoId: 'set-$id',
+        track: YouTubeMusicTrack(videoId: id, title: 'Song $id', artist: 'A'),
+      );
 
   @override
   Future<YtOwnedPlaylist> fetchOwnedPlaylistItems(
@@ -123,7 +122,8 @@ class _FakeTube implements InnerTubeMusicApi {
     String artist, {
     Set<String> excludedVideoIds = const {},
     bool prefetchStreams = false,
-  }) async => null;
+  }) async =>
+      null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -173,11 +173,8 @@ void main() {
       final first = planSync(local: local, remote: remote, base: const {});
       expect(first.addLocal, isEmpty);
       expect(first.addRemote, isEmpty);
-      final second = planSync(
-        local: local,
-        remote: remote,
-        base: first.nextBase,
-      );
+      final second =
+          planSync(local: local, remote: remote, base: first.nextBase);
       expect(second.removals, 0);
     });
 
@@ -291,9 +288,8 @@ void main() {
 
       final imported = repo.all.firstWhere((p) => p.title == 'From YT');
       expect(imported.tracks.map((t) => t.videoId), ['a']);
-      final uploaded = tube.lists.values.firstWhere(
-        (l) => l.title == 'From App',
-      );
+      final uploaded =
+          tube.lists.values.firstWhere((l) => l.title == 'From App');
       expect(uploaded.ids, ['b']);
 
       await repo.addTrack(imported.id, _t('c'));
@@ -301,10 +297,7 @@ void main() {
       await pass();
       expect(tube.lists['PLyt']!.ids, containsAll(['a', 'c', 'd']));
       expect(
-        repo.all
-            .firstWhere((p) => p.id == imported.id)
-            .tracks
-            .map((t) => t.videoId),
+        repo.all.firstWhere((p) => p.id == imported.id).tracks.map((t) => t.videoId),
         containsAll(['a', 'c', 'd']),
       );
 
@@ -326,11 +319,8 @@ void main() {
       await pass();
       tube.lists.remove('PLtwo');
       await pass();
-      expect(
-        repo.all.any((p) => p.title == 'Two'),
-        isTrue,
-        reason: 'one missed read is not a deletion',
-      );
+      expect(repo.all.any((p) => p.title == 'Two'), isTrue,
+          reason: 'one missed read is not a deletion');
       await pass();
       expect(repo.all.any((p) => p.title == 'Two'), isFalse);
     });

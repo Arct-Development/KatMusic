@@ -66,17 +66,13 @@ class DiagnosticsLog {
       _prune(keep: maxFiles - 1);
       previousExitClean = _previousExitClean();
       _open(rotation: 0);
-      info(
-        'session start version=$appVersion '
-        'mode=${_mode()} '
-        'os=${Platform.operatingSystem} '
-        'previous_exit=${previousExitClean ? 'clean' : 'unclean'}',
-      );
-      info(
-        'runtime dart=${Platform.version.split(' ').first} '
-        'locale=${Platform.localeName} '
-        'logs=${dir.path}',
-      );
+      info('session start version=$appVersion '
+          'mode=${_mode()} '
+          'os=${Platform.operatingSystem} '
+          'previous_exit=${previousExitClean ? 'clean' : 'unclean'}');
+      info('runtime dart=${Platform.version.split(' ').first} '
+          'locale=${Platform.localeName} '
+          'logs=${dir.path}');
     } catch (_) {
       _failed = true;
     }
@@ -186,10 +182,8 @@ class DiagnosticsLog {
     if (dir == null) return;
     _rotation = rotation;
     final suffix = rotation == 0 ? '' : '-r$rotation';
-    _file = File(
-      '${dir.path}${Platform.pathSeparator}'
-      '$_prefix$_bootStamp$suffix.log',
-    );
+    _file = File('${dir.path}${Platform.pathSeparator}'
+        '$_prefix$_bootStamp$suffix.log');
     _bytes = _file!.existsSync() ? _file!.lengthSync() : 0;
   }
 
@@ -217,10 +211,8 @@ class DiagnosticsLog {
       try {
         raf.setPositionSync(start);
         final tail = String.fromCharCodes(raf.readSync(len - start));
-        final lines = tail
-            .split('\n')
-            .where((l) => l.trim().isNotEmpty)
-            .toList();
+        final lines =
+            tail.split('\n').where((l) => l.trim().isNotEmpty).toList();
         if (lines.isEmpty) return true;
         return lines.last.contains('session end clean');
       } finally {

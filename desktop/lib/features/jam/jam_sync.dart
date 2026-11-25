@@ -23,10 +23,7 @@ final jamSyncProvider = Provider<void>((ref) {
   });
   // Becoming admin (or joining as admin) republishes the queue.
   ref.listen<JamSnapshot>(jamControllerProvider, (previous, next) {
-    final was =
-        previous != null &&
-        previous.phase == JamPhase.active &&
-        previous.isMainHost;
+    final was = previous != null && previous.phase == JamPhase.active && previous.isMainHost;
     final now = next.phase == JamPhase.active && next.isMainHost;
     if (now && !was) {
       bridge.lastQueueKey = null;
@@ -44,82 +41,10 @@ class _JamBridge {
   int lastWall = 0;
   String? lastQueueKey;
   Timer? queueTimer;
-
-  // Live position of a radio station, for snapping listeners back.
-  JamTrack? liveTrack;
-  int livePos = 0;
-  int liveWall = 0;
-  bool livePlaying = false;
-  int lastEnforce = 0;
 }
 
 bool _canControl(JamSnapshot session) =>
-    session.isHost ||
-    (session.roomMode == jamModeCollaborative && !session.radio);
-
-/// Remembers where the live station is, from every server playback event.
-void _noteLive(_JamBridge bridge, JamSnapshot session, JamRemote event) {
-  final now = _now();
-  switch (event) {
-    case JamRemoteTrack(:final track, :final isPlaying, :final positionMs):
-      bridge.liveTrack = track;
-      bridge.livePos = positionMs;
-      bridge.livePlaying = isPlaying;
-    case JamRemoteFull(
-      :final track,
-      :final isPlaying,
-      :final positionMs,
-      :final serverTimeMs,
-    ):
-      bridge.liveTrack = track;
-      bridge.livePos = positionMs + _latency(serverTimeMs);
-      bridge.livePlaying = isPlaying;
-    case JamRemotePlay(:final positionMs, :final serverTimeMs):
-      bridge.liveTrack ??= session.track;
-      bridge.livePos = positionMs + _latency(serverTimeMs);
-      bridge.livePlaying = true;
-    case JamRemotePause(:final positionMs):
-      bridge.livePos = positionMs;
-      bridge.livePlaying = false;
-    case JamRemoteSeek(:final positionMs):
-      bridge.livePos = positionMs;
-  }
-  bridge.liveWall = now;
-}
-
-/// Live-station listeners can't pause, seek or change the song: anything the
-/// local player does on its own is undone and it rejoins the live position.
-void _enforceLive(Ref ref, _JamBridge bridge, PlayerSnapshot next) {
-  final live = bridge.liveTrack;
-  final now = _now();
-  if (live == null || now < bridge.quietUntil) return;
-  if (now - bridge.lastEnforce < 1500) return;
-  final expected =
-      bridge.livePos + (bridge.livePlaying ? now - bridge.liveWall : 0);
-  final player = ref.read(playbackServiceProvider.notifier);
-  final current = next.current;
-  final sameTrack =
-      current != null &&
-      (current.videoId == live.id ||
-          current.title.toLowerCase() == live.title.toLowerCase());
-  if (!sameTrack) {
-    bridge.lastEnforce = now;
-    unawaited(
-      _change(player, next, bridge, live, bridge.livePlaying, expected),
-    );
-    return;
-  }
-  if (bridge.livePlaying && !next.isPlaying && !next.isBuffering) {
-    bridge.lastEnforce = now;
-    bridge.quietUntil = now + 800;
-    unawaited(player.playResume());
-  }
-  if ((next.position.inMilliseconds - expected).abs() > 4000) {
-    bridge.lastEnforce = now;
-    bridge.quietUntil = now + 800;
-    unawaited(player.seek(Duration(milliseconds: expected)));
-  }
-}
+    session.isHost || session.roomMode == jamModeCollaborative;
 
 String _trackKey(PlayableTrack track) =>
     track.videoId.isNotEmpty ? track.videoId : track.title;
@@ -134,7 +59,6 @@ Future<void> _apply(Ref ref, _JamBridge bridge, JamRemote event) async {
     JamRemoteTrack(:final fromUserId) => fromUserId,
     JamRemoteFull() => null,
   };
-  _noteLive(bridge, session, event);
   if (from != null && from == session.userId) return;
   final player = ref.read(playbackServiceProvider.notifier);
   final local = ref.read(playbackServiceProvider);
@@ -142,11 +66,11 @@ Future<void> _apply(Ref ref, _JamBridge bridge, JamRemote event) async {
     case JamRemoteTrack(:final track, :final isPlaying, :final positionMs):
       await _change(player, local, bridge, track, isPlaying, positionMs);
     case JamRemoteFull(
-      :final track,
-      :final isPlaying,
-      :final positionMs,
-      :final serverTimeMs,
-    ):
+        :final track,
+        :final isPlaying,
+        :final positionMs,
+        :final serverTimeMs,
+      ):
       if (track == null) return;
       final latency = _latency(serverTimeMs);
       await _change(
@@ -191,8 +115,7 @@ Future<void> _change(
   int positionMs,
 ) async {
   final current = local.current;
-  final same =
-      current != null &&
+  final same = current != null &&
       ((current.videoId.isNotEmpty && current.videoId == track.id) ||
           (current.title.toLowerCase() == track.title.toLowerCase() &&
               (current.artist.isEmpty ||
@@ -239,10 +162,6 @@ void _broadcast(
 ) {
   final session = ref.read(jamControllerProvider);
   if (session.phase != JamPhase.active) return;
-  if (session.isStationListener) {
-    _enforceLive(ref, bridge, next);
-    return;
-  }
   if (!_canControl(session)) return;
   final now = _now();
   if (now < bridge.quietUntil) return;
@@ -250,8 +169,19 @@ void _broadcast(
   if (current == null) return;
   final jam = ref.read(jamControllerProvider.notifier);
   final key = _trackKey(current);
-  final position = next.position.inMilliseconds;
+  var position = next.position.inMilliseconds;
   if (key != bridge.lastTrack) {
+    // On an automatic switch the position stream can still show the old
+    // song's end time. Guests would seek the new song to its end and play
+    // nothing, so an unchanged non-trivial position means a fresh start.
+    final prev = previous;
+    if (prev != null &&
+        prev.current != null &&
+        _trackKey(prev.current!) != key &&
+        position > 1500 &&
+        (position - prev.position.inMilliseconds).abs() < 1500) {
+      position = 0;
+    }
     bridge.lastTrack = key;
     bridge.lastPlaying = next.isPlaying;
     bridge.lastPosition = position;

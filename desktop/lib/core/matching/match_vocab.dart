@@ -1,9 +1,9 @@
-/// Shared matching vocabulary for the two YouTube/addon matchers.
+/// Shared matching vocabulary for the YouTube matchers.
 ///
-/// The Android companion (`TextMatch` + `LosslessMusicApi`) learned this
+/// The Android companion (`TextMatch`) learned this
 /// list the hard way: every version word missing here is a remix/lived/
 /// slowed variant the scorer equates with the original. Both
-/// `InnerTubeMusicApi` (penalty + variant-preference) and `AddonApi`
+/// `InnerTubeMusicApi` (penalty + variant-preference).
 /// (faithful-version gate) read these sets, so a word added once is
 /// honored on every path.
 ///
@@ -41,32 +41,11 @@ class MatchVocab {
   /// (one soundtrack released in Telugu / Hindi / Tamil under the same
   /// title and artist). Port of Native's `LANGUAGE_TOKENS`.
   static const Set<String> languageTokens = {
-    'telugu',
-    'tamil',
-    'hindi',
-    'kannada',
-    'malayalam',
-    'punjabi',
-    'marathi',
-    'gujarati',
-    'bengali',
-    'bhojpuri',
-    'odia',
-    'oriya',
-    'assamese',
-    'urdu',
-    'sanskrit',
-    'english',
-    'spanish',
-    'french',
-    'german',
-    'italian',
-    'portuguese',
-    'japanese',
-    'korean',
-    'chinese',
-    'arabic',
-    'turkish',
+    'telugu', 'tamil', 'hindi', 'kannada', 'malayalam', 'punjabi',
+    'marathi', 'gujarati', 'bengali', 'bhojpuri', 'odia', 'oriya',
+    'assamese', 'urdu', 'sanskrit', 'english', 'spanish', 'french',
+    'german', 'italian', 'portuguese', 'japanese', 'korean', 'chinese',
+    'arabic', 'turkish',
   };
 
   static final _scripts = <String, RegExp>{
@@ -104,27 +83,8 @@ class MatchVocab {
   /// upload/packaging labels and the bare feat keywords left over after
   /// the credit itself is removed. Real version billing is NOT here.
   static const Set<String> neutralWords = {
-    'explicit',
-    'clean',
-    'official',
-    'audio',
-    'video',
-    'visualizer',
-    'lyrics',
-    'lyric',
-    'lyrical',
-    'hd',
-    'hq',
-    '4k',
-    'track',
-    'music',
-    'song',
-    'songs',
-    'full',
-    'mv',
-    'ost',
-    'soundtrack',
-    'feat',
-    'ft',
+    'explicit', 'clean', 'official', 'audio', 'video', 'visualizer',
+    'lyrics', 'lyric', 'lyrical', 'hd', 'hq', '4k', 'track', 'music',
+    'song', 'songs', 'full', 'mv', 'ost', 'soundtrack', 'feat', 'ft',
   };
 }

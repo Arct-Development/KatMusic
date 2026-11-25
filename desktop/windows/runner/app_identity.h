@@ -14,3 +14,4 @@
 constexpr wchar_t kKatMusicAppUserModelId[] = L"com.itzfallenme.katmusic.desktop";
 
 #endif  // RUNNER_APP_IDENTITY_H_
+

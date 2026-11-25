@@ -1,4 +1,4 @@
-/// 10-band Equalizer models and presets ported from KatMusic-Native.
+/// 10-band Equalizer models and presets ported from KatMusic.
 ///
 /// Center frequencies map directly to the ISO octave bands. Gain range is
 /// ±8 dB to guarantee clean, unclipped, audiophile-grade output.
@@ -29,235 +29,99 @@ class EqPreset {
   const EqPreset(this.name, this.gainsDb);
 }
 
-/// Listening-tested curves from KatMusic-Native.
+/// Listening-tested curves from KatMusic.
 class EqualizerPresets {
   EqualizerPresets._();
 
   static const String customName = 'Custom';
 
-  static const flat = EqPreset('Default', [
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-  ]);
+  static const flat = EqPreset(
+    'Default',
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  );
 
   /// Crystal-open audiophile reference curve for Studio Master Clarity.
   /// Tight, controlled sub-bass depth, deliberate low-mid dip that removes
   /// congestion, natural vocal body, presence lift and a silky air shelf.
-  static const studioMaster = EqPreset('Studio Master', [
-    2.7,
-    2.2,
-    0.6,
-    -2.6,
-    -0.6,
-    1.2,
-    3.0,
-    4.0,
-    4.3,
-    4.8,
-  ]);
+  static const studioMaster = EqPreset(
+    'Studio Master',
+    [2.7, 2.2, 0.6, -2.6, -0.6, 1.2, 3.0, 4.0, 4.3, 4.8],
+  );
 
-  static const vocalClarity = EqPreset('Vocal Clarity', [
-    -1.2,
-    -0.5,
-    0.0,
-    1.0,
-    2.5,
-    3.5,
-    2.8,
-    2.0,
-    1.5,
-    1.0,
-  ]);
+  static const vocalClarity = EqPreset(
+    'Vocal Clarity',
+    [-1.2, -0.5, 0.0, 1.0, 2.5, 3.5, 2.8, 2.0, 1.5, 1.0],
+  );
 
-  static const deepBassClean = EqPreset('Deep Bass Clean', [
-    4.8,
-    3.5,
-    2.5,
-    0.0,
-    -0.5,
-    0.0,
-    0.0,
-    0.0,
-    0.5,
-    0.5,
-  ]);
+  static const deepBassClean = EqPreset(
+    'Deep Bass Clean',
+    [4.8, 3.5, 2.5, 0.0, -0.5, 0.0, 0.0, 0.0, 0.5, 0.5],
+  );
 
-  static const rock = EqPreset('Rock', [
-    3.8,
-    3.0,
-    1.5,
-    -1.0,
-    -0.8,
-    0.5,
-    2.0,
-    3.0,
-    3.8,
-    4.0,
-  ]);
+  static const rock = EqPreset(
+    'Rock',
+    [3.8, 3.0, 1.5, -1.0, -0.8, 0.5, 2.0, 3.0, 3.8, 4.0],
+  );
 
-  static const pop = EqPreset('Pop', [
-    -0.8,
-    0.0,
-    1.0,
-    2.0,
-    1.8,
-    1.0,
-    0.5,
-    1.0,
-    1.8,
-    2.5,
-  ]);
+  static const pop = EqPreset(
+    'Pop',
+    [-0.8, 0.0, 1.0, 2.0, 1.8, 1.0, 0.5, 1.0, 1.8, 2.5],
+  );
 
-  static const electronic = EqPreset('Electronic', [
-    4.2,
-    3.0,
-    2.0,
-    -0.5,
-    0.5,
-    2.0,
-    2.5,
-    2.5,
-    3.2,
-    4.0,
-  ]);
+  static const electronic = EqPreset(
+    'Electronic',
+    [4.2, 3.0, 2.0, -0.5, 0.5, 2.0, 2.5, 2.5, 3.2, 4.0],
+  );
 
-  static const rnb = EqPreset('R&B', [
-    4.8,
-    3.5,
-    2.0,
-    -0.5,
-    -0.8,
-    0.5,
-    1.8,
-    2.5,
-    3.0,
-    3.0,
-  ]);
+  static const rnb = EqPreset(
+    'R&B',
+    [4.8, 3.5, 2.0, -0.5, -0.8, 0.5, 1.8, 2.5, 3.0, 3.0],
+  );
 
-  static const acoustic = EqPreset('Acoustic', [
-    2.8,
-    2.0,
-    1.5,
-    1.0,
-    1.8,
-    2.0,
-    1.2,
-    1.0,
-    1.2,
-    1.5,
-  ]);
+  static const acoustic = EqPreset(
+    'Acoustic',
+    [2.8, 2.0, 1.5, 1.0, 1.8, 2.0, 1.2, 1.0, 1.2, 1.5],
+  );
 
-  static const classical = EqPreset('Classical', [
-    2.8,
-    2.0,
-    1.5,
-    0.0,
-    0.0,
-    0.5,
-    1.8,
-    2.0,
-    2.8,
-    3.0,
-  ]);
+  static const classical = EqPreset(
+    'Classical',
+    [2.8, 2.0, 1.5, 0.0, 0.0, 0.5, 1.8, 2.0, 2.8, 3.0],
+  );
 
-  static const jazz = EqPreset('Jazz', [
-    2.2,
-    1.5,
-    1.0,
-    -0.5,
-    0.2,
-    1.0,
-    1.8,
-    2.0,
-    2.5,
-    2.5,
-  ]);
+  static const jazz = EqPreset(
+    'Jazz',
+    [2.2, 1.5, 1.0, -0.5, 0.2, 1.0, 1.8, 2.0, 2.5, 2.5],
+  );
 
-  static const trebleAir = EqPreset('Treble Air', [
-    0.0,
-    0.0,
-    -0.5,
-    -0.5,
-    0.2,
-    1.0,
-    1.8,
-    3.0,
-    4.0,
-    5.0,
-  ]);
+  static const trebleAir = EqPreset(
+    'Treble Air',
+    [0.0, 0.0, -0.5, -0.5, 0.2, 1.0, 1.8, 3.0, 4.0, 5.0],
+  );
 
-  static const bassBoost = EqPreset('Bass Boost', [
-    6.0,
-    5.0,
-    3.5,
-    1.5,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-  ]);
+  static const bassBoost = EqPreset(
+    'Bass Boost',
+    [6.0, 5.0, 3.5, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  );
 
-  static const warm = EqPreset('Warm', [
-    2.0,
-    2.0,
-    1.5,
-    1.0,
-    0.5,
-    0.0,
-    -0.5,
-    -1.2,
-    -2.0,
-    -2.8,
-  ]);
+  static const warm = EqPreset(
+    'Warm',
+    [2.0, 2.0, 1.5, 1.0, 0.5, 0.0, -0.5, -1.2, -2.0, -2.8],
+  );
 
-  static const bright = EqPreset('Bright', [
-    -1.0,
-    -0.5,
-    0.0,
-    0.0,
-    0.0,
-    0.5,
-    1.5,
-    3.0,
-    4.0,
-    4.5,
-  ]);
+  static const bright = EqPreset(
+    'Bright',
+    [-1.0, -0.5, 0.0, 0.0, 0.0, 0.5, 1.5, 3.0, 4.0, 4.5],
+  );
 
-  static const lateNight = EqPreset('Late Night', [
-    1.5,
-    1.0,
-    0.5,
-    0.0,
-    0.0,
-    0.5,
-    1.0,
-    1.0,
-    0.5,
-    0.0,
-  ]);
+  static const lateNight = EqPreset(
+    'Late Night',
+    [1.5, 1.0, 0.5, 0.0, 0.0, 0.5, 1.0, 1.0, 0.5, 0.0],
+  );
 
-  static const speech = EqPreset('Speech / Podcast', [
-    -4.0,
-    -3.0,
-    -1.5,
-    0.0,
-    1.5,
-    3.0,
-    3.5,
-    2.5,
-    0.5,
-    -1.0,
-  ]);
+  static const speech = EqPreset(
+    'Speech / Podcast',
+    [-4.0, -3.0, -1.5, 0.0, 1.5, 3.0, 3.5, 2.5, 0.5, -1.0],
+  );
 
   static const List<EqPreset> all = [
     flat,
@@ -341,7 +205,12 @@ class ClarityPresets {
     trimsDb: [0.0, 0.0, 0.0, 0.0, 0.0, -1.5, 0.0, -1.0],
   );
 
-  static const List<ClarityPreset> all = [reference, speaker, headphone, dac];
+  static const List<ClarityPreset> all = [
+    reference,
+    speaker,
+    headphone,
+    dac,
+  ];
 
   static ClarityPreset byKey(String key) {
     for (final p in all) {

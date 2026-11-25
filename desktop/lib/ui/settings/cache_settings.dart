@@ -26,7 +26,7 @@ const _groupLabels = {
   'playlist': 'Playlists',
   'library': 'Library',
   'lyrics': 'Lyrics',
-  'lastfm': 'Last.fm',
+  'lastfm': 'Scrobbler',
   'genre': 'Genres',
 };
 
@@ -72,7 +72,7 @@ class _CacheSettingsState extends ConsumerState<CacheSettings> {
           entries == 0
               ? 'Nothing cached yet.'
               : '$entries saved items · ${_size(chars)}',
-          style: KatType.body,
+          style: WaveType.body,
         ),
         if (groups.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -81,13 +81,13 @@ class _CacheSettingsState extends ConsumerState<CacheSettings> {
               '${_groupLabels[g] ?? g}: ${_stats[g]!.entries} '
               '(${_size(_stats[g]!.chars)}, up to '
               '${AppDatabase.cacheCaps[g] ?? AppDatabase.defaultCacheCap})',
-              style: KatType.meta.copyWith(color: katTextSecondary(context)),
+              style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
             ),
         ],
         const SizedBox(height: 10),
         Row(
           children: [
-            KatButton(
+            WaveButton(
               onPressed: entries == 0 ? null : _clear,
               child: const Text('Clear cached data'),
             ),
@@ -98,7 +98,7 @@ class _CacheSettingsState extends ConsumerState<CacheSettings> {
           'Saved copies of pages so they open instantly and refresh in the '
           'background. Clearing them only makes the next open slower once. '
           'Downloads, artwork and your library are not affected.',
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
         ),
       ],
     );

@@ -2,7 +2,7 @@
 /// Takeout, spreadsheets), M3U / M3U8 and plain text lists, read into
 /// rows before they are matched to YouTube. Pure, never throws.
 ///
-/// Port of KatMusic-Native's CsvPlaylistImporter parser so a file that
+/// Port of KatMusic's CsvPlaylistImporter parser so a file that
 /// imports on the phone imports the same way here.
 library;
 
@@ -629,7 +629,9 @@ const _urlHeaders = {
 };
 
 String _csvCell(String value) {
-  if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+  if (value.contains(',') ||
+      value.contains('"') ||
+      value.contains('\n')) {
     return '"${value.replaceAll('"', '""')}"';
   }
   return value;
@@ -651,9 +653,7 @@ String exportPlaylistCsv(List<PlaylistFileRow> rows) {
 String exportPlaylistM3u(String title, List<PlaylistFileRow> rows) {
   final buf = StringBuffer('#EXTM3U\n#PLAYLIST:$title\n');
   for (final row in rows) {
-    final label = row.artist.isEmpty
-        ? row.title
-        : '${row.artist} - ${row.title}';
+    final label = row.artist.isEmpty ? row.title : '${row.artist} - ${row.title}';
     buf.writeln('#EXTINF:-1,$label');
     final id = row.videoId ?? '';
     if (id.isNotEmpty) {

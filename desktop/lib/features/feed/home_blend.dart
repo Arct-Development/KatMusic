@@ -47,14 +47,7 @@ YtShelfTier classifyYtShelf(String title) {
   ])) {
     return YtShelfTier.personal;
   }
-  if (any(const [
-    'new release',
-    'chart',
-    'trending',
-    'top ',
-    'hits',
-    'album',
-  ])) {
+  if (any(const ['new release', 'chart', 'trending', 'top ', 'hits', 'album'])) {
     return YtShelfTier.general;
   }
   return YtShelfTier.unknown;
@@ -86,7 +79,8 @@ class HomeBlend {
 /// Shelves that do not belong on the music Home (they have their own tabs).
 bool _offTopic(String title) {
   final t = title.toLowerCase();
-  return const ['podcast', 'episode', 'short', 'audiobook'].any(t.contains);
+  return const ['podcast', 'episode', 'short', 'audiobook']
+      .any(t.contains);
 }
 
 /// The connected Home: YouTube Music's own feed, as YouTube lays it out.
@@ -106,10 +100,8 @@ HomeBlend blendHomeFeed({
   int listenAgainCount = 12,
 }) {
   final affinities = feed.tasteAffinities;
-  final maxAffinity = affinities.values.fold<double>(
-    0,
-    (m, v) => v > m ? v : m,
-  );
+  final maxAffinity =
+      affinities.values.fold<double>(0, (m, v) => v > m ? v : m);
 
   double taste(String artist) {
     if (maxAffinity <= 0 || artist.isEmpty) return 0;
@@ -122,17 +114,17 @@ HomeBlend blendHomeFeed({
     return best / maxAffinity;
   }
 
-  bool allowed(YouTubeMusicTrack t) =>
-      !excluded.contains(AppDatabase.exclusionKey(t.title, t.artist));
+  bool allowed(YouTubeMusicTrack t) => !excluded
+      .contains(AppDatabase.exclusionKey(t.title, t.artist));
 
   // Hidden tracks are the only thing removed from a shelf.
   YtHomeShelf visible(YtHomeShelf s) => YtHomeShelf(
-    title: s.title,
-    subtitle: s.subtitle,
-    tracks: s.tracks.where(allowed).toList(),
-    trackCards: s.trackCards.where(allowed).toList(),
-    entities: s.entities,
-  );
+        title: s.title,
+        subtitle: s.subtitle,
+        tracks: s.tracks.where(allowed).toList(),
+        trackCards: s.trackCards.where(allowed).toList(),
+        entities: s.entities,
+      );
 
   bool renderable(YtHomeShelf s) =>
       s.tracks.length + s.trackCards.length + s.entities.length >= minItems;
@@ -156,19 +148,18 @@ HomeBlend blendHomeFeed({
   }
 
   GeneratedTrack fromYt(YouTubeMusicTrack t) => GeneratedTrack(
-    name: t.title,
-    artist: t.artist,
-    album: t.album,
-    artworkUrl: t.artworkUrl,
-    videoId: t.videoId,
-    durationSeconds: t.durationSeconds,
-  );
+        name: t.title,
+        artist: t.artist,
+        album: t.album,
+        artworkUrl: t.artworkUrl,
+        videoId: t.videoId,
+        durationSeconds: t.durationSeconds,
+      );
 
   // Feed picks can include charts; only ones matching real taste count.
-  final tastePicks = [
-    ...feed.heavyRotation,
-    ...feed.quickPicks,
-  ].where((t) => t.artworkUrl.isNotEmpty && taste(t.artist) > 0).toList();
+  final tastePicks = [...feed.heavyRotation, ...feed.quickPicks]
+      .where((t) => t.artworkUrl.isNotEmpty && taste(t.artist) > 0)
+      .toList();
 
   // YouTube's picks as YouTube ranks them; Last.fm only when YouTube sent
   // none.
@@ -206,11 +197,11 @@ HomeBlend blendHomeFeed({
     personal: feedShelves.take(maxShelves).toList(),
     general: const [],
     artists: artists,
-    hasYouTube:
-        ytQuick.isNotEmpty || ytAgain.isNotEmpty || feedShelves.isNotEmpty,
+    hasYouTube: ytQuick.isNotEmpty ||
+        ytAgain.isNotEmpty ||
+        feedShelves.isNotEmpty,
   );
 }
-
 /// Two from [primary], one from [secondary], deduped by id and name|artist.
 List<GeneratedTrack> _interleave(
   List<GeneratedTrack> primary,

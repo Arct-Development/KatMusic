@@ -11,7 +11,7 @@ enum SpotifySignInFailure { none, unavailable, windowClosed, timeout }
 /// In-app Spotify sign-in via the system WebView (login route #1; the
 /// pasted `sp_dc` cookie is route #2).
 ///
-/// Port of KatMusic-Native `SpotifyLoginScreen`. `sp_dc` is issued by
+/// Port of KatMusic `SpotifyLoginScreen`. `sp_dc` is issued by
 /// Spotify's *authentication* response, so it only counts once the window
 /// has left the anonymous pages (login / sign-up / reset): reading it on
 /// the login page would capture a guest session that can never produce a

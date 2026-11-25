@@ -80,14 +80,14 @@ Future<void> spotifyConnectWithCookie(
             '2. Press F12 → Application (Firefox: Storage) → Cookies → '
             'https://open.spotify.com.\n'
             '3. Copy the Value of the "sp_dc" cookie and paste it below.',
-            style: KatType.meta.copyWith(
-              color: katTextSecondary(dialogContext),
+            style: WaveType.meta.copyWith(
+              color: waveTextSecondary(dialogContext),
             ),
           ),
           const SizedBox(height: 10),
           TextBox(
             controller: controller,
-            decoration: katInputDecoration(),
+            decoration: waveInputDecoration(),
             placeholder: 'sp_dc value',
             obscureText: true,
             autofocus: true,
@@ -96,11 +96,11 @@ Future<void> spotifyConnectWithCookie(
         ],
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Cancel'),
         ),
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(controller.text),
           child: const Text('Connect'),
         ),
@@ -138,7 +138,9 @@ Future<void> _finish(BuildContext context, WidgetRef ref, String cookie) async {
       await _notice(
         context,
         'Could not reach Spotify',
-        'Check your connection and try again.',
+        "KatMusic couldn't reach Spotify's sign-in service. Check your "
+            'connection, firewall or VPN, then try again. Your cookie was '
+            'not rejected.',
       );
     case SpotifySessionCheck.missing:
       await _notice(context, 'No cookie', 'Nothing was entered.');
@@ -152,7 +154,7 @@ Future<void> _notice(BuildContext context, String title, String message) {
       title: Text(title),
       content: Text(message),
       actions: [
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),

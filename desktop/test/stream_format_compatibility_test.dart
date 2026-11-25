@@ -42,19 +42,17 @@ void main() {
     await probeServer.close(force: true);
   });
 
-  test(
-    'falls back to muxed itag 18 when adaptive audio is SABR-only',
-    () async {
-      tube = build(_playerResponse());
-      final stream = await tube.resolveAudioStream('dQw4w9WgXcQ');
+  test('falls back to muxed itag 18 when adaptive audio is SABR-only',
+      () async {
+    tube = build(_playerResponse());
+    final stream = await tube.resolveAudioStream('dQw4w9WgXcQ');
 
-      expect(stream, isNotNull);
-      expect(stream!.url, contains('itag=18'));
-      expect(stream.mimeType, 'video/mp4');
-      expect(stream.audioCodec, 'AAC');
-      expect(stream.bitrateKbps, 118);
-    },
-  );
+    expect(stream, isNotNull);
+    expect(stream!.url, contains('itag=18'));
+    expect(stream.mimeType, 'video/mp4');
+    expect(stream.audioCodec, 'AAC');
+    expect(stream.bitrateKbps, 118);
+  });
 
   test('prefers a direct audio-only URL over the muxed fallback', () async {
     tube = build(_playerResponse(directAudio: true));
@@ -74,23 +72,21 @@ void main() {
     expect(stream!.url.startsWith('sabr:'), isFalse);
   });
 
-  test(
-    'downloads prefer audio-only even when muxed has higher bitrate',
-    () async {
-      final base = 'http://127.0.0.1:${probeServer.port}/media';
-      tube = build(
-        _playerResponse(
-          downloadMuxedUrl: '$base?itag=18&expire=4102444800',
-          downloadAudioUrl: '$base?itag=140&expire=4102444800',
-        ),
-      );
-      final stream = await tube.resolveDownloadStream('dQw4w9WgXcQ');
+  test('downloads prefer audio-only even when muxed has higher bitrate',
+      () async {
+    final base = 'http://127.0.0.1:${probeServer.port}/media';
+    tube = build(
+      _playerResponse(
+        downloadMuxedUrl: '$base?itag=18&expire=4102444800',
+        downloadAudioUrl: '$base?itag=140&expire=4102444800',
+      ),
+    );
+    final stream = await tube.resolveDownloadStream('dQw4w9WgXcQ');
 
-      expect(stream, isNotNull);
-      expect(stream!.url, contains('itag=140'));
-      expect(stream.mimeType, startsWith('audio/'));
-    },
-  );
+    expect(stream, isNotNull);
+    expect(stream!.url, contains('itag=140'));
+    expect(stream.mimeType, startsWith('audio/'));
+  });
 }
 
 /// One canned player response for every client. The ANDROID client is
@@ -100,48 +96,46 @@ Map<String, dynamic> _playerResponse({
   bool directAudio = false,
   String? downloadMuxedUrl,
   String? downloadAudioUrl,
-}) => {
-  'playabilityStatus': {'status': 'OK'},
-  'streamingData': {
-    'formats': [
-      {
-        'itag': 18,
-        'mimeType': 'video/mp4; codecs="avc1.42001E, mp4a.40.2"',
-        // Higher than the audio-only bitrate on purpose: the download
-        // path must still pick audio-only.
-        'bitrate': downloadMuxedUrl != null ? 400000 : 117607,
-        'url':
-            downloadMuxedUrl ??
-            'https://rr1---sn-test.googlevideo.com/videoplayback'
-                '?itag=18&expire=4102444800',
+}) =>
+    {
+      'playabilityStatus': {'status': 'OK'},
+      'streamingData': {
+        'formats': [
+          {
+            'itag': 18,
+            'mimeType': 'video/mp4; codecs="avc1.42001E, mp4a.40.2"',
+            // Higher than the audio-only bitrate on purpose: the download
+            // path must still pick audio-only.
+            'bitrate': downloadMuxedUrl != null ? 400000 : 117607,
+            'url': downloadMuxedUrl ??
+                'https://rr1---sn-test.googlevideo.com/videoplayback'
+                    '?itag=18&expire=4102444800',
+          },
+        ],
+        'adaptiveFormats': [
+          // SABR-only adaptive audio: no url, no signatureCipher.
+          {
+            'itag': 140,
+            'mimeType': 'audio/mp4; codecs="mp4a.40.2"',
+            'bitrate': 131199,
+            'url': ?downloadAudioUrl,          },
+          {
+            'itag': 251,
+            'mimeType': 'audio/webm; codecs="opus"',
+            'bitrate': 148439,
+            'url': 'sabr:https://rr1---sn-test.googlevideo.com/sabr',
+          },
+          if (directAudio)
+            {
+              'itag': 251,
+              'mimeType': 'audio/webm; codecs="opus"',
+              'bitrate': 148439,
+              'url': 'https://rr1---sn-test.googlevideo.com/videoplayback'
+                  '?itag=251&expire=4102444800',
+            },
+        ],
       },
-    ],
-    'adaptiveFormats': [
-      // SABR-only adaptive audio: no url, no signatureCipher.
-      {
-        'itag': 140,
-        'mimeType': 'audio/mp4; codecs="mp4a.40.2"',
-        'bitrate': 131199,
-        'url': ?downloadAudioUrl,
-      },
-      {
-        'itag': 251,
-        'mimeType': 'audio/webm; codecs="opus"',
-        'bitrate': 148439,
-        'url': 'sabr:https://rr1---sn-test.googlevideo.com/sabr',
-      },
-      if (directAudio)
-        {
-          'itag': 251,
-          'mimeType': 'audio/webm; codecs="opus"',
-          'bitrate': 148439,
-          'url':
-              'https://rr1---sn-test.googlevideo.com/videoplayback'
-              '?itag=251&expire=4102444800',
-        },
-    ],
-  },
-};
+    };
 
 class _PlayerAdapter implements HttpClientAdapter {
   _PlayerAdapter(this.playerResponse);

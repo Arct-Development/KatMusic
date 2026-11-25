@@ -4,11 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/features/library/playlist_link.dart';
 
-String _fixture(String name) => File('test/fixtures/$name').readAsStringSync();
+String _fixture(String name) =>
+    File('test/fixtures/$name').readAsStringSync();
 
 void main() {
   test('Spotify embed parses title and deduped rows', () {
-    final page = parseSpotifyEmbed(_fixture('spotify_embed_sample.html'));
+    final page =
+        parseSpotifyEmbed(_fixture('spotify_embed_sample.html'));
     expect(page.source, PlaylistLinkSource.spotify);
     expect(page.title, 'Sample & Mix');
     expect(page.rows.length, 2);
@@ -38,8 +40,7 @@ void main() {
   });
 
   test('Apple tier 2 fallback yields artist-less rows', () {
-    const html =
-        '<script id=schema:music-playlist type="application/ld+json">'
+    const html = '<script id=schema:music-playlist type="application/ld+json">'
         '{"@type":"MusicPlaylist","name":"Fallback Mix","track":['
         '{"@type":"MusicRecording","name":"Gamma Song"},'
         '{"@type":"MusicRecording","name":"Gamma Song"}]}</script>'
@@ -65,44 +66,30 @@ void main() {
           requests++;
           final url = options.uri.toString();
           if (url.contains('spotify.com/embed')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: _fixture('spotify_embed_sample.html'),
-              ),
-            );
+                data: _fixture('spotify_embed_sample.html')));
             return;
           }
           if (url.contains('music.apple.com')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: _fixture('apple_playlist_sample.html'),
-              ),
-            );
+                data: _fixture('apple_playlist_sample.html')));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );
     final spotify = await fetchSpotifyPlaylist(
-      dio,
-      'https://open.spotify.com/playlist/ABC123',
-    );
+        dio, 'https://open.spotify.com/playlist/ABC123');
     expect(spotify.title, 'Sample & Mix');
     expect(spotify.rows.length, 2);
     final apple = await fetchApplePlaylist(
-      dio,
-      'https://music.apple.com/us/playlist/sample/pl.abc123',
-    );
+        dio, 'https://music.apple.com/us/playlist/sample/pl.abc123');
     expect(apple.title, 'Sample Hits');
     expect(apple.rows.length, 2);
     expect(requests, 2);
@@ -119,42 +106,32 @@ void main() {
           if (url.contains('spotify.link/XYZ')) {
             // Short link: Dio follows the HTTP redirect; the canonical
             // playlist id comes from the final URI.
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: RequestOptions(
-                  path: 'https://open.spotify.com/playlist/ABC123?si=x',
-                ),
+                    path:
+                        'https://open.spotify.com/playlist/ABC123?si=x'),
                 statusCode: 200,
-                data: 'redirect landing',
-              ),
-            );
+                data: 'redirect landing'));
             return;
           }
           if (url.contains('spotify.com/embed/playlist/ABC123')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: _fixture('spotify_embed_sample.html'),
-              ),
-            );
+                data: _fixture('spotify_embed_sample.html')));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.badResponse,
-              response: Response(requestOptions: options, statusCode: 404),
-            ),
-          );
+          handler.reject(DioException(
+            requestOptions: options,
+            type: DioExceptionType.badResponse,
+            response:
+                Response(requestOptions: options, statusCode: 404),
+          ));
         },
       ),
     );
     // Short URL resolves through the redirect to the real playlist.
-    final viaShort = await fetchSpotifyPlaylist(
-      dio,
-      'https://spotify.link/XYZ',
-    );
+    final viaShort = await fetchSpotifyPlaylist(dio, 'https://spotify.link/XYZ');
     expect(viaShort.title, 'Sample & Mix');
     expect(viaShort.rows.length, 2);
     await expectLater(

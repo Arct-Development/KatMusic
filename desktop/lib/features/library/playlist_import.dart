@@ -1,4 +1,4 @@
-/// Playlist link import flow: preview a pasted link (YouTube direct,
+﻿/// Playlist link import flow: preview a pasted link (YouTube direct,
 /// Spotify/Apple matched to YouTube) and create the local playlist.
 ///
 /// Narrow seams ([PlaylistTrackSource], [PlaylistWriter]) keep the core
@@ -62,10 +62,12 @@ class _PlaylistWriterOf implements PlaylistWriter {
   _PlaylistWriterOf(this.repo);
 
   @override
-  Future<SavedPlaylist> createCustom(String title) => repo.createCustom(title);
+  Future<SavedPlaylist> createCustom(String title) =>
+      repo.createCustom(title);
 
   @override
-  Future<bool> addTrack(int id, StoredTrack track) => repo.addTrack(id, track);
+  Future<bool> addTrack(int id, StoredTrack track) =>
+      repo.addTrack(id, track);
 }
 
 /// Production entry point: preview what [rawLink] would import.
@@ -73,13 +75,16 @@ Future<PlaylistImportPreview> previewPlaylistLink({
   required InnerTubeMusicApi api,
   required Dio dio,
   required String rawLink,
-}) => previewPlaylistLinkWith(_InnertubeTrackSource(api), dio, rawLink);
+}) =>
+    previewPlaylistLinkWith(
+        _InnertubeTrackSource(api), dio, rawLink);
 
 /// Production entry point: create the local playlist for [preview].
 Future<SavedPlaylist> importPreview({
   required PlaylistRepository repo,
   required PlaylistImportPreview preview,
-}) => importPreviewWith(_PlaylistWriterOf(repo), preview);
+}) =>
+    importPreviewWith(_PlaylistWriterOf(repo), preview);
 
 /// Testable preview core: YouTube imports direct tracks; Spotify/Apple
 /// rows are matched to YouTube (bounded fan-out, misses dropped).
@@ -91,32 +96,37 @@ Future<PlaylistImportPreview> previewPlaylistLinkWith(
 }) async {
   final detected = detectPlaylistLink(rawLink);
   if (detected == null) {
-    throw FormatException('That does not look like a playlist link.');
+    throw FormatException(
+        'That does not look like a playlist link.');
   }
   if (detected == PlaylistLinkSource.youtube) {
-    final id = extractPlaylistId(rawLink, PlaylistLinkSource.youtube);
+    final id = extractPlaylistId(
+        rawLink, PlaylistLinkSource.youtube);
     if (id == null || id.isEmpty) {
-      throw FormatException('That does not look like a playlist link.');
+      throw FormatException(
+          'That does not look like a playlist link.');
     }
     if (id.startsWith('RD')) {
       throw FormatException(
-        'Mixes and radio cannot be imported. Paste a playlist link instead.',
-      );
+          'Mixes and radio cannot be imported. Paste a playlist link instead.');
     }
     YouTubePlaylistResult? fetched;
     try {
-      fetched = await source.fetchPlaylist(rawLink).timeout(fetchTimeout);
+      fetched = await source
+          .fetchPlaylist(rawLink)
+          .timeout(fetchTimeout);
     } on TimeoutException {
       throw StateError(
-        'Could not load that YouTube playlist. Check the link is public and try again.',
-      );
+          'Could not load that YouTube playlist. Check the link is public and try again.');
     }
     final tracks = fetched?.tracks ?? const [];
     if (tracks.isEmpty) {
       throw StateError('No playable tracks found in that playlist.');
     }
     return PlaylistImportPreview(
-      title: fetched!.title.isNotEmpty ? fetched.title : 'YouTube Playlist',
+      title: fetched!.title.isNotEmpty
+          ? fetched.title
+          : 'YouTube Playlist',
       totalRows: tracks.length,
       matchedTracks: [
         for (final t in tracks)
@@ -142,7 +152,8 @@ Future<PlaylistImportPreview> previewPlaylistLinkWith(
       PlaylistFileRow(title: row.title, artist: row.artist),
   ]);
   if (matched.isEmpty) {
-    throw StateError('No playable tracks found in that playlist.');
+    throw StateError(
+        'No playable tracks found in that playlist.');
   }
   return PlaylistImportPreview(
     title: page.title,
@@ -156,7 +167,8 @@ Future<PlaylistImportPreview> previewPlaylistFile({
   required InnerTubeMusicApi api,
   required List<int> bytes,
   required String filename,
-}) => previewPlaylistFileWith(_InnertubeTrackSource(api), bytes, filename);
+}) =>
+    previewPlaylistFileWith(_InnertubeTrackSource(api), bytes, filename);
 
 /// Testable file core: rows with a YouTube id resolve by id, the rest are
 /// matched like Spotify/Apple rows; repeated rows count once.
@@ -166,18 +178,16 @@ Future<PlaylistImportPreview> previewPlaylistFileWith(
   String filename,
 ) async {
   final seen = <String>{};
-  final rows = parsePlaylistFile(
-    decodePlaylistBytes(bytes),
-    filename,
-  ).where((r) => seen.add(r.identity)).toList();
+  final rows = parsePlaylistFile(decodePlaylistBytes(bytes), filename)
+      .where((r) => seen.add(r.identity))
+      .toList();
   if (rows.isEmpty) {
     throw const FormatException('No tracks found in that file.');
   }
   final ids = <String>{};
-  final matched = (await _matchRows(
-    source,
-    rows,
-  )).where((t) => ids.add(t.videoId)).toList();
+  final matched = (await _matchRows(source, rows))
+      .where((t) => ids.add(t.videoId))
+      .toList();
   if (matched.isEmpty) {
     throw StateError('No playable tracks found in that file.');
   }
@@ -196,39 +206,35 @@ Future<List<StoredTrack>> _matchRows(
   final matched = <StoredTrack>[];
   for (var i = 0; i < rows.length; i += 5) {
     final chunk = rows.skip(i).take(5).toList();
-    final results = await Future.wait(
-      chunk.map((row) async {
-        try {
-          final id = row.videoId;
-          if (id != null) {
-            final byId = await source
-                .fetchSong(id)
-                .timeout(const Duration(seconds: 10), onTimeout: () => null);
-            if (byId != null && byId.videoId == id) return byId;
-          }
-          if (row.title.isEmpty) return null;
-          return await source
-              .findMatch(row.title, row.artist)
+    final results = await Future.wait(chunk.map((row) async {
+      try {
+        final id = row.videoId;
+        if (id != null) {
+          final byId = await source
+              .fetchSong(id)
               .timeout(const Duration(seconds: 10), onTimeout: () => null);
-        } catch (_) {
-          return null;
+          if (byId != null && byId.videoId == id) return byId;
         }
-      }),
-    );
+        if (row.title.isEmpty) return null;
+        return await source
+            .findMatch(row.title, row.artist)
+            .timeout(const Duration(seconds: 10), onTimeout: () => null);
+      } catch (_) {
+        return null;
+      }
+    }));
     for (var j = 0; j < chunk.length; j++) {
       final match = results[j];
       if (match == null) continue;
       final row = chunk[j];
-      matched.add(
-        StoredTrack(
-          name: row.title.isNotEmpty ? row.title : match.title,
-          artist: row.artist.isNotEmpty ? row.artist : match.artist,
-          artworkUrl: match.artworkUrl,
-          videoId: match.videoId,
-          album: row.album ?? match.album,
-          durationSeconds: match.durationSeconds,
-        ),
-      );
+      matched.add(StoredTrack(
+        name: row.title.isNotEmpty ? row.title : match.title,
+        artist: row.artist.isNotEmpty ? row.artist : match.artist,
+        artworkUrl: match.artworkUrl,
+        videoId: match.videoId,
+        album: row.album ?? match.album,
+        durationSeconds: match.durationSeconds,
+      ));
     }
   }
   return matched;
@@ -249,3 +255,4 @@ Future<SavedPlaylist> importPreviewWith(
   }
   return created;
 }
+

@@ -21,10 +21,14 @@ void main() {
 
   test('runGuardedAsync swallows async throws and reports them', () async {
     String? reported;
-    final result = await runGuardedAsync<String>('async-scope', () async {
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-      throw ArgumentError('async boom');
-    }, onError: (line) => reported = line);
+    final result = await runGuardedAsync<String>(
+      'async-scope',
+      () async {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        throw ArgumentError('async boom');
+      },
+      onError: (line) => reported = line,
+    );
     expect(result, isNull);
     expect(reported, contains('async-scope'));
     expect(reported, contains('async boom'));

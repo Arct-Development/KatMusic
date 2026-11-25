@@ -17,14 +17,15 @@ PlayerSnapshot _snap({
   Duration position = Duration.zero,
   Duration duration = const Duration(minutes: 3),
   double speed = 1.0,
-}) => PlayerSnapshot(
-  current: current,
-  isPlaying: isPlaying,
-  isBuffering: isBuffering,
-  position: position,
-  duration: duration,
-  speed: speed,
-);
+}) =>
+    PlayerSnapshot(
+      current: current,
+      isPlaying: isPlaying,
+      isBuffering: isBuffering,
+      position: position,
+      duration: duration,
+      speed: speed,
+    );
 
 void main() {
   group('smtcStatusFor', () {
@@ -34,11 +35,11 @@ void main() {
 
     test('playing / paused / buffering map distinctly', () {
       expect(smtcStatusFor(_snap()), smtcStatusPlaying);
-      expect(smtcStatusFor(_snap(isPlaying: false)), smtcStatusPaused);
       expect(
-        smtcStatusFor(_snap(isPlaying: true, isBuffering: true)),
-        smtcStatusChanging,
-      );
+          smtcStatusFor(_snap(isPlaying: false)), smtcStatusPaused);
+      expect(
+          smtcStatusFor(_snap(isPlaying: true, isBuffering: true)),
+          smtcStatusChanging);
     });
   });
 
@@ -56,7 +57,8 @@ void main() {
 
     test('pausing freezes the shell timeline via zero rate', () {
       final before = _snap();
-      final update = smtcUpdateFor(before, _snap(isPlaying: false));
+      final update =
+          smtcUpdateFor(before, _snap(isPlaying: false));
       expect(update, isNotNull);
       expect(update!['status'], smtcStatusPaused);
       expect(update['rate'], 0.0);
@@ -64,9 +66,8 @@ void main() {
 
     test('identical ticks do not push (shell extrapolates)', () {
       final before = _snap(position: const Duration(seconds: 10));
-      final same = _snap(
-        position: const Duration(seconds: 10, milliseconds: 500),
-      );
+      final same =
+          _snap(position: const Duration(seconds: 10, milliseconds: 500));
       expect(smtcUpdateFor(before, same), isNull);
     });
 
@@ -79,7 +80,8 @@ void main() {
     });
 
     test('track end clears to stopped without track flags', () {
-      final update = smtcUpdateFor(_snap(), const PlayerSnapshot());
+      final update = smtcUpdateFor(
+          _snap(), const PlayerSnapshot());
       expect(update, isNotNull);
       expect(update!['status'], smtcStatusStopped);
       expect(update['hasTrack'], isFalse);

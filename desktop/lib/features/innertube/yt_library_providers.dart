@@ -15,9 +15,8 @@ import 'innertube_api.dart';
 /// copy at once and refreshes behind it. Later invalidations (a like, a
 /// sync, the session keeper) fetch for real — callers that invalidate want
 /// the new truth, not the snapshot.
-final ytLikedSongsProvider = FutureProvider<List<YouTubeMusicTrack>>((
-  ref,
-) async {
+final ytLikedSongsProvider =
+    FutureProvider<List<YouTubeMusicTrack>>((ref) async {
   final conn = ref.watch(ytConnectionProvider);
   if (!conn.connected) {
     return const [];
@@ -33,7 +32,8 @@ final ytLikedSongsProvider = FutureProvider<List<YouTubeMusicTrack>>((
   );
 });
 
-final ytHistoryProvider = FutureProvider<List<YouTubeMusicTrack>>((ref) async {
+final ytHistoryProvider =
+    FutureProvider<List<YouTubeMusicTrack>>((ref) async {
   final conn = ref.watch(ytConnectionProvider);
   if (!conn.connected) {
     return const [];
@@ -49,23 +49,22 @@ final ytHistoryProvider = FutureProvider<List<YouTubeMusicTrack>>((ref) async {
   );
 });
 
-final ytAccountPlaylistsProvider = FutureProvider<List<YouTubePlaylistSummary>>(
-  (ref) async {
-    final conn = ref.watch(ytConnectionProvider);
-    if (!conn.connected) {
-      return const [];
-    }
-    final tube = ref.watch(innerTubeProvider);
-    return swrLoad<List<YouTubePlaylistSummary>>(
-      ref,
-      key: libraryCacheKey('playlists', conn),
-      codec: ytPlaylistSummariesSnapshotCodec,
-      group: cacheGroupLibrary,
-      maxAge: libraryCacheMaxAge,
-      fetch: tube.fetchAccountPlaylists,
-    );
-  },
-);
+final ytAccountPlaylistsProvider =
+    FutureProvider<List<YouTubePlaylistSummary>>((ref) async {
+  final conn = ref.watch(ytConnectionProvider);
+  if (!conn.connected) {
+    return const [];
+  }
+  final tube = ref.watch(innerTubeProvider);
+  return swrLoad<List<YouTubePlaylistSummary>>(
+    ref,
+    key: libraryCacheKey('playlists', conn),
+    codec: ytPlaylistSummariesSnapshotCodec,
+    group: cacheGroupLibrary,
+    maxAge: libraryCacheMaxAge,
+    fetch: tube.fetchAccountPlaylists,
+  );
+});
 
 /// Signed-in account identity, scoped to the ACTIVE channel: the
 /// brand page ID rides along so switching channels swaps the card
@@ -85,7 +84,8 @@ final ytAccountProvider = FutureProvider<YtAccount?>((ref) async {
 /// the personalized "For you" surface, and an anonymous call returns
 /// generic trending shelves that would just duplicate Discover. Empty
 /// on any failure, so the Home page simply omits the section.
-final ytHomeShelvesProvider = FutureProvider<List<YtHomeShelf>>((ref) async {
+final ytHomeShelvesProvider =
+    FutureProvider<List<YtHomeShelf>>((ref) async {
   final conn = ref.watch(ytConnectionProvider);
   if (!conn.connected) {
     return const [];
@@ -105,23 +105,26 @@ final ytHomeShelvesProvider = FutureProvider<List<YtHomeShelf>>((ref) async {
   );
 });
 
+
+
 /// Full track list for one YouTube Music playlist (own, liked, or
 /// public). Null when the fetch fails — the page renders an error.
 ///
 /// Stale-while-revalidate over a per-identity snapshot, so reopening a
 /// playlist from an earlier session shows its tracks straight away.
 final ytPlaylistDetailProvider =
-    FutureProvider.family<YouTubePlaylistResult?, String>((ref, id) async {
-      if (id.isEmpty) return null;
-      final tube = ref.watch(innerTubeProvider);
-      final conn = ref.watch(ytConnectionProvider);
-      final result = await swrLoad<YouTubePlaylistResult>(
-        ref,
-        key: playlistCacheKey(id, conn),
-        codec: ytPlaylistResultSnapshotCodec,
-        group: cacheGroupPlaylist,
-        maxAge: libraryCacheMaxAge,
-        fetch: () async => await tube.fetchPlaylist(id) ?? noPlaylistResult,
-      );
-      return result.tracks.isEmpty && result.id.isEmpty ? null : result;
-    });
+    FutureProvider.family<YouTubePlaylistResult?, String>(
+        (ref, id) async {
+  if (id.isEmpty) return null;
+  final tube = ref.watch(innerTubeProvider);
+  final conn = ref.watch(ytConnectionProvider);
+  final result = await swrLoad<YouTubePlaylistResult>(
+    ref,
+    key: playlistCacheKey(id, conn),
+    codec: ytPlaylistResultSnapshotCodec,
+    group: cacheGroupPlaylist,
+    maxAge: libraryCacheMaxAge,
+    fetch: () async => await tube.fetchPlaylist(id) ?? noPlaylistResult,
+  );
+  return result.tracks.isEmpty && result.id.isEmpty ? null : result;
+});

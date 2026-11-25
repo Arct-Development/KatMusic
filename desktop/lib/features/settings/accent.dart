@@ -15,7 +15,7 @@ enum AccentSource {
   /// The colour picked in Settings ([Prefs.accentColor]).
   custom('custom', 'Custom colour'),
 
-  /// The KatMusic brand blue ([KatColors.defaultAccent]).
+  /// The KatMusic brand blue ([WaveColors.defaultAccent]).
   katmusic('katmusic', 'KatMusic Blue'),
 
   /// The desktop environment's accent ([SystemAccent]).
@@ -30,12 +30,12 @@ enum AccentSource {
   final String label;
 
   static AccentSource fromId(String? id) => switch (id) {
-    'katmusic' => AccentSource.katmusic,
-    'lastwave' => AccentSource.katmusic, // legacy stored id
-    'system' => AccentSource.system,
-    'artwork' => AccentSource.artwork,
-    _ => AccentSource.custom,
-  };
+        'katmusic' => AccentSource.katmusic,
+        'lastwave' => AccentSource.katmusic, // legacy stored id
+        'system' => AccentSource.system,
+        'artwork' => AccentSource.artwork,
+        _ => AccentSource.custom,
+      };
 }
 
 /// The accent the app paints with, plus how it was obtained — the Settings
@@ -60,8 +60,8 @@ class AccentResolution {
   });
 
   static const fallback = AccentResolution(
-    source: AccentSource.custom,
-    color: KatColors.defaultAccent,
+    source: AccentSource.katmusic,
+    color: WaveColors.defaultAccent,
     resolved: true,
   );
 }
@@ -75,11 +75,7 @@ class AccentResolution {
 /// the caller then keeps the custom accent rather than tinting the whole
 /// chrome with a mud colour.
 Color? accentFromPalette(ArtworkPalette palette) {
-  for (final candidate in [
-    palette.vibrant,
-    palette.primary,
-    palette.lightVibrant,
-  ]) {
+  for (final candidate in [palette.vibrant, palette.primary, palette.lightVibrant]) {
     final hsl = HSLColor.fromColor(candidate);
     if (hsl.saturation < 0.18) continue;
     if (hsl.lightness < 0.12 || hsl.lightness > 0.9) continue;
@@ -132,11 +128,15 @@ final accentResolutionProvider = Provider<AccentResolution>((ref) {
   final source = AccentSource.fromId(theme.accentSource);
   switch (source) {
     case AccentSource.custom:
-      return AccentResolution(source: source, color: custom, resolved: true);
+      return AccentResolution(
+        source: source,
+        color: custom,
+        resolved: true,
+      );
     case AccentSource.katmusic:
       return const AccentResolution(
         source: AccentSource.katmusic,
-        color: KatColors.defaultAccent,
+        color: WaveColors.defaultAccent,
         resolved: true,
       );
     case AccentSource.system:
@@ -155,3 +155,59 @@ final accentResolutionProvider = Provider<AccentResolution>((ref) {
       );
   }
 });
+
+/// Dark surface base for the Artwork theme, taken from a cover's palette.
+///
+/// Always a dark base (the theme never flips to light between songs, and
+/// [WaveSurfaces.fromCustomBase] keeps text at WCAG AA on it). The hue comes
+/// from the first palette tone with real colour; a grey cover gives a near-
+/// neutral graphite instead of a muddy tint.
+Color themeBaseFromPalette(ArtworkPalette palette) {
+  var pick = palette.primary;
+  for (final c in [palette.primary, palette.darkMuted, palette.vibrant]) {
+    if (HSLColor.fromColor(c).saturation >= 0.18) {
+      pick = c;
+      break;
+    }
+  }
+  final hsl = HSLColor.fromColor(pick);
+  return hsl
+      .withSaturation(hsl.saturation.clamp(0.0, 0.5))
+      .withLightness(0.13)
+      .toColor();
+}
+
+// shortcut: one app-wide "last cover tint" so a track change keeps the old
+// tint while the new palette loads (no flash back to Midnight); move into
+// provider state if more than one artwork theme consumer ever needs it.
+Color? _lastArtworkBase;
+
+/// Surfaces for the Artwork theme, or null when it is off or nothing is
+/// playing (Midnight then). Same isolate-backed palette pipeline as the
+/// artwork accent, so this costs nothing Now Playing isn't already paying.
+final artworkSurfacesProvider = Provider<WaveSurfaces?>((ref) {
+  final on = ref.watch(themeControllerProvider.select((t) => t.isArtwork));
+  if (!on) return null;
+  final url = ref.watch(
+    playbackServiceProvider.select((s) => s.current?.artworkUrl ?? ''),
+  );
+  if (url.isEmpty) {
+    _lastArtworkBase = null;
+    return null;
+  }
+  final palette = ref.watch(artworkPaletteProvider(url)).valueOrNull;
+  // Loading, or a failed extraction (`.fallback`): keep the previous tint.
+  if (palette == null || palette == ArtworkPalette.fallback) {
+    final last = _lastArtworkBase;
+    return last == null ? null : WaveSurfaces.fromCustomBase(last);
+  }
+  final base = themeBaseFromPalette(palette);
+  _lastArtworkBase = base;
+  return WaveSurfaces.fromCustomBase(base);
+});
+
+/// The generated surface palette in use (Custom or Artwork theme), or null
+/// for Midnight / Pearl.
+final paletteSurfacesProvider = Provider<WaveSurfaces?>((ref) =>
+    ref.watch(themeControllerProvider.select((t) => t.customSurfaces)) ??
+    ref.watch(artworkSurfacesProvider));

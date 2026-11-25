@@ -29,8 +29,10 @@ class LocalAudioTags {
       try {
         final headLen = length < 262144 ? length : 262144;
         final head = raf.readSync(headLen);
-        tags =
-            _id3v2(head) ?? _flac(head) ?? _mp4(head) ?? const LocalAudioTags();
+        tags = _id3v2(head) ??
+            _flac(head) ??
+            _mp4(head) ??
+            const LocalAudioTags();
         if (tags.title.isEmpty && length > 128) {
           raf.setPositionSync(length - 128);
           final tail = raf.readSync(128);
@@ -121,7 +123,8 @@ class LocalAudioTags {
         if (id == 'TIT2' && title.isEmpty) title = text;
         if (id == 'TPE1' && artist.isEmpty) artist = text;
         if (id == 'TALB' && album.isEmpty) album = text;
-        if (year.isEmpty && (id == 'TYER' || id == 'TDRC' || id == 'TDRL')) {
+        if (year.isEmpty &&
+            (id == 'TYER' || id == 'TDRC' || id == 'TDRL')) {
           year = _yearOf(text);
         }
       } else if (id == 'APIC' && cover == null) {
@@ -158,8 +161,7 @@ class LocalAudioTags {
       final header = bytes[offset];
       final last = (header & 0x80) != 0;
       final type = header & 0x7F;
-      final size =
-          (bytes[offset + 1] << 16) |
+      final size = (bytes[offset + 1] << 16) |
           (bytes[offset + 2] << 8) |
           bytes[offset + 3];
       offset += 4;
@@ -378,5 +380,6 @@ class LocalAudioTags {
         (bytes[offset + 3] << 24);
   }
 
-  static String _trim(String value) => value.replaceAll('\u0000', '').trim();
+  static String _trim(String value) =>
+      value.replaceAll('\u0000', '').trim();
 }

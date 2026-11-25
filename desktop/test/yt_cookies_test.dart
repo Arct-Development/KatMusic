@@ -4,16 +4,14 @@ import 'package:katmusic_desktop/features/innertube/innertube_api.dart';
 void main() {
   test('header string passes through normalized', () {
     final out = InnerTubeMusicApi.normalizeCookies(
-      'SID=aaa; __Secure-3PAPISID=bbb; HSID=ccc',
-    );
+        'SID=aaa; __Secure-3PAPISID=bbb; HSID=ccc');
     expect(out, contains('SID=aaa'));
     expect(out, contains('__Secure-3PAPISID=bbb'));
     expect(out, contains('HSID=ccc'));
   });
 
   test('netscape cookies.txt extracts pairs', () {
-    const txt =
-        '# Netscape HTTP Cookie File\n'
+    const txt = '# Netscape HTTP Cookie File\n'
         '.youtube.com\tTRUE\t/\tTRUE\t123\tSID\taaa\n'
         '#HttpOnly .youtube.com\tTRUE\t/\tTRUE\t123\t__Secure-3PAPISID\tbbb\n'
         '.youtube.com\tTRUE\t/\tTRUE\t123\tLOGIN_INFO\tccc\n';
@@ -39,27 +37,21 @@ void main() {
   });
 
   test('missing SAPISID throws', () {
-    expect(
-      () => InnerTubeMusicApi.normalizeCookies('SID=aaa; HSID=bbb'),
-      throwsFormatException,
-    );
+    expect(() => InnerTubeMusicApi.normalizeCookies('SID=aaa; HSID=bbb'),
+        throwsFormatException);
   });
 
   test('empty throws', () {
-    expect(
-      () => InnerTubeMusicApi.normalizeCookies('   '),
-      throwsFormatException,
-    );
+    expect(() => InnerTubeMusicApi.normalizeCookies('   '),
+        throwsFormatException);
   });
 
   group('YtMusicLikeTest parity', () {
     test('like and removeLike use the authenticated rate endpoints', () {
       expect(InnerTubeMusicApi.likeEndpoint, 'like/like');
       expect(InnerTubeMusicApi.removeLikeEndpoint, 'like/removelike');
-      expect(
-        InnerTubeMusicApi.likeEndpoint,
-        isNot(InnerTubeMusicApi.removeLikeEndpoint),
-      );
+      expect(InnerTubeMusicApi.likeEndpoint,
+          isNot(InnerTubeMusicApi.removeLikeEndpoint));
     });
 
     test('likeTarget carries only the videoId', () {

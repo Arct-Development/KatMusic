@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/lastfm_api.dart';
 import '../../core/network/lastfm_crypto.dart';
 import '../../core/storage/prefs.dart';
+import '../scrobblers/extra_scrobblers.dart';
 import 'auth_repository.dart';
 
 /// Scrobble result classification.
@@ -12,7 +13,7 @@ enum ScrobbleOutcome { success, queued, noSession, failed }
 
 /// Last.fm scrobbling repository.
 ///
-/// Ported from KatMusic-native `data/repository/ScrobbleRepository.kt`:
+/// Ported from KatMusic `data/repository/ScrobbleRepository.kt`:
 /// - `track.updateNowPlaying` (deduped) + `track.scrobble`
 /// - `track.love` / `track.unlove`
 /// - write cooldown + offline queue (max 200) flushed on next scrobble
@@ -20,17 +21,22 @@ class ScrobbleRepository {
   final LastFmApiService _api;
   final Prefs _prefs;
 
+  /// ListenBrainz / Libre.fm: every listen also goes to each connected
+  /// one, whether or not Last.fm is set up.
+  final ExtraScrobblers? _extras;
+
   String _lastNowPlayingKey = '';
   DateTime _lastWrite = DateTime.fromMillisecondsSinceEpoch(0);
   final List<Map<String, String>> _offlineQueue = [];
 
-  ScrobbleRepository(this._api, this._prefs);
+  ScrobbleRepository(this._api, this._prefs, [this._extras]);
 
   String get _apiKey => _prefs.lastFmApiKey;
   String get _apiSecret => _prefs.lastFmApiSecret;
   String get _sessionKey => _prefs.sessionKey;
 
-  bool get _canWrite => _prefs.isLastFmConfigured && _sessionKey.isNotEmpty;
+  bool get _canWrite =>
+      _prefs.isLastFmConfigured && _sessionKey.isNotEmpty;
 
   Future<Map<String, String>> _signed(
     String method,
@@ -59,7 +65,8 @@ class ScrobbleRepository {
   Future<void> _paceWrites() async {
     final elapsed = DateTime.now().difference(_lastWrite);
     if (elapsed < const Duration(milliseconds: 700)) {
-      await Future<void>.delayed(const Duration(milliseconds: 700) - elapsed);
+      await Future<void>.delayed(
+          const Duration(milliseconds: 700) - elapsed);
     }
     _lastWrite = DateTime.now();
   }
@@ -69,7 +76,12 @@ class ScrobbleRepository {
     required String track,
     String album = '',
   }) async {
-    if (!_prefs.scrobblerEnabled || !_prefs.scrobbleNowPlaying || !_canWrite) {
+    if (_prefs.scrobbleNowPlaying) {
+      _extras?.nowPlaying(Listen(artist: artist, track: track, album: album));
+    }
+    if (!_prefs.scrobblerEnabled ||
+        !_prefs.scrobbleNowPlaying ||
+        !_canWrite) {
       return ScrobbleOutcome.noSession;
     }
     final key = '${artist.toLowerCase()}|${track.toLowerCase()}';
@@ -77,13 +89,14 @@ class ScrobbleRepository {
     _lastNowPlayingKey = key;
     try {
       await _paceWrites();
-      final json = await _api.post(
-        await _signed('track.updateNowPlaying', {
+      final json = await _api.post(await _signed(
+        'track.updateNowPlaying',
+        {
           'artist': artist,
           'track': track,
           if (album.isNotEmpty) 'album': album,
-        }),
-      );
+        },
+      ));
       if (json.containsKey('error')) return ScrobbleOutcome.failed;
       return ScrobbleOutcome.success;
     } catch (_) {
@@ -98,6 +111,12 @@ class ScrobbleRepository {
     String album = '',
     required int timestampSec,
   }) async {
+    _extras?.submit(Listen(
+      artist: artist,
+      track: track,
+      album: album,
+      startedAtSec: timestampSec,
+    ));
     if (!_prefs.scrobblerEnabled) return ScrobbleOutcome.noSession;
     final entry = {
       'artist': artist,
@@ -112,14 +131,15 @@ class ScrobbleRepository {
     await _flushQueue();
     try {
       await _paceWrites();
-      final json = await _api.post(
-        await _signed('track.scrobble', {
+      final json = await _api.post(await _signed(
+        'track.scrobble',
+        {
           'artist[0]': artist,
           'track[0]': track,
           'timestamp[0]': timestampSec.toString(),
           if (album.isNotEmpty) 'album[0]': album,
-        }),
-      );
+        },
+      ));
       if (json.containsKey('error')) {
         final code = (json['error'] as num?)?.toInt();
         if (code == 29 || code == 11 || code == 16) {
@@ -143,12 +163,10 @@ class ScrobbleRepository {
     if (!_canWrite) return false;
     try {
       await _paceWrites();
-      final json = await _api.post(
-        await _signed(loved ? 'track.love' : 'track.unlove', {
-          'artist': artist,
-          'track': track,
-        }),
-      );
+      final json = await _api.post(await _signed(
+        loved ? 'track.love' : 'track.unlove',
+        {'artist': artist, 'track': track},
+      ));
       return !json.containsKey('error');
     } catch (_) {
       return false;
@@ -167,14 +185,12 @@ class ScrobbleRepository {
     for (final e in pending) {
       try {
         await _paceWrites();
-        await _api.post(
-          await _signed('track.scrobble', {
-            'artist[0]': e['artist'] ?? '',
-            'track[0]': e['track'] ?? '',
-            'timestamp[0]': e['timestamp'] ?? '',
-            if ((e['album'] ?? '').isNotEmpty) 'album[0]': e['album']!,
-          }),
-        );
+        await _api.post(await _signed('track.scrobble', {
+          'artist[0]': e['artist'] ?? '',
+          'track[0]': e['track'] ?? '',
+          'timestamp[0]': e['timestamp'] ?? '',
+          if ((e['album'] ?? '').isNotEmpty) 'album[0]': e['album']!,
+        }));
       } catch (_) {
         _enqueue(e);
         break;
@@ -189,5 +205,6 @@ final scrobbleRepositoryProvider = Provider<ScrobbleRepository>((ref) {
   return ScrobbleRepository(
     ref.watch(lastFmApiProvider),
     ref.watch(prefsProvider),
+    ref.watch(extraScrobblersProvider),
   );
 });

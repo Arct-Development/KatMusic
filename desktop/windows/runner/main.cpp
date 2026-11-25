@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <string>
+#include <fstream>
+#include <shlobj.h>
 
 #include <shobjidl.h>
 #include <timeapi.h>
@@ -15,6 +17,37 @@
 #include "utils.h"
 
 #include "app_identity.h"
+
+// Check renderer.flag or CLI flags to determine graphics engine.
+// Defaults to Skia (ImpellerSwitch::Disabled) to prevent Windows GPU memory
+// regressions, window resize leaks, and shader compilation stalls.
+bool ShouldEnableImpeller(const std::vector<std::string>& args) {
+  for (const auto& arg : args) {
+    if (arg == "--enable-impeller") return true;
+    if (arg == "--disable-impeller" || arg == "--no-enable-impeller") return false;
+  }
+  PWSTR appdata = nullptr;
+  if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appdata))) {
+    std::wstring basePath(appdata);
+    ::CoTaskMemFree(appdata);
+    std::wstring paths[] = {
+      basePath + L"\\KatMusic\\renderer.flag",
+      basePath + L"\\com.itzfallenme.katmusic\\katmusic\\renderer.flag",
+      basePath + L"\\Arct-Development\\KatMusic\\renderer.flag"
+    };
+    for (const auto& path : paths) {
+      std::ifstream file(path);
+      std::string mode;
+      if (file.is_open() && std::getline(file, mode)) {
+        while (!mode.empty() && (mode.back() == '\r' || mode.back() == ' ' || mode.back() == '\n')) {
+          mode.pop_back();
+        }
+        return mode == "impeller";
+      }
+    }
+  }
+  return false;
+}
 
 // Opt the process into dark Win32 popup menus (tray icon menu, ...).
 //
@@ -52,11 +85,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Single-instance enforcement: prevent multiple KatMusic processes from
   // launching simultaneously, which would create duplicate tray icons and
   // audio playback conflicts. If an instance is already running, activate it.
-  HANDLE hMutex = ::CreateMutexW(nullptr, TRUE, L"Local\\KatMusicSingleInstanceMutex");
+  HANDLE hMutex = ::CreateMutexW(nullptr, TRUE, L"Local\\KatMusicDesktopSingleInstanceMutex");
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     HWND existingWnd = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr);
     if (existingWnd != nullptr) {
-      ::ShowWindow(existingWnd, SW_RESTORE);
+      // SW_RESTORE would also un-maximize a visible maximized window.
+      ::ShowWindow(existingWnd, ::IsIconic(existingWnd) ? SW_RESTORE : SW_SHOW);
       ::SetForegroundWindow(existingWnd);
     }
     // A katmusic:// link on the second launch is handed to the running
@@ -103,12 +137,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
+  const bool enable_impeller = ShouldEnableImpeller(command_line_arguments);
+  project.set_impeller_switch(
+      enable_impeller ? flutter::ImpellerSwitch::Enabled
+                      : flutter::ImpellerSwitch::Disabled);
+
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
-  if (!window.Create(L"KatMusic", origin, size)) {
+  // Opens maximized (Win32Window::Show); this is the restore size:
+  // 1360x860 logical, centred on the primary work area.
+  RECT work{};
+  ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+  const double scale = ::GetDpiForSystem() / 96.0;
+  const int left = static_cast<int>((work.right - work.left) / scale - 1360) / 2;
+  const int top = static_cast<int>((work.bottom - work.top) / scale - 860) / 2;
+  Win32Window::Point origin(left > 0 ? left : 0, top > 0 ? top : 0);
+  Win32Window::Size size(1360, 860);
+  if (!window.Create(L"KatMusic By Arct Developments", origin, size)) {
     ::timeEndPeriod(1);
     return EXIT_FAILURE;
   }

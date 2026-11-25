@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:dio/dio.dart';
 import 'package:meta/meta.dart';
 
+import 'quickjs_cipher.dart';
+
 /// YouTube player signature decipher (pure Dart).
 ///
-/// Ports what KatMusic-native delegates to NewPipe's
+/// Ports what KatMusic delegates to NewPipe's
 /// `YoutubeJavaScriptPlayerManager` + `YoutubeSignatureUtils` +
 /// `YoutubeThrottlingParameterUtils`:
 /// - function discovery uses NewPipe's CURRENT patterns (call-site
@@ -22,7 +25,16 @@ import 'package:meta/meta.dart';
 /// Anything unresolvable fails that format loudly so callers fall
 /// through to the next format or client — final validity is always
 /// decided by stream probing, exactly like Android.
-enum DecipherOpType { reverse, splice, slice, swap, shift, unshift, pop, push }
+enum DecipherOpType {
+  reverse,
+  splice,
+  slice,
+  swap,
+  shift,
+  unshift,
+  pop,
+  push,
+}
 
 class DecipherOp {
   final DecipherOpType type;
@@ -57,10 +69,13 @@ class PlayerScript {
 
 class SignatureDecipher {
   final Dio _dio;
+  late final QuickJsCipherIsolate quickJs;
   final Map<String, PlayerScript> _byJsUrl = {};
   final Map<String, Map<String, String>> _nCache = {};
 
-  SignatureDecipher(this._dio);
+  SignatureDecipher(this._dio, [QuickJsCipherIsolate? quickJs]) {
+    this.quickJs = quickJs ?? QuickJsCipherIsolate(_dio);
+  }
 
   static const _webUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
@@ -69,33 +84,32 @@ class SignatureDecipher {
   /// Watch-page player info: base.js URL, mirroring NewPipe's
   /// `YoutubeJavaScriptExtractor` (embed page, `player_ias`
   /// variant — the structure NewPipe's patterns match).
-  Future<({int? sts, String? jsUrl})> playerInfo(String videoId) async {
+  Future<({int? sts, String? jsUrl})> playerInfo(
+      String videoId) async {
     String? jsUrl;
     for (final page in [
       'https://www.youtube.com/embed/$videoId',
       'https://www.youtube.com/watch?v=$videoId',
     ]) {
       try {
-        final res = await _dio
-            .get<String>(
-              page,
-              queryParameters: {'hl': 'en'},
-              options: Options(
-                headers: {
-                  'User-Agent': _webUa,
-                  'Accept-Language': 'en-US,en;q=0.9',
-                },
-                responseType: ResponseType.plain,
-              ),
-            )
-            .timeout(const Duration(seconds: 15));
+        final res = await _dio.get<String>(
+          page,
+          queryParameters: {'hl': 'en'},
+          options: Options(
+            headers: {
+              'User-Agent': _webUa,
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+            responseType: ResponseType.plain,
+          ),
+        ).timeout(const Duration(seconds: 15));
         final html = res.data ?? '';
-        final match = RegExp(r'(/s/player/[A-Za-z0-9_./-]+/base\.js)')
-            .firstMatch(html);
+        final match =
+            RegExp(r'(/s/player/[A-Za-z0-9_./-]+/base\.js)').firstMatch(html);
         jsUrl = match?.group(1);
         if (jsUrl == null) {
-          final jsonMatch = RegExp(r'"jsUrl"\s*:\s*"((?:\\.|[^"\\])*)"')
-              .firstMatch(html);
+          final jsonMatch =
+              RegExp(r'"jsUrl"\s*:\s*"((?:\\.|[^"\\])*)"').firstMatch(html);
           if (jsonMatch != null) {
             try {
               jsUrl = jsonDecode('"${jsonMatch.group(1)}"') as String?;
@@ -104,9 +118,10 @@ class SignatureDecipher {
             }
           }
         }
-        jsUrl ??= RegExp(
-          r'((?:\\?/s\\?/player\\?/[A-Za-z0-9_./\\-]+/base\.js))',
-        ).firstMatch(html)?.group(1)?.replaceAll(r'\/', '/');
+        jsUrl ??= RegExp(r'((?:\\?/s\\?/player\\?/[A-Za-z0-9_./\\-]+/base\.js))')
+            .firstMatch(html)
+            ?.group(1)
+            ?.replaceAll(r'\/', '/');
         if (jsUrl != null) break;
       } catch (_) {}
     }
@@ -121,6 +136,14 @@ class SignatureDecipher {
   }
 
   Future<int?> getSignatureTimestamp(String videoId) async {
+    if (QuickJsCipher.isAvailable) {
+      try {
+        final player = await quickJs.ensurePlayer().timeout(const Duration(seconds: 8));
+        if (player != null && player.sts > 0) {
+          return player.sts;
+        }
+      } catch (_) {}
+    }
     try {
       final script = await scriptFor(videoId)
           .timeout(const Duration(seconds: 25));
@@ -131,21 +154,22 @@ class SignatureDecipher {
   }
 
   Future<PlayerScript?> scriptFor(String videoId) async {
+    if (QuickJsCipher.isAvailable) {
+      unawaited(quickJs.ensurePlayer());
+    }
     final info = await playerInfo(videoId);
     final jsUrl = info.jsUrl;
     if (jsUrl == null || jsUrl.isEmpty) return null;
     final cached = _byJsUrl[jsUrl];
     if (cached != null) return cached;
     try {
-      final res = await _dio
-          .get<String>(
-            jsUrl,
-            options: Options(
-              headers: {'User-Agent': _webUa},
-              responseType: ResponseType.plain,
-            ),
-          )
-          .timeout(const Duration(seconds: 20));
+      final res = await _dio.get<String>(
+        jsUrl,
+        options: Options(
+          headers: {'User-Agent': _webUa},
+          responseType: ResponseType.plain,
+        ),
+      ).timeout(const Duration(seconds: 20));
       final js = res.data ?? '';
       if (js.isEmpty) return null;
 
@@ -165,14 +189,30 @@ class SignatureDecipher {
 
   /// Decipher a `signatureCipher` (or `cipher`) query string into a
   /// playable URL. Returns null when undecipherable.
-  String? decipherUrl(String signatureCipher, PlayerScript script) {
+  String? decipherUrl(
+    String signatureCipher,
+    PlayerScript? script,
+  ) {
+    if (QuickJsCipher.isAvailable) {
+      final player = quickJs.activePlayer;
+      if (player != null && player.bytecode.isNotEmpty) {
+        final fastSolved = _decipherWithQuickJs(signatureCipher, player);
+        if (fastSolved != null) return fastSolved;
+      }
+    }
+
+    if (script == null) return null;
     try {
-      final params = Uri.splitQueryString(signatureCipher, encoding: utf8);
+      final params = Uri.splitQueryString(
+        signatureCipher,
+        encoding: utf8,
+      );
       var url = params['url'];
       if (url == null || url.isEmpty) return null;
       final encrypted = params['s'];
       if (encrypted != null && encrypted.isNotEmpty) {
-        final signature = _apply(script.sigOps, script.sigEnv, encrypted);
+        final signature =
+            _apply(script.sigOps, script.sigEnv, encrypted);
         final sp = (params['sp']?.isNotEmpty ?? false)
             ? params['sp']!
             : 'signature';
@@ -188,7 +228,8 @@ class SignatureDecipher {
         } else {
           final fixed = _apply(nOps, script.nEnv, n);
           if (fixed.isEmpty) return url;
-          _nCache.putIfAbsent(script.jsUrl, () => {})[n] = fixed;
+          _nCache
+              .putIfAbsent(script.jsUrl, () => {})[n] = fixed;
           url = _replaceParam(url, 'n', fixed);
         }
       }
@@ -198,25 +239,58 @@ class SignatureDecipher {
     }
   }
 
+  String? _decipherWithQuickJs(String signatureCipher, QuickJsPlayer player) {
+    try {
+      final params = Uri.splitQueryString(
+        signatureCipher,
+        encoding: utf8,
+      );
+      var url = params['url'];
+      if (url == null || url.isEmpty) return null;
+      final encrypted = params['s'];
+      final sp = (params['sp']?.isNotEmpty ?? false)
+          ? params['sp']!
+          : 'signature';
+
+      final uri = Uri.tryParse(url);
+      final n = uri?.queryParameters['n'];
+
+      final solved = QuickJsCipher.solveBytecode(
+        player.bytecode,
+        n: n,
+        sig: encrypted,
+      );
+      if (solved != null) {
+        if (encrypted != null && solved.sig != null) {
+          url = _appendParam(url, sp, solved.sig!);
+        }
+        if (n != null && solved.n != null) {
+          url = _replaceParam(url, 'n', solved.n!);
+        }
+        return url;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Test hook: parse [js] without network.
   @visibleForTesting
-  PlayerScript? parseForTest(String jsUrl, String js) => _parse(jsUrl, js);
+  PlayerScript? parseForTest(String jsUrl, String js) =>
+      _parse(jsUrl, js);
 
   // -- discovery (NewPipe's patterns, in order) ----------------------------------
 
   static final List<RegExp> _sigNamePatterns = [
     RegExp(
-      r'\b(?:[a-zA-Z0-9_$]+)&&\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\((\d+),decodeURIComponent\((?:[a-zA-Z0-9_$]+)\)\)',
-    ),
+        r'\b(?:[a-zA-Z0-9_$]+)&&\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\((\d+),decodeURIComponent\((?:[a-zA-Z0-9_$]+)\)\)'),
     RegExp(
-      r'\b(?:[a-zA-Z0-9_$]+)&&\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\(decodeURIComponent\((?:[a-zA-Z0-9_$]+)\)\)',
-    ),
+        r'\b(?:[a-zA-Z0-9_$]+)&&\((?:[a-zA-Z0-9_$]+)=([a-zA-Z0-9_$]{2,})\(decodeURIComponent\((?:[a-zA-Z0-9_$]+)\)\)'),
     RegExp(r'\bm=([a-zA-Z0-9$]{2,})\(decodeURIComponent\(h\.s\)\)'),
     RegExp(r'\bc&&\(c=([a-zA-Z0-9$]{2,})\(decodeURIComponent\(c\)\)'),
     RegExp(
-      r'(?:\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\s*=\s*function\(\s*a\s*\)\s*\{\s*a\s*=\s*a\.split\(\s*""\s*\)',
-    ),
-    RegExp(r'([\w$]+)\s*=\s*function\((\w+)\)\{\s*\2=\s*\2\.split\(""\)\s*;'),
+        r'(?:\b|[^a-zA-Z0-9$])([a-zA-Z0-9$]{2,})\s*=\s*function\(\s*a\s*\)\s*\{\s*a\s*=\s*a\.split\(\s*""\s*\)'),
+    RegExp(
+        r'([\w$]+)\s*=\s*function\((\w+)\)\{\s*\2=\s*\2\.split\(""\)\s*;'),
   ];
 
   static const _sc = r'[a-zA-Z0-9$_]';
@@ -224,36 +298,29 @@ class SignatureDecipher {
 
   static final List<RegExp> _nNamePatterns = [
     // m85=function( ... return Y[45]
-    RegExp(
-      '([A-Za-z0-9_\\\$]{2,})=function.*return [A-Z]\\[\\d+\\]',
-      dotAll: true,
-    ),
+    RegExp('([A-Za-z0-9_\\\$]{2,})=function.*return [A-Z]\\[\\d+\\]',
+        dotAll: true),
     // (b="nn"[+a.D],WL(a),c=a.j[b]||null)&&(c=SDa[0](c),...
     RegExp(
-      '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\)&&\\($_mc=($_mc)\\[(\\d+)\\]',
-    ),
+        '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\)&&\\($_mc=($_mc)\\[(\\d+)\\]'),
     // ...)&&(c=SDa[0](c),...)...||Wma("")
     RegExp(
-      '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\).+\\|\\|($_mc)\\(\\"\\"\\)',
-    ),
+        '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\).+\\|\\|($_mc)\\(\\"\\"\\)'),
     // ,Vb(m),W=m.j[c]||null)&&(W=cvb[0](W),m.set(c,W)
     RegExp(
-      ',$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\)&&\\(\\b$_mc=($_mc)\\[(\\d+)\\]\\($_sc\\),$_mc\\.set\\((?:"n+"|$_mc),$_mc\\)',
-    ),
+        ',$_mc\\($_mc\\),$_mc=$_mc\\.$_mc\\[$_mc\\]\\|\\|null\\)&&\\(\\b$_mc=($_mc)\\[(\\d+)\\]\\($_sc\\),$_mc\\.set\\((?:"n+"|$_mc),$_mc\\)'),
     // a.D&&(b="nn"[+a.D],c=a.get(b))&&(c=rDa[0](c),...,rma("")
     RegExp(
-      '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc=$_mc\\.get\\($_mc\\)\\).+\\|\\|($_mc)\\(\\"\\"\\)',
-    ),
+        '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc=$_mc\\.get\\($_mc\\)\\).+\\|\\|($_mc)\\(\\"\\"\\)'),
     // a.D&&(b="nn"[+a.D],c=a.get(b))&&(c=rDa[0](c),...
     RegExp(
-      '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc=$_mc\\.get\\($_mc\\)\\)&&\\($_mc=($_mc)\\[(\\d+)\\]',
-    ),
+        '$_sc="nn"\\[\\+$_mc\\.$_mc\\],$_mc=$_mc\\.get\\($_mc\\)\\)&&\\($_mc=($_mc)\\[(\\d+)\\]'),
     // (b=String.fromCharCode(110),c=a.get(b))&&(c=BDa[0](c)
     RegExp(
-      '\\($_sc=String\\.fromCharCode\\(110\\),$_sc=$_sc\\.get\\($_sc\\)\\)&&\\($_sc=($_mc)(?:\\[(\\d+)\\])?\\($_sc\\)',
-    ),
+        '\\($_sc=String\\.fromCharCode\\(110\\),$_sc=$_sc\\.get\\($_sc\\)\\)&&\\($_sc=($_mc)(?:\\[(\\d+)\\])?\\($_sc\\)'),
     // .get("n"))&&(b=Yva[0](b)
-    RegExp('\\.get\\("n"\\)\\)&&\\($_sc=($_mc)(?:\\[(\\d+)\\])?\\($_sc\\)'),
+    RegExp(
+        '\\.get\\("n"\\)\\)&&\\($_sc=($_mc)(?:\\[(\\d+)\\])?\\($_sc\\)'),
   ];
 
   static PlayerScript? _parse(String jsUrl, String js) {
@@ -291,7 +358,8 @@ class SignatureDecipher {
     }
     final _Prepared prepared;
     try {
-      prepared = _prepare(js, sigBody, sigParams, extraLiteral: sigExtra);
+      prepared = _prepare(js, sigBody, sigParams,
+          extraLiteral: sigExtra);
     } catch (_) {
       return null;
     }
@@ -306,7 +374,8 @@ class SignatureDecipher {
       if (nFound != null) {
         nName = nFound;
         final nExtracted = _extractFunction(js, nFound);
-        final nPrepared = _prepare(js, nExtracted.body, nExtracted.params);
+        final nPrepared =
+            _prepare(js, nExtracted.body, nExtracted.params);
         if (nPrepared.ops.isNotEmpty) {
           nOps = nPrepared.ops;
           nEnv = nPrepared.env;
@@ -338,30 +407,31 @@ class SignatureDecipher {
     if (idx < 0) throw const FormatException('no func');
     final openIdx = js.indexOf('{', idx);
     if (openIdx < 0) throw const FormatException('no body');
-    final sig = RegExp(RegExp.escape(name) + r'\s*=\s*function\s*\(([^)]*)\)')
-        .firstMatch(js.substring(idx, openIdx + 1));
-    final params =
-        sig
+    final sig =
+        RegExp(RegExp.escape(name) + r'\s*=\s*function\s*\(([^)]*)\)')
+            .firstMatch(js.substring(idx, openIdx + 1));
+    final params = sig
             ?.group(1)
             ?.split(',')
             .map((s) => s.trim())
             .where((s) => s.isNotEmpty)
             .toList() ??
         const [];
-    return _FuncCode(body: _balanced(js, openIdx), params: params);
+    return _FuncCode(
+      body: _balanced(js, openIdx),
+      params: params,
+    );
   }
 
   /// Strip NewPipe-style early-return guards, bind the array
   /// variable + extra literals, and compile op statements.
-  static _Prepared _prepare(
-    String js,
-    String body,
-    List<String> params, {
-    String? extraLiteral,
-  }) {
+  static _Prepared _prepare(String js, String body, List<String> params,
+      {String? extraLiteral}) {
     final env = <String, int>{};
     late final String arrayVar;
-    if (extraLiteral != null && extraLiteral.isNotEmpty && params.length > 1) {
+    if (extraLiteral != null &&
+        extraLiteral.isNotEmpty &&
+        params.length > 1) {
       final extra = int.tryParse(extraLiteral);
       if (extra == null) {
         throw const FormatException('extra not numeric');
@@ -385,13 +455,10 @@ class SignatureDecipher {
     if (params.isNotEmpty) {
       final first = RegExp.escape(params.first);
       stmts = stmts.replaceAll(
-        RegExp(
-          ';\\s*if\\s*\\(\\s*typeof\\s+[A-Za-z0-9_\$]+'
-          '\\s*===?\\s*(["\'])undefined\\1\\s*\\)\\s*return\\s+'
-          '$first\\s*;',
-        ),
-        ';',
-      );
+          RegExp(';\\s*if\\s*\\(\\s*typeof\\s+[A-Za-z0-9_\$]+'
+              '\\s*===?\\s*(["\'])undefined\\1\\s*\\)\\s*return\\s+'
+              '$first\\s*;'),
+          ';');
     }
     final ops = <DecipherOp>[];
     for (final raw in stmts.split(';')) {
@@ -404,14 +471,12 @@ class SignatureDecipher {
         continue;
       }
       final av = RegExp.escape(arrayVar);
-      final call = RegExp(
-        '^([A-Za-z0-9_\$]+)\\.([A-Za-z0-9_\$]+)'
-        '\\(\\s*$av\\s*(?:,\\s*(.+?))?\\)\$',
-      ).firstMatch(stmt);
+      final call = RegExp('^([A-Za-z0-9_\$]+)\\.([A-Za-z0-9_\$]+)'
+              '\\(\\s*$av\\s*(?:,\\s*(.+?))?\\)\$')
+          .firstMatch(stmt);
       if (call != null) {
-        ops.add(
-          _resolveOp(js, call.group(1)!, call.group(2)!, call.group(3), env),
-        );
+        ops.add(_resolveOp(js, call.group(1)!, call.group(2)!,
+            call.group(3), env));
         continue;
       }
       if (stmt == '$arrayVar.reverse()') {
@@ -438,7 +503,8 @@ class SignatureDecipher {
       }
       if (idx != null) {
         // `var NAME=[a,b,c];` + index → resolve the real name.
-        final arr = RegExp(RegExp.escape(name) + r'\s*=\s*\[(.+?)\][;,]')
+        final arr = RegExp(RegExp.escape(name) +
+                r'\s*=\s*\[(.+?)\][;,]')
             .firstMatch(js)
             ?.group(1);
         if (arr == null) continue;
@@ -455,19 +521,13 @@ class SignatureDecipher {
 
   // -- helper objects + op classification --------------------------------------
 
-  static DecipherOp _resolveOp(
-    String js,
-    String obj,
-    String method,
-    String? argSrc,
-    Map<String, int> outerEnv,
-  ) {
+  static DecipherOp _resolveOp(String js, String obj, String method,
+      String? argSrc, Map<String, int> outerEnv) {
     final helper = _helperBody(js, obj);
     final member = _memberBody(helper, method);
     final params = _memberParams(helper, method);
-    final callArgs = argSrc == null || argSrc.trim().isEmpty
-        ? const <String>[]
-        : _splitArgs(argSrc);
+    final callArgs =
+        argSrc == null || argSrc.trim().isEmpty ? const <String>[] : _splitArgs(argSrc);
     final env = Map<String, int>.of(outerEnv);
     for (var i = 0; i < callArgs.length && i + 1 < params.length; i++) {
       final v = _evalInt(callArgs[i], env, 0);
@@ -486,24 +546,27 @@ class SignatureDecipher {
   }
 
   static String _memberBody(String helper, String method) {
-    var m = RegExp(
-      RegExp.escape(method) + r'\s*:\s*function\s*\(([^)]*)\)\s*\{',
-    ).firstMatch(helper);
-    if (m != null) {
-      return _balanced(helper, m.end - 1);
-    }
-    m = RegExp(RegExp.escape(method) + r'\s*\(([^)]*)\)\s*\{')
+    var m = RegExp(RegExp.escape(method) +
+            r'\s*:\s*function\s*\(([^)]*)\)\s*\{')
         .firstMatch(helper);
     if (m != null) {
-      return _balanced(helper, m.end - 1);
+      return _balanced(
+          helper, m.end - 1);
+    }
+    m = RegExp(
+            RegExp.escape(method) + r'\s*\(([^)]*)\)\s*\{')
+        .firstMatch(helper);
+    if (m != null) {
+      return _balanced(
+          helper, m.end - 1);
     }
     throw FormatException('no member $method');
   }
 
   static List<String> _memberParams(String helper, String method) {
-    final m = RegExp(
-      RegExp.escape(method) + r'\s*(?::\s*function)?\s*\(([^)]*)\)\s*\{',
-    ).firstMatch(helper);
+    final m = RegExp(RegExp.escape(method) +
+            r'\s*(?::\s*function)?\s*\(([^)]*)\)\s*\{')
+        .firstMatch(helper);
     if (m == null) return const [];
     return m
         .group(1)!
@@ -515,14 +578,16 @@ class SignatureDecipher {
 
   static DecipherOp _classify(String body, Map<String, int> env) {
     final b = body.replaceAll(RegExp(r'\s+'), '');
-    if (b.contains('.reverse('))
-      return const DecipherOp(DecipherOpType.reverse);
+    if (b.contains('.reverse(')) return const DecipherOp(DecipherOpType.reverse);
     if (b.contains('.splice(')) {
-      final m = RegExp(r'\.splice\(([^)]*)\)').firstMatch(b);
-      return _spliceOp(_splitArgs(m?.group(1) ?? ''), env);
+      final m =
+          RegExp(r'\.splice\(([^)]*)\)').firstMatch(b);
+      return _spliceOp(
+          _splitArgs(m?.group(1) ?? ''), env);
     }
     if (b.contains('.slice(')) {
-      final m = RegExp(r'\.slice\(([^),]*)').firstMatch(b);
+      final m =
+          RegExp(r'\.slice\(([^),]*)').firstMatch(b);
       final n = _evalInt(m?.group(1) ?? '0', env, 0) ?? 0;
       return DecipherOp(DecipherOpType.slice, [n]);
     }
@@ -535,7 +600,8 @@ class SignatureDecipher {
       return DecipherOp(DecipherOpType.push, [n]);
     }
     if (b.contains('.unshift(')) {
-      final m = RegExp(r'\.unshift\(([^)]*)\)').firstMatch(b);
+      final m =
+          RegExp(r'\.unshift\(([^)]*)\)').firstMatch(b);
       final n = _evalInt(m?.group(1) ?? '', env, -1);
       if (n == null || n < 0) {
         throw const FormatException('unshift arg');
@@ -562,7 +628,8 @@ class SignatureDecipher {
       final count = _evalInt(args[1], env, 0) ?? 0;
       return DecipherOp(DecipherOpType.splice, [start, count]);
     }
-    final start = args.isNotEmpty ? (_evalInt(args[0], env, 0) ?? 0) : 0;
+    final start =
+        args.isNotEmpty ? (_evalInt(args[0], env, 0) ?? 0) : 0;
     return DecipherOp(DecipherOpType.splice, [start]);
   }
 
@@ -590,8 +657,9 @@ class SignatureDecipher {
     final lit = int.tryParse(e);
     if (lit != null) return lit;
     if (env.containsKey(e)) return env[e];
-    final mod = RegExp(r'^([A-Za-z0-9_$]+)\s*%\s*[A-Za-z0-9_$.]+\.length$')
-        .firstMatch(e);
+    final mod =
+        RegExp(r'^([A-Za-z0-9_$]+)\s*%\s*[A-Za-z0-9_$.]+\.length$')
+            .firstMatch(e);
     if (mod != null) {
       final v = _evalInt(mod.group(1)!, env, len);
       if (v != null && len > 0) return v % len;
@@ -655,13 +723,19 @@ class SignatureDecipher {
         case DecipherOpType.shift:
           if (chars.isNotEmpty) chars = chars.sublist(1);
         case DecipherOpType.unshift:
-          chars = [String.fromCharCode(op.args[0]), ...chars];
+          chars = [
+            String.fromCharCode(op.args[0]),
+            ...chars
+          ];
         case DecipherOpType.pop:
           if (chars.isNotEmpty) {
             chars = chars.sublist(0, chars.length - 1);
           }
         case DecipherOpType.push:
-          chars = [...chars, String.fromCharCode(op.args[0])];
+          chars = [
+            ...chars,
+            String.fromCharCode(op.args[0])
+          ];
       }
     }
     return chars.join();

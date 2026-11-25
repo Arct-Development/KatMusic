@@ -17,15 +17,13 @@ void main() {
     final rec = jsonDecode(raw) as Map<String, dynamic>;
     final lines = parseLrc(rec['syncedLyrics'] as String);
     expect(lines.isNotEmpty, isTrue);
-    final normalized = normalizeKaraokeTimings(
-      LyricsResult(
-        lines: lines,
-        isSynced: true,
-        isWordSynced: false,
-        plainLyrics: rec['plainLyrics'] as String,
-        source: 'lrclib',
-      ),
-    );
+    final normalized = normalizeKaraokeTimings(LyricsResult(
+      lines: lines,
+      isSynced: true,
+      isWordSynced: false,
+      plainLyrics: rec['plainLyrics'] as String,
+      source: 'lrclib',
+    ));
     final model = convertToFlutterLyricModel(normalized, wordByWord: true);
     final controller = LyricController();
     controller.loadLyricModel(model);
@@ -42,13 +40,16 @@ void main() {
     stamps.add(173 * 1000);
     stamps.add(1 << 40);
     for (final ms in stamps) {
-      controller.setProgress(Duration(milliseconds: ms < 0 ? 0 : ms));
+      controller.setProgress(
+          Duration(milliseconds: ms < 0 ? 0 : ms));
     }
     // Same sweep with line display (toggle off path).
-    final lineModel = convertToFlutterLyricModel(normalized, wordByWord: false);
+    final lineModel =
+        convertToFlutterLyricModel(normalized, wordByWord: false);
     controller.loadLyricModel(lineModel);
     for (final ms in stamps) {
-      controller.setProgress(Duration(milliseconds: ms < 0 ? 0 : ms));
+      controller.setProgress(
+          Duration(milliseconds: ms < 0 ? 0 : ms));
     }
   });
 }

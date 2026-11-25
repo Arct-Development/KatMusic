@@ -8,15 +8,14 @@ import '../../features/feed/feed_repository.dart' show GeneratedTrack;
 import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../../features/spotify/spotify_api.dart';
-import '../components/buttons.dart'
-    show KatTooltip, KatGhostButton, KatPrimaryButton;
+import '../components/buttons.dart' show LWTooltip, WaveGhostButton, WavePrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Spotify playlist (or Liked Songs, id `liked`) detail: hero + filter +
 /// track table. Read-only. Tracks play through the app's own resolver
@@ -24,11 +23,11 @@ import '../theme/kat_icons.dart';
 ///
 /// These likes live only here: the app's own Liked page never includes
 /// Spotify likes.
-class KatSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
+class WaveSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
   final String playlistId;
   final String title;
   final String artworkUrl;
-  const KatSpotifyPlaylistDetailPage({
+  const WaveSpotifyPlaylistDetailPage({
     super.key,
     required this.playlistId,
     this.title = '',
@@ -36,12 +35,12 @@ class KatSpotifyPlaylistDetailPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<KatSpotifyPlaylistDetailPage> createState() =>
-      _KatSpotifyPlaylistDetailPageState();
+  ConsumerState<WaveSpotifyPlaylistDetailPage> createState() =>
+      _WaveSpotifyPlaylistDetailPageState();
 }
 
-class _KatSpotifyPlaylistDetailPageState
-    extends ConsumerState<KatSpotifyPlaylistDetailPage> {
+class _WaveSpotifyPlaylistDetailPageState
+    extends ConsumerState<WaveSpotifyPlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -56,8 +55,8 @@ class _KatSpotifyPlaylistDetailPageState
   Widget build(BuildContext context) {
     final async = ref.watch(spotifyPlaylistContentProvider(widget.playlistId));
     return async.when(
-      loading: () => const KatLoading(label: 'Loading playlist…'),
-      error: (e, _) => KatError(
+      loading: () => const WaveLoading(label: 'Loading playlist…'),
+      error: (e, _) => WaveError(
         title: 'Could not load playlist',
         message: '$e',
         onRetry: () =>
@@ -65,8 +64,8 @@ class _KatSpotifyPlaylistDetailPageState
       ),
       data: (res) {
         if (res == null || res.tracks.isEmpty) {
-          return KatEmpty(
-            icon: KatIcons.playlists,
+          return WaveEmpty(
+            icon: WaveIcons.playlists,
             title: 'Playlist unavailable',
             subtitle:
                 'It may be private or empty, or the Spotify session expired.',
@@ -78,9 +77,8 @@ class _KatSpotifyPlaylistDetailPageState
           playlistId: widget.playlistId,
           res: res,
           heroTitle: widget.title.isNotEmpty ? widget.title : res.title,
-          heroArt: widget.artworkUrl.isNotEmpty
-              ? widget.artworkUrl
-              : res.artworkUrl,
+          heroArt:
+              widget.artworkUrl.isNotEmpty ? widget.artworkUrl : res.artworkUrl,
           filter: _filter,
           query: _q,
           onQuery: (v) => setState(() => _q = v),
@@ -117,11 +115,9 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracks = res.tracks
-        .where(
-          (t) => '${t.name} ${t.artist}'.toLowerCase().contains(
-            query.toLowerCase(),
-          ),
-        )
+        .where((t) => '${t.name} ${t.artist}'
+            .toLowerCase()
+            .contains(query.toLowerCase()))
         .toList();
     if (sort == 'title') {
       tracks.sort((a, b) => a.name.compareTo(b.name));
@@ -132,15 +128,15 @@ class _Body extends ConsumerWidget {
       playbackServiceProvider.select((s) => s.current?.queueKey),
     );
     List<GeneratedTrack> asGenerated() => [
-      for (final t in tracks)
-        GeneratedTrack(
-          name: t.name,
-          artist: t.artist,
-          album: t.album,
-          artworkUrl: t.artworkUrl,
-          durationSeconds: t.durationSeconds,
-        ),
-    ];
+          for (final t in tracks)
+            GeneratedTrack(
+              name: t.name,
+              artist: t.artist,
+              album: t.album,
+              artworkUrl: t.artworkUrl,
+              durationSeconds: t.durationSeconds,
+            ),
+        ];
 
     var cover = heroArt;
     if (cover.isEmpty) {
@@ -152,34 +148,32 @@ class _Body extends ConsumerWidget {
       }
     }
 
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: KatDensity.contentMax,
-                ),
-                child: KatEntrance(
+                constraints:
+                    const BoxConstraints(maxWidth: WaveDensity.contentMax),
+                child: WaveEntrance(
                   rise: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      KatCollectionHero(
+                      WaveCollectionHero(
                         flightKind: 'spotifyplaylist',
                         flightId: playlistId,
                         overline: 'Spotify playlist',
                         title: heroTitle.isNotEmpty ? heroTitle : 'Playlist',
-                        meta:
-                            '${res.tracks.length} tracks'
+                        meta: '${res.tracks.length} tracks'
                             '${query.isNotEmpty ? ' · ${tracks.length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: KatIcons.playlists,
+                        fallbackIcon: WaveIcons.playlists,
                         primaryActions: [
                           if (tracks.isNotEmpty) ...[
-                            KatPrimaryButton(
+                            WavePrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
                               onPressed: () => playGenerated(
@@ -190,9 +184,9 @@ class _Body extends ConsumerWidget {
                                 queueAll: asGenerated(),
                               ),
                             ),
-                            KatGhostButton(
+                            WaveGhostButton(
                               label: 'Shuffle',
-                              icon: KatIcons.shuffle,
+                              icon: WaveIcons.shuffle,
                               onPressed: () {
                                 final shuffled = asGenerated()..shuffle();
                                 playGenerated(
@@ -204,29 +198,67 @@ class _Body extends ConsumerWidget {
                                 );
                               },
                             ),
+                            WaveGhostButton(
+                              label: 'Play next',
+                              icon: FluentIcons.add,
+                              onPressed: () async {
+                                final playable = [
+                                  for (final t in tracks)
+                                    playableFromGenerated(GeneratedTrack(
+                                      name: t.name,
+                                      artist: t.artist,
+                                      album: t.album,
+                                      artworkUrl: t.artworkUrl,
+                                      durationSeconds: t.durationSeconds,
+                                    )),
+                                ];
+                                await ref
+                                    .read(playbackServiceProvider.notifier)
+                                    .playNextAll(playable);
+                              },
+                            ),
+                            WaveGhostButton(
+                              label: 'Add to queue',
+                              icon: FluentIcons.list,
+                              onPressed: () async {
+                                final playable = [
+                                  for (final t in tracks)
+                                    playableFromGenerated(GeneratedTrack(
+                                      name: t.name,
+                                      artist: t.artist,
+                                      album: t.album,
+                                      artworkUrl: t.artworkUrl,
+                                      durationSeconds: t.durationSeconds,
+                                    )),
+                                ];
+                                await ref
+                                    .read(playbackServiceProvider.notifier)
+                                    .addToQueueAll(playable);
+                              },
+                            ),
                             // A playlist copy only: never saved as, or
                             // merged into, the app's Liked Songs.
-                            KatGhostButton(
+                            WaveGhostButton(
                               label: 'Save to library',
                               icon: FluentIcons.save,
                               onPressed: () async {
                                 final saved = await ref
                                     .read(playlistRepositoryProvider.notifier)
                                     .saveGenerated(
-                                      heroTitle.isEmpty
-                                          ? 'Spotify playlist'
-                                          : 'Spotify · $heroTitle',
-                                      [
-                                        for (final t in res.tracks)
-                                          StoredTrack(
-                                            name: t.name,
-                                            artist: t.artist,
-                                            album: t.album,
-                                            artworkUrl: t.artworkUrl,
-                                            durationSeconds: t.durationSeconds,
-                                          ),
-                                      ],
-                                    );
+                                  heroTitle.isEmpty
+                                      ? 'Spotify playlist'
+                                      : 'Spotify · $heroTitle',
+                                  [
+                                    for (final t in res.tracks)
+                                      StoredTrack(
+                                        name: t.name,
+                                        artist: t.artist,
+                                        album: t.album,
+                                        artworkUrl: t.artworkUrl,
+                                        durationSeconds: t.durationSeconds,
+                                      ),
+                                  ],
+                                );
                                 if (context.mounted) {
                                   context.go('/playlists/${saved.id}');
                                 }
@@ -236,28 +268,22 @@ class _Body extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      KatFilterBar(
+                      WaveFilterBar(
                         controller: filter,
                         onChanged: onQuery,
                         hint: 'Filter in playlist…',
                         countLabel: '${tracks.length} tracks',
-                        sortSlot: KatTooltip(
+                        sortSlot: LWTooltip(
                           message: 'Sort (also sortable via table headers)',
-                          child: KatSelect<String>(
+                          child: WaveSelect<String>(
                             value: sort,
                             options: const [
-                              KatSelectOption(
-                                value: 'default',
-                                label: 'Default order',
-                              ),
-                              KatSelectOption(
-                                value: 'title',
-                                label: 'Title A–Z',
-                              ),
-                              KatSelectOption(
-                                value: 'artist',
-                                label: 'Artist A–Z',
-                              ),
+                              WaveSelectOption(
+                                  value: 'default', label: 'Default order'),
+                              WaveSelectOption(
+                                  value: 'title', label: 'Title A–Z'),
+                              WaveSelectOption(
+                                  value: 'artist', label: 'Artist A–Z'),
                             ],
                             onChanged: onSort,
                           ),
@@ -272,8 +298,8 @@ class _Body extends ConsumerWidget {
           ),
           if (tracks.isEmpty)
             const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: KatIcons.playlists,
+              child: WaveEmpty(
+                icon: WaveIcons.playlists,
                 title: 'No matches',
                 subtitle: 'Try a different filter.',
               ),
@@ -281,7 +307,7 @@ class _Body extends ConsumerWidget {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: KatDesktopTable<GeneratedTrack>(
+              sliver: WaveDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,
@@ -316,6 +342,7 @@ class _Body extends ConsumerWidget {
               ),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const WaveDockSpacer(),
         ],
       ),
     );

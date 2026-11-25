@@ -70,18 +70,14 @@ void main() {
     });
 
     test('bare-tail variants rank below the original', () {
-      YouTubeMusicTrack tr(String id, String title) =>
-          YouTubeMusicTrack(videoId: id, title: title, artist: 'Spice');
+      YouTubeMusicTrack tr(String id, String title) => YouTubeMusicTrack(
+          videoId: id, title: title, artist: 'Spice');
       final orig = tr('o', 'Go Down Deh (feat. Shaggy & Sean Paul)');
-      final slowed = tr(
-        'r',
-        'Go Down Deh Slowed + Reverb (feat. Shaggy & Sean Paul)',
-      );
+      final slowed =
+          tr('r', 'Go Down Deh Slowed + Reverb (feat. Shaggy & Sean Paul)');
       const want = 'Go Down Deh (feat. Shaggy & Sean Paul)';
-      expect(
-        InnerTubeMusicApi.matchScore(orig, want, 'Spice'),
-        greaterThan(InnerTubeMusicApi.matchScore(slowed, want, 'Spice')),
-      );
+      expect(InnerTubeMusicApi.matchScore(orig, want, 'Spice'),
+          greaterThan(InnerTubeMusicApi.matchScore(slowed, want, 'Spice')));
     });
 
     test('normalize strips diacritics and punctuation', () {

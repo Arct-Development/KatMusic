@@ -15,14 +15,16 @@ import 'package:katmusic_desktop/ui/theme/motion.dart';
 void main() {
   Widget host(Widget child) => FluentApp(home: child);
 
-  Finder fadedRows() =>
-      find.ancestor(of: find.text('Home'), matching: find.byType(Opacity));
+  Finder fadedRows() => find.ancestor(
+        of: find.text('Home'),
+        matching: find.byType(Opacity),
+      );
 
   testWidgets('the cascade still fades content on mount', (tester) async {
     await tester.pumpWidget(
       host(
-        KatEntranceGroup(
-          child: KatEntrance(index: 0, child: const Text('Home')),
+        WaveEntranceGroup(
+          child: WaveEntrance(index: 0, child: const Text('Home')),
         ),
       ),
     );
@@ -37,17 +39,16 @@ void main() {
     );
   });
 
-  testWidgets('a rebuild after the cascade does not replay the fade', (
-    tester,
-  ) async {
+  testWidgets('a rebuild after the cascade does not replay the fade',
+      (tester) async {
     late StateSetter rebuild;
     await tester.pumpWidget(
       host(
         StatefulBuilder(
           builder: (context, setState) {
             rebuild = setState;
-            return KatEntranceGroup(
-              child: KatEntrance(index: 0, child: const Text('Home')),
+            return WaveEntranceGroup(
+              child: WaveEntrance(index: 0, child: const Text('Home')),
             );
           },
         ),
@@ -81,4 +82,32 @@ void main() {
       isEmpty,
     );
   });
+
+  testWidgets('the entering child keeps its state through the fade',
+      (tester) async {
+    await tester.pumpWidget(
+      host(
+        WaveEntranceGroup(
+          child: WaveEntrance(index: 0, child: const _Probe()),
+        ),
+      ),
+    );
+    final first = tester.state(find.byType(_Probe));
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pumpAndSettle();
+    // Same State object: the wrapper never changed shape, so no remount.
+    expect(identical(tester.state(find.byType(_Probe)), first), isTrue);
+  });
 }
+
+class _Probe extends StatefulWidget {
+  const _Probe();
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  Widget build(BuildContext context) => const Text('Home');
+}
+

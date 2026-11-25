@@ -15,10 +15,10 @@ import 'dart:typed_data';
 /// - FLAC gets rebuilt `VORBIS_COMMENT` + `PICTURE` blocks (seektable is
 ///   dropped — its absolute offsets would be wrong after the rebuild).
 /// - FLAC-in-MP4 (addon DASH assemblies: `iso8/mp41dashcmfc` with an
-///   `fLaC` sample entry) is transmuxed into a native `.flac` file:
-///   `STREAMINFO` from the `dfLa` box + raw FLAC frames from the
-///   `mdat` boxes (sized by the `moof/traf/trun` entries), then tagged
-///   via [tagFlac]. A bit-for-bit remux — no decode, still lossless.
+  ///   `fLaC` sample entry) is transmuxed into a native `.flac` file:
+  ///   `STREAMINFO` from the `dfLa` box + raw FLAC frames from the
+  ///   `mdat` boxes (sized by the `moof/traf/trun` entries), then tagged
+  ///   via [tagFlac]. A bit-for-bit remux — no decode, still lossless.
 /// - MP3 gets a fresh ID3v2.3 tag (`TIT2/TPE1/TALB/USLT/APIC`).
 /// - M4A gets a `moov/udta/meta/ilst` tag (`©nam/©ART/©alb/©lyr/covr`)
 ///   with `stco/co64` offset fixup. Fragmented files without a `moov`
@@ -93,7 +93,9 @@ class MediaTagger {
         bytes[2] == 0x33) {
       return 'mp3';
     }
-    if (bytes.length >= 2 && bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0) {
+    if (bytes.length >= 2 &&
+        bytes[0] == 0xFF &&
+        (bytes[1] & 0xE0) == 0xE0) {
       return 'mp3';
     }
     return 'unknown';
@@ -140,7 +142,8 @@ class MediaTagger {
   ///
   /// Throws [TaggerSkip] when the buffer is not Opus-in-WebM or carries
   /// no audio packets.
-  static Uint8List remuxWebmOpusToOgg(Uint8List webm, DownloadTags tags) {
+  static Uint8List remuxWebmOpusToOgg(
+      Uint8List webm, DownloadTags tags) {
     final parsed = _parseWebmAudio(webm);
     if (parsed.packets.isEmpty) {
       throw const TaggerSkip('no audio packets');
@@ -149,25 +152,21 @@ class MediaTagger {
     final out = <Uint8List>[];
     var seq = 0;
     // OpusHead (identification header, BOS).
-    out.add(
-      _oggPage(
-        serial: serial,
-        seq: seq++,
-        flags: 0x02,
-        granule: 0,
-        packets: [parsed.opusHead],
-      ),
-    );
+    out.add(_oggPage(
+      serial: serial,
+      seq: seq++,
+      flags: 0x02,
+      granule: 0,
+      packets: [parsed.opusHead],
+    ));
     // OpusTags (comment header).
-    out.add(
-      _oggPage(
-        serial: serial,
-        seq: seq++,
-        flags: 0x00,
-        granule: 0,
-        packets: [_opusTagsPacket(tags)],
-      ),
-    );
+    out.add(_oggPage(
+      serial: serial,
+      seq: seq++,
+      flags: 0x00,
+      granule: 0,
+      packets: [_opusTagsPacket(tags)],
+    ));
     // Audio packets, packed greedily (<= 255 segments per page).
     var granule = parsed.preskip;
     final granules = <int>[];
@@ -189,15 +188,13 @@ class MediaTagger {
         idx++;
       }
       final last = idx >= parsed.packets.length;
-      out.add(
-        _oggPage(
-          serial: serial,
-          seq: seq++,
-          flags: last ? 0x04 : 0x00,
-          granule: pageGranules.last,
-          packets: pagePackets,
-        ),
-      );
+      out.add(_oggPage(
+        serial: serial,
+        seq: seq++,
+        flags: last ? 0x04 : 0x00,
+        granule: pageGranules.last,
+        packets: pagePackets,
+      ));
     }
     final total = out.fold<int>(0, (a, p) => a + p.length);
     final merged = Uint8List(total);
@@ -227,7 +224,8 @@ class MediaTagger {
       final hb = flac[pos];
       final type = hb & 0x7F;
       final last = (hb & 0x80) != 0;
-      final len = (flac[pos + 1] << 16) | (flac[pos + 2] << 8) | flac[pos + 3];
+      final len =
+          (flac[pos + 1] << 16) | (flac[pos + 2] << 8) | flac[pos + 3];
       if (pos + 4 + len > flac.length) {
         throw const TaggerSkip('flac block overrun');
       }
@@ -251,13 +249,11 @@ class MediaTagger {
     blocks.add(_flacBlock(0, Uint8List.fromList(streaminfo), false));
     blocks.add(_flacBlock(4, _vorbisCommentBlock(tags), false));
     if (tags.hasCover) {
-      blocks.add(
-        _flacBlock(
+      blocks.add(_flacBlock(
           6,
-          _flacPictureBlock(tags.coverMime, tags.coverBytes!, type: 3),
-          false,
-        ),
-      );
+          _flacPictureBlock(
+              tags.coverMime, tags.coverBytes!, type: 3),
+          false));
     }
     for (final raw in others) {
       blocks.add(Uint8List.fromList(raw));
@@ -268,8 +264,9 @@ class MediaTagger {
           ? (blocks[i][0] | 0x80)
           : (blocks[i][0] & 0x7F);
     }
-    final total =
-        4 + blocks.fold<int>(0, (a, b) => a + b.length) + audio.length;
+    final total = 4 +
+        blocks.fold<int>(0, (a, b) => a + b.length) +
+        audio.length;
     final out = Uint8List(total);
     out.setRange(0, 4, utf8.encode('fLaC'));
     var w = 4;
@@ -289,7 +286,10 @@ class MediaTagger {
   static Uint8List tagMp3(Uint8List mp3, DownloadTags tags) {
     var start = 0;
     var end = mp3.length;
-    if (end >= 10 && mp3[0] == 0x49 && mp3[1] == 0x44 && mp3[2] == 0x33) {
+    if (end >= 10 &&
+        mp3[0] == 0x49 &&
+        mp3[1] == 0x44 &&
+        mp3[2] == 0x33) {
       final size = _syncsafe(mp3, 6);
       start = 10 + size;
       if (start > end) throw const TaggerSkip('bad id3');
@@ -327,32 +327,30 @@ class MediaTagger {
     }
     if (moovIndex < 0) throw const TaggerSkip('no moov');
     final moov = top[moovIndex];
-    final kids = _mp4ReadBoxes(m4a, moov.contentStart, moov.contentEnd);
+    final kids = _mp4ReadBoxes(
+        m4a, moov.contentStart, moov.contentEnd);
     _Mp4Box? udta;
     for (final k in kids) {
       if (k.type == 'udta') udta = k;
     }
-    final ilstPayload = _mp4BoxRaw('ilst', _concat(_mp4IlstItems(tags)));
+    final ilstPayload =
+        _mp4BoxRaw('ilst', _concat(_mp4IlstItems(tags)));
     Uint8List newUdtaPayload;
     if (udta == null) {
       final hdlr = _mp4MetaHdlr();
       final meta = _mp4BoxRaw(
-        'meta',
-        _concat([Uint8List(4), hdlr, ilstPayload]),
-      );
+          'meta', _concat([Uint8List(4), hdlr, ilstPayload]));
       newUdtaPayload = meta;
-      kids.add(
-        _Mp4Box(
+      kids.add(_Mp4Box(
           type: 'udta',
           headerLen: 8,
           boxStart: -1,
           contentStart: -1,
           contentEnd: -1,
-          freshPayload: newUdtaPayload,
-        ),
-      );
+          freshPayload: newUdtaPayload));
     } else {
-      final ukids = _mp4ReadBoxes(m4a, udta.contentStart, udta.contentEnd);
+      final ukids = _mp4ReadBoxes(
+          m4a, udta.contentStart, udta.contentEnd);
       var metaIndex = -1;
       for (var i = 0; i < ukids.length; i++) {
         if (ukids[i].type == 'meta') metaIndex = i;
@@ -360,9 +358,7 @@ class MediaTagger {
       if (metaIndex < 0) {
         final hdlr = _mp4MetaHdlr();
         final meta = _mp4BoxRaw(
-          'meta',
-          _concat([Uint8List(4), hdlr, ilstPayload]),
-        );
+            'meta', _concat([Uint8List(4), hdlr, ilstPayload]));
         final rebuilt = <int>[];
         for (final k in ukids) {
           rebuilt.addAll(_mp4CopyBox(m4a, k));
@@ -373,10 +369,7 @@ class MediaTagger {
         final meta = ukids[metaIndex];
         // meta content = 4 fullbox bytes + children.
         final mkids = _mp4ReadBoxes(
-          m4a,
-          meta.contentStart + 4,
-          meta.contentEnd,
-        );
+            m4a, meta.contentStart + 4, meta.contentEnd);
         final rebuilt = <int>[0, 0, 0, 0];
         var ilstReplaced = false;
         for (final k in mkids) {
@@ -394,7 +387,8 @@ class MediaTagger {
         final urebuilt = <int>[];
         for (var i = 0; i < ukids.length; i++) {
           if (i == metaIndex) {
-            urebuilt.addAll(_mp4BoxRaw('meta', newMetaPayload));
+            urebuilt.addAll(
+                _mp4BoxRaw('meta', newMetaPayload));
           } else {
             urebuilt.addAll(_mp4CopyBox(m4a, ukids[i]));
           }
@@ -412,20 +406,15 @@ class MediaTagger {
       _mp4ShiftChunkOffsets(kids, m4a, delta);
       newChildren = _mp4SerializeKids(m4a, kids);
     }
-    final newMoov = _mp4BoxRaw(
-      moov.type,
-      newChildren,
-      headerLen: moov.headerLen,
-    );
+    final newMoov = _mp4BoxRaw(moov.type, newChildren,
+        headerLen: moov.headerLen);
     final oldTotal = moov.contentEnd - moov.boxStart;
     final out = Uint8List(m4a.length + newMoov.length - oldTotal);
     out.setRange(0, moov.boxStart, m4a);
-    out.setRange(moov.boxStart, moov.boxStart + newMoov.length, newMoov);
-    out.setRange(
-      moov.boxStart + newMoov.length,
-      out.length,
-      m4a.sublist(moov.boxStart + oldTotal),
-    );
+    out.setRange(moov.boxStart, moov.boxStart + newMoov.length,
+        newMoov);
+    out.setRange(moov.boxStart + newMoov.length, out.length,
+        m4a.sublist(moov.boxStart + oldTotal));
     return out;
   }
 
@@ -515,9 +504,7 @@ class MediaTagger {
             throw const TaggerSkip('stsd overrun');
           }
           final size = _readU32be(payload, pos);
-          final fourcc = String.fromCharCodes(
-            payload.sublist(pos + 4, pos + 8),
-          );
+          final fourcc = String.fromCharCodes(payload.sublist(pos + 4, pos + 8));
           if (size < 8 || pos + size > payload.length) {
             throw const TaggerSkip('stsd entry overrun');
           }
@@ -525,10 +512,8 @@ class MediaTagger {
           // (e.g. cover-art video track) are skipped by checking the
           // handler: only `soun` tracks are considered.
           if (_mp4TrackIsAudio(d, trak)) {
-            return (
-              fourcc,
-              Uint8List.fromList(payload.sublist(pos, pos + size)),
-            );
+            return (fourcc,
+                Uint8List.fromList(payload.sublist(pos, pos + size)));
           }
           pos += size;
         }
@@ -546,7 +531,8 @@ class MediaTagger {
         final payload = d.sublist(hdlr.contentStart, hdlr.contentEnd);
         // hdlr content: version/flags(4) + pre_defined(4) + handler(4).
         if (payload.length >= 12) {
-          final handler = String.fromCharCodes(payload.sublist(8, 12));
+          final handler =
+              String.fromCharCodes(payload.sublist(8, 12));
           if (handler == 'soun') return true;
         }
       }
@@ -608,7 +594,8 @@ class MediaTagger {
       if (b.type == 'moof') {
         sizes.addAll(_mp4TrunSampleSizes(d, b));
       } else if (b.type == 'mdat') {
-        final payload = d.sublist(b.contentStart, b.contentEnd);
+        final payload =
+            d.sublist(b.contentStart, b.contentEnd);
         mdatPayloads.add(payload);
         totalMdat += payload.length;
         if (totalMdat > 512 * 1024 * 1024) {
@@ -657,7 +644,8 @@ class MediaTagger {
       for (final trun in truns) {
         final raw = d.sublist(trun.contentStart, trun.contentEnd);
         if (raw.length < 8) throw const TaggerSkip('short trun');
-        final flags = (raw[1] << 16) | (raw[2] << 8) | raw[3];
+        final flags =
+            (raw[1] << 16) | (raw[2] << 8) | raw[3];
         final sampleCount = _readU32be(raw, 4);
         if (sampleCount <= 0 || sampleCount > 100000) {
           throw const TaggerSkip('bad sample count');
@@ -692,7 +680,8 @@ class MediaTagger {
   }
 
   static _Mp4Box? _mp4FindChild(Uint8List d, _Mp4Box parent, String type) {
-    final kids = _mp4ReadBoxes(d, parent.contentStart, parent.contentEnd);
+    final kids =
+        _mp4ReadBoxes(d, parent.contentStart, parent.contentEnd);
     for (final k in kids) {
       if (k.type == type) return k;
     }
@@ -700,11 +689,9 @@ class MediaTagger {
   }
 
   static List<_Mp4Box> _mp4FindChildren(
-    Uint8List d,
-    _Mp4Box parent,
-    String type,
-  ) {
-    final kids = _mp4ReadBoxes(d, parent.contentStart, parent.contentEnd);
+      Uint8List d, _Mp4Box parent, String type) {
+    final kids =
+        _mp4ReadBoxes(d, parent.contentStart, parent.contentEnd);
     return kids.where((k) => k.type == type).toList();
   }
 
@@ -787,8 +774,7 @@ class MediaTagger {
   static int _oggCrc(Uint8List page) {
     var crc = 0;
     for (var i = 0; i < page.length; i++) {
-      crc =
-          ((_oggCrcTable[((crc >> 24) ^ page[i]) & 0xFF] ^
+      crc = ((_oggCrcTable[((crc >> 24) ^ page[i]) & 0xFF] ^
               ((crc << 8) & 0xFFFFFFFF))) &
           0xFFFFFFFF;
     }
@@ -884,9 +870,9 @@ class MediaTagger {
       comments.add('LYRICS=$lyrics');
     }
     if (tags.hasCover) {
-      final pic = base64Encode(
-        _flacPictureBlock(tags.coverMime, tags.coverBytes!, type: 3),
-      );
+      final pic = base64Encode(_flacPictureBlock(
+          tags.coverMime, tags.coverBytes!,
+          type: 3));
       comments.add('METADATA_BLOCK_PICTURE=$pic');
     }
     final vendor = utf8.encode('KatMusic Desktop');
@@ -907,11 +893,8 @@ class MediaTagger {
 
   /// FLAC `METADATA_BLOCK_PICTURE` body (also the base64 payload for
   /// OpusTags). Type 3 = front cover.
-  static Uint8List _flacPictureBlock(
-    String mime,
-    Uint8List data, {
-    int type = 3,
-  }) {
+  static Uint8List _flacPictureBlock(String mime, Uint8List data,
+      {int type = 3}) {
     final mimeBytes = utf8.encode(mime);
     final dims = _imageDims(data);
     final parts = <Uint8List>[
@@ -937,8 +920,10 @@ class MediaTagger {
           d[1] == 0x50 &&
           d[2] == 0x4E &&
           d[3] == 0x47) {
-        final w = ByteData.sublistView(d, 16, 20).getUint32(0, Endian.big);
-        final h = ByteData.sublistView(d, 20, 24).getUint32(0, Endian.big);
+        final w = ByteData.sublistView(d, 16, 20)
+            .getUint32(0, Endian.big);
+        final h = ByteData.sublistView(d, 20, 24)
+            .getUint32(0, Endian.big);
         if (w > 0 && h > 0 && w <= 16000 && h <= 16000) return (w, h);
         return (0, 0);
       }
@@ -1036,12 +1021,7 @@ class MediaTagger {
   static Uint8List _id3Text(String id, String text) {
     if (text.trim().isEmpty) return Uint8List(0);
     return _id3Frame(
-      id,
-      _concat([
-        Uint8List.fromList([0x01]),
-        _utf16leBom(text),
-      ]),
-    );
+        id, _concat([Uint8List.fromList([0x01]), _utf16leBom(text)]));
   }
 
   static Uint8List _id3v23Tag(DownloadTags tags) {
@@ -1052,30 +1032,24 @@ class MediaTagger {
     ];
     final lyrics = tags.lyrics.replaceAll('\r\n', '\n').trim();
     if (lyrics.isNotEmpty) {
-      frames.add(
-        _id3Frame(
+      frames.add(_id3Frame(
           'USLT',
           _concat([
             Uint8List.fromList([0x01]),
             utf8.encode('eng'),
             Uint8List.fromList([0x00]),
             _utf16leBom(lyrics),
-          ]),
-        ),
-      );
+          ])));
     }
     if (tags.hasCover) {
-      frames.add(
-        _id3Frame(
+      frames.add(_id3Frame(
           'APIC',
           _concat([
             Uint8List.fromList([0x00]),
             Uint8List.fromList(utf8.encode(tags.coverMime)),
             Uint8List.fromList([0x00, 0x03, 0x00]),
             tags.coverBytes!,
-          ]),
-        ),
-      );
+          ])));
     }
     final body = _concat(frames.where((f) => f.isNotEmpty).toList());
     final head = Uint8List(10);
@@ -1093,11 +1067,8 @@ class MediaTagger {
 
   // == internals: MP4 ==============================================================
 
-  static Uint8List _mp4BoxRaw(
-    String type,
-    Uint8List payload, {
-    int headerLen = 8,
-  }) {
+  static Uint8List _mp4BoxRaw(String type, Uint8List payload,
+      {int headerLen = 8}) {
     final out = Uint8List(headerLen + payload.length);
     final d = ByteData.sublistView(out);
     if (headerLen == 8) {
@@ -1140,10 +1111,8 @@ class MediaTagger {
 
   static Uint8List _mp4TextItem(String fourcc, String text) {
     if (text.trim().isEmpty) return Uint8List(0);
-    return _mp4BoxRaw(
-      fourcc,
-      _mp4DataBox(1, Uint8List.fromList(utf8.encode(text.trim()))),
-    );
+    return _mp4BoxRaw(fourcc,
+        _mp4DataBox(1, Uint8List.fromList(utf8.encode(text.trim()))));
   }
 
   static List<Uint8List> _mp4IlstItems(DownloadTags tags) {
@@ -1159,30 +1128,26 @@ class MediaTagger {
     if (tags.hasCover) {
       final mime = tags.coverMime.toLowerCase();
       final kind = mime.contains('png') ? 14 : 13;
-      items.add(_mp4BoxRaw('covr', _mp4DataBox(kind, tags.coverBytes!)));
+      items.add(_mp4BoxRaw(
+          'covr', _mp4DataBox(kind, tags.coverBytes!)));
     }
     return items.where((b) => b.isNotEmpty).toList();
   }
 
-  static List<_Mp4Box> _mp4ReadBoxes(Uint8List d, int start, int end) {
+  static List<_Mp4Box> _mp4ReadBoxes(
+      Uint8List d, int start, int end) {
     final boxes = <_Mp4Box>[];
     var pos = start;
     while (pos + 8 <= end) {
-      final size32 = ByteData.sublistView(
-        d,
-        pos,
-        pos + 4,
-      ).getUint32(0, Endian.big);
+      final size32 = ByteData.sublistView(d, pos, pos + 4)
+          .getUint32(0, Endian.big);
       final type = String.fromCharCodes(d.sublist(pos + 4, pos + 8));
       var headerLen = 8;
       var size = size32;
       if (size32 == 1) {
         if (pos + 16 > end) throw const TaggerSkip('mp4 largesize');
-        size = ByteData.sublistView(
-          d,
-          pos + 8,
-          pos + 16,
-        ).getUint64(0, Endian.big);
+        size = ByteData.sublistView(d, pos + 8, pos + 16)
+            .getUint64(0, Endian.big);
         headerLen = 16;
       } else if (size32 == 0) {
         size = end - pos;
@@ -1190,15 +1155,13 @@ class MediaTagger {
       if (size < headerLen || pos + size > end) {
         throw const TaggerSkip('mp4 box overrun');
       }
-      boxes.add(
-        _Mp4Box(
-          type: type,
-          headerLen: headerLen,
-          boxStart: pos,
-          contentStart: pos + headerLen,
-          contentEnd: pos + size,
-        ),
-      );
+      boxes.add(_Mp4Box(
+        type: type,
+        headerLen: headerLen,
+        boxStart: pos,
+        contentStart: pos + headerLen,
+        contentEnd: pos + size,
+      ));
       pos += size;
     }
     if (pos != end) throw const TaggerSkip('mp4 trailing bytes');
@@ -1207,12 +1170,15 @@ class MediaTagger {
 
   static Uint8List _mp4CopyBox(Uint8List d, _Mp4Box b) {
     if (b.freshPayload != null) {
-      return _mp4BoxRaw(b.type, b.freshPayload!, headerLen: b.headerLen);
+      return _mp4BoxRaw(b.type, b.freshPayload!,
+          headerLen: b.headerLen);
     }
-    return Uint8List.fromList(d.sublist(b.boxStart, b.contentEnd));
+    return Uint8List.fromList(
+        d.sublist(b.boxStart, b.contentEnd));
   }
 
-  static Uint8List _mp4SerializeKids(Uint8List d, List<_Mp4Box> kids) {
+  static Uint8List _mp4SerializeKids(
+      Uint8List d, List<_Mp4Box> kids) {
     final parts = <Uint8List>[];
     for (final k in kids) {
       parts.add(_mp4CopyBox(d, k));
@@ -1221,30 +1187,21 @@ class MediaTagger {
   }
 
   static const _mp4Containers = {
-    'moov',
-    'trak',
-    'mdia',
-    'minf',
-    'stbl',
-    'edts',
-    'dinf',
-    'udta',
+    'moov', 'trak', 'mdia', 'minf', 'stbl', 'edts', 'dinf', 'udta',
   };
 
   /// Adds [delta] to every stco/co64 entry under [kids] (in place on
   /// fresh payload copies; original bytes untouched until serialize).
   static void _mp4ShiftChunkOffsets(
-    List<_Mp4Box> kids,
-    Uint8List d,
-    int delta,
-  ) {
+      List<_Mp4Box> kids, Uint8List d, int delta) {
     for (final k in kids) {
       if (k.freshPayload != null) {
         // Already rebuilt (e.g. the new udta) — nothing inside to shift.
         continue;
       }
       if (k.type == 'stco' || k.type == 'co64') {
-        final raw = Uint8List.fromList(d.sublist(k.contentStart, k.contentEnd));
+        final raw = Uint8List.fromList(
+            d.sublist(k.contentStart, k.contentEnd));
         if (raw.length < 8) throw const TaggerSkip('bad stco');
         final dd = ByteData.sublistView(raw);
         final count = dd.getUint32(4, Endian.big);
@@ -1253,22 +1210,18 @@ class MediaTagger {
             throw const TaggerSkip('bad stco entries');
           }
           for (var i = 0; i < count; i++) {
-            dd.setUint32(
-              8 + i * 4,
-              dd.getUint32(8 + i * 4, Endian.big) + delta,
-              Endian.big,
-            );
+            dd.setUint32(8 + i * 4,
+                dd.getUint32(8 + i * 4, Endian.big) + delta,
+                Endian.big);
           }
         } else {
           if (raw.length < 8 + count * 8) {
             throw const TaggerSkip('bad co64 entries');
           }
           for (var i = 0; i < count; i++) {
-            dd.setUint64(
-              8 + i * 8,
-              dd.getUint64(8 + i * 8, Endian.big) + delta,
-              Endian.big,
-            );
+            dd.setUint64(8 + i * 8,
+                dd.getUint64(8 + i * 8, Endian.big) + delta,
+                Endian.big);
           }
         }
         k.freshPayload = raw;
@@ -1281,9 +1234,9 @@ class MediaTagger {
         final sub = _mp4ReadBoxes(d, k.contentStart + 4, k.contentEnd);
         _mp4ShiftChunkOffsets(sub, d, delta);
         final head = Uint8List.fromList(
-          d.sublist(k.contentStart, k.contentStart + 4),
-        );
-        k.freshPayload = _concat([head, _mp4SerializeKids(d, sub)]);
+            d.sublist(k.contentStart, k.contentStart + 4));
+        k.freshPayload =
+            _concat([head, _mp4SerializeKids(d, sub)]);
       }
     }
   }
@@ -1300,7 +1253,8 @@ class MediaTagger {
     final (sid, _) = c.readId();
     if (sid != 0x18538067) throw const TaggerSkip('no segment');
     final (segSize, _) = c.readSize();
-    final segEnd = segSize < 0 ? webm.length : (c.pos + segSize);
+    final segEnd =
+        segSize < 0 ? webm.length : (c.pos + segSize);
     if (segEnd > webm.length) throw const TaggerSkip('segment overrun');
     var timeScale = 1000000;
     var trackNo = -1;
@@ -1336,18 +1290,16 @@ class MediaTagger {
     }
     return _WebmAudio(
       opusHead: codecPrivate.sublist(0, 19),
-      preskip: ByteData.sublistView(
-        codecPrivate,
-        10,
-        12,
-      ).getUint16(0, Endian.little),
+      preskip: ByteData.sublistView(codecPrivate, 10, 12)
+          .getUint16(0, Endian.little),
       timeScale: timeScale,
       packets: packets,
     );
   }
 
   /// (audioTrackNumber, codecPrivate). Throws when Tracks is malformed.
-  static (int, Uint8List?) _parseTracks(Uint8List d, int start, int end) {
+  static (int, Uint8List?) _parseTracks(
+      Uint8List d, int start, int end) {
     final c = _EbmlCursor(d)..pos = start;
     var trackNo = -1;
     Uint8List? priv;
@@ -1374,7 +1326,8 @@ class MediaTagger {
             type = _ebmlUint(d, cc.pos, fEnd);
           } else if (fid == 0x86) {
             cid = utf8
-                .decode(d.sublist(cc.pos, fEnd), allowMalformed: true)
+                .decode(d.sublist(cc.pos, fEnd),
+                    allowMalformed: true)
                 .replaceAll('\x00', '')
                 .trim();
           } else if (fid == 0x63A2) {
@@ -1412,13 +1365,8 @@ class MediaTagger {
     return 1000000;
   }
 
-  static void _parseCluster(
-    Uint8List d,
-    int start,
-    int end,
-    int wantTrack,
-    List<_WebmPacket> out,
-  ) {
+  static void _parseCluster(Uint8List d, int start, int end,
+      int wantTrack, List<_WebmPacket> out) {
     final c = _EbmlCursor(d)..pos = start;
     var clusterTime = 0;
     while (c.pos < end) {
@@ -1452,14 +1400,8 @@ class MediaTagger {
     }
   }
 
-  static void _collectBlock(
-    Uint8List d,
-    int start,
-    int end,
-    int clusterTime,
-    int wantTrack,
-    List<_WebmPacket> out,
-  ) {
+  static void _collectBlock(Uint8List d, int start, int end,
+      int clusterTime, int wantTrack, List<_WebmPacket> out) {
     if (wantTrack < 0) return; // Tracks not seen yet; Clusters first.
     var pos = start;
     final (track, trackLen) = _readVint(d, pos, end);

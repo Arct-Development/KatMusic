@@ -1,5 +1,8 @@
 #include "my_application.h"
 
+#include <string>
+#include <cstring>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -70,11 +73,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "KatMusic");
+    gtk_header_bar_set_title(header_bar, "KatMusic By Arct Developments");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "KatMusic");
+    gtk_window_set_title(window, "KatMusic By Arct Developments");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -83,21 +86,36 @@ static void my_application_activate(GApplication* application) {
   fl_dart_project_set_dart_entrypoint_arguments(
       project, self->dart_entrypoint_arguments);
 
-  gboolean enable_impeller = TRUE;
-  const char* disable_env = getenv("KATMUSIC_DISABLE_IMPELLER");
-  const char* force_sw = getenv("KATMUSIC_FORCE_SOFTWARE");
+  gboolean enable_impeller = FALSE;
+  const char* xdg_config = getenv("XDG_CONFIG_HOME");
+  std::string flag_path = xdg_config ? std::string(xdg_config) + "/katmusic/renderer.flag"
+                                     : std::string(getenv("HOME") ? getenv("HOME") : "") + "/.config/katmusic/renderer.flag";
+  FILE* flag_file = fopen(flag_path.c_str(), "r");
+  if (flag_file != nullptr) {
+    char buf[32];
+    if (fgets(buf, sizeof(buf), flag_file) != nullptr) {
+      if (strncmp(buf, "impeller", 8) == 0) {
+        enable_impeller = TRUE;
+      }
+    }
+    fclose(flag_file);
+  }
+  const char* enable_env = getenv("KATMUSIC_ENABLE_IMPELLER");
   const char* flutter_impeller = getenv("FLUTTER_ENABLE_IMPELLER");
-  if ((disable_env != nullptr && strcmp(disable_env, "1") == 0) ||
-      (force_sw != nullptr && strcmp(force_sw, "1") == 0) ||
-      (flutter_impeller != nullptr && strcmp(flutter_impeller, "0") == 0)) {
-    enable_impeller = FALSE;
+  if (enable_env != nullptr && strcmp(enable_env, "1") == 0) {
+    enable_impeller = TRUE;
+  }
+  if (flutter_impeller != nullptr) {
+    enable_impeller = (strcmp(flutter_impeller, "1") == 0);
   }
   if (self->dart_entrypoint_arguments != nullptr) {
     for (char** arg = self->dart_entrypoint_arguments; *arg != nullptr; ++arg) {
-      if (strcmp(*arg, "--no-enable-impeller") == 0 ||
-          strcmp(*arg, "--disable-impeller") == 0 ||
-          strcmp(*arg, "--enable-software-rendering") == 0 ||
-          strcmp(*arg, "--software") == 0) {
+      if (strcmp(*arg, "--enable-impeller") == 0) {
+        enable_impeller = TRUE;
+      } else if (strcmp(*arg, "--no-enable-impeller") == 0 ||
+                 strcmp(*arg, "--disable-impeller") == 0 ||
+                 strcmp(*arg, "--enable-software-rendering") == 0 ||
+                 strcmp(*arg, "--software") == 0) {
         enable_impeller = FALSE;
         break;
       }
@@ -107,9 +125,9 @@ static void my_application_activate(GApplication* application) {
 
   FlView* view = fl_view_new(project);
   GdkRGBA background_color;
-  // Background defaults to black, override it here if necessary, e.g. #06091000
+  // Background defaults to black, override it here if necessary, e.g. #00000000
   // for transparent.
-  gdk_rgba_parse(&background_color, "#060910");
+  gdk_rgba_parse(&background_color, "#000000");
   fl_view_set_background_color(view, &background_color);
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
@@ -198,6 +216,11 @@ MyApplication* my_application_new() {
   // corresponding .desktop file. This ensures better integration by allowing
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
+  // On X11 / XWayland the WM_CLASS class defaults to the prgname with its
+  // first letter capitalised ("Com.katmusic..."), which matched no desktop
+  // entry. Use the exact id there too, the same one native Wayland reports
+  // as app_id, so docks tie the window to its launcher on every backend.
+  gdk_set_program_class(APPLICATION_ID);
 
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",

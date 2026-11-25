@@ -1,65 +1,81 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
-import '../theme/kat_icons.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../theme/wave_icons.dart';
 
 /// Rebuilt navigation — music first, panels secondary.
 ///
 /// Layout:
 /// - Top: Home / Discover / Stats / Search (daily music use)
-/// - Middle: Liked / Albums / Artists / Playlists (your collections)
-/// - Then: Downloads
-/// - Bottom (pinned): Friends / Settings
+/// - Middle: Podcasts / Playlists (Liked Songs is a tile in Playlists)
+/// - Then: Library (local files, downloads, your playlists)
+/// - Bottom (pinned): Jam / Settings
 ///
 /// History stays routable but is not on the rail.
-/// Mix Lab is a listen destination, so [/mixes] matches the loop above
-/// before the fallback at the bottom of [katActivePath].
-class KatDestination {
+class WaveDestination {
   final String path;
   final String label;
   final IconData icon;
-  const KatDestination(this.path, this.label, this.icon);
+  const WaveDestination(this.path, this.label, this.icon);
+
+  /// Localized label with automatic fallback to default [label] (English).
+  String localizedLabel(BuildContext context) {
+    try {
+      final l10n = context.l10n;
+      return switch (path) {
+        '/home' => l10n.navHome,
+        '/stats' => l10n.navStats,
+        '/search' => l10n.navSearch,
+        '/podcasts' => l10n.navPodcasts,
+        '/playlists' => l10n.navPlaylists,
+        '/library' => l10n.navLibrary,
+        '/jam' => l10n.navJam,
+        '/settings' => l10n.navSettings,
+        _ => label,
+      };
+    } catch (_) {
+      return label;
+    }
+  }
 }
 
-const katListenDestinations = [
-  KatDestination('/home', 'Listen', KatIcons.home),
-  KatDestination('/discover', 'Discover', KatIcons.discover),
-  KatDestination('/stats', 'Soundprint', KatIcons.stats),
-  KatDestination('/search', 'Explore', KatIcons.search),
-  KatDestination('/mixes', 'Blend Lab', KatIcons.mixes),
-  KatDestination('/group-blend', 'Group Blend', KatIcons.friends),
+const waveListenDestinations = [
+  WaveDestination('/home', 'Home', WaveIcons.home),
+  WaveDestination('/stats', 'Stats', WaveIcons.stats),
+  WaveDestination('/search', 'Search', WaveIcons.search),
 ];
 
-const katCollectionDestinations = [
-  KatDestination('/liked', 'Favorites', KatIcons.liked),
-  KatDestination('/playlists', 'Collections', KatIcons.playlists),
-  KatDestination('/podcasts', 'Shows', KatIcons.podcasts),
+const waveCollectionDestinations = [
+  WaveDestination('/podcasts', 'Podcasts', WaveIcons.podcasts),
+  WaveDestination('/playlists', 'Playlists', WaveIcons.playlists),
 ];
 
-const katOfflineDestinations = [
-  KatDestination('/downloads', 'Offline', KatIcons.downloads),
+const waveOfflineDestinations = [
+  WaveDestination('/library', 'Library', WaveIcons.library),
 ];
 
-const katSystemDestinations = [
-  KatDestination('/friends', 'Listening Circle', KatIcons.friends),
-  KatDestination('/settings', 'Settings', KatIcons.settings),
+const waveSystemDestinations = [
+  WaveDestination('/jam', 'Jam', WaveIcons.jam),
+  WaveDestination('/settings', 'Settings', WaveIcons.settings),
 ];
 
-List<KatDestination> get allWaveDestinations => [
-  ...katListenDestinations,
-  ...katCollectionDestinations,
-  ...katOfflineDestinations,
-  ...katSystemDestinations,
-];
+List<WaveDestination> get allWaveDestinations => [
+      ...waveListenDestinations,
+      ...waveCollectionDestinations,
+      ...waveOfflineDestinations,
+      ...waveSystemDestinations,
+    ];
 
-String katRoutePath(String location) => location.split('?').first;
+String waveRoutePath(String location) => location.split('?').first;
 
-String katActivePath(String location) {
-  final path = katRoutePath(location);
+String waveActivePath(String location) {
+  final path = waveRoutePath(location);
   for (final d in allWaveDestinations) {
     if (path == d.path || path.startsWith('${d.path}/')) {
       return d.path;
     }
   }
+  if (path.startsWith('/downloads')) return '/library';
   if (path.startsWith('/album')) return '/albums';
   if (path.startsWith('/artist')) return '/artists';
   if (path.startsWith('/now')) return '/home';
@@ -68,7 +84,7 @@ String katActivePath(String location) {
   if (path == '/home-layout' || path.startsWith('/home-layout/')) {
     return '/home';
   }
-  if (path.startsWith('/mixes')) return '/home';
-  if (path.startsWith('/profile')) return '/friends';
+  if (path.startsWith('/liked')) return '/playlists';
+  if (path.startsWith('/profile')) return '/settings';
   return '/home';
 }

@@ -7,25 +7,20 @@ void main() {
   });
 
   test('provider ids round-trip, unknown falls back to auto', () {
-    expect(LyricsProviderId.fromId('lastwave'), LyricsProviderId.lastwave);
+    expect(LyricsProviderId.fromId('katmusic'), LyricsProviderId.katmusic);
     expect(LyricsProviderId.fromId('kugou'), LyricsProviderId.kugou);
     expect(LyricsProviderId.fromId('lrc_red'), LyricsProviderId.lrcRed);
-    expect(LyricsProviderId.fromId('apple_music'), LyricsProviderId.appleMusic);
     expect(
-      LyricsProviderId.fromId('better_lyrics_portato'),
-      LyricsProviderId.betterLyricsPortato,
-    );
+        LyricsProviderId.fromId('apple_music'), LyricsProviderId.appleMusic);
+    expect(LyricsProviderId.fromId('better_lyrics_portato'),
+        LyricsProviderId.betterLyricsPortato);
     expect(LyricsProviderId.fromId('bini_lyrics'), LyricsProviderId.biniLyrics);
     expect(LyricsProviderId.fromId('lyrics_plus'), LyricsProviderId.lyricsPlus);
     expect(LyricsProviderId.fromId('unison'), LyricsProviderId.unison);
-    expect(
-      LyricsProviderId.fromId('youtube_captions'),
-      LyricsProviderId.youtubeCaptions,
-    );
-    expect(
-      LyricsProviderId.fromId('youtube_music'),
-      LyricsProviderId.youtubeMusic,
-    );
+    expect(LyricsProviderId.fromId('youtube_captions'),
+        LyricsProviderId.youtubeCaptions);
+    expect(LyricsProviderId.fromId('youtube_music'),
+        LyricsProviderId.youtubeMusic);
     expect(LyricsProviderId.fromId('megalobiz'), LyricsProviderId.megalobiz);
     expect(LyricsProviderId.fromId('genius'), LyricsProviderId.genius);
     expect(LyricsProviderId.fromId('bogus'), LyricsProviderId.auto);
@@ -47,17 +42,11 @@ void main() {
     };
     for (final p in LyricsProviderId.values) {
       if (nonWord.contains(p)) {
-        expect(
-          p.isWordProvider,
-          isFalse,
-          reason: '${p.id} should not be a word provider',
-        );
+        expect(p.isWordProvider, isFalse,
+            reason: '${p.id} should not be a word provider');
       } else {
-        expect(
-          p.isWordProvider,
-          isTrue,
-          reason: '${p.id} should be a word provider',
-        );
+        expect(p.isWordProvider, isTrue,
+            reason: '${p.id} should be a word provider');
       }
     }
   });
@@ -71,14 +60,12 @@ void main() {
   });
 
   test('lyricsSourceToProviderId maps all source variants', () {
-    expect(lyricsSourceToProviderId('LastWave Karaoke'), 'lastwave');
+    expect(lyricsSourceToProviderId('KatMusic Karaoke'), 'katmusic');
     expect(lyricsSourceToProviderId('lrc.red (Syllable)'), 'lrc_red');
     expect(lyricsSourceToProviderId('Apple Music'), 'apple_music');
     expect(lyricsSourceToProviderId('BetterLyrics'), 'better_lyrics');
-    expect(
-      lyricsSourceToProviderId('QQ Karaoke (Portato)'),
-      'better_lyrics_portato',
-    );
+    expect(lyricsSourceToProviderId('QQ Karaoke (Portato)'),
+        'better_lyrics_portato');
     expect(lyricsSourceToProviderId('Kugou'), 'kugou');
     expect(lyricsSourceToProviderId('Syllable-Sync (Bini)'), 'bini_lyrics');
     expect(lyricsSourceToProviderId('Video-Match (Word-Sync)'), 'simp_music');
