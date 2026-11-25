@@ -54,6 +54,11 @@ func init() {
 // Set PUBLIC_BASE_URL when hosting somewhere other than the default.
 func publicBaseURL() string {
 	if v := strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/"); v != "" {
+		// A previous deployment used this custom hostname. Keep old Render
+		// environment settings from leaking into new invite/share links.
+		if strings.EqualFold(v, "https://jam.clashprojects.qd.je") {
+			return defaultBaseURL
+		}
 		return v
 	}
 	return defaultBaseURL
