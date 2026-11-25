@@ -133,7 +133,7 @@ func clientIP(r *http.Request) string {
 }
 
 func sameOriginPost(r *http.Request) bool {
-	if r.Header.Get("X-Requested-With") != "lwjam" {
+	if r.Header.Get("X-Requested-With") != "katmusic-jam" {
 		return false
 	}
 	if o := r.Header.Get("Origin"); o != "" {
