@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/core/platform/renderer_mode.dart';
 import 'package:katmusic_desktop/core/platform/windows_memory.dart';
@@ -22,18 +25,31 @@ void main() {
     });
 
     test('RendererMode toggles cleanly', () async {
-      // path_provider has no registered native implementation in this
-      // headless unit-test process. Verify the API remains safe when its
-      // app-support fallback is unavailable; platform-specific persistence
-      // paths are covered by the Windows/Linux branches at runtime.
-      await expectLater(RendererMode.setImpellerEnabled(false), completes);
-      expect(await RendererMode.isImpellerEnabled(), isA<bool>());
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      final supportDir = await Directory.systemTemp.createTemp('katmusic_renderer_test_');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'getApplicationSupportDirectory') {
+          return supportDir.path;
+        }
+        return null;
+      });
 
-      await expectLater(RendererMode.setImpellerEnabled(true), completes);
-      expect(await RendererMode.isImpellerEnabled(), isA<bool>());
+      try {
+        await RendererMode.setImpellerEnabled(false);
+        expect(await RendererMode.isImpellerEnabled(), isFalse);
 
-      await expectLater(RendererMode.setImpellerEnabled(false), completes);
-      expect(await RendererMode.isImpellerEnabled(), isA<bool>());
+        await RendererMode.setImpellerEnabled(true);
+        expect(await RendererMode.isImpellerEnabled(), isTrue);
+
+        // Clean up back to default (false / Skia).
+        await RendererMode.setImpellerEnabled(false);
+        expect(await RendererMode.isImpellerEnabled(), isFalse);
+      } finally {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+        await supportDir.delete(recursive: true);
+      }
     });
   });
 }
