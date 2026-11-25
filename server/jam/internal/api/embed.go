@@ -48,7 +48,7 @@ func (h *Handler) handleEmbedSong(w http.ResponseWriter, r *http.Request) {
 	if artist == "" {
 		artist = "KatMusic"
 	}
-	link := publicBaseURL() + "/share.html?v=" + url.QueryEscape(videoID) +
+	link := "https://katmusic.pages.dev/share.html?v=" + url.QueryEscape(videoID) +
 		"&title=" + url.QueryEscape(title) + "&artist=" + url.QueryEscape(artist)
 	body := embedShell(title, artist, "Open this song in KatMusic.", "", link)
 	writeEmbed(w, body)
