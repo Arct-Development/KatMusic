@@ -67,6 +67,16 @@ jobs:
       - name: Install Dart dependencies
         run: flutter pub get
 
+      - name: Set up Rust
+        if: runner.os == 'Windows'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build QuickJS native library
+        if: runner.os == 'Windows'
+        run: |
+          cargo build --manifest-path native/quickjs_cipher/Cargo.toml --release
+          Copy-Item native/quickjs_cipher/target/release/quickjs_cipher.dll quickjs_cipher.dll -Force
+
       - name: Generate secret module
         run: dart tool/obfuscate_secrets.dart
 
@@ -76,13 +86,19 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          # Native QuickJS integration tests exercise a bundled Windows DLL
-          # and live YouTube player assets. Keep them out of the cross-platform
-          # desktop build gate; run them in the dedicated native validation job.
-          flutter test --exclude-tags golden,live,native
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # Build the Windows QuickJS DLL from the current Rust/JS sources above.
+            flutter test --exclude-tags golden,live
+          else
+            flutter test --exclude-tags golden,live,native
+          fi
 
       - name: Build
         run: ${{ matrix.build }}
+
+      - name: Bundle QuickJS native library
+        if: runner.os == 'Windows'
+        run: Copy-Item quickjs_cipher.dll build/windows/x64/runner/Release/quickjs_cipher.dll -Force
 
       - name: Package
         shell: bash
