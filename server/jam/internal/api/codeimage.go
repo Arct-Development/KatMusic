@@ -42,7 +42,7 @@ func renderCodeImage(code string) []byte {
 		drawText(img, f, "KatMusic", 196, 130, 0, colWhite)
 		w := textWidth(f, "KatMusic", 0)
 		if f2 := newFace(regularFont, 52); f2 != nil {
-			drawText(img, f2, "Code", 196+w+16, 130, 0, colLime)
+			drawText(img, f2, "Code", 196+w+16, 130, 0, colBlue)
 		}
 	}
 	if f := newFace(boldFont, 30); f != nil {
@@ -58,7 +58,7 @@ func renderCodeImage(code string) []byte {
 		}
 	}
 	if codeFace != nil {
-		drawText(img, codeFace, code, 80, 430, 4, colLime)
+		drawText(img, codeFace, code, 80, 430, 4, colBlue)
 	}
 	if f := newFace(regularFont, 36); f != nil {
 		drawText(img, f, "Open KatMusic and enter this code to play the song", 80, 524, 0, colWhite)
