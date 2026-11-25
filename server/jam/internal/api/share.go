@@ -155,11 +155,11 @@ func cachedBanner(code string) ([]byte, bool) {
 }
 
 var (
-	colBlack = color.RGBA{0, 0, 0, 255}
-	colLime  = color.RGBA{0xC9, 0xFB, 0x00, 255}
+	colBlack = color.RGBA{0x08, 0x0D, 0x18, 255}
+	colBlue  = color.RGBA{0x66, 0xB5, 0xFF, 255}
 	colWhite = color.RGBA{255, 255, 255, 255}
 	colGray  = color.RGBA{0x8E, 0x8E, 0x9A, 255}
-	colLine  = color.RGBA{0x24, 0x26, 0x2B, 255}
+	colLine  = color.RGBA{0x26, 0x3A, 0x56, 255}
 )
 
 func newFace(f *opentype.Font, px float64) font.Face {
@@ -193,7 +193,7 @@ func drawText(dst draw.Image, face font.Face, s string, x, baseline, spacing int
 }
 
 // renderBanner draws the 1200x630 preview: black background, KatMusic
-// signature, and the room code in large lime type.
+// signature, and the room code in KatMusic blue.
 func renderBanner(code string) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, ogWidth, ogHeight))
 	draw.Draw(img, img.Bounds(), image.NewUniform(colBlack), image.Point{}, draw.Src)
@@ -208,7 +208,7 @@ func renderBanner(code string) []byte {
 		drawText(img, f, "KatMusic", 196, 130, 0, colWhite)
 		w := textWidth(f, "KatMusic", 0)
 		if f2 := newFace(regularFont, 52); f2 != nil {
-			drawText(img, f2, "Jam", 196+w+16, 130, 0, colLime)
+			drawText(img, f2, "Jam", 196+w+16, 130, 0, colBlue)
 		}
 	}
 
@@ -235,7 +235,7 @@ func renderBanner(code string) []byte {
 		}
 	}
 	if face != nil {
-		drawText(img, face, big, 80, 452, 10, colLime)
+		drawText(img, face, big, 80, 452, 10, colBlue)
 	}
 
 	if f := newFace(regularFont, 38); f != nil {
