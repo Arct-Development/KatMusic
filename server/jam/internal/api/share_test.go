@@ -109,7 +109,7 @@ func TestLogoRoute(t *testing.T) {
 	}
 }
 
-func TestEmbedSongUsesPublicBaseURL(t *testing.T) {
+func TestEmbedSongUsesKatMusicSharePage(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "https://katmusic.onrender.com/")
 	mux := newMux()
 	rec := httptest.NewRecorder()
@@ -118,10 +118,18 @@ func TestEmbedSongUsesPublicBaseURL(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("embed returned %d", rec.Code)
 	}
-	if !strings.Contains(body, "https://katmusic.onrender.com/share.html?v=dQw4w9WgXcQ") {
-		t.Fatal("song embed should link to the canonical KatMusic URL")
+	if !strings.Contains(body, "https://katmusic.pages.dev/share.html?v=dQw4w9WgXcQ") {
+		t.Fatal("song embed should link to the KatMusic static share page")
 	}
-	if strings.Contains(body, "katmusic.pages.dev") || strings.Contains(body, "LastWave") {
+	if strings.Contains(body, "jam.clashprojects.qd.je") || strings.Contains(body, "LastWave") {
 		t.Fatal("embed contains legacy branding or host")
+	}
+}
+
+
+func TestPublicBaseURLRewritesLegacyJamHost(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "https://jam.clashprojects.qd.je/")
+	if got := publicBaseURL(); got != defaultBaseURL {
+		t.Fatalf("legacy Jam origin should resolve to %q, got %q", defaultBaseURL, got)
 	}
 }
