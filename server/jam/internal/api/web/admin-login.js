@@ -10,7 +10,7 @@
     fetch('/admin/login', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'lwjam' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'katmusic-jam' },
       body: JSON.stringify({ password: document.getElementById('password').value }),
     })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
