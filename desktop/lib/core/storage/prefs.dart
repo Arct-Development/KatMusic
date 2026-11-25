@@ -242,6 +242,18 @@ class Prefs {
     'italic_wave': 'Silk Italic',
     'glitch_snap': 'Chromatic Glitch',
     'elastic_tilt': '3D Stage Tilt',
+    'lyrical_studio': 'Lyrical Studio',
+    'lyrical_studio_stack': 'Studio Stack',
+    'lyrical_studio_slide': 'Studio Slide',
+    'lyrical_studio_zoom': 'Studio Zoom',
+    'lyrical_studio_letters': 'Studio Letters',
+    'lyrical_studio_scatter': 'Studio Scatter',
+    'lyrical_studio_flow': 'Studio Flow',
+    'lyrical_studio_graph': 'Studio Graph',
+    'aesthetic_ship': 'Aesthetic Ship',
+    'aesthetic_fisheye': 'Aesthetic Fisheye',
+    'aesthetic_fisheye_visual': 'Aesthetic Fisheye Visual',
+    'aesthetic_visual': 'Aesthetic Visual',
     'smooth_fade': 'Classic Fade',
   };
 

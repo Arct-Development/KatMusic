@@ -1568,7 +1568,8 @@ class _Lyrics extends ConsumerWidget {
         _Group(
           id: 'lyrics.animation',
           title: 'Lyrics animation',
-          subtitle: 'Visual animation style for synced lyrics in Now Playing',
+          subtitle:
+              'Synced lyrics style · Studio/Aesthetic ports by LyricalStudio + theaestheticslyrics (MIT)',
           child: _BehaviourSelectRow(
             title: 'Animation style',
             subtitle: switch (prefs.lyricsAnimation) {
@@ -1585,6 +1586,30 @@ class _Lyrics extends ConsumerWidget {
                 'RGB chromatic split with crisp digital snap-in pulses',
               'elastic_tilt' =>
                 '3D perspective stage lean with elastic overshoot motion',
+              'lyrical_studio' =>
+                'Auto kinetic typography: Stack, Slide, Zoom, Letters, Scatter, Flow and Graph',
+              'lyrical_studio_stack' =>
+                'Words stack into big rows and slide up as they are sung',
+              'lyrical_studio_slide' =>
+                'Huge staggered rows sweep in from alternating edges',
+              'lyrical_studio_zoom' =>
+                'Words fly in from huge and blurred, settling into centered rows',
+              'lyrical_studio_letters' =>
+                'Every letter flips in on its own like a split-flap board',
+              'lyrical_studio_scatter' =>
+                'A collage of different sizes, offsets and vertical words',
+              'lyrical_studio_flow' =>
+                'The whole line stays visible and lights up word by word',
+              'lyrical_studio_graph' =>
+                'A lyric tree: words joined by curves, leaves hanging below',
+              'aesthetic_ship' =>
+                'A drifting 3D word wall with the sung word popping forward',
+              'aesthetic_fisheye' =>
+                'A convex word stack focused on the word nearest the glass',
+              'aesthetic_fisheye_visual' =>
+                'Fisheye word stack with a matching icon on the sung word',
+              'aesthetic_visual' =>
+                'One large word at a time with a matching icon',
               'smooth_fade' => 'Minimalist clean highlight without motion',
               _ => 'Smooth fluid syllable wipe with gentle micro-float',
             },

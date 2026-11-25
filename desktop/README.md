@@ -7,6 +7,9 @@ with YouTube Music streaming, Last.fm authentication/scrobbling,
 synced and word-by-word lyrics, downloads, local files, group Jam rooms,
 Spotify Canvas, tray controls and MPRIS/SMTC integration.
 
+The lyric animation picker also includes ports of the MIT-licensed
+LyricalStudio and theaestheticslyrics styles; see `THIRD_PARTY_NOTICES.md`.
+
 ## UI direction
 
 The desktop app uses a KatMusic-specific visual system rather than the neutral

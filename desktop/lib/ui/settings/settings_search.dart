@@ -134,7 +134,8 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     section: 'lyrics',
     title: 'Lyrics animation',
     subtitle: 'Visual animation style for synced lyrics',
-    keywords: 'lyrics animation style apple fluid glow bounce pulse smooth fade karaoke',
+    keywords:
+        'lyrics animation style apple fluid glow bounce pulse smooth fade karaoke studio kinetic ship fisheye visual graph scatter slide zoom letters flow',
   ),
   SettingsSearchEntry(
     id: 'lyrics.timing',
