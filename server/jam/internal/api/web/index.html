@@ -10,7 +10,7 @@
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 20% 0%,#172d4b 0,var(--bg) 60%); color:var(--text); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
   main { width:min(520px,100%); background:var(--card); border:1px solid var(--line); border-radius:24px; padding:32px; }
-  .brand { font-size:28px; font-weight:800; letter-spacing:-.02em; }
+  .brand { display:flex; align-items:center; gap:12px; font-size:28px; font-weight:800; letter-spacing:-.02em; }\n  .brand img { width:42px; height:42px; object-fit:contain; border-radius:10px; }
   .brand span { color:var(--accent); }
   p { color:var(--muted); margin:10px 0 0; }
   .code { margin:24px 0; padding:20px; border:1px dashed var(--line); border-radius:16px; text-align:center; font:700 34px/1.1 ui-monospace,SFMono-Regular,monospace; letter-spacing:.16em; color:var(--accent); }
@@ -23,7 +23,7 @@
 </head>
 <body>
 <main>
-  <div class="brand">KatMusic <span>Jam</span></div>
+  <div class="brand"><img src="/assets/logo.png" alt=""><span>KatMusic <span>Jam</span></span></div>
   <p>Listen to the same track with friends, in sync, wherever they are.</p>
   <div class="code" id="room-code">JAM</div>
   <label for="code">Room code</label>
