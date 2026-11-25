@@ -45,6 +45,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ws", h.handleWebSocket)
 	mux.HandleFunc("GET /og/{file}", h.handleOG)
 	mux.HandleFunc("GET /code/{file}", h.handleCodeImage)
+	mux.HandleFunc("GET /assets/logo.png", h.handleLogo)
 	h.registerAdminRoutes(mux)
 	h.registerEmbedRoutes(mux)
 
