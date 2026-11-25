@@ -26,7 +26,7 @@ func (h *Handler) handleEmbedJam(w http.ResponseWriter, r *http.Request) {
 	base := publicBaseURL()
 	body := embedShell(
 		"Join Jam "+code,
-		"KatMusic Jam",
+		"Listen together on KatMusic",
 		"Listen together in sync. Enter code "+code+" in KatMusic.",
 		code,
 		base+"/?code="+code,
@@ -48,7 +48,7 @@ func (h *Handler) handleEmbedSong(w http.ResponseWriter, r *http.Request) {
 	if artist == "" {
 		artist = "KatMusic"
 	}
-	link := "https://katmusic.pages.dev/share.html?v=" + url.QueryEscape(videoID) +
+	link := publicBaseURL() + "/share.html?v=" + url.QueryEscape(videoID) +
 		"&title=" + url.QueryEscape(title) + "&artist=" + url.QueryEscape(artist)
 	body := embedShell(title, artist, "Open this song in KatMusic.", "", link)
 	writeEmbed(w, body)
@@ -73,16 +73,17 @@ func embedShell(title, subtitle, hint, code, link string) string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>` + e(title) + ` · KatMusic</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}
-body{margin:0;padding:16px;background:#0a0a0c;color:#f4f4f6;font:15px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
-.card{width:min(440px,100%);background:#17171c;border:1px solid #2a2a33;border-radius:20px;padding:24px;text-align:center}
-.brand{font-size:22px;font-weight:800}.brand span{color:#c7f56b}
-h1{font-size:20px;margin:14px 0 4px}.sub{color:#a0a0ac;margin:0 0 14px}
-.code{font:700 30px/1.2 ui-monospace,monospace;letter-spacing:.12em;color:#c7f56b;padding:16px;border:1px dashed #2a2a33;border-radius:14px;margin:14px 0}
-.hint{color:#a0a0ac;font-size:13px}
-a{display:inline-block;margin-top:14px;padding:11px 18px;border-radius:999px;background:#c7f56b;color:#0a0a0c;text-decoration:none;font-weight:700}
+:root{color-scheme:dark;--accent:#66b5ff;--bg:#080d18;--panel:#111b2d;--line:#263a56;--text:#f2f7ff;--muted:#9cacc2}*{box-sizing:border-box}
+body{margin:0;padding:16px;background:radial-gradient(ellipse at 50% 0%,#172d4b 0,var(--bg) 68%);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
+.card{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:24px;text-align:center;box-shadow:0 18px 55px #0007}
+.brand{font-size:22px;font-weight:800;letter-spacing:-.03em}.brand span{color:var(--accent)}
+h1{font-size:20px;margin:14px 0 4px}.sub{color:var(--muted);margin:0 0 14px}
+.code{font:700 30px/1.2 ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);padding:16px;border:1px dashed var(--line);border-radius:14px;margin:14px 0}
+.hint{color:var(--muted);font-size:13px}
+a{display:inline-block;margin-top:14px;padding:11px 18px;border-radius:999px;background:#2583e8;color:#fff;text-decoration:none;font-weight:700}
+a:hover{background:#4097f4}
 </style></head><body><div class="card">
-<div class="brand">KatMusic <span>Jam</span></div>
+<div class="brand">KatMusic</div>
 <h1>` + e(title) + `</h1><p class="sub">` + e(subtitle) + `</p>` + codeBlock + `
 <p class="hint">` + e(hint) + `</p><a href="` + e(link) + `" target="_blank" rel="noopener">Open in KatMusic</a>
 </div></body></html>`
