@@ -86,7 +86,7 @@ func renderMeta(code string) string {
 	e := html.EscapeString
 	var b strings.Builder
 	b.WriteString(`<meta name="description" content="` + e(desc) + `">` + "\n")
-	b.WriteString(`<meta name="theme-color" content="#000000">` + "\n")
+	b.WriteString(`<meta name="theme-color" content="#080d18">` + "\n")
 	b.WriteString(`<meta property="og:type" content="website">` + "\n")
 	b.WriteString(`<meta property="og:site_name" content="KatMusic Jam">` + "\n")
 	b.WriteString(`<meta property="og:title" content="` + e(title) + `">` + "\n")
@@ -124,6 +124,14 @@ func (h *Handler) handleOG(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(data)
+}
+
+// handleLogo serves the KatMusic brand mark used by the Jam web surfaces.
+func (h *Handler) handleLogo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(logoPNG)
 }
 
 // renderSlots bounds concurrent banner renders; cache hits never wait.
