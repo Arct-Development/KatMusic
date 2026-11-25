@@ -32,17 +32,25 @@ void main() {
       final plays = db.loadRecentPlays(limit: 10);
       // Other breaks the run, so the final Looped is a fresh row.
       expect(plays.length, 3);
-      expect(plays.where((p) => p.title == 'Looped').length, 2);
+      expect(
+        plays.where((p) => p.title == 'Looped').length,
+        2,
+      );
     });
 
     test('prunes to the newest 500 rows', () {
       final db = AppDatabase.inMemory();
       for (var i = 0; i < AppDatabase.localPlaysCap + 5; i++) {
-        db.recordLocalPlay(title: 'Song $i', artist: 'Artist $i');
+        db.recordLocalPlay(
+          title: 'Song $i',
+          artist: 'Artist $i',
+        );
       }
-      final plays = db.loadRecentPlays(limit: AppDatabase.localPlaysCap + 10);
+      final plays =
+          db.loadRecentPlays(limit: AppDatabase.localPlaysCap + 10);
       expect(plays.length, AppDatabase.localPlaysCap);
-      expect(plays.first.title, 'Song ${AppDatabase.localPlaysCap + 4}');
+      expect(plays.first.title,
+          'Song ${AppDatabase.localPlaysCap + 4}');
     });
   });
 
@@ -57,15 +65,15 @@ void main() {
           HomeTrack(name: 'Dup', artist: 'B'),
           HomeTrack(name: 'Liked', artist: 'C'),
         ],
-        downloadedTracks: [HomeTrack(name: 'Owned', artist: 'D')],
+        downloadedTracks: [
+          HomeTrack(name: 'Owned', artist: 'D'),
+        ],
       );
       final pool = taste.seedPool(limit: 10);
-      expect(pool.map((t) => t.name).toList(), [
-        'Recent',
-        'Dup',
-        'Liked',
-        'Owned',
-      ]);
+      expect(
+        pool.map((t) => t.name).toList(),
+        ['Recent', 'Dup', 'Liked', 'Owned'],
+      );
       expect(taste.isEmpty, isFalse);
       expect(const LocalTaste().isEmpty, isTrue);
     });

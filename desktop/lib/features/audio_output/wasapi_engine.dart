@@ -21,17 +21,14 @@ class WasapiEngine {
 
   Stream<Map<String, dynamic>> get deviceEvents {
     if (!isSupported) return const Stream.empty();
-    return _events
-        .receiveBroadcastStream()
-        .map((event) {
-          if (event is Map) {
-            return event.map((k, v) => MapEntry(k.toString(), v));
-          }
-          return <String, dynamic>{};
-        })
-        .handleError((error) {
-          wasapiLog('deviceEvents stream error: $error');
-        });
+    return _events.receiveBroadcastStream().map((event) {
+      if (event is Map) {
+        return event.map((k, v) => MapEntry(k.toString(), v));
+      }
+      return <String, dynamic>{};
+    }).handleError((error) {
+      wasapiLog('deviceEvents stream error: $error');
+    });
   }
 
   Future<List<DacDevice>> enumerateDevices() async {
@@ -57,9 +54,10 @@ class WasapiEngine {
   Future<DacDevice?> probeDevice(String id) async {
     if (!isSupported || id.trim().isEmpty) return null;
     try {
-      final raw = await _channel
-          .invokeMethod<Map<dynamic, dynamic>>('probeDevice', {'id': id})
-          .timeout(const Duration(seconds: 5));
+      final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'probeDevice',
+        {'id': id},
+      ).timeout(const Duration(seconds: 5));
 
       if (raw == null) return null;
       return DacDevice.fromJson(raw);
@@ -85,14 +83,12 @@ class WasapiEngine {
   }) async {
     if (!isSupported || id.trim().isEmpty) return false;
     try {
-      final supported = await _channel
-          .invokeMethod<bool>('isFormatSupported', {
-            'id': id,
-            'sampleRate': sampleRate,
-            'channels': channels,
-            'bitDepth': bitDepth,
-          })
-          .timeout(const Duration(seconds: 3));
+      final supported = await _channel.invokeMethod<bool>('isFormatSupported', {
+        'id': id,
+        'sampleRate': sampleRate,
+        'channels': channels,
+        'bitDepth': bitDepth,
+      }).timeout(const Duration(seconds: 3));
 
       return supported ?? false;
     } catch (e) {
@@ -104,12 +100,10 @@ class WasapiEngine {
   Future<bool> setHardwareVolume(String id, double scalar) async {
     if (!isSupported || id.trim().isEmpty) return false;
     try {
-      await _channel
-          .invokeMethod<void>('setHardwareVolume', {
-            'id': id,
-            'scalar': scalar.clamp(0.0, 1.0),
-          })
-          .timeout(const Duration(seconds: 2));
+      await _channel.invokeMethod<void>('setHardwareVolume', {
+        'id': id,
+        'scalar': scalar.clamp(0.0, 1.0),
+      }).timeout(const Duration(seconds: 2));
       return true;
     } on PlatformException catch (e) {
       wasapiLog('setHardwareVolume failed: ${e.message}');
@@ -122,9 +116,9 @@ class WasapiEngine {
   Future<double?> getHardwareVolume(String id) async {
     if (!isSupported || id.trim().isEmpty) return null;
     try {
-      final v = await _channel
-          .invokeMethod<num>('getHardwareVolume', {'id': id})
-          .timeout(const Duration(seconds: 2));
+      final v = await _channel.invokeMethod<num>('getHardwareVolume', {
+        'id': id,
+      }).timeout(const Duration(seconds: 2));
       return v?.toDouble();
     } on PlatformException catch (e) {
       wasapiLog('getHardwareVolume failed: ${e.message}');

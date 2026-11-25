@@ -8,7 +8,7 @@ import '../search/shared_providers.dart';
 /// kv_store key for the home shelf order and hidden set.
 const homeShelfLayoutKey = 'home_shelf_layout';
 
-/// Stable ids for the shelves [KatHomePage] builds.
+/// Stable ids for the shelves [WaveHomePage] builds.
 ///
 /// A shelf added to [HomeShelfCatalog.defaults] later still shows up for
 /// people who already saved a layout: [resolveHomeShelfOrder] leaves any
@@ -22,7 +22,6 @@ abstract final class HomeShelfId {
   static const because = 'because';
   static const albums = 'albums';
   static const artists = 'artists';
-  static const friends = 'friends';
   static const charts = 'charts';
   static const fresh = 'fresh';
   static const releases = 'releases';
@@ -40,7 +39,6 @@ abstract final class HomeShelfCatalog {
     HomeShelfId.because,
     HomeShelfId.albums,
     HomeShelfId.artists,
-    HomeShelfId.friends,
     HomeShelfId.charts,
     HomeShelfId.fresh,
     HomeShelfId.releases,
@@ -60,7 +58,6 @@ abstract final class HomeShelfCatalog {
     HomeShelfId.because,
     HomeShelfId.artists,
     HomeShelfId.youtubeMore,
-    HomeShelfId.friends,
   ];
 
   static const labels = <String, String>{
@@ -72,7 +69,6 @@ abstract final class HomeShelfCatalog {
     HomeShelfId.because: 'Because You Listened',
     HomeShelfId.albums: 'Albums',
     HomeShelfId.artists: 'Artists',
-    HomeShelfId.friends: 'Friends',
     HomeShelfId.charts: 'Charts',
     HomeShelfId.fresh: 'Fresh Finds',
     HomeShelfId.releases: 'New Releases',
@@ -88,7 +84,10 @@ abstract final class HomeShelfCatalog {
 /// Ids present in [saved] keep that relative order. Ids [saved] never
 /// mentions — a shelf this build added — stay at their default index
 /// instead of being appended or dropped.
-List<String> resolveHomeShelfOrder(List<String> saved, List<String> defaults) {
+List<String> resolveHomeShelfOrder(
+  List<String> saved,
+  List<String> defaults,
+) {
   if (saved.isEmpty || defaults.isEmpty) {
     return List<String>.of(defaults);
   }
@@ -125,25 +124,32 @@ class HomeShelfLayout {
   final List<String> order;
   final Set<String> hidden;
 
-  const HomeShelfLayout({required this.order, required this.hidden});
+  const HomeShelfLayout({
+    required this.order,
+    required this.hidden,
+  });
 
   factory HomeShelfLayout.fresh() => HomeShelfLayout(
-    order: List<String>.of(HomeShelfCatalog.defaults),
-    hidden: const {},
-  );
+        order: List<String>.of(HomeShelfCatalog.defaults),
+        hidden: const {},
+      );
 
-  List<String> get visibleIds => [
-    for (final id in order)
-      if (!hidden.contains(id)) id,
-  ];
+  List<String> get visibleIds =>
+      [for (final id in order) if (!hidden.contains(id)) id];
 
-  HomeShelfLayout copyWith({List<String>? order, Set<String>? hidden}) =>
+  HomeShelfLayout copyWith({
+    List<String>? order,
+    Set<String>? hidden,
+  }) =>
       HomeShelfLayout(
         order: order ?? this.order,
         hidden: hidden ?? this.hidden,
       );
 
-  String encode() => jsonEncode({'order': order, 'hidden': hidden.toList()});
+  String encode() => jsonEncode({
+        'order': order,
+        'hidden': hidden.toList(),
+      });
 
   factory HomeShelfLayout.decode(String? raw) {
     if (raw == null || raw.trim().isEmpty) return HomeShelfLayout.fresh();
@@ -171,7 +177,7 @@ class HomeShelfLayout {
 
 class HomeShelfLayoutNotifier extends StateNotifier<HomeShelfLayout> {
   HomeShelfLayoutNotifier(this._db)
-    : super(HomeShelfLayout.decode(_db.kvGet(homeShelfLayoutKey)));
+      : super(HomeShelfLayout.decode(_db.kvGet(homeShelfLayoutKey)));
 
   final AppDatabase _db;
 
@@ -209,5 +215,5 @@ class HomeShelfLayoutNotifier extends StateNotifier<HomeShelfLayout> {
 
 final homeShelfLayoutProvider =
     StateNotifierProvider<HomeShelfLayoutNotifier, HomeShelfLayout>((ref) {
-      return HomeShelfLayoutNotifier(ref.watch(databaseProvider));
-    });
+  return HomeShelfLayoutNotifier(ref.watch(databaseProvider));
+});

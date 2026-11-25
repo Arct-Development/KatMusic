@@ -17,12 +17,14 @@ import '../../core/network/lastfm_crypto.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/storage/prefs.dart';
 import '../../core/storage/secure_store.dart';
+import '../../core/l10n/app_language.dart';
 import '../podcasts/podcast_models.dart';
 import '../podcasts/podcast_parser.dart';
 import '../search/shared_providers.dart';
 import '../player/play_diag.dart';
 import 'potoken_engine.dart';
 import 'signature_decipher.dart';
+import 'yt_auth_store.dart';
 
 /// Structured stream debug log. Mirrors Android `STREAM_LOG_TAG`
 /// fields (stage/videoId/client/itag/mime/expiry/retry/http).
@@ -73,7 +75,7 @@ class NoReliableMatchException implements Exception {
 
 /// YouTube Music / InnerTube client â€” Android parity port.
 ///
-/// Behaviour mirrors KatMusic-native `InnerTubeMusicApi`:
+/// Behaviour mirrors KatMusic `InnerTubeMusicApi`:
 /// same endpoints, client table, headers, auth gating, parsing,
 /// matching, player strategy, probing, caching, retries and
 /// cooldowns. Two deliberate desktop adaptations:
@@ -557,24 +559,6 @@ class InnerTubeMusicApi {
   static const List<PlayerClient> playerClients = [
     // Direct-URL clients first (no cipher/poToken botguard blockage).
     PlayerClient(
-      'ANDROID',
-      '21.26.364',
-      'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w',
-      'com.google.android.youtube/21.26.364 (Linux; U; Android 11) gzip',
-      osName: 'Android',
-      osVersion: '11',
-    ),
-    PlayerClient(
-      'IOS',
-      '21.26.4',
-      'AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc',
-      'com.google.ios.youtube/21.26.4 (iPhone16,2; U; CPU iOS 18_3_2;)',
-      osName: 'iPhone',
-      osVersion: '18.3.2.22D82',
-      deviceMake: 'Apple',
-      deviceModel: 'iPhone16,2',
-    ),
-    PlayerClient(
       'VISIONOS',
       '0.1',
       'AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc',
@@ -594,6 +578,24 @@ class InnerTubeMusicApi {
       deviceMake: 'Oculus',
       deviceModel: 'Quest 3',
       androidSdkVersion: '32',
+    ),
+    PlayerClient(
+      'IOS',
+      '21.26.4',
+      'AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc',
+      'com.google.ios.youtube/21.26.4 (iPhone16,2; U; CPU iOS 18_3_2;)',
+      osName: 'iPhone',
+      osVersion: '18.3.2.22D82',
+      deviceMake: 'Apple',
+      deviceModel: 'iPhone16,2',
+    ),
+    PlayerClient(
+      'ANDROID',
+      '21.26.364',
+      'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w',
+      'com.google.android.youtube/21.26.364 (Linux; U; Android 11) gzip',
+      osName: 'Android',
+      osVersion: '11',
     ),
     PlayerClient(
       'ANDROID_TESTSUITE',
@@ -673,8 +675,8 @@ class InnerTubeMusicApi {
   ];
 
   // -- matching tables (mirror Android companion TextMatch) --------------------
-  // Variant words live in [MatchVocab] (shared with the addon matcher);
-  // the rest mirrors KatMusic-Native `TextMatch` exactly. Desktop-only
+  // Variant words live in [MatchVocab];
+  // the rest mirrors KatMusic `TextMatch` exactly. Desktop-only
   // additions are marked.
   static final RegExp _nonWord = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
   static final RegExp _diacritics = RegExp(r'\p{M}+', unicode: true);
@@ -740,7 +742,7 @@ class InnerTubeMusicApi {
   static const int _unknownExpiryTtlMs = 5 * 60 * 1000;
   // Limusic fast path: one preferred direct-URL client first,
   // then at most 2 limited fallbacks. Never fan out to the full table.
-  static const String _fastPreferredClient = 'ANDROID';
+  static const String _fastPreferredClient = 'VISIONOS';
   static const int _maxStreamClients = 3;
   static const Duration _fastClientTimeout = Duration(seconds: 8);
 
@@ -748,6 +750,7 @@ class InnerTubeMusicApi {
   final SecureStore _secure;
   late final SignatureDecipher _decipher;
   final PoTokenEngine? _poTokens;
+  late final YtAuthStore authStore;
   AppDatabase? _disk;
   bool _diskLoaded = false;
 
@@ -771,6 +774,8 @@ class InnerTubeMusicApi {
   YtConnection _connection = const YtConnection();
 
   InnerTubeMusicApi(this._dio, this._secure, [this._poTokens]) {
+    authStore = YtAuthStore(_secure);
+    unawaited(authStore.load());
     _decipher = SignatureDecipher(_dio);
     // Google rotates the session cookies (`__Secure-*PSIDTS`, `SIDCC`
     // family) through `Set-Cookie` on authenticated responses. Without
@@ -903,6 +908,16 @@ class InnerTubeMusicApi {
 
   void setConnection(YtConnection c) => _connection = c;
 
+  /// InnerTube language tag (e.g. 'en', 'tr', 'zh-Hans', 'ru', etc.).
+  /// Maps only supported Limusic languages; non-supported fallback to 'en'.
+  String _hl = 'en';
+  String get hl => _hl;
+  set hl(String val) {
+    if (val.isNotEmpty && _hl != val) {
+      _hl = val;
+    }
+  }
+
   // -- cookie rotation ---------------------------------------------------------
 
   /// The jar currently in secure storage for the active connection.
@@ -953,6 +968,7 @@ class InnerTubeMusicApi {
       _rotationWrite = _rotationWrite.then((_) async {
         try {
           await _secure.writeYtCookies(next);
+          await authStore.updateCookies(next);
         } catch (_) {}
         try {
           onCookiesRotated?.call(current, next);
@@ -1019,8 +1035,7 @@ class InnerTubeMusicApi {
         }
       }
       if (deleted) continue;
-      final scoped =
-          domain == 'youtube.com' ||
+      final scoped = domain == 'youtube.com' ||
           domain.endsWith('.youtube.com') ||
           domain == 'google.com' ||
           domain.endsWith('.google.com');
@@ -1313,6 +1328,7 @@ class InnerTubeMusicApi {
     } catch (_) {}
     await _secure.writeYtCookies(normalized);
     _persistedCookies = normalized;
+    await authStore.updateCookies(normalized);
     await _persistActivePointer();
     if (kDebugMode) {
       debugPrint('InnerTube: connect verified');
@@ -1759,11 +1775,9 @@ class InnerTubeMusicApi {
       final seenIds = parsed.map((p) => p.id).toSet();
       final seenTokens = <String>{};
       var token = _libraryGridToken(root);
-      for (
-        var page = 0;
-        token != null && page < 20 && seenTokens.add(token);
-        page++
-      ) {
+      for (var page = 0;
+          token != null && page < 20 && seenTokens.add(token);
+          page++) {
         final next = await _browseContinuation(token, authenticated: true);
         for (final p in _parsePlaylistRenderers(next)) {
           if (seenIds.add(p.id)) parsed.add(p);
@@ -1781,8 +1795,7 @@ class InnerTubeMusicApi {
           )
           .toList();
       if (kDebugMode) {
-        debugPrint('YtFetch: playlists=${lists.length} ${_authDebug()}');
-      }
+        debugPrint('YtFetch: playlists=${lists.length} ${_authDebug()}');      }
       return lists;
     } catch (e) {
       if (kDebugMode) {
@@ -2357,7 +2370,7 @@ class InnerTubeMusicApi {
       'client': {
         'clientName': name,
         'clientVersion': version,
-        'hl': 'en',
+        'hl': _hl,
         'gl': 'US',
         if (visitorData != null && visitorData.isNotEmpty)
           'visitorData': visitorData,
@@ -2447,6 +2460,7 @@ class InnerTubeMusicApi {
       'X-Goog-Api-Format-Version': '1',
       'X-YouTube-Client-Name': clientIds[clientName] ?? clientName,
       'X-YouTube-Client-Version': clientVersion,
+      'Accept-Language': '$_hl, *;q=0.5',
       if (visitorData != null && visitorData.isNotEmpty)
         'X-Goog-Visitor-Id': visitorData,
       // Account surface only when requested AND connected â€”
@@ -2713,11 +2727,16 @@ class InnerTubeMusicApi {
       // keeps what is already in hand.
       var page = root;
       final seenTokens = <String>{};
-      for (var i = 1; i < maxPages && shelves.length < maxShelves; i++) {
+      for (var i = 1;
+          i < maxPages && shelves.length < maxShelves;
+          i++) {
         final token = _homeContinuationToken(page);
         if (token == null || !seenTokens.add(token)) break;
         try {
-          page = await _browseContinuation(token, authenticated: authenticated);
+          page = await _browseContinuation(
+            token,
+            authenticated: authenticated,
+          );
         } catch (_) {
           break;
         }
@@ -2798,8 +2817,7 @@ class InnerTubeMusicApi {
           if (songShelf is Map<String, dynamic>) {
             final onPage = _parseSongRenderers(songShelf);
             if (songs.isEmpty) songs = onPage;
-            final more =
-                _firstBrowseEndpoint(songShelf['title']) ??
+            final more = _firstBrowseEndpoint(songShelf['title']) ??
                 _firstBrowseEndpoint(songShelf['bottomEndpoint']);
             if (more != null) {
               work.add(() async {
@@ -2834,10 +2852,8 @@ class InnerTubeMusicApi {
                   _collectObjects(grid, 'musicTwoRowItemRenderer', cards);
                   final more = <YouTubeMusicEntity>[];
                   for (final card in cards) {
-                    final id =
-                        (((card['navigationEndpoint']
-                                    as Map?)?['browseEndpoint']
-                                as Map?)?['browseId'])
+                    final id = (((card['navigationEndpoint'] as Map?)
+                                    ?['browseEndpoint'] as Map?)?['browseId'])
                             ?.toString() ??
                         '';
                     if (id.isEmpty) continue;
@@ -2870,7 +2886,9 @@ class InnerTubeMusicApi {
 
   /// `moreContentButton` ("Show all") of a carousel header, as a browse
   /// endpoint (id + params), or null.
-  Map<String, dynamic>? _moreEndpointOfCarousel(Map<String, dynamic> carousel) {
+  Map<String, dynamic>? _moreEndpointOfCarousel(
+    Map<String, dynamic> carousel,
+  ) {
     final header = carousel['header'];
     if (header is! Map) return null;
     for (final h in header.values) {
@@ -3137,10 +3155,9 @@ class InnerTubeMusicApi {
     _collectObjects(root, 'musicTwoRowItemRenderer', items);
     final ids = <String>[];
     for (final item in items) {
-      final id =
-          ((item['navigationEndpoint'] as Map?)?['browseEndpoint']
-                  as Map?)?['browseId']
-              ?.toString();
+      final id = ((item['navigationEndpoint'] as Map?)?['browseEndpoint']
+              as Map?)?['browseId']
+          ?.toString();
       if (id != null && id.startsWith('VL') && !ids.contains(id)) {
         ids.add(id);
       }
@@ -3554,7 +3571,9 @@ class InnerTubeMusicApi {
       String title = '';
       if (panels.isNotEmpty) {
         final t = panels.first['title'];
-        title = (t is Map ? _runsText(t['runs']) : null) ?? _runsText(t) ?? '';
+        title = (t is Map ? _runsText(t['runs']) : null) ??
+            _runsText(t) ??
+            '';
       }
       return YouTubePlaylistResult(
         id: rawId,
@@ -4390,7 +4409,7 @@ class InnerTubeMusicApi {
 
   /// Raw feature-credit substring from a title ("daya & konshens" from
   /// "… (feat. Daya & Konshens)", "jennie" from "Dracula feat JENNIE").
-  /// Mirrors AddonApi._featPart so the YTM scorer ranks feat fidelity
+  /// Ranks feat fidelity in the YTM scorer
   /// the same way the lossless tier does.
   static String _featPart(String title) {
     final m1 = _featClause.firstMatch(title);
@@ -4896,12 +4915,8 @@ class InnerTubeMusicApi {
           ),
           ' ',
         )
-        .split(
-          RegExp(
-            r'\s+[(\[]?(?:feat\.?|ft\.?|featuring)\b',
-            caseSensitive: false,
-          ),
-        )
+        .split(RegExp(r'\s+[(\[]?(?:feat\.?|ft\.?|featuring)\b',
+            caseSensitive: false))
         .first;
     final dash = RegExp(r'\s[-–—]\s').firstMatch(s);
     if (dash != null) {
@@ -5348,13 +5363,22 @@ class InnerTubeMusicApi {
   /// invalidated the cache and recreated the OS window per song (popup
   /// on Windows, destroy-crash on Linux). `visitorData` is still sent
   /// as `X-Goog-Visitor-Id` on player requests.
-  Future<PoTokenResult?> _mintPoToken(String videoId) async {
+  Future<PoTokenResult?> _mintPoToken(String videoId, {bool forceRefresh = false}) async {
     final engine = _poTokens;
     if (engine == null || !poTokenEnabled || !engine.enabled) return null;
+    if (!forceRefresh) {
+      final current = authStore.current;
+      if (!current.isPoTokenStale && current.poToken.isNotEmpty) {
+        return PoTokenResult(
+          playerToken: current.poToken,
+          sessionToken: current.poToken,
+        );
+      }
+    }
     try {
       return await engine
-          .mintToken(videoId)
-          .timeout(const Duration(seconds: 12));
+          .mintToken(videoId, forceRefresh: forceRefresh)
+          .timeout(const Duration(seconds: 15));
     } catch (_) {
       return null;
     }
@@ -5488,11 +5512,11 @@ class InnerTubeMusicApi {
       }
       final codecLabel = (codec?.isNotEmpty ?? false)
           ? (codec!.toLowerCase().contains('opus')
-                ? 'OPUS'
-                : (codec.toLowerCase().contains('mp4a') ||
+              ? 'OPUS'
+              : (codec.toLowerCase().contains('mp4a') ||
                       codec.toLowerCase().contains('aac'))
-                ? 'AAC'
-                : codec.toUpperCase())
+                  ? 'AAC'
+                  : codec.toUpperCase())
           : (mime.toLowerCase().contains('opus')
                 ? 'OPUS'
                 : mime.toLowerCase().contains('mp4')
@@ -5520,8 +5544,7 @@ class InnerTubeMusicApi {
         ),
       );
     }
-    final hlsUrl =
-        streaming?['hlsUrl']?.toString() ??
+    final hlsUrl = streaming?['hlsUrl']?.toString() ??
         streaming?['hlsManifestUrl']?.toString();
     if (hlsUrl != null && hlsUrl.isNotEmpty && !hlsUrl.startsWith('sabr:')) {
       DateTime? expiresAt;
@@ -5645,8 +5668,7 @@ class InnerTubeMusicApi {
             final mime = f['mimeType']?.toString() ?? '';
             final codec = _extractCodec(mime);
             final isAudioOnly = _isCompatibleAudio(mime, codec);
-            final isMuxed =
-                !isAudioOnly && _isCompatibleMuxedAudio(mime, codec);
+            final isMuxed = !isAudioOnly && _isCompatibleMuxedAudio(mime, codec);
             if (!isAudioOnly && !isMuxed) {
               continue;
             }
@@ -5882,6 +5904,9 @@ class InnerTubeMusicApi {
       }
       _logStream('report-failure', videoId: videoId);
     }
+    // Direct-URL clients never use poTokens; do not eagerly open a BotGuard
+    // WebView on playback failures. If retry falls through to a ciphered web
+    // client (WEB_REMIX/EMBEDDED/MWEB), ensureAux() mints lazily there.
   }
 
   /// FIFO trim for the plain insertion-ordered caches: drop the oldest
@@ -6092,8 +6117,7 @@ class InnerTubeMusicApi {
   static bool _isCompatibleMuxedAudio(String mime, String? codec) {
     final m = mime.toLowerCase();
     final c = (codec ?? '').toLowerCase();
-    final hasAudioCodec =
-        c.contains('mp4a') ||
+    final hasAudioCodec = c.contains('mp4a') ||
         c.contains('aac') ||
         c.contains('opus') ||
         c.contains('vorbis');
@@ -7644,6 +7668,11 @@ final innerTubeProvider = Provider<InnerTubeMusicApi>((ref) {
     ref.watch(secureStoreProvider),
     ref.watch(poTokenEngineProvider),
   );
+  // Wire dynamic language from appLanguageProvider (Limusic whitelist)
+  api.hl = ref.read(appLanguageProvider).innertubeHl;
+  ref.listen<AppLanguage>(appLanguageProvider, (_, lang) {
+    api.hl = lang.innertubeHl;
+  });
   // Keep the reactive stale flag in sync (expired session → Reconnect).
   api.onAuthStaleChanged = (stale) {
     try {
@@ -7669,7 +7698,8 @@ final innerTubeProvider = Provider<InnerTubeMusicApi>((ref) {
         var changed = false;
         final updated = [
           for (final p in roster)
-            if (p.cookies == previous || (email.isNotEmpty && p.email == email))
+            if (p.cookies == previous ||
+                (email.isNotEmpty && p.email == email))
               () {
                 changed = changed || p.cookies != next;
                 return p.copyWith(cookies: next);

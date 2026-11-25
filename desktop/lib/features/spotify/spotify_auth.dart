@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpDate;
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
@@ -30,7 +31,7 @@ enum SpotifySessionCheck {
 
 /// Spotify session: the `sp_dc` cookie plus the tokens minted from it.
 ///
-/// Port of KatMusic-Native `SpotifyAuthRepository`. Both sign-in routes
+/// Port of KatMusic `SpotifyAuthRepository`. Both sign-in routes
 /// (system WebView and pasted cookie) end in [connectWithSpDc]; storing a
 /// cookie is NOT the same as having a session, so every connect exchanges
 /// it for a token before reporting success.
@@ -51,8 +52,44 @@ class SpotifyAuth extends ChangeNotifier {
       'https://clienttoken.spotify.com/v1/clienttoken';
   static const _serverTimeUrl = '$_origin/api/server-time';
   static const _sessionTokenUrl = '$_origin/api/token';
-  static const _secretsDictUrl =
-      'https://raw.githubusercontent.com/xyloflake/spot-secrets-go/refs/heads/main/secrets/secretDict.json';
+  /// Published copies of the secret dictionary. raw.githubusercontent.com
+  /// is blocked on some networks (several ISPs in India among them), which
+  /// made sign-in fail every time for those users; jsDelivr serves the same
+  /// file from another domain.
+  static const _secretsDictUrls = [
+    'https://raw.githubusercontent.com/xyloflake/spot-secrets-go/refs/heads/main/secrets/secretDict.json',
+    'https://cdn.jsdelivr.net/gh/xyloflake/spot-secrets-go@main/secrets/secretDict.json',
+  ];
+
+  /// Last-resort copy of the current player secrets, used only if the live
+  /// player page and both remote dictionary mirrors are all unreachable.
+  static final _fallbackSecrets = <SpotifySecret>[
+    SpotifySecret(
+      String.fromCharCodes(const [
+        44, 55, 47, 42, 70, 40, 34, 114, 76, 74, 50, 111, 120,
+        97, 75, 76, 94, 102, 43, 69, 49, 120, 118, 80, 64, 78,
+      ]),
+      61,
+    ),
+    SpotifySecret(
+      String.fromCharCodes(const [
+        79, 109, 69, 123, 90, 65, 46, 74, 94, 34, 58, 48, 70,
+        71, 92, 85, 122, 63, 91, 64, 87, 87,
+      ]),
+      60,
+    ),
+    SpotifySecret(
+      String.fromCharCodes(const [
+        123, 105, 79, 70, 110, 59, 52, 125, 60, 49, 80, 70, 89,
+        75, 80, 86, 63, 53, 123, 37, 117, 49, 52, 93, 77, 62,
+        47, 86, 48, 104, 68, 72,
+      ]),
+      59,
+    ),
+  ];
+
+  /// Secrets tried per sign-in before giving up (two requests each).
+  static const _maxSecretAttempts = 4;
   static const _clientTokenUa =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36';
@@ -88,12 +125,26 @@ class SpotifyAuth extends ChangeNotifier {
     return (_spdc ?? '').isEmpty ? null : _spdc;
   }
 
-  /// Accepts `sp_dc=…; …`, a whole Cookie header or the bare value.
+  /// Accepts `sp_dc=…; …`, a whole Cookie header, the bare value, or a row
+  /// copied from the browser's cookie table (`sp_dc`, TAB, `AQ…`, TAB, domain
+  /// …), which used to be stored whole and could never sign in.
   static String cleanSpDc(String raw) {
     var v = raw.trim();
-    final m = RegExp(r'sp_dc=([^;\s]+)').firstMatch(v);
-    if (m != null) v = m.group(1)!;
+    final m = RegExp(r'sp_dc\s*=\s*([^;\s]+)').firstMatch(v);
+    if (m != null) {
+      v = m.group(1)!;
+    } else {
+      final row = RegExp(r'(?:^|\s)sp_dc\s+(\S+)').firstMatch(v);
+      if (row != null) v = row.group(1)!;
+    }
     v = v.replaceAll('"', '').replaceAll("'", '').trim();
+    // Copy-paste can drag in invisible characters (zero-width space, BOM).
+    v = v.replaceAll(RegExp(r'[\s\u200B-\u200D\uFEFF]'), '');
+    if (v.contains('%')) {
+      try {
+        v = Uri.decodeComponent(v);
+      } catch (_) {}
+    }
     return v;
   }
 
@@ -138,24 +189,32 @@ class SpotifyAuth extends ChangeNotifier {
     final cookie = await spdc();
     if (cookie == null) return SpotifySessionCheck.missing;
     try {
-      final totp = await _totp(cookie);
-      if (totp == null) {
-        DiagnosticsLog.info('spotify auth stage=otp-secret ok=false');
-        return SpotifySessionCheck.unreachable;
-      }
+      final serverSeconds = await _serverSeconds(cookie);
       var sawAnswer = false;
-      for (final reason in const ['transport', 'init']) {
-        final res = await _requestPersonal(cookie, totp, reason);
-        if (res == null) continue;
-        sawAnswer = true;
-        DiagnosticsLog.info(
-          'spotify auth reason=$reason anonymous=${res['isAnonymous']} '
-          'tokenLen=${(res['accessToken'] as String?)?.length ?? 0}',
-        );
-        if (_usable(res)) {
-          _storeToken(res);
-          return SpotifySessionCheck.ok;
+      var tried = 0;
+      // A secret Spotify has rotated away from gets an anonymous answer, so
+      // one stale source used to look like a dead cookie: try the next.
+      await for (final secret in _secretCandidates()) {
+        if (tried++ >= _maxSecretAttempts) break;
+        final totp = _totpFor(secret, serverSeconds);
+        for (final reason in const ['transport', 'init']) {
+          final res = await _requestPersonal(cookie, totp, reason);
+          if (res == null) continue;
+          sawAnswer = true;
+          DiagnosticsLog.info(
+            'spotify auth reason=$reason totpVer=${secret.version} '
+            'anonymous=${res['isAnonymous']} '
+            'tokenLen=${(res['accessToken'] as String?)?.length ?? 0}',
+          );
+          if (_usable(res)) {
+            _storeToken(res);
+            await _rememberSecret(secret);
+            return SpotifySessionCheck.ok;
+          }
         }
+      }
+      if (tried == 0) {
+        DiagnosticsLog.info('spotify auth stage=otp-secret ok=false');
       }
       return sawAnswer
           ? SpotifySessionCheck.refused
@@ -216,6 +275,9 @@ class SpotifyAuth extends ChangeNotifier {
     );
   }
 
+  /// Per-install anonymous device id (also the web player's `sp_t`).
+  Future<String> deviceId() => _deviceId();
+
   Future<String> _deviceId() async {
     final existing = _prefs.spotifyDeviceId;
     if (existing.isNotEmpty) return existing;
@@ -271,10 +333,47 @@ class SpotifyAuth extends ChangeNotifier {
 
   // -- one-time password --------------------------------------------------
 
-  Future<_Totp?> _totp(String cookie) async {
-    final secret = await _readSecret();
-    if (secret == null) return null;
+  /// Spotify's clock. Falls back to the response's `Date` header, then to
+  /// the local clock: a PC whose clock is off by more than a step used to
+  /// send a wrong `totpServer` whenever `server-time` failed.
+  Future<int> _serverSeconds(String cookie) async {
+    final headers = _webHeaders(cookie);
+    try {
+      final res = await _dio.get<String>(
+        _serverTimeUrl,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: headers,
+          validateStatus: (_) => true,
+        ),
+      );
+      if ((res.statusCode ?? 0) ~/ 100 == 2) {
+        final body = jsonDecode(res.data ?? '{}');
+        final t = body is Map ? body['serverTime'] : null;
+        if (t is num) return t.toInt();
+      }
+      final date = res.headers.value('date');
+      if (date != null) {
+        return HttpDate.parse(date).millisecondsSinceEpoch ~/ 1000;
+      }
+    } catch (_) {
+      final fallback = await SpotifyWebPlayer.curlGet(
+        _serverTimeUrl,
+        headers: headers,
+        timeoutSeconds: 15,
+      );
+      if (fallback != null && fallback.status ~/ 100 == 2) {
+        try {
+          final body = jsonDecode(fallback.body);
+          final t = body is Map ? body['serverTime'] : null;
+          if (t is num) return t.toInt();
+        } catch (_) {}
+      }
+    }
+    return DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  }
 
+  _Totp _totpFor(SpotifySecret secret, int serverSeconds) {
     // The secret's characters, each xor'd with ((index % 33) + 9), are
     // written out as decimal text; that text is the HMAC key.
     final keyText = StringBuffer();
@@ -283,24 +382,6 @@ class SpotifyAuth extends ChangeNotifier {
       keyText.write(units[i] ^ ((i % 33) + 9));
     }
     final key = ascii.encode(keyText.toString());
-
-    var serverSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    try {
-      final res = await _dio.get<String>(
-        _serverTimeUrl,
-        options: Options(
-          responseType: ResponseType.plain,
-          headers: _webHeaders(cookie),
-          validateStatus: (_) => true,
-        ),
-      );
-      if ((res.statusCode ?? 0) ~/ 100 == 2) {
-        final body = jsonDecode(res.data ?? '{}');
-        final t = body is Map ? body['serverTime'] : null;
-        if (t is num) serverSeconds = t.toInt();
-      }
-    } catch (_) {}
-
     final clientSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     return _Totp(
       otpClient: generateOtp(key, clientSeconds),
@@ -324,37 +405,99 @@ class SpotifyAuth extends ChangeNotifier {
     return (binary % 1000000).toString().padLeft(6, '0');
   }
 
-  /// The secret the player is carrying now; the published copy is only a
-  /// fallback because the process that updates it has stalled before.
-  Future<SpotifySecret?> _readSecret() async {
-    final script = await SpotifyWebPlayer.script(_dio);
-    if (script != null) {
-      final found = SpotifyWebPlayer.secrets(script);
-      if (found.isNotEmpty) return found.first;
+  /// Secrets to try, best first, fetched lazily (a later source is only
+  /// read when the earlier ones did not sign in): the one that last worked,
+  /// what the player carries now, then the published dictionary from each
+  /// mirror, newest version first. Duplicates are skipped.
+  Stream<SpotifySecret> _secretCandidates() async* {
+    final seen = <String>{};
+    bool fresh(SpotifySecret s) => seen.add('${s.version}:${s.value}');
+
+    final remembered = decodeStoredSecret(_prefs.spotifyOtpSecret);
+    if (remembered != null && fresh(remembered)) yield remembered;
+
+    for (final s in await SpotifyWebPlayer.playerSecrets(_dio)) {
+      if (fresh(s)) yield s;
     }
+
+    for (final url in _secretsDictUrls) {
+      for (final s in await _readSecretDict(url)) {
+        if (fresh(s)) yield s;
+      }
+    }
+
+    for (final s in _fallbackSecrets) {
+      if (fresh(s)) yield s;
+    }
+  }
+
+  Future<List<SpotifySecret>> _readSecretDict(String url) async {
     try {
       final res = await _dio.get<String>(
-        _secretsDictUrl,
+        url,
         options: Options(
           responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 15),
           validateStatus: (c) => c != null && c >= 200 && c < 300,
         ),
       );
-      final map = jsonDecode(res.data ?? '{}');
-      if (map is! Map || map.isEmpty) return null;
-      final latest = map.keys
-          .map((k) => int.tryParse('$k') ?? 0)
-          .reduce((a, b) => a > b ? a : b);
-      final cipher = map['$latest'];
-      if (cipher is! List) return null;
+      return parseSecretDict(res.data ?? '');
+    } catch (_) {
+      final fallback = await SpotifyWebPlayer.curlGet(url, timeoutSeconds: 15);
+      if (fallback != null && fallback.status >= 200 && fallback.status < 300) {
+        return parseSecretDict(fallback.body);
+      }
+      DiagnosticsLog.info(
+        'spotify auth secretDict unreachable host=${Uri.parse(url).host}',
+      );
+      return const [];
+    }
+  }
+
+  /// `{"<version>": [char codes], …}` → secrets, newest first.
+  @visibleForTesting
+  static List<SpotifySecret> parseSecretDict(String body) {
+    try {
+      final map = jsonDecode(body);
+      if (map is! Map) return const [];
+      final out = <SpotifySecret>[];
+      for (final e in map.entries) {
+        final version = int.tryParse('${e.key}');
+        final cipher = e.value;
+        if (version == null || cipher is! List || cipher.isEmpty) continue;
+        out.add(SpotifySecret(
+          String.fromCharCodes(cipher.whereType<num>().map((n) => n.toInt())),
+          version,
+        ));
+      }
+      out.sort((a, b) => b.version.compareTo(a.version));
+      return out;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @visibleForTesting
+  static SpotifySecret? decodeStoredSecret(String raw) {
+    if (raw.isEmpty) return null;
+    try {
+      final m = jsonDecode(raw);
+      if (m is! Map) return null;
+      final v = m['v'];
+      final c = m['c'];
+      if (v is! num || c is! List || c.isEmpty) return null;
       return SpotifySecret(
-        String.fromCharCodes(cipher.whereType<num>().map((n) => n.toInt())),
-        latest,
+        String.fromCharCodes(c.whereType<num>().map((n) => n.toInt())),
+        v.toInt(),
       );
     } catch (_) {
       return null;
     }
   }
+
+  Future<void> _rememberSecret(SpotifySecret s) => _prefs.setSpotifyOtpSecret(
+        jsonEncode({'v': s.version, 'c': s.value.codeUnits}),
+      );
 
   Map<String, String> _webHeaders(String cookie) => {
     'User-Agent': SpotifyWebPlayer.userAgent,
@@ -375,12 +518,13 @@ class SpotifyAuth extends ChangeNotifier {
         '$_sessionTokenUrl?reason=$reason&productType=web-player'
         '&totp=${totp.otpClient}&totpServer=${totp.otpServer}'
         '&totpVer=${totp.version}';
+    final headers = _webHeaders(cookie);
     try {
       final res = await _dio.get<String>(
         url,
         options: Options(
           responseType: ResponseType.plain,
-          headers: _webHeaders(cookie),
+          headers: headers,
           validateStatus: (_) => true,
         ),
       );
@@ -392,7 +536,34 @@ class SpotifyAuth extends ChangeNotifier {
       }
       final body = jsonDecode(res.data ?? '{}');
       return body is Map ? Map<String, dynamic>.from(body) : null;
-    } catch (_) {
+    } on DioException catch (e) {
+      DiagnosticsLog.info(
+        'spotify auth reason=$reason dio-error=${e.type.name} '
+        'err=${e.error?.runtimeType}',
+      );
+    } catch (e) {
+      DiagnosticsLog.info('spotify auth reason=$reason err=${e.runtimeType}');
+      return null;
+    }
+    final fallback = await SpotifyWebPlayer.curlGet(
+      url,
+      headers: headers,
+      timeoutSeconds: 15,
+    );
+    if (fallback == null) return null;
+    if (fallback.status ~/ 100 != 2) {
+      DiagnosticsLog.info(
+        'spotify auth reason=$reason via=curl http=${fallback.status}',
+      );
+      return null;
+    }
+    try {
+      final body = jsonDecode(fallback.body);
+      return body is Map ? Map<String, dynamic>.from(body) : null;
+    } catch (e) {
+      DiagnosticsLog.info(
+        'spotify auth reason=$reason via=curl err=${e.runtimeType}',
+      );
       return null;
     }
   }

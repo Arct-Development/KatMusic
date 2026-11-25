@@ -6,12 +6,15 @@ import 'package:intl/intl.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
 import '../../app/track_actions.dart'
-    show playGenerated, playableFromGenerated, relativeTime;
+    show playGenerated, playableFromGenerated;
+import '../../core/storage/prefs.dart';
+import '../../features/spotify/spotify_auth.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../../core/network/network_monitor.dart';
 import '../../features/feed/feed_repository.dart';
 import '../../features/feed/home_blend.dart';
 import '../../features/feed/home_shelf_layout.dart';
+import '../../features/performance/performance_controller.dart';
 import '../../features/home/home_providers.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_library_providers.dart';
@@ -28,12 +31,13 @@ import '../components/menus.dart';
 import '../components/shelf.dart';
 import '../collections/yt_shelf_page.dart';
 import '../components/states.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../podcasts/podcasts_page.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 import 'discovery_sections.dart';
+import 'spotify_home.dart';
 
 /// Rich editorial Home — every section has a distinct representation.
 ///
@@ -41,12 +45,12 @@ import 'discovery_sections.dart';
 /// editorial cards · Charts = ranked numeral rows · New releases = dense
 /// 124px grid. Real feed data only; skeletons while loading, actions on
 /// empty — never a blank "Loading music…" or a giant spinner.
-class KatHomePage extends ConsumerWidget {
-  const KatHomePage({super.key});
+class WaveHomePage extends ConsumerWidget {
+  const WaveHomePage({super.key});
 
   String get _greeting {
     final h = DateTime.now().hour;
-    if (h < 5) return 'Late-night session';
+    if (h < 5) return 'Up late';
     if (h < 12) return 'Good morning';
     if (h < 18) return 'Good afternoon';
     return 'Good evening';
@@ -61,25 +65,26 @@ class KatHomePage extends ConsumerWidget {
     // device state is actually observed.
     final online = ref.watch(networkMonitorProvider);
     final viewport = MediaQuery.sizeOf(context).width;
+    // Spotify as the recommendation source replaces the YouTube Music /
+    // Last.fm feed with Spotify's own Home (never blended).
+    final spotifyHome =
+        ref.watch(prefsProvider).recommendationSource == 'spotify' &&
+            ref.watch(spotifyAuthProvider).connected;
 
     // Responsive shell: <900 single col, 900–1300 two col, 1300+ three col,
     // content capped at 1280 and centered.
-    final pad = viewport < 900
-        ? 16.0
-        : viewport < 1300
-        ? 24.0
-        : 28.0;
+    final pad = viewport < 900 ? 16.0 : viewport < 1300 ? 24.0 : 28.0;
     final side =
-        ((viewport - KatDensity.contentMax) / 2).clamp(0, double.infinity) +
-        pad;
-    final quickCols = viewport < 900
-        ? 1
-        : viewport < 1300
-        ? 2
-        : 3;
+        ((viewport - WaveDensity.contentMax) / 2).clamp(0, double.infinity) +
+            pad;
+    final quickCols = viewport < 900 ? 1 : viewport < 1300 ? 2 : 3;
 
-    final username =
-        auth.status == AuthStatus.signedIn && auth.username.isNotEmpty
+    final showPerfBanner = ref.watch(isModestHardwareProvider) &&
+        !ref.watch(performanceModeProvider) &&
+        !ref.watch(performancePromptDismissedProvider);
+
+    final username = auth.status == AuthStatus.signedIn &&
+            auth.username.isNotEmpty
         ? auth.username
         : '';
     final date = DateFormat('EEEE, MMM d').format(DateTime.now());
@@ -87,124 +92,161 @@ class KatHomePage extends ConsumerWidget {
     // One shared WinUI entrance timeline for the whole page: it starts
     // the moment feed data lands, so sections cascade in together and
     // lazily-built rows never replay the animation during scroll.
-    return KatEntranceGroup(
-      start: feed.hasValue,
+    return WaveEntranceGroup(
+      start: spotifyHome || feed.hasValue,
       child: CustomScrollView(
         slivers: [
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(side, 22, side, 0),
-            sliver: SliverToBoxAdapter(
-              child: KatEntrance(
-                local: true,
-                child: _Header(
-                  greeting: _greeting,
-                  username: username,
-                  date: date,
-                  signedIn: auth.status == AuthStatus.signedIn,
-                ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(side, 22, side, 0),
+          sliver: SliverToBoxAdapter(
+            child: WaveEntrance(
+              local: true,
+              child: _Header(
+                greeting: _greeting,
+                username: username,
+                date: date,
+                signedIn: auth.status == AuthStatus.signedIn,
               ),
             ),
           ),
-          feed.when(
-            loading: () => SliverPadding(
-              padding: EdgeInsets.fromLTRB(side, 18, side, 32),
-              sliver: const SliverToBoxAdapter(child: _HomeSkeleton()),
-            ),
-            error: (e, _) => SliverPadding(
-              padding: EdgeInsets.fromLTRB(side, 18, side, 32),
-              sliver: SliverToBoxAdapter(
-                child: KatError(
-                  title: 'Could not load your feed',
-                  message: '$e',
-                  onRetry: () => ref.invalidate(feedProvider),
+        ),
+        if (showPerfBanner)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(side, 12, side, 0),
+            sliver: SliverToBoxAdapter(
+              child: InfoBar(
+                title: const Text('Smoother playback available'),
+                content: const Text(
+                  'Modest hardware detected. Enable Performance Mode to reduce GPU blur and video decoding load.',
                 ),
+                severity: InfoBarSeverity.info,
+                action: Button(
+                  child: const Text('Enable'),
+                  onPressed: () {
+                    ref
+                        .read(performanceModeProvider.notifier)
+                        .setPerformanceMode(true);
+                    ref
+                        .read(performancePromptDismissedProvider.notifier)
+                        .dismiss();
+                  },
+                ),
+                onClose: () {
+                  ref
+                      .read(performancePromptDismissedProvider.notifier)
+                      .dismiss();
+                },
               ),
             ),
-            data: (data) {
-              final connected = ref.watch(ytConnectionProvider).connected;
-              final ytShelves = ref.watch(ytHomeShelvesProvider);
-              if (connected && ytShelves.isLoading && !ytShelves.hasValue) {
-                return SliverPadding(
-                  padding: EdgeInsets.fromLTRB(side, 18, side, 32),
-                  sliver: const SliverToBoxAdapter(child: _HomeSkeleton()),
-                );
-              }
-              final blend = connected
-                  ? blendHomeFeed(
-                      shelves: ytShelves.valueOrNull ?? const [],
-                      feed: data,
-                      excluded: ref.watch(databaseProvider).loadExclusionKeys(),
-                    )
-                  : null;
-              if (blend != null && blend.hasYouTube) {
-                return _blendedSlivers(
-                  context,
-                  ref,
-                  data,
-                  blend,
-                  side,
-                  quickCols,
-                );
-              }
-              if (data.isEmpty) {
-                // Honest empty state: the repository recorded which legs
-                // failed; offline always wins, otherwise the recorded
-                // reason picks the copy — a non-network cause never says
-                // "offline" and never pushes Last.fm setup on users who
-                // didn't ask for it.
-                final reason = resolveEmptyReason(online: online, data: data);
-                final copy = switch (reason) {
-                  FeedEmptyReason.offline => (
+          ),
+        if (spotifyHome)
+          SpotifyHomeSlivers(side: side, loading: const _HomeSkeleton())
+        else
+        feed.when(
+          loading: () => SliverPadding(
+            padding: EdgeInsets.fromLTRB(side, 18, side, 32),
+            sliver: const SliverToBoxAdapter(child: _HomeSkeleton()),
+          ),
+          error: (e, _) => SliverPadding(
+            padding: EdgeInsets.fromLTRB(side, 18, side, 32),
+            sliver: SliverToBoxAdapter(
+              child: WaveError(
+                title: 'Could not load your feed',
+                message: '$e',
+                onRetry: () => ref.invalidate(feedProvider),
+              ),
+            ),
+          ),
+          data: (data) {
+            final connected = ref.watch(ytConnectionProvider).connected;
+            final ytShelves = ref.watch(ytHomeShelvesProvider);
+            if (connected && ytShelves.isLoading && !ytShelves.hasValue) {
+              return SliverPadding(
+                padding: EdgeInsets.fromLTRB(side, 18, side, 32),
+                sliver: const SliverToBoxAdapter(child: _HomeSkeleton()),
+              );
+            }
+            final blend = connected
+                ? blendHomeFeed(
+                    shelves: ytShelves.valueOrNull ?? const [],
+                    feed: data,
+                    excluded:
+                        ref.watch(databaseProvider).loadExclusionKeys(),
+                  )
+                : null;
+            if (blend != null && blend.hasYouTube) {
+              return _blendedSlivers(
+                  context, ref, data, blend, side, quickCols);
+            }
+            if (data.isEmpty) {
+              // Honest empty state: the repository recorded which legs
+              // failed; offline always wins, otherwise the recorded
+              // reason picks the copy — a non-network cause never says
+              // "offline" and never pushes Last.fm setup on users who
+              // didn't ask for it.
+              final reason = resolveEmptyReason(
+                online: online,
+                data: data,
+              );
+              final copy = switch (reason) {
+                FeedEmptyReason.offline => (
                     title: "You're offline",
-                    subtitle: 'Connect to load charts and picks.',
+                    subtitle:
+                        'Connect to load charts and picks.',
                     action: 'Retry',
                   ),
-                  FeedEmptyReason.lastfmError => (
+                FeedEmptyReason.lastfmError => (
                     title: "Couldn't load your picks",
-                    subtitle: 'Last.fm returned an error. Check your API key or retry.',
+                    subtitle:
+                        'Last.fm returned an error. Check your API key or retry.',
                     action: 'Check Last.fm',
                   ),
-                  FeedEmptyReason.chartsError => (
+                FeedEmptyReason.chartsError => (
                     title: 'Charts are unavailable right now',
-                    subtitle: 'YouTube charts failed to load — retry in a bit.',
+                    subtitle:
+                        'YouTube charts failed to load — retry in a bit.',
                     action: 'Retry',
                   ),
-                  FeedEmptyReason.allFailed => (
+                FeedEmptyReason.allFailed => (
                     title: "Couldn't reach music services",
-                    subtitle: 'Last.fm and charts both failed — check your connection and retry.',
+                    subtitle:
+                        'Last.fm and charts both failed — check your connection and retry.',
                     action: 'Retry',
                   ),
-                  _ => (
+                _ => (
                     title: 'Nothing to play yet',
-                    subtitle: 'Like songs, play anything, or connect YouTube Music and Home will fill in.',
+                    subtitle:
+                        'Like songs, play anything, or connect YouTube Music and Home will fill in.',
                     action: 'Discover',
                   ),
-                };
-                return SliverPadding(
-                  padding: EdgeInsets.fromLTRB(side, 18, side, 32),
-                  sliver: SliverToBoxAdapter(
-                    child: KatEmpty(
-                      icon: FluentIcons.music_note,
-                      title: copy.title,
-                      subtitle: copy.subtitle,
-                      actionLabel: copy.action,
-                      onAction: () {
-                        switch (reason) {
-                          case FeedEmptyReason.lastfmError:
-                            context.go('/settings?section=lastfm');
-                          case FeedEmptyReason.noTaste:
-                            context.go('/search');
-                          default:
-                            ref.invalidate(feedProvider);
-                        }
-                      },
-                    ),
+              };
+              return SliverPadding(
+                padding: EdgeInsets.fromLTRB(side, 18, side, 32),
+                sliver: SliverToBoxAdapter(
+                  child: WaveEmpty(
+                    icon: FluentIcons.music_note,
+                    title: copy.title,
+                    subtitle: copy.subtitle,
+                    actionLabel: copy.action,
+                    onAction: () {
+                      switch (reason) {
+                        case FeedEmptyReason.lastfmError:
+                          context.go(
+                              '/settings?section=lastfm');
+                        case FeedEmptyReason.noTaste:
+                          context.go('/search');
+                        default:
+                          ref.invalidate(feedProvider);
+                      }
+                    },
                   ),
-                );
-              }
-              return _feedSlivers(context, ref, data, side, quickCols);
-            },
-          ),
+                ),
+              );
+            }
+            return _feedSlivers(context, ref, data, side, quickCols);
+          },
+        ),
+          const WaveDockSpacer(),
         ],
       ),
     );
@@ -212,14 +254,8 @@ class KatHomePage extends ConsumerWidget {
 
   /// Home while YouTube Music is connected: YouTube's layout and shelves,
   /// ordered by Last.fm taste. See [blendHomeFeed].
-  Widget _blendedSlivers(
-    BuildContext context,
-    WidgetRef ref,
-    FeedData data,
-    HomeBlend blend,
-    double side,
-    int quickCols,
-  ) {
+  Widget _blendedSlivers(BuildContext context, WidgetRef ref, FeedData data,
+      HomeBlend blend, double side, int quickCols) {
     final layout = ref.watch(homeShelfLayoutProvider);
     final sections = <String, List<Widget>>{};
     var slot = 0;
@@ -230,59 +266,60 @@ class KatHomePage extends ConsumerWidget {
       int? count,
       String? actionLabel,
       VoidCallback? onAction,
-    }) => [
-      const SliverToBoxAdapter(child: SizedBox(height: 28)),
-      SliverPadding(
-        padding: EdgeInsets.symmetric(horizontal: side),
-        sliver: SliverToBoxAdapter(
-          child: KatEntrance(
-            index: slot++,
-            rise: 8,
-            child: KatSectionHeader(
-              overline: overline,
-              title: title,
-              count: count,
-              actionLabel: actionLabel,
-              onAction: onAction,
+    }) =>
+        [
+          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: side),
+            sliver: SliverToBoxAdapter(
+              child: WaveEntrance(
+                index: slot++,
+                rise: 8,
+                child: LWSectionHeader(
+                  overline: overline,
+                  title: title,
+                  count: count,
+                  actionLabel: actionLabel,
+                  onAction: onAction,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-    ];
+        ];
 
     Widget songGrid(List<GeneratedTrack> tracks) => SliverPadding(
-      padding: EdgeInsets.only(left: side, right: side, top: 10),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: quickCols,
-          mainAxisSpacing: 4,
-          crossAxisSpacing: 8,
-          mainAxisExtent: 56,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) => KatEntrance(
-            index: i,
-            rise: 10,
-            child: _QuickTile(track: tracks[i]),
+          padding: EdgeInsets.only(left: side, right: side, top: 10),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: quickCols,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 8,
+              mainAxisExtent: 56,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => WaveEntrance(
+                index: i,
+                rise: 10,
+                child: _QuickTile(track: tracks[i]),
+              ),
+              childCount: tracks.length,
+            ),
           ),
-          childCount: tracks.length,
-        ),
-      ),
-    );
+        );
 
     Widget rail(Widget child) => SliverPadding(
-      padding: EdgeInsets.only(left: side, right: side, top: 10),
-      sliver: SliverToBoxAdapter(child: child),
-    );
+          padding: EdgeInsets.only(left: side, right: side, top: 10),
+          sliver: SliverToBoxAdapter(child: child),
+        );
 
     GeneratedTrack fromYt(YouTubeMusicTrack t) => GeneratedTrack(
-      name: t.title,
-      artist: t.artist,
-      album: t.album,
-      artworkUrl: t.artworkUrl,
-      videoId: t.videoId,
-      durationSeconds: t.durationSeconds,
-    );
+          name: t.title,
+          artist: t.artist,
+          album: t.album,
+          artworkUrl: t.artworkUrl,
+          videoId: t.videoId,
+          durationSeconds: t.durationSeconds,
+        );
 
     List<Widget> shelfSlivers(YtHomeShelf shelf) {
       void seeAll() =>
@@ -301,12 +338,10 @@ class KatHomePage extends ConsumerWidget {
       if (shelf.isTrackCardShelf) {
         return [
           ...head,
-          rail(
-            _YtSongCardRow(
-              tracks: shelf.trackCards.take(20).map(fromYt).toList(),
-              sourceLabel: shelf.title,
-            ),
-          ),
+          rail(_YtSongCardRow(
+            tracks: shelf.trackCards.take(20).map(fromYt).toList(),
+            sourceLabel: shelf.title,
+          )),
         ];
       }
       return [
@@ -350,7 +385,7 @@ class KatHomePage extends ConsumerWidget {
           SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: side),
             sliver: SliverToBoxAdapter(
-              child: KatEntrance(
+              child: WaveEntrance(
                 index: slot++,
                 child: _FeaturedHero(
                   track: heroTrack,
@@ -369,11 +404,9 @@ class KatHomePage extends ConsumerWidget {
       final count = (blend.quickPicks.length ~/ quickCols) * quickCols;
       sections[HomeShelfId.quickPicks] = [
         ...header(title: 'Quick picks'),
-        songGrid(
-          blend.quickPicks
-              .take(count == 0 ? blend.quickPicks.length : count)
-              .toList(),
-        ),
+        songGrid(blend.quickPicks
+            .take(count == 0 ? blend.quickPicks.length : count)
+            .toList()),
       ];
     }
     if (blend.listenAgain.isNotEmpty) {
@@ -383,12 +416,10 @@ class KatHomePage extends ConsumerWidget {
           actionLabel: 'See all',
           onAction: () => context.go('/history'),
         ),
-        rail(
-          _YtSongCardRow(
-            tracks: blend.listenAgain,
-            sourceLabel: 'Listen again',
-          ),
-        ),
+        rail(_YtSongCardRow(
+          tracks: blend.listenAgain,
+          sourceLabel: 'Listen again',
+        )),
       ];
     }
     sections[HomeShelfId.youtube] = [
@@ -401,12 +432,10 @@ class KatHomePage extends ConsumerWidget {
           overline: 'From your Last.fm',
           title: 'Because you listened to ${data.becauseSeed}',
         ),
-        rail(
-          _YtSongCardRow(
-            tracks: data.becauseYouListened.take(12).toList(),
-            sourceLabel: 'Because you listened to ${data.becauseSeed}',
-          ),
-        ),
+        rail(_YtSongCardRow(
+          tracks: data.becauseYouListened.take(12).toList(),
+          sourceLabel: 'Because you listened to ${data.becauseSeed}',
+        )),
       ];
     }
     if (blend.artists.length >= 3) {
@@ -422,22 +451,9 @@ class KatHomePage extends ConsumerWidget {
     sections[HomeShelfId.youtubeMore] = [
       for (final shelf in blend.general) ...shelfSlivers(shelf),
     ];
-    final activities =
-        ref.watch(friendsActivityProvider).valueOrNull ?? const [];
-    if (activities.isNotEmpty) {
-      sections[HomeShelfId.friends] = [
-        ...header(
-          title: 'Friends listening',
-          actionLabel: 'See all',
-          onAction: () => context.go('/friends'),
-        ),
-        rail(_FriendsStrip(activities: activities)),
-      ];
-    }
-    if (ref
-            .watch(podcastHomeProvider)
-            .valueOrNull
-            ?.any((s) => s.shows.isNotEmpty || s.episodes.isNotEmpty) ==
+    if (ref.watch(podcastHomeProvider).valueOrNull?.any(
+              (s) => s.shows.isNotEmpty || s.episodes.isNotEmpty,
+            ) ==
         true) {
       sections[HomeShelfId.podcasts] = [
         const SliverToBoxAdapter(child: SizedBox(height: 28)),
@@ -451,22 +467,15 @@ class KatHomePage extends ConsumerWidget {
     // Untouched layout: the connected order. Edited: the user's order wins.
     final edited = !listEquals(layout.order, HomeShelfCatalog.defaults);
     final order = edited ? layout.order : HomeShelfCatalog.connected;
-    return SliverMainAxisGroup(
-      slivers: [
-        for (final id in order)
-          if (!layout.hidden.contains(id)) ...?sections[id],
-        const SliverToBoxAdapter(child: SizedBox(height: 28)),
-      ],
-    );
+    return SliverMainAxisGroup(slivers: [
+      for (final id in order)
+        if (!layout.hidden.contains(id)) ...?sections[id],
+      const SliverToBoxAdapter(child: SizedBox(height: 28)),
+    ]);
   }
 
-  Widget _feedSlivers(
-    BuildContext context,
-    WidgetRef ref,
-    FeedData data,
-    double side,
-    int quickCols,
-  ) {
+  Widget _feedSlivers(BuildContext context, WidgetRef ref, FeedData data,
+      double side, int quickCols) {
     final layout = ref.watch(homeShelfLayoutProvider);
     final sections = <String, List<Widget>>{};
     var sink = <Widget>[];
@@ -518,101 +527,87 @@ class KatHomePage extends ConsumerWidget {
     if (hero != null) {
       gap(18);
       final heroTrack = hero;
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              child: _FeaturedHero(
-                track: heroTrack,
-                upNext: companions,
-                kicker: heroKicker,
-                queueAll: heroQueue,
-              ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            child: _FeaturedHero(
+              track: heroTrack,
+              upNext: companions,
+              kicker: heroKicker,
+              queueAll: heroQueue,
             ),
           ),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.quickPicks);
     if (data.quickPicks.isNotEmpty) {
       gap(26);
       final picks = data.quickPicks.take(6).toList();
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
-                overline: 'Jump back in',
-                title: 'Quick Picks',
-                count: picks.length,
-              ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 8,
+            child: LWSectionHeader(
+              overline: 'Jump back in',
+              title: 'Quick Picks',
+              count: picks.length,
             ),
           ),
         ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side, top: 10),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: quickCols,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 8,
-              mainAxisExtent: 56,
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side, top: 10),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: quickCols,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 8,
+            mainAxisExtent: 56,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, i) => WaveEntrance(
+              index: i,
+              rise: 10,
+              child: _QuickTile(track: picks[i]),
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => KatEntrance(
-                index: i,
-                rise: 10,
-                child: _QuickTile(track: picks[i]),
-              ),
-              childCount: picks.length,
-            ),
+            childCount: picks.length,
           ),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.continueListening);
     if (data.jumpBackIn.isNotEmpty) {
       gap(26);
       final recent = data.jumpBackIn.take(6).toList();
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
-                overline: 'History',
-                title: 'Continue Listening',
-                count: recent.length,
-                actionLabel: 'See all',
-                onAction: () => context.go('/history'),
-              ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 8,
+            child: LWSectionHeader(
+              overline: 'History',
+              title: 'Continue Listening',
+              count: recent.length,
+              actionLabel: 'See all',
+              onAction: () => context.go('/history'),
             ),
           ),
         ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(top: 10),
-          sliver: SliverToBoxAdapter(
-            child: _CoverShelf(
-              tracks: recent,
-              source: 'Recently played',
-              side: side,
-            ),
-          ),
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(top: 10),
+        sliver: SliverToBoxAdapter(
+          child: _CoverShelf(tracks: recent, source: 'Recently played', side: side),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.because);
@@ -622,64 +617,54 @@ class KatHomePage extends ConsumerWidget {
       final becauseKicker = data.becauseSeed.isNotEmpty
           ? 'Because you listened to ${data.becauseSeed}'
           : 'Generated';
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 8,
+              child: LWSectionHeader(
                 overline: becauseKicker,
                 title: 'Made For You',
                 count: mixes.length,
-                actionLabel: 'Open Mix Lab',
-                onAction: () => context.go('/mixes'),
-              ),
             ),
           ),
         ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(top: 10),
-          sliver: SliverToBoxAdapter(
-            child: _MixShelf(tracks: mixes, side: side),
-          ),
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(top: 10),
+        sliver: SliverToBoxAdapter(
+          child: _MixShelf(tracks: mixes, side: side),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.albums);
     if (data.heavyRotation.isNotEmpty) {
       gap(26);
       final albums = data.heavyRotation.take(6).toList();
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
-                overline: 'Rotation',
-                title: 'Albums For You',
-                count: albums.length,
-                actionLabel: 'See all',
-                onAction: () => context.go('/albums'),
-              ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 8,
+            child: LWSectionHeader(
+              overline: 'Rotation',
+              title: 'Albums For You',
+              count: albums.length,
+              actionLabel: 'See all',
+              onAction: () => context.go('/albums'),
             ),
           ),
         ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(top: 10),
-          sliver: SliverToBoxAdapter(
-            child: _AlbumShelf(tracks: albums, source: 'For you', side: side),
-          ),
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(top: 10),
+        sliver: SliverToBoxAdapter(
+          child: _AlbumShelf(tracks: albums, source: 'For you', side: side),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.artists);
@@ -692,205 +677,142 @@ class KatHomePage extends ConsumerWidget {
       for (final t in [
         ...data.heavyRotation,
         ...data.charts,
-        ...data.quickPicks,
+        ...data.quickPicks
       ]) {
-        for (final name in OfficialArtworkService.splitArtistCredits(
-          t.artist,
-        )) {
+        for (final name
+            in OfficialArtworkService.splitArtistCredits(t.artist)) {
           final key = name.toLowerCase();
           if (key.isEmpty || seen.contains(key)) continue;
           seen.add(key);
-          artists.add(
-            GeneratedTrack(
-              name: name,
-              artist: name,
-              artworkUrl: '',
-              videoId: t.videoId,
-            ),
-          );
+          artists.add(GeneratedTrack(
+            name: name,
+            artist: name,
+            artworkUrl: '',
+            videoId: t.videoId,
+          ));
           if (artists.length >= 6) break;
         }
         if (artists.length >= 6) break;
       }
       if (artists.isNotEmpty) {
         gap(26);
-        sink.add(
-          SliverPadding(
-            padding: EdgeInsets.only(left: side, right: side),
-            sliver: SliverToBoxAdapter(
-              child: KatEntrance(
-                index: slot(),
-                rise: 8,
-                child: KatSectionHeader(
-                  overline: 'Artists',
-                  title: 'Artists For You',
-                  count: artists.length,
-                  actionLabel: 'See all',
-                  onAction: () => context.go('/artists'),
-                ),
+        sink.add(SliverPadding(
+          padding: EdgeInsets.only(left: side, right: side),
+          sliver: SliverToBoxAdapter(
+            child: WaveEntrance(
+              index: slot(),
+              rise: 8,
+              child: LWSectionHeader(
+                overline: 'Artists',
+                title: 'Artists For You',
+                count: artists.length,
+                actionLabel: 'See all',
+                onAction: () => context.go('/artists'),
               ),
             ),
           ),
-        );
-        sink.add(
-          SliverPadding(
-            padding: EdgeInsets.only(left: side, right: side, top: 10),
-            sliver: SliverToBoxAdapter(child: _ArtistShelf(tracks: artists)),
+        ));
+        sink.add(SliverPadding(
+          padding: EdgeInsets.only(left: side, right: side, top: 10),
+          sliver: SliverToBoxAdapter(
+            child: _ArtistShelf(tracks: artists),
           ),
-        );
-      }
-    }
-
-    use(HomeShelfId.friends);
-    // Friends Listening — real friend activity (friend → latest
-    // scrobble with relative time). Hidden entirely when there is
-    // nothing to show; never placeholder names or faked presence.
-    {
-      final activities =
-          ref.watch(friendsActivityProvider).valueOrNull ?? const [];
-      if (activities.isNotEmpty) {
-        gap(26);
-        sink.add(
-          SliverPadding(
-            padding: EdgeInsets.only(left: side, right: side),
-            sliver: SliverToBoxAdapter(
-              child: KatEntrance(
-                index: slot(),
-                rise: 8,
-                child: KatSectionHeader(
-                  overline: 'Social',
-                  title: 'Friends Listening',
-                  count: activities.length,
-                  actionLabel: 'See all',
-                  onAction: () => context.go('/friends'),
-                ),
-              ),
-            ),
-          ),
-        );
-        sink.add(
-          SliverPadding(
-            padding: EdgeInsets.only(left: side, right: side, top: 10),
-            sliver: SliverToBoxAdapter(
-              child: KatEntrance(
-                index: slot(),
-                rise: 10,
-                child: _FriendsStrip(activities: activities),
-              ),
-            ),
-          ),
-        );
+        ));
       }
     }
 
     use(HomeShelfId.charts);
     if (data.charts.isNotEmpty) {
       gap(26);
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              child: HomeSpotlightHero(track: data.charts.first),
-            ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            child: HomeSpotlightHero(track: data.charts.first),
           ),
         ),
-      );
+      ));
       gap(26);
       final charts = data.charts.take(5).toList();
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
-                overline: 'Charts',
-                title: 'Trending Now',
-                count: charts.length,
-              ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 8,
+            child: LWSectionHeader(
+              overline: 'Charts',
+              title: 'Trending Now',
+              count: charts.length,
             ),
           ),
         ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side, top: 6),
-          sliver: SuperSliverList.builder(
-            itemCount: charts.length,
-            itemBuilder: (context, i) => KatEntrance(
-              index: i,
-              rise: 10,
-              child: _ChartRow(
-                track: charts[i],
-                rank: i + 1,
-                queueAll: charts,
-                index: i,
-              ),
-            ),
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side, top: 6),
+        sliver: SuperSliverList.builder(
+          itemCount: charts.length,
+          itemBuilder: (context, i) => WaveEntrance(
+            index: i,
+            rise: 10,
+            child: _ChartRow(
+                track: charts[i], rank: i + 1, queueAll: charts, index: i),
           ),
         ),
-      );
+      ));
     }
 
     use(HomeShelfId.fresh);
     if (data.freshFinds.isNotEmpty) {
       gap(26);
       final fresh = data.freshFinds.take(5).toList();
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 8,
-              child: KatSectionHeader(
-                overline: 'Discovery',
-                title: 'Fresh Finds',
-                count: fresh.length,
-              ),
-            ),
-          ),
-        ),
-      );
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side, top: 6),
-          sliver: SuperSliverList.builder(
-            itemCount: fresh.length,
-            itemBuilder: (context, i) => KatEntrance(
-              index: i,
-              rise: 10,
-              child: _FreshRow(track: fresh[i]),
-            ),
-          ),
-        ),
-      );
-    }
-
-    use(HomeShelfId.releases);
-    gap(26);
-    sink.add(
-      SliverPadding(
+      sink.add(SliverPadding(
         padding: EdgeInsets.only(left: side, right: side),
         sliver: SliverToBoxAdapter(
-          child: KatEntrance(
+          child: WaveEntrance(
             index: slot(),
-            rise: 10,
-            child: const HomeNewReleasesSection(),
+            rise: 8,
+            child: LWSectionHeader(
+              overline: 'Discovery',
+              title: 'Fresh Finds',
+              count: fresh.length,
+            ),
           ),
         ),
-      ),
-    );
+      ));
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side, top: 6),
+        sliver: SuperSliverList.builder(
+          itemCount: fresh.length,
+          itemBuilder: (context, i) => WaveEntrance(
+            index: i,
+            rise: 10,
+            child: _FreshRow(track: fresh[i]),
+          ),
+        ),
+      ));
+    }
+
+    // use(HomeShelfId.releases);
+    // gap(26);
+    // sink.add(SliverPadding(
+    //   padding: EdgeInsets.only(left: side, right: side),
+    //   sliver: SliverToBoxAdapter(
+    //     child: WaveEntrance(
+    //       index: slot(),
+    //       rise: 10,
+    //       child: const HomeNewReleasesSection(),
+    //     ),
+    //   ),
+    // ));
 
     // use(HomeShelfId.popular);
     // gap(26);
     // sink.add(SliverPadding(
     //   padding: EdgeInsets.only(left: side, right: side),
     //   sliver: SliverToBoxAdapter(
-    //     child: KatEntrance(
+    //     child: WaveEntrance(
     //       index: slot(),
     //       rise: 10,
     //       child: const HomePopularShelvesSection(),
@@ -902,21 +824,18 @@ class KatHomePage extends ConsumerWidget {
     final podcastShelves =
         ref.watch(podcastHomeProvider).valueOrNull ?? const <PodcastShelf>[];
     if (podcastShelves.any(
-      (s) => s.shows.isNotEmpty || s.episodes.isNotEmpty,
-    )) {
+        (s) => s.shows.isNotEmpty || s.episodes.isNotEmpty)) {
       gap(26);
-      sink.add(
-        SliverPadding(
-          padding: EdgeInsets.only(left: side, right: side),
-          sliver: SliverToBoxAdapter(
-            child: KatEntrance(
-              index: slot(),
-              rise: 10,
-              child: const PodcastHomeShelf(),
-            ),
+      sink.add(SliverPadding(
+        padding: EdgeInsets.only(left: side, right: side),
+        sliver: SliverToBoxAdapter(
+          child: WaveEntrance(
+            index: slot(),
+            rise: 10,
+            child: const PodcastHomeShelf(),
           ),
         ),
-      );
+      ));
       gap(26);
     }
     final slivers = <Widget>[
@@ -943,60 +862,35 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: KatElevation.lift(katIsDark(context)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Image.asset(
-            'assets/brand/katmusic-logo.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 13),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'KATMUSIC · LISTENING',
-                style: KatType.overline.copyWith(
-                  color: katAccent(context),
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
                 username.isNotEmpty ? '$greeting, $username' : greeting,
-                style: KatType.pageTitle.copyWith(
-                  fontSize: 26,
-                  letterSpacing: -0.7,
-                ),
+                style: WaveType.pageTitle.copyWith(fontSize: 24),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 username.isNotEmpty
-                    ? 'For $username · $date · shaped by your listening'
-                    : '$date · a fresh mix, shaped around you · connect Last.fm for more',
-                style: KatType.meta.copyWith(
+                    ? 'For $username · $date · picked from your taste'
+                    : '$date · picked for you · connect Last.fm for more',
+                style: WaveType.meta.copyWith(
                   color: dark
-                      ? KatColors.textSecondary
-                      : KatColors.lightTextSecondary,
+                      ? WaveColors.textSecondary
+                      : WaveColors.lightTextSecondary,
                 ),
               ),
             ],
           ),
         ),
-        KatGhostButton(
+        WaveGhostButton(
           label: 'Edit home',
-          icon: KatIcons.edit,
+          icon: WaveIcons.edit,
           onPressed: () => context.go('/home-layout'),
         ),
         if (!signedIn) ...[
@@ -1004,25 +898,23 @@ class _Header extends StatelessWidget {
           MouseRegion(
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
-              onTap: () => context.go('/settings?section=lastfm'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: dark ? Colors.white : Colors.black,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'Connect',
-                  style: KatType.label.copyWith(
-                    color: dark ? Colors.black : Colors.white,
-                    fontSize: 12,
-                  ),
+            onTap: () => context.go('/settings?section=lastfm'),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: dark ? Colors.white : Colors.black,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'Connect',
+                style: WaveType.label.copyWith(
+                  color: dark ? Colors.black : Colors.white,
+                  fontSize: 12,
                 ),
               ),
             ),
+          ),
           ),
         ],
       ],
@@ -1043,7 +935,7 @@ class _YtShelfRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatRail(
+    return WaveRail(
       height: 216,
       itemCount: entities.length,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -1051,7 +943,7 @@ class _YtShelfRow extends StatelessWidget {
         final e = entities[i];
         return SizedBox(
           width: 160,
-          child: KatMediaCard(
+          child: WaveMediaCard(
             title: e.name,
             subtitle: e.subtitle,
             titleFallback: e.name,
@@ -1075,13 +967,20 @@ class _YtShelfRow extends StatelessWidget {
 class _YtSongCardRow extends ConsumerWidget {
   final List<GeneratedTrack> tracks;
   final String sourceLabel;
-  const _YtSongCardRow({required this.tracks, required this.sourceLabel});
+  const _YtSongCardRow({
+    required this.tracks,
+    required this.sourceLabel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void play(int i) =>
-        playGenerated(ref, context, tracks[i], sourceLabel: sourceLabel);
-    return KatRail(
+    void play(int i) => playGenerated(
+          ref,
+          context,
+          tracks[i],
+          sourceLabel: sourceLabel,
+        );
+    return WaveRail(
       height: 216,
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -1089,7 +988,7 @@ class _YtSongCardRow extends ConsumerWidget {
         final t = tracks[i];
         return SizedBox(
           width: 160,
-          child: KatMediaCard(
+          child: WaveMediaCard(
             title: t.name,
             subtitle: t.artist,
             titleFallback: t.name,
@@ -1127,7 +1026,7 @@ class _FeaturedHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final width = MediaQuery.sizeOf(context).width;
     final narrow = width < 860;
     final tint = ref.watch(artworkPaletteProvider(track.artworkUrl));
@@ -1165,8 +1064,8 @@ class _FeaturedHero extends ConsumerWidget {
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: palette == null ? 0 : 1,
-                    duration: katMotion(context, KatMotion.slow),
-                    curve: KatMotion.standard,
+                    duration: waveMotion(context, WaveMotion.slow),
+                    curve: WaveMotion.standard,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -1186,14 +1085,14 @@ class _FeaturedHero extends ConsumerWidget {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: KatRadius.artworkRadius,
-                    boxShadow: KatElevation.artwork(dark),
+                    borderRadius: WaveRadius.artworkRadius,
+                    boxShadow: WaveElevation.artwork(dark),
                   ),
-                  child: KatArtwork(
+                  child: WaveArtwork(
                     url: track.artworkUrl,
                     videoId: track.videoId,
                     size: artSize,
-                    radius: KatRadius.artwork,
+                    radius: WaveRadius.artwork,
                     title: track.name,
                     artist: track.artist,
                     label: track.name,
@@ -1212,11 +1111,11 @@ class _FeaturedHero extends ConsumerWidget {
             children: [
               Text(
                 kicker,
-                style: KatType.overline.copyWith(
+                style: WaveType.overline.copyWith(
                   fontSize: 10,
                   color: dark
-                      ? KatColors.textTertiary
-                      : KatColors.lightTextTertiary,
+                      ? WaveColors.textTertiary
+                      : WaveColors.lightTextTertiary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -1224,18 +1123,19 @@ class _FeaturedHero extends ConsumerWidget {
                 track.name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.pageTitle.copyWith(fontSize: narrow ? 20 : 26),
+                style: WaveType.pageTitle
+                    .copyWith(fontSize: narrow ? 20 : 26),
               ),
               const SizedBox(height: 4),
               Text(
                 track.artist,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.body.copyWith(
+                style: WaveType.body.copyWith(
                   fontSize: 14,
                   color: dark
-                      ? KatColors.textSecondary
-                      : KatColors.lightTextSecondary,
+                      ? WaveColors.textSecondary
+                      : WaveColors.lightTextSecondary,
                 ),
               ),
               if (track.listeners.isNotEmpty)
@@ -1245,35 +1145,28 @@ class _FeaturedHero extends ConsumerWidget {
                     track.listeners,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: KatType.meta.copyWith(
-                      color: katTextTertiary(context),
+                    style: WaveType.meta.copyWith(
+                      color: waveTextTertiary(context),
                     ),
                   ),
                 ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  KatPlayPill(
+                  WavePlayPill(
                     onTap: () {
                       if (queueAll.isEmpty) {
-                        playGenerated(
-                          ref,
-                          context,
-                          track,
-                          sourceLabel: 'For you',
-                        );
+                        playGenerated(ref, context, track,
+                            sourceLabel: 'For you');
                         return;
                       }
-                      var at = queueAll.indexWhere((t) => t.key == track.key);
+                      var at = queueAll.indexWhere(
+                          (t) => t.key == track.key);
                       if (at < 0) at = 0;
-                      playGenerated(
-                        ref,
-                        context,
-                        queueAll[at],
-                        sourceLabel: 'For you',
-                        queueAll: queueAll,
-                        startIndex: at,
-                      );
+                      playGenerated(ref, context, queueAll[at],
+                          sourceLabel: 'For you',
+                          queueAll: queueAll,
+                          startIndex: at);
                     },
                   ),
                   const SizedBox(width: 12),
@@ -1282,11 +1175,9 @@ class _FeaturedHero extends ConsumerWidget {
                       await ref
                           .read(playbackServiceProvider.notifier)
                           .playQueue(
-                            [playableFromGenerated(track)],
-                            0,
-                            sourceLabel: 'For you radio',
-                            endlessRadio: true,
-                          );
+                              [playableFromGenerated(track)], 0,
+                              sourceLabel: 'For you radio',
+                              endlessRadio: true);
                     },
                   ),
                 ],
@@ -1302,7 +1193,7 @@ class _FeaturedHero extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: panel,
-          borderRadius: KatRadius.floatingRadius,
+          borderRadius: WaveRadius.floatingRadius,
         ),
         child: left,
       );
@@ -1313,7 +1204,7 @@ class _FeaturedHero extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: panel,
-        borderRadius: KatRadius.floatingRadius,
+        borderRadius: WaveRadius.floatingRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1323,7 +1214,8 @@ class _FeaturedHero extends ConsumerWidget {
             width: 1,
             height: 180,
             margin: const EdgeInsets.symmetric(horizontal: 20),
-            color: (dark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+            color: (dark ? Colors.white : Colors.black)
+                .withValues(alpha: 0.08),
           ),
           Expanded(
             flex: 42,
@@ -1335,14 +1227,16 @@ class _FeaturedHero extends ConsumerWidget {
                 // that name. These three come after Play, not after this song.
                 Text(
                   'MORE FOR YOU',
-                  style: KatType.overline.copyWith(
+                  style: WaveType.overline.copyWith(
                     fontSize: 9.5,
-                    color: katTextTertiary(context),
+                    color: waveTextTertiary(context),
                   ),
                 ),
                 const SizedBox(height: 8),
                 for (var i = 0; i < upNext.length; i++)
-                  _HeroCompanion(track: upNext[i]),
+                  _HeroCompanion(
+                    track: upNext[i],
+                  ),
               ],
             ),
           ),
@@ -1356,7 +1250,9 @@ class _FeaturedHero extends ConsumerWidget {
 /// hover play. Keeps the hero music-dense instead of banner-empty.
 class _HeroCompanion extends ConsumerStatefulWidget {
   final GeneratedTrack track;
-  const _HeroCompanion({required this.track});
+  const _HeroCompanion({
+    required this.track,
+  });
   @override
   ConsumerState<_HeroCompanion> createState() => _HeroCompanionState();
 }
@@ -1365,35 +1261,32 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
-        onTap: () => playGenerated(
-          ref,
-          context,
-          widget.track,
-          sourceLabel: 'For you · more',
-        ),
+        onTap: () => playGenerated(ref, context, widget.track,
+            sourceLabel: 'For you · more'),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 6),
           decoration: BoxDecoration(
             color: _hover
-                ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)
+                ? (dark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.05)
                 : Colors.transparent,
-            borderRadius: KatRadius.artworkRadius,
+            borderRadius: WaveRadius.artworkRadius,
           ),
           child: Row(
             children: [
               Stack(
                 children: [
-                  KatArtwork(
+                  WaveArtwork(
                     url: widget.track.artworkUrl,
                     videoId: widget.track.videoId,
                     size: 44,
-                    radius: KatRadius.artwork,
+                    radius: WaveRadius.artwork,
                     title: widget.track.name,
                     artist: widget.track.artist,
                     label: widget.track.name,
@@ -1403,13 +1296,10 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: KatRadius.artworkRadius,
+                          borderRadius: WaveRadius.artworkRadius,
                         ),
-                        child: const Icon(
-                          KatIcons.play,
-                          size: 15,
-                          color: Colors.white,
-                        ),
+                        child: const Icon(WaveIcons.play,
+                            size: 15, color: Colors.white),
                       ),
                     ),
                 ],
@@ -1420,18 +1310,15 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      widget.track.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(fontSize: 12.5),
-                    ),
-                    Text(
-                      widget.track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.meta.copyWith(fontSize: 11.5),
-                    ),
+                    Text(widget.track.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.trackTitle
+                            .copyWith(fontSize: 12.5)),
+                    Text(widget.track.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.meta.copyWith(fontSize: 11.5)),
                   ],
                 ),
               ),
@@ -1443,7 +1330,7 @@ class _HeroCompanionState extends ConsumerState<_HeroCompanion> {
   }
 }
 
-/// Outlined companion to [KatPlayPill]: same pill geometry, hairline border
+/// Outlined companion to [WavePlayPill]: same pill geometry, hairline border
 /// instead of an accent fill, so the hero's two actions read as one pair
 /// (primary accent + secondary outline) rather than a pill and bare text.
 class _RadioPill extends StatefulWidget {
@@ -1458,7 +1345,7 @@ class _RadioPillState extends State<_RadioPill> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final fg = katTextSecondary(context);
+    final fg = waveTextSecondary(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -1472,23 +1359,24 @@ class _RadioPillState extends State<_RadioPill> {
         onTapCancel: () => setState(() => _pressed = false),
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: katMotion(context, KatMotion.fast),
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+          duration: waveMotion(context, WaveMotion.fast),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
           decoration: BoxDecoration(
             color: _pressed
-                ? katPressedWash(context)
+                ? wavePressedWash(context)
                 : _hover
-                ? katHoverWash(context)
-                : Colors.transparent,
+                    ? waveHoverWash(context)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: katDivider(context)),
+            border: Border.all(color: waveDivider(context)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(KatIcons.radio, size: 14, color: fg),
+              Icon(WaveIcons.radio, size: 14, color: fg),
               const SizedBox(width: 8),
-              Text('Radio', style: KatType.label.copyWith(color: fg)),
+              Text('Radio', style: WaveType.label.copyWith(color: fg)),
             ],
           ),
         ),
@@ -1500,7 +1388,9 @@ class _RadioPillState extends State<_RadioPill> {
 /// Quick Picks tile: 56px, 48px art, hover play, playing wash.
 class _QuickTile extends ConsumerStatefulWidget {
   final GeneratedTrack track;
-  const _QuickTile({required this.track});
+  const _QuickTile({
+    required this.track,
+  });
   @override
   ConsumerState<_QuickTile> createState() => _QuickTileState();
 }
@@ -1509,11 +1399,11 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
-    final playing =
-        ref.watch(playbackServiceProvider.select((s) => s.current?.queueKey)) ==
-        widget.track.key;
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
+    final playing = ref.watch(
+      playbackServiceProvider.select((s) => s.current?.queueKey),
+    ) == widget.track.key;
 
     final tile = MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1523,18 +1413,10 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
       // follows. Queuing the rest of the grid played unrelated
       // ranking neighbours instead.
       child: GestureDetector(
-        onTap: () => playGenerated(
-          ref,
-          context,
-          widget.track,
-          sourceLabel: 'Quick picks',
-        ),
-        onDoubleTap: () => playGenerated(
-          ref,
-          context,
-          widget.track,
-          sourceLabel: 'Quick picks',
-        ),
+        onTap: () => playGenerated(ref, context, widget.track,
+            sourceLabel: 'Quick picks'),
+        onDoubleTap: () => playGenerated(ref, context, widget.track,
+            sourceLabel: 'Quick picks'),
         child: Container(
           height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -1542,19 +1424,20 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
             color: playing
                 ? accent.withValues(alpha: 0.12)
                 : _hover
-                ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.05)
-                : Colors.transparent,
-            borderRadius: KatRadius.artworkRadius,
+                    ? (dark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.05)
+                    : Colors.transparent,
+            borderRadius: WaveRadius.artworkRadius,
           ),
           child: Row(
             children: [
               Stack(
                 children: [
-                  KatArtwork(
+                  WaveArtwork(
                     url: widget.track.artworkUrl,
                     videoId: widget.track.videoId,
                     size: 48,
-                    radius: KatRadius.artwork,
+                    radius: WaveRadius.artwork,
                     title: widget.track.name,
                     artist: widget.track.artist,
                     label: widget.track.name,
@@ -1564,10 +1447,12 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: KatRadius.artworkRadius,
+                          borderRadius: WaveRadius.artworkRadius,
                         ),
                         child: Icon(
-                          playing ? KatIcons.pause : KatIcons.play,
+                          playing
+                              ? WaveIcons.pause
+                              : WaveIcons.play,
                           size: 16,
                           color: Colors.white,
                         ),
@@ -1581,21 +1466,16 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.track.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(
-                        fontSize: 12.5,
-                        color: playing ? accent : null,
-                      ),
-                    ),
-                    Text(
-                      widget.track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.meta.copyWith(fontSize: 11.5),
-                    ),
+                    Text(widget.track.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.trackTitle.copyWith(
+                            fontSize: 12.5,
+                            color: playing ? accent : null)),
+                    Text(widget.track.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.meta.copyWith(fontSize: 11.5)),
                   ],
                 ),
               ),
@@ -1604,8 +1484,8 @@ class _QuickTileState extends ConsumerState<_QuickTile> {
         ),
       ),
     );
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1631,15 +1511,18 @@ class _CoverShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatRail(
+    return WaveRail(
       height: 208,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
-      itemBuilder: (context, i) => KatEntrance(
+      itemBuilder: (context, i) => WaveEntrance(
         index: i,
         rise: 10,
-        child: _CoverCard(track: tracks[i], source: source),
+        child: _CoverCard(
+          track: tracks[i],
+          source: source,
+        ),
       ),
     );
   }
@@ -1648,7 +1531,10 @@ class _CoverShelf extends StatelessWidget {
 class _CoverCard extends ConsumerStatefulWidget {
   final GeneratedTrack track;
   final String source;
-  const _CoverCard({required this.track, required this.source});
+  const _CoverCard({
+    required this.track,
+    required this.source,
+  });
   @override
   ConsumerState<_CoverCard> createState() => _CoverCardState();
 }
@@ -1658,11 +1544,11 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    void play() =>
-        playGenerated(ref, context, widget.track, sourceLabel: widget.source);
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    final dark = waveIsDark(context);
+    void play() => playGenerated(ref, context, widget.track,
+        sourceLabel: widget.source);
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1689,45 +1575,49 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
               children: [
                 AnimatedScale(
                   scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                  duration: katMotion(context, KatMotion.fast),
+                  duration: waveMotion(context, WaveMotion.fast),
                   curve: Curves.easeOutCubic,
                   child: AnimatedContainer(
-                    duration: katMotion(context, KatMotion.normal),
+                    duration: waveMotion(context, WaveMotion.normal),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      borderRadius: KatRadius.artworkRadius,
-                      boxShadow: [if (_hover) ...KatElevation.lift(dark)],
+                      borderRadius: WaveRadius.artworkRadius,
+                      boxShadow: [
+                        if (_hover) ...WaveElevation.lift(dark),
+                      ],
                     ),
                     child: Stack(
                       children: [
-                        KatArtwork(
+                        WaveArtwork(
                           url: widget.track.artworkUrl,
                           size: 152,
-                          radius: KatRadius.artwork,
+                          radius: WaveRadius.artwork,
                           title: widget.track.name,
                           artist: widget.track.artist,
                           label: widget.track.name,
                         ),
                         Positioned.fill(
                           child: AnimatedOpacity(
-                            duration: katMotion(context, KatMotion.fast),
+                            duration: waveMotion(context, WaveMotion.fast),
                             opacity: _hover ? 1 : 0,
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius: KatRadius.artworkRadius,
+                                borderRadius:
+                                    WaveRadius.artworkRadius,
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
                                     Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.55),
+                                    Colors.black
+                                        .withValues(alpha: 0.55),
                                   ],
                                 ),
                               ),
                               child: Center(
                                 child: AnimatedScale(
                                   scale: _hover ? 1.0 : 0.70,
-                                  duration: katMotion(context, KatMotion.fast),
+                                  duration: waveMotion(context, WaveMotion.fast),
                                   curve: Curves.easeOutBack,
                                   child: GestureDetector(
                                     onTap: play,
@@ -1736,21 +1626,20 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                                       height: 44,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: katAccent(context),
+                                        color: waveAccent(context),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.4,
-                                            ),
+                                            color: Colors.black
+                                                .withValues(
+                                                    alpha: 0.4),
                                             blurRadius: 12,
                                           ),
                                         ],
                                       ),
                                       child: Icon(
-                                        KatIcons.play,
-                                        size: 18,
-                                        color: katOnAccent(context),
-                                      ),
+                                          WaveIcons.play,
+                                          size: 18,
+                                          color: waveOnAccent(context)),
                                     ),
                                   ),
                                 ),
@@ -1763,25 +1652,20 @@ class _CoverCardState extends ConsumerState<_CoverCard> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  widget.track.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.trackTitle.copyWith(fontSize: 12),
-                ),
-                KatArtistLine(
-                  artist: widget.track.artist,
-                  style: KatType.meta.copyWith(fontSize: 11),
-                ),
-                Text(
-                  'Recently played',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.meta.copyWith(
-                    fontSize: 10.5,
-                    color: katTextTertiary(context),
-                  ),
-                ),
+                Text(widget.track.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: WaveType.trackTitle.copyWith(fontSize: 12)),
+                WaveArtistLine(
+                    artist: widget.track.artist,
+                    style: WaveType.meta.copyWith(fontSize: 11)),
+                Text('Recently played',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: WaveType.meta.copyWith(
+                      fontSize: 10.5,
+                      color: waveTextTertiary(context),
+                    )),
               ],
             ),
           ),
@@ -1807,14 +1691,14 @@ class _MixShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatRail(
+    return WaveRail(
       height: 296,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
       itemBuilder: (context, i) {
         final t = tracks[i];
-        return KatEntrance(
+        return WaveEntrance(
           index: i,
           rise: 10,
           child: _MixCard(
@@ -1849,12 +1733,12 @@ class _MixCardState extends ConsumerState<_MixCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
-    void play() =>
-        playGenerated(ref, context, widget.track, sourceLabel: widget.title);
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
+    void play() => playGenerated(ref, context, widget.track,
+        sourceLabel: widget.title);
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -1881,22 +1765,24 @@ class _MixCardState extends ConsumerState<_MixCard> {
               children: [
                 AnimatedScale(
                   scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                  duration: katMotion(context, KatMotion.fast),
+                  duration: waveMotion(context, WaveMotion.fast),
                   curve: Curves.easeOutCubic,
                   child: AnimatedContainer(
-                    duration: katMotion(context, KatMotion.normal),
+                    duration: waveMotion(context, WaveMotion.normal),
                     curve: Curves.easeOutCubic,
                     decoration: BoxDecoration(
-                      borderRadius: KatRadius.artworkRadius,
-                      boxShadow: [if (_hover) ...KatElevation.lift(dark)],
+                      borderRadius: WaveRadius.artworkRadius,
+                      boxShadow: [
+                        if (_hover) ...WaveElevation.lift(dark),
+                      ],
                     ),
                     child: Stack(
                       children: [
-                        KatArtwork(
+                        WaveArtwork(
                           url: widget.track.artworkUrl,
                           videoId: widget.track.videoId,
                           size: 220,
-                          radius: KatRadius.artwork,
+                          radius: WaveRadius.artwork,
                           title: widget.track.name,
                           artist: widget.track.artist,
                           label: widget.track.name,
@@ -1904,7 +1790,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              borderRadius: KatRadius.artworkRadius,
+                              borderRadius: WaveRadius.artworkRadius,
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -1926,7 +1812,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                             children: [
                               Text(
                                 widget.badge,
-                                style: KatType.overline.copyWith(
+                                style: WaveType.overline.copyWith(
                                   fontSize: 9.5,
                                   color: Colors.white.withValues(alpha: 0.75),
                                 ),
@@ -1934,7 +1820,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                               const SizedBox(height: 2),
                               Text(
                                 widget.title,
-                                style: KatType.trackTitle.copyWith(
+                                style: WaveType.trackTitle.copyWith(
                                   fontSize: 16,
                                   color: Colors.white,
                                 ),
@@ -1945,7 +1831,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                         Positioned.fill(
                           child: AnimatedOpacity(
                             opacity: _hover ? 1 : 0,
-                            duration: katMotion(context, KatMotion.fast),
+                            duration: waveMotion(context, WaveMotion.fast),
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -1956,12 +1842,12 @@ class _MixCardState extends ConsumerState<_MixCard> {
                                     Colors.black.withValues(alpha: 0.55),
                                   ],
                                 ),
-                                borderRadius: KatRadius.artworkRadius,
+                                borderRadius: WaveRadius.artworkRadius,
                               ),
                               child: Center(
                                 child: AnimatedScale(
                                   scale: _hover ? 1.0 : 0.70,
-                                  duration: katMotion(context, KatMotion.fast),
+                                  duration: waveMotion(context, WaveMotion.fast),
                                   curve: Curves.easeOutBack,
                                   child: GestureDetector(
                                     onTap: play,
@@ -1981,7 +1867,7 @@ class _MixCardState extends ConsumerState<_MixCard> {
                                         ],
                                       ),
                                       child: Icon(
-                                        KatIcons.play,
+                                        WaveIcons.play,
                                         size: 18,
                                         color: onAccentFor(accent),
                                       ),
@@ -1996,30 +1882,26 @@ class _MixCardState extends ConsumerState<_MixCard> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.blurb,
+              const SizedBox(height: 8),
+              Text(widget.blurb,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: KatType.meta.copyWith(
+                  style: WaveType.meta.copyWith(
                     color: dark
-                        ? KatColors.textSecondary
-                        : KatColors.lightTextSecondary,
-                  ),
-                ),
-                Text(
-                  'Featuring ${widget.track.artist}',
+                        ? WaveColors.textSecondary
+                        : WaveColors.lightTextSecondary,
+                  )),
+              Text('Featuring ${widget.track.artist}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: KatType.meta.copyWith(
+                  style: WaveType.meta.copyWith(
                     fontSize: 11,
-                    color: katTextTertiary(context),
-                  ),
-                ),
-              ],
-            ),
+                    color: waveTextTertiary(context),
+                  )),
+            ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -2038,15 +1920,18 @@ class _AlbumShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatRail(
+    return WaveRail(
       height: 214,
       padding: EdgeInsets.symmetric(horizontal: side),
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
-      itemBuilder: (context, i) => KatEntrance(
+      itemBuilder: (context, i) => WaveEntrance(
         index: i,
         rise: 10,
-        child: _AlbumCard(track: tracks[i], source: source),
+        child: _AlbumCard(
+          track: tracks[i],
+          source: source,
+        ),
       ),
     );
   }
@@ -2055,7 +1940,10 @@ class _AlbumShelf extends StatelessWidget {
 class _AlbumCard extends ConsumerStatefulWidget {
   final GeneratedTrack track;
   final String source;
-  const _AlbumCard({required this.track, required this.source});
+  const _AlbumCard({
+    required this.track,
+    required this.source,
+  });
   @override
   ConsumerState<_AlbumCard> createState() => _AlbumCardState();
 }
@@ -2065,9 +1953,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    void play() =>
-        playGenerated(ref, context, widget.track, sourceLabel: widget.source);
+    final dark = waveIsDark(context);
+    void play() => playGenerated(ref, context, widget.track,
+        sourceLabel: widget.source);
     final card = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -2087,22 +1975,24 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: katMotion(context, KatMotion.fast),
+                duration: waveMotion(context, WaveMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: katMotion(context, KatMotion.normal),
+                  duration: waveMotion(context, WaveMotion.normal),
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
-                    borderRadius: KatRadius.artworkRadius,
-                    boxShadow: [if (_hover) ...KatElevation.lift(dark)],
+                    borderRadius: WaveRadius.artworkRadius,
+                    boxShadow: [
+                      if (_hover) ...WaveElevation.lift(dark),
+                    ],
                   ),
                   child: Stack(
                     children: [
-                      KatArtwork(
+                      WaveArtwork(
                         url: widget.track.artworkUrl,
                         videoId: widget.track.videoId,
                         size: 152,
-                        radius: KatRadius.artwork,
+                        radius: WaveRadius.artwork,
                         title: widget.track.name,
                         artist: widget.track.artist,
                         label: widget.track.name,
@@ -2110,7 +2000,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                       Positioned.fill(
                         child: AnimatedOpacity(
                           opacity: _hover ? 1 : 0,
-                          duration: katMotion(context, KatMotion.fast),
+                          duration: waveMotion(context, WaveMotion.fast),
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
@@ -2121,12 +2011,12 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                   Colors.black.withValues(alpha: 0.55),
                                 ],
                               ),
-                              borderRadius: KatRadius.artworkRadius,
+                              borderRadius: WaveRadius.artworkRadius,
                             ),
                             child: Center(
                               child: AnimatedScale(
                                 scale: _hover ? 1.0 : 0.70,
-                                duration: katMotion(context, KatMotion.fast),
+                                duration: waveMotion(context, WaveMotion.fast),
                                 curve: Curves.easeOutBack,
                                 child: GestureDetector(
                                   onTap: play,
@@ -2135,7 +2025,7 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                     height: 44,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: katAccent(context),
+                                      color: waveAccent(context),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(
@@ -2146,9 +2036,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                                       ],
                                     ),
                                     child: Icon(
-                                      KatIcons.play,
+                                      WaveIcons.play,
                                       size: 18,
-                                      color: katOnAccent(context),
+                                      color: waveOnAccent(context),
                                     ),
                                   ),
                                 ),
@@ -2161,9 +2051,9 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                         Positioned(
                           right: 6,
                           top: 6,
-                          child: KatOverflowButton(
+                          child: WaveOverflowButton(
                             tooltip: 'More',
-                            items: katTrackMenuItems(
+                            items: waveTrackMenuItems(
                               context: context,
                               ref: ref,
                               title: widget.track.name,
@@ -2178,23 +2068,20 @@ class _AlbumCardState extends ConsumerState<_AlbumCard> {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                widget.track.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: KatType.trackTitle.copyWith(fontSize: 12.5),
-              ),
-              KatArtistLine(
-                artist: widget.track.artist,
-                style: KatType.meta.copyWith(fontSize: 11.5),
-              ),
+              Text(widget.track.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: WaveType.trackTitle.copyWith(fontSize: 12.5)),
+              WaveArtistLine(
+                  artist: widget.track.artist,
+                  style: WaveType.meta.copyWith(fontSize: 11.5)),
             ],
           ),
         ),
       ),
     );
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: widget.track.name,
@@ -2222,10 +2109,10 @@ class _ChartRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: track.name,
@@ -2236,72 +2123,65 @@ class _ChartRow extends ConsumerWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: () => playGenerated(
-            ref,
-            context,
-            track,
+        onTap: () => playGenerated(ref, context, track,
             sourceLabel: 'Trending',
             queueAll: queueAll,
-            startIndex: index,
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-            color: Colors.transparent,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 30,
-                  child: Text(
-                    '$rank',
-                    style: KatType.numeral.copyWith(
+            startIndex: index),
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+          color: Colors.transparent,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 30,
+                child: Text('$rank',
+                    style: WaveType.numeral.copyWith(
                       fontSize: 20,
                       color: rank == 1
                           ? accent
                           : (dark
-                                ? KatColors.textTertiary
-                                : KatColors.lightTextTertiary),
-                    ),
-                  ),
-                ),
-                KatArtwork(
-                  url: track.artworkUrl,
-                  videoId: track.videoId,
-                  size: 42,
-                  radius: KatRadius.artwork,
-                  title: track.name,
-                  artist: track.artist,
-                  label: track.name,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        track.name,
+                              ? WaveColors.textTertiary
+                              : WaveColors.lightTextTertiary),
+                    )),
+              ),
+              WaveArtwork(
+                url: track.artworkUrl,
+                videoId: track.videoId,
+                size: 42,
+                radius: WaveRadius.artwork,
+                title: track.name,
+                artist: track.artist,
+                label: track.name,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(track.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: KatType.trackTitle.copyWith(fontSize: 13),
-                      ),
-                      KatArtistLine(
-                        artist: track.artist,
-                        style: KatType.meta,
-                        extraTrailingSpans: [
-                          if (track.listeners.isNotEmpty)
-                            TextSpan(
-                              text: ' · ${track.listeners}',
-                              style: KatType.meta,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        style: WaveType.trackTitle
+                            .copyWith(fontSize: 13)),
+                    WaveArtistLine(
+                      artist: track.artist,
+                      style: WaveType.meta,
+                      extraTrailingSpans: [
+                        if (track.listeners.isNotEmpty)
+                          TextSpan(
+                            text: ' · ${track.listeners}',
+                            style: WaveType.meta,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -2322,12 +2202,14 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
   Widget build(BuildContext context) {
     final track = widget.track;
     final sourceLabel = 'Fresh finds';
-    final playing =
-        ref.watch(playbackServiceProvider.select((s) => s.current?.queueKey)) ==
+    final playing = ref.watch(
+          playbackServiceProvider.select((s) => s.current?.queueKey),
+        ) ==
         track.key;
-    void play() => playGenerated(ref, context, track, sourceLabel: sourceLabel);
-    return KatContextMenu(
-      items: () => katTrackMenuItems(
+    void play() => playGenerated(ref, context, track,
+        sourceLabel: sourceLabel);
+    return WaveContextMenu(
+      items: () => waveTrackMenuItems(
         context: context,
         ref: ref,
         title: track.name,
@@ -2342,17 +2224,18 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
         child: GestureDetector(
           onTap: play,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             color: Colors.transparent,
             child: Row(
               children: [
                 Stack(
                   children: [
-                    KatArtwork(
+                    WaveArtwork(
                       url: track.artworkUrl,
                       videoId: track.videoId,
                       size: 40,
-                      radius: KatRadius.artwork,
+                      radius: WaveRadius.artwork,
                       title: track.name,
                       artist: track.artist,
                       label: track.name,
@@ -2360,19 +2243,20 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
                     Positioned.fill(
                       child: AnimatedOpacity(
                         opacity: _hover && !playing ? 1 : 0,
-                        duration: katMotion(context, KatMotion.fast),
+                        duration: waveMotion(context, WaveMotion.fast),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            borderRadius: KatRadius.artworkRadius,
+                            color: Colors.black
+                                .withValues(alpha: 0.55),
+                            borderRadius:
+                                WaveRadius.artworkRadius,
                           ),
                           child: GestureDetector(
                             onTap: play,
                             child: const Icon(
-                              KatIcons.play,
-                              size: 16,
-                              color: Colors.white,
-                            ),
+                                WaveIcons.play,
+                                size: 16,
+                                color: Colors.white),
                           ),
                         ),
                       ),
@@ -2384,21 +2268,24 @@ class _FreshRowState extends ConsumerState<_FreshRow> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        track.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: KatType.trackTitle.copyWith(
-                          fontSize: 13,
-                          color: playing ? katAccent(context) : null,
-                        ),
+                      Text(track.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: WaveType.trackTitle.copyWith(
+                              fontSize: 13,
+                              color: playing
+                                  ? waveAccent(context)
+                                  : null)),
+                      WaveArtistLine(
+                        artist: track.artist,
+                        style: WaveType.meta,
                       ),
-                      KatArtistLine(artist: track.artist, style: KatType.meta),
                     ],
                   ),
                 ),
                 if (playing)
-                  Icon(KatIcons.queue, size: 14, color: katAccent(context)),
+                  Icon(WaveIcons.queue,
+                      size: 14, color: waveAccent(context)),
               ],
             ),
           ),
@@ -2414,17 +2301,13 @@ class _ArtistShelf extends StatelessWidget {
   const _ArtistShelf({required this.tracks});
   @override
   Widget build(BuildContext context) {
-    return KatRail(
+    return WaveRail(
       height: 168,
       itemCount: tracks.length,
       separatorBuilder: (_, _) => const SizedBox(width: 16),
       itemBuilder: (context, i) {
         final t = tracks[i];
-        return KatEntrance(
-          index: i,
-          rise: 10,
-          child: _ArtistTile(track: t),
-        );
+        return WaveEntrance(index: i, rise: 10, child: _ArtistTile(track: t));
       },
     );
   }
@@ -2439,7 +2322,7 @@ class _ArtistTile extends StatefulWidget {
 
 class _ArtistTileState extends State<_ArtistTile> {
   /// Cover edge. The resting radius is half of it, which is a circle; the
-  /// hover radius is [KatRadius.floating] — a rounded square, one rung
+  /// hover radius is [WaveRadius.floating] — a rounded square, one rung
   /// below a full circle (12 read as too square at this size).
   static const double _size = 112;
 
@@ -2448,12 +2331,12 @@ class _ArtistTileState extends State<_ArtistTile> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     // Hover reads as the shape relaxing: circle → rounded square (56 → 20
     // on a 112px cover), plus the app's standard ×1.03 lift. No accent
     // ring — accent means "selected/playing" everywhere else in the app.
     final radius = BorderRadius.circular(
-      _hover ? KatRadius.floating : _size / 2,
+      _hover ? WaveRadius.floating : _size / 2,
     );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -2466,27 +2349,27 @@ class _ArtistTileState extends State<_ArtistTile> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () => katOpen(
-          context,
-          '/artist/${Uri.encodeComponent(widget.track.artist)}',
-        ),
+        onTap: () => waveOpen(
+            context, '/artist/${Uri.encodeComponent(widget.track.artist)}'),
         child: SizedBox(
           width: 120,
           child: Column(
             children: [
               AnimatedScale(
                 scale: _pressed ? 0.97 : (_hover ? 1.03 : 1.0),
-                duration: katMotion(context, KatMotion.fast),
+                duration: waveMotion(context, WaveMotion.fast),
                 curve: Curves.easeOutCubic,
                 child: AnimatedContainer(
-                  duration: katMotion(context, KatMotion.normal),
+                  duration: waveMotion(context, WaveMotion.normal),
                   curve: Curves.easeOutCubic,
                   // The clip is what animates the shape, so the artwork
                   // itself renders square (radius 0) and lets this own it.
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     borderRadius: radius,
-                    boxShadow: [if (_hover) ...KatElevation.lift(dark)],
+                    boxShadow: [
+                      if (_hover) ...WaveElevation.lift(dark),
+                    ],
                   ),
                   // Hairline as a *foreground* decoration: a plain
                   // `border` would inset the cover by 1px (Container pads
@@ -2494,12 +2377,12 @@ class _ArtistTileState extends State<_ArtistTile> {
                   // on the clip edge for both shapes.
                   foregroundDecoration: BoxDecoration(
                     borderRadius: radius,
-                    border: Border.all(color: katDivider(context)),
+                    border: Border.all(color: waveDivider(context)),
                   ),
-                  child: KatArtwork(
+                  child: WaveArtwork(
                     url: widget.track.artworkUrl,
                     size: _size,
-                    radius: KatRadius.structural,
+                    radius: WaveRadius.structural,
                     kind: ArtworkKind.artist,
                     label: widget.track.artist,
                     title: widget.track.artist,
@@ -2508,108 +2391,16 @@ class _ArtistTileState extends State<_ArtistTile> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                widget.track.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: KatType.trackTitle.copyWith(fontSize: 12.5),
-              ),
-              Text(
-                'Artist',
-                style: KatType.meta.copyWith(
-                  fontSize: 11,
-                  color: katTextTertiary(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Friends Listening: compact 56px activity rows with avatar dot.
-class _FriendsStrip extends ConsumerWidget {
-  final List<FriendActivity> activities;
-  const _FriendsStrip({required this.activities});
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        for (var i = 0; i < activities.length; i++)
-          _FriendRow(activity: activities[i]),
-      ],
-    );
-  }
-}
-
-class _FriendRow extends ConsumerWidget {
-  final FriendActivity activity;
-  const _FriendRow({required this.activity});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = activity.track;
-    final when = t.timestampMillis == null
-        ? ''
-        : relativeTime(DateTime.fromMillisecondsSinceEpoch(t.timestampMillis!));
-    final avatar = activity.avatarUrl.isNotEmpty
-        ? activity.avatarUrl
-        : t.artworkUrl;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => playGenerated(
-            ref,
-            context,
-            GeneratedTrack(
-              name: t.name,
-              artist: t.artist,
-              artworkUrl: t.artworkUrl,
-            ),
-            sourceLabel: 'Friends',
-          ),
-          child: Row(
-            children: [
-              KatArtwork.circle(
-                url: avatar,
-                size: 44,
-                label: activity.friend,
-                title: activity.friend,
-                upgrade: false,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${activity.friend} · ${t.name}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(fontSize: 12.5),
-                    ),
-                    Text(
-                      t.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.meta.copyWith(fontSize: 11.5),
-                    ),
-                  ],
-                ),
-              ),
-              if (when.isNotEmpty)
-                Text(
-                  when,
-                  style: KatType.meta.copyWith(
-                    fontSize: 11,
-                    color: katTextTertiary(context),
-                  ),
-                ),
+              Text(widget.track.artist,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: WaveType.trackTitle
+                      .copyWith(fontSize: 12.5)),
+              Text('Artist',
+                  style: WaveType.meta.copyWith(
+                      fontSize: 11,
+                      color: waveTextTertiary(context))),
             ],
           ),
         ),
@@ -2622,26 +2413,22 @@ class _HomeSkeleton extends StatelessWidget {
   const _HomeSkeleton();
   @override
   Widget build(BuildContext context) {
-    final bar = katDivider(context).withValues(alpha: 0.5);
+    final bar = waveDivider(context).withValues(alpha: 0.5);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          height: 240,
-          decoration: BoxDecoration(
-            color: bar,
-            borderRadius: KatRadius.floatingRadius,
-          ),
-        ),
+            height: 240,
+            decoration: BoxDecoration(
+                color: bar,
+                borderRadius: WaveRadius.floatingRadius)),
         const SizedBox(height: 26),
         Container(
-          width: 180,
-          height: 14,
-          decoration: BoxDecoration(
-            color: bar,
-            borderRadius: KatRadius.tinyRadius,
-          ),
-        ),
+            width: 180,
+            height: 14,
+            decoration: BoxDecoration(
+                color: bar,
+                borderRadius: WaveRadius.tinyRadius)),
         const SizedBox(height: 10),
         for (var i = 0; i < 6; i++)
           Padding(
@@ -2649,35 +2436,31 @@ class _HomeSkeleton extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: bar,
-                    borderRadius: KatRadius.artworkRadius,
-                  ),
-                ),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                        color: bar,
+                        borderRadius: WaveRadius.artworkRadius)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        height: 11,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: bar,
-                          borderRadius: KatRadius.tinyRadius,
-                        ),
-                      ),
+                          height: 11,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                              color: bar,
+                              borderRadius:
+                                  WaveRadius.tinyRadius)),
                       const SizedBox(height: 6),
                       Container(
-                        height: 10,
-                        width: 140,
-                        decoration: BoxDecoration(
-                          color: bar,
-                          borderRadius: KatRadius.tinyRadius,
-                        ),
-                      ),
+                          height: 10,
+                          width: 140,
+                          decoration: BoxDecoration(
+                              color: bar,
+                              borderRadius:
+                                  WaveRadius.tinyRadius)),
                     ],
                   ),
                 ),
@@ -2686,13 +2469,14 @@ class _HomeSkeleton extends StatelessWidget {
           ),
         const SizedBox(height: 26),
         Container(
-          height: 140,
-          decoration: BoxDecoration(
-            color: bar,
-            borderRadius: KatRadius.artworkRadius,
-          ),
-        ),
+            height: 140,
+            decoration: BoxDecoration(
+                color: bar,
+                borderRadius: WaveRadius.artworkRadius)),
       ],
     );
   }
 }
+
+
+

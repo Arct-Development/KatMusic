@@ -39,26 +39,12 @@ void main() {
     db.raw.execute(
       'INSERT INTO saved_playlists(id, title, subtitle, mode, tracks_json, created_at_millis, is_pinned) '
       'VALUES(?, ?, ?, ?, ?, ?, 1);',
-      [
-        101,
-        'Liked Songs',
-        'sub',
-        'liked',
-        jsonEncode([track1.toJson()]),
-        1000,
-      ],
+      [101, 'Liked Songs', 'sub', 'liked', jsonEncode([track1.toJson()]), 1000],
     );
     db.raw.execute(
       'INSERT INTO saved_playlists(id, title, subtitle, mode, tracks_json, created_at_millis, is_pinned) '
       'VALUES(?, ?, ?, ?, ?, ?, 0);',
-      [
-        102,
-        'Liked Songs',
-        'sub',
-        'custom',
-        jsonEncode([track2.toJson(), track1Dup.toJson()]),
-        2000,
-      ],
+      [102, 'Liked Songs', 'sub', 'custom', jsonEncode([track2.toJson(), track1Dup.toJson()]), 2000],
     );
 
     // Initializing repository should auto-collapse duplicates
@@ -73,29 +59,24 @@ void main() {
     expect(keeper.tracks.map((t) => t.name).toSet(), {'Song A', 'Song B'});
 
     // Verify leftover row was deleted from sqlite
-    final rows = db.raw.select(
-      'SELECT id FROM saved_playlists WHERE id = 101;',
-    );
+    final rows = db.raw.select('SELECT id FROM saved_playlists WHERE id = 101;');
     expect(rows.isEmpty, isTrue);
   });
 
-  test(
-    'toggleLiked toggles locally and does not create duplicate playlists',
-    () async {
-      final db = AppDatabase.inMemory();
-      final repo = PlaylistRepository(db);
+  test('toggleLiked toggles locally and does not create duplicate playlists', () async {
+    final db = AppDatabase.inMemory();
+    final repo = PlaylistRepository(db);
 
-      const track = StoredTrack(name: 'Midnight City', artist: 'M83');
-      final loved = await repo.toggleLiked(track);
-      expect(loved, isTrue);
+    const track = StoredTrack(name: 'Midnight City', artist: 'M83');
+    final loved = await repo.toggleLiked(track);
+    expect(loved, isTrue);
 
-      expect(repo.state.where((p) => p.isLikedSongs).length, 1);
-      expect(repo.likedKeys(), contains('midnight city|m83'));
+    expect(repo.state.where((p) => p.isLikedSongs).length, 1);
+    expect(repo.likedKeys(), contains('midnight city|m83'));
 
-      final unloved = await repo.toggleLiked(track);
-      expect(unloved, isFalse);
-      expect(repo.state.where((p) => p.isLikedSongs).length, 1);
-      expect(repo.likedKeys(), isNot(contains('midnight city|m83')));
-    },
-  );
+    final unloved = await repo.toggleLiked(track);
+    expect(unloved, isFalse);
+    expect(repo.state.where((p) => p.isLikedSongs).length, 1);
+    expect(repo.likedKeys(), isNot(contains('midnight city|m83')));
+  });
 }

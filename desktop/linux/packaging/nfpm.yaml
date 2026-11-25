@@ -2,14 +2,24 @@
 # Built ONLY for releases (v* tags); see .github/workflows/desktop.yml.
 # VERSION comes from the tag (v1.0.0 -> 1.0.0); nFPM expands env vars.
 name: katmusic
-arch: amd64
+# NFPM_ARCH is the packager's own name (amd64/arm64 for deb, x86_64/aarch64
+# for rpm); BUNDLE_ARCH is Flutter's build dir name (x64/arm64).
+arch: ${NFPM_ARCH}
 platform: linux
 version: ${VERSION}
+# Transitional shims so katmusic supersedes the old lastwave package:
+# deb maps replaces->Replaces, conflicts->Conflicts; rpm maps
+# replaces->Obsoletes. Lets the new package supersede the old name
+# instead of co-installing under /opt/katmusic twice.
+replaces:
+  - lastwave
+conflicts:
+  - lastwave
 section: sound
 priority: optional
 maintainer: Arct-Development <https://github.com/Arct-Development/KatMusic>
 description: |-
-  KatMusic — desktop music player: YouTube Music, lossless audio,
+  KatMusic — desktop music player: YouTube Music streaming,
   word-synced lyrics and Last.fm scrobbling.
 vendor: Arct-Development
 homepage: https://github.com/Arct-Development/KatMusic
@@ -17,7 +27,7 @@ license: Proprietary — all rights reserved (no LICENSE file yet)
 
 contents:
   # Release bundle straight into /opt.
-  - src: build/linux/x64/release/bundle
+  - src: build/linux/${BUNDLE_ARCH}/release/bundle
     dst: /opt/katmusic
     type: tree
   # CLI entry point.
@@ -26,7 +36,9 @@ contents:
     type: symlink
   # Desktop integration.
   - src: linux/packaging/katmusic.desktop
-    dst: /usr/share/applications/katmusic.desktop
+    # Named after the app id: Wayland docks match the window app_id to
+    # the desktop file name.
+    dst: /usr/share/applications/com.itzfallenme.katmusic.desktop.desktop
   - src: linux/packaging/katmusic.png
     dst: /usr/share/icons/hicolor/512x512/apps/katmusic.png
 
@@ -37,7 +49,7 @@ overrides:
       - libwebkit2gtk-4.1-0
       - libayatana-appindicator3-1 | libappindicator3-1
       - libasound2
-      - libmpv2 | libmpv1
+      - libmpv2
       # hotkey_manager links libkeybinder-3.0 at runtime: without this,
       # global shortcuts are dead on distros that don't ship it.
       - libkeybinder-3.0-0

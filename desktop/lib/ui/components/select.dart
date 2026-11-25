@@ -6,15 +6,23 @@ import 'package:flutter/services.dart';
 import '../theme/tokens.dart';
 import 'menus.dart';
 
-/// One choice in a [KatSelect].
-class KatSelectOption<T> {
+/// One choice in a [WaveSelect].
+class WaveSelectOption<T> {
   final T value;
   final String label;
 
   /// Optional muted trailing note (e.g. "default").
   final String? hint;
 
-  const KatSelectOption({required this.value, required this.label, this.hint});
+  /// Draws this option's row in the given family (font picker previews).
+  final String? fontFamily;
+
+  const WaveSelectOption({
+    required this.value,
+    required this.label,
+    this.hint,
+    this.fontFamily,
+  });
 }
 
 /// Rounded replacement for fluent's `ComboBox`.
@@ -23,17 +31,17 @@ class KatSelectOption<T> {
 /// popup painter, its `Acrylic` shape *and* its open-animation clipper —
 /// none of which read `FluentThemeData`, so there is no theme hook to
 /// reach them. The popup therefore stayed near-square while every other
-/// menu in the app sits on `KatRadius.menu`.
+/// menu in the app sits on `WaveRadius.menu`.
 ///
 /// This is the same control (filled, bordered trigger + selected label +
-/// chevron) drawn with our tokens, over [KatFlyoutPanel] — the app's own
+/// chevron) drawn with our tokens, over [WaveFlyoutPanel] — the app's own
 /// opaque `menuRadius` popup surface with keyboard-navigable rows — so a
 /// select matches the ladder everywhere, including its trigger corners.
 ///
 /// Values must be unique (same contract as `ComboBox`).
-class KatSelect<T> extends StatefulWidget {
+class WaveSelect<T> extends StatefulWidget {
   final T? value;
-  final List<KatSelectOption<T>> options;
+  final List<WaveSelectOption<T>> options;
 
   /// `null` renders the control disabled, exactly like `ComboBox`.
   final ValueChanged<T>? onChanged;
@@ -51,7 +59,7 @@ class KatSelect<T> extends StatefulWidget {
   /// the window). The trigger's own width always wins over it.
   final double menuMaxWidth;
 
-  const KatSelect({
+  const WaveSelect({
     super.key,
     required this.value,
     required this.options,
@@ -63,10 +71,10 @@ class KatSelect<T> extends StatefulWidget {
   });
 
   @override
-  State<KatSelect<T>> createState() => _KatSelectState<T>();
+  State<WaveSelect<T>> createState() => _WaveSelectState<T>();
 }
 
-class _KatSelectState<T> extends State<KatSelect<T>> {
+class _WaveSelectState<T> extends State<WaveSelect<T>> {
   final _controller = FlyoutController();
   bool _hover = false;
   bool _focused = false;
@@ -87,11 +95,11 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
 
   /// Popup width: never narrower than the field it hangs from, never
   /// narrower than its widest row (measured, so no option label has to
-  /// ellipsise like a cut-off value), capped by [KatSelect.menuMaxWidth].
+  /// ellipsise like a cut-off value), capped by [WaveSelect.menuMaxWidth].
   double _menuWidth() {
     final trigger = context.size?.width ?? 0;
     var content = 0.0;
-    // Row chrome: KatMenuRow's 12/10 padding, a 16px leading + 10px gap,
+    // Row chrome: WaveMenuRow's 12/10 padding, a 16px leading + 10px gap,
     // and the panel's own inset of 4 on both sides.
     const chrome = 12 + 10 + 16 + 10 + 8;
     for (final option in widget.options) {
@@ -139,16 +147,17 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
       additionalOffset: 4,
       transitionDuration: const Duration(milliseconds: 90),
       transitionBuilder: fastFlyoutTransition,
-      builder: (context) => KatFlyoutPanel.items(
+      builder: (context) => WaveFlyoutPanel.items(
         maxWidth: width,
         entries: [
           for (final option in widget.options)
-            KatMenuAction(
+            WaveMenuAction(
               leading: option.value == widget.value
                   ? const Icon(FluentIcons.check_mark, size: 13)
                   : const SizedBox(width: 13),
               label: option.label,
               hint: option.hint,
+              fontFamily: option.fontFamily,
               onPressed: () => onChanged(option.value),
             ),
         ],
@@ -172,18 +181,17 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: KatType.body.copyWith(
+      style: WaveType.body.copyWith(
         color: enabled
-            ? katTextPrimary(context)
+            ? waveTextPrimary(context)
             : theme.resources.textFillColorDisabled,
       ),
     );
 
     return FocusableActionDetector(
       enabled: enabled,
-      mouseCursor: enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
+      mouseCursor:
+          enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onShowHoverHighlight: (value) => setState(() => _hover = value),
       onShowFocusHighlight: (value) => setState(() => _focused = value),
       shortcuts: const {
@@ -205,7 +213,7 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
           behavior: HitTestBehavior.opaque,
           onTap: enabled ? _show : null,
           child: AnimatedContainer(
-            duration: katMotion(context, KatMotion.fast),
+            duration: waveMotion(context, WaveMotion.fast),
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
@@ -214,14 +222,14 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
                 states,
                 transparentWhenNone: false,
               ),
-              borderRadius: KatRadius.controlsRadius,
+              borderRadius: WaveRadius.controlsRadius,
               border: Border.all(
                 width: 1,
                 color: _focused
-                    ? katAccent(context)
+                    ? waveAccent(context)
                     : states.isDisabled || states.isPressed
-                    ? theme.resources.controlStrokeColorDefault
-                    : theme.resources.controlStrokeColorSecondary,
+                        ? theme.resources.controlStrokeColorDefault
+                        : theme.resources.controlStrokeColorSecondary,
               ),
             ),
             // The label ellipsises instead of overflowing whenever the
@@ -246,7 +254,7 @@ class _KatSelectState<T> extends State<KatSelect<T>> {
                       FluentIcons.chevron_down,
                       size: 10,
                       color: enabled
-                          ? katTextSecondary(context)
+                          ? waveTextSecondary(context)
                           : theme.resources.textFillColorDisabled,
                     ),
                   ],

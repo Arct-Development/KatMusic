@@ -51,18 +51,18 @@ class TrackAnalysis {
   bool get hasBeat => bpm > 0 && confidence >= 0.15 && beats.length >= 8;
 
   Map<String, Object?> toJson() => {
-    'v': 1,
-    'ws': windowStart,
-    'we': windowEnd,
-    'bpm': bpm,
-    'conf': confidence,
-    'beats': beats,
-    'down': downbeats,
-    'as': audibleStart,
-    'ce': contentEnd,
-    'e': energyDb,
-    'eh': energyHop,
-  };
+        'v': 1,
+        'ws': windowStart,
+        'we': windowEnd,
+        'bpm': bpm,
+        'conf': confidence,
+        'beats': beats,
+        'down': downbeats,
+        'as': audibleStart,
+        'ce': contentEnd,
+        'e': energyDb,
+        'eh': energyHop,
+      };
 
   static TrackAnalysis? fromJson(Map<String, Object?> j) {
     try {
@@ -111,16 +111,12 @@ const int _hop = 128;
 /// toward 120 BPM); the grid is the best comb phase, then refined by a
 /// least-squares fit through the real onset peaks so a small tempo
 /// error does not drift across a 60s window.
-TrackAnalysis analyzePcm(
-  Int16List pcm,
-  int sampleRate, {
-  double offsetSeconds = 0,
-}) {
+TrackAnalysis analyzePcm(Int16List pcm, int sampleRate,
+    {double offsetSeconds = 0}) {
   final windowEnd = offsetSeconds + pcm.length / sampleRate;
   final fps = sampleRate / _hop;
-  final nFrames = pcm.length < _fftSize
-      ? 0
-      : 1 + (pcm.length - _fftSize) ~/ _hop;
+  final nFrames =
+      pcm.length < _fftSize ? 0 : 1 + (pcm.length - _fftSize) ~/ _hop;
 
   // ---- levels -----------------------------------------------------------
   final energyHop = 0.5;
@@ -139,11 +135,8 @@ TrackAnalysis analyzePcm(
     final rms = math.sqrt(acc / (e - s));
     energyDb[i] = rms <= 1e-6 ? -120 : 20 * math.log(rms) / math.ln10;
   }
-  final (audibleStart, contentEnd) = _audibleBounds(
-    pcm,
-    sampleRate,
-    offsetSeconds,
-  );
+  final (audibleStart, contentEnd) =
+      _audibleBounds(pcm, sampleRate, offsetSeconds);
 
   if (nFrames < fps * 8) {
     return TrackAnalysis(
@@ -221,14 +214,8 @@ TrackAnalysis analyzePcm(
   final minLag = (fps * 60 / 200).floor();
   final maxLag = math.min(onset.length ~/ 3, (fps * 60 / 60).ceil());
   if (maxLag <= minLag + 2) {
-    return _noBeat(
-      offsetSeconds,
-      windowEnd,
-      audibleStart,
-      contentEnd,
-      energyDb,
-      energyHop,
-    );
+    return _noBeat(offsetSeconds, windowEnd, audibleStart, contentEnd,
+        energyDb, energyHop);
   }
   final acf = Float64List(math.max(maxLag * 4 + 2, onset.length ~/ 2));
   final acfLen = math.min(acf.length, onset.length - 1);
@@ -237,14 +224,8 @@ TrackAnalysis analyzePcm(
     zero += onset[t] * onset[t];
   }
   if (zero <= 1e-12) {
-    return _noBeat(
-      offsetSeconds,
-      windowEnd,
-      audibleStart,
-      contentEnd,
-      energyDb,
-      energyHop,
-    );
+    return _noBeat(offsetSeconds, windowEnd, audibleStart, contentEnd,
+        energyDb, energyHop);
   }
   for (var lag = 1; lag < acfLen; lag++) {
     var s = 0.0;
@@ -269,8 +250,7 @@ TrackAnalysis analyzePcm(
     final bpm = 60 * fps / lag;
     final lg = math.log(bpm / 120) / math.ln2;
     final prior = math.exp(-0.5 * (lg / 0.8) * (lg / 0.8));
-    scores[lag] =
-        (acf[lag] +
+    scores[lag] = (acf[lag] +
             0.5 * acfAt(lag * 2.0) +
             0.33 * acfAt(lag * 3.0) +
             0.25 * acfAt(lag * 4.0)) *
@@ -291,14 +271,8 @@ TrackAnalysis analyzePcm(
     if (candidates.length == 3) break;
   }
   if (candidates.isEmpty) {
-    return _noBeat(
-      offsetSeconds,
-      windowEnd,
-      audibleStart,
-      contentEnd,
-      energyDb,
-      energyHop,
-    );
+    return _noBeat(offsetSeconds, windowEnd, audibleStart, contentEnd,
+        energyDb, energyHop);
   }
 
   _Grid? best;
@@ -312,14 +286,8 @@ TrackAnalysis analyzePcm(
     }
   }
   if (best == null) {
-    return _noBeat(
-      offsetSeconds,
-      windowEnd,
-      audibleStart,
-      contentEnd,
-      energyDb,
-      energyHop,
-    );
+    return _noBeat(offsetSeconds, windowEnd, audibleStart, contentEnd,
+        energyDb, energyHop);
   }
   final period = best.period;
   final phase = best.phase;
@@ -341,8 +309,7 @@ TrackAnalysis analyzePcm(
   }
   final barScore = List<double>.filled(4, 0);
   for (var i = 0; i < beatFrames.length; i++) {
-    barScore[i % 4] +=
-        sampleAt(lowOnset, beatFrames[i]) +
+    barScore[i % 4] += sampleAt(lowOnset, beatFrames[i]) +
         0.1 * sampleAt(fullOnset, beatFrames[i]);
   }
   var bar = 0;
@@ -490,12 +457,8 @@ _Grid? _fitGrid(Float64List onset, Float64List acf, int acfLen, int lag) {
   if (len < period * 6) return null;
   final phases = <double>[
     for (var s = 0; s < sections; s++)
-      _bestPhase(
-        onset,
-        period,
-        s * len,
-        s == sections - 1 ? onset.length : (s + 1) * len,
-      ),
+      _bestPhase(onset, period, s * len,
+          s == sections - 1 ? onset.length : (s + 1) * len),
   ];
   var agree = 0;
   for (final c in phases) {
@@ -527,25 +490,20 @@ _Grid? _fitGrid(Float64List onset, Float64List acf, int acfLen, int lag) {
   return _Grid(period, phase, stability, contrast);
 }
 
-TrackAnalysis _noBeat(
-  double ws,
-  double we,
-  double as,
-  double ce,
-  List<double> e,
-  double eh,
-) => TrackAnalysis(
-  windowStart: ws,
-  windowEnd: we,
-  bpm: 0,
-  confidence: 0,
-  beats: const [],
-  downbeats: const [],
-  audibleStart: as,
-  contentEnd: ce,
-  energyDb: e,
-  energyHop: eh,
-);
+TrackAnalysis _noBeat(double ws, double we, double as, double ce,
+        List<double> e, double eh) =>
+    TrackAnalysis(
+      windowStart: ws,
+      windowEnd: we,
+      bpm: 0,
+      confidence: 0,
+      beats: const [],
+      downbeats: const [],
+      audibleStart: as,
+      contentEnd: ce,
+      energyDb: e,
+      energyHop: eh,
+    );
 
 /// First / last 50 ms block above (loudest block − 40 dB), floored at
 /// −55 dBFS, so tape hiss and reverb tails do not count as music.

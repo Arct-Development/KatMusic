@@ -5,75 +5,78 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// CANONICAL — all agents must import this, do NOT use LwColors/LwRadius.
 ///
 /// `lib/ui/theme/tokens.dart` is the single source of truth for the
-/// KatMusic "Kat" design system. The legacy `lib/design_system/tokens.dart`
+/// KatMusic "Wave" design system. The legacy `lib/design_system/tokens.dart`
 /// (`LwColors` / `LwRadius` — ice-blue accent, 12–24px radii) was retired
 /// and DELETED (with `components.dart` / `icons.dart` and the orphaned
 /// `features/lyrics/lyrics_view.dart` that was their only importer):
 /// do not recreate it, and do not copy values out of it.
 ///
-/// Kat direction:
-/// - Midnight-navy base (#060910 / #0B111C / #111B2A), ice-white text.
-/// - KatMusic blue (#3D91FF) is the single brand accent; it is used for
-///   play affordances, progress, selection and focus — never as a large
-///   tinted card wash. Artwork still supplies the per-track personality.
-/// - The chrome is deliberately cool and deep, with blue-grey hairlines,
-///   rather than a neutral graphite shell.
-class KatColors {
-  KatColors._();
+/// Wave direction:
+/// - Neutral graphite base (#0E0E0E / #161616 / #1E1E1E), off-white text.
+/// - NO blue/navy theme, NO giant pills (pill shapes are allowed ONLY for
+///   [WaveChip]-style chips and circular transport buttons). Radii come
+///   from the [WaveRadius] ladder — never a loose numeric literal.
+/// - The base stays neutral; artwork drives personality. The off-white
+///   accent is used sparingly (play affordance, progress fill, selection),
+///   never as large tinted surfaces.
+class WaveColors {
+  WaveColors._();
 
-  // KatMusic midnight — cool, deep, slight navy cast.
-  static const background = Color(0xFF060910);
-  static const backgroundDeep = Color(0xFF03050A);
-  static const surface = Color(0xFF0B111C);
-  static const surfaceRaised = Color(0xFF111B2A);
-  static const surfaceOverlay = Color(0xFF182538);
+  // Neutral base — true graphite, zero blue.
+  static const background = Color(0xFF0E0E0E);
+  static const backgroundDeep = Color(0xFF0A0A0A);
+  static const surface = Color(0xFF161616);
+  static const surfaceRaised = Color(0xFF1E1E1E);
+  static const surfaceOverlay = Color(0xFF262626);
 
   // Translucent shells painted over Mica.
-  static const panelTranslucent = Color(0xE60B111C);
-  static const dockTranslucent = Color(0xF2080D16);
-  static const railTranslucent = Color(0xE6060A12);
+  static const panelTranslucent = Color(0xE6161616);
+  static const dockTranslucent = Color(0xF2141414);
+  static const railTranslucent = Color(0xE60E0E0E);
 
-  static const outline = Color(0xFF203149);
-  static const outlineSoft = Color(0xFF142034);
+  static const outline = Color(0xFF2B2B2B);
+  static const outlineSoft = Color(0xFF1F1F1F);
 
-  static const textPrimary = Color(0xFFF2F7FF);
-  static const textSecondary = Color(0xFF9DB0CB);
+  static const textPrimary = Color(0xFFF5F4F0);
+  static const textSecondary = Color(0xFFA8A6A0);
 
   /// Meta tier (timestamps, captions, column sub-headers).
   ///
   /// Sits at 4.7:1 on the raised surface — it used to be `#6E6C66` (3.2:1
   /// raised, 2.9:1 overlay), which is squinty for 11–12px text. Still
   /// clearly quieter than [textSecondary].
-  static const textTertiary = Color(0xFF7386A3);
+  static const textTertiary = Color(0xFF8A8880);
 
-  // KatMusic blue — the product accent. Artwork tint may override it
-  // only when the user explicitly chooses the Artwork source.
+  // KatMusic brand blue — the product accent. Play / progress / selected
+  // use this by default; artwork tint may override sparingly at runtime.
   static const defaultAccent = Color(0xFF3D91FF);
-  static const success = Color(0xFF4CE0A0);
-  static const warn = Color(0xFFF2B54B);
-  static const danger = Color(0xFFFF5C7A);
+  static const success = Color(0xFF7BE3A8);
+  static const warn = Color(0xFFE0A030);
+  static const danger = Color(0xFFE0506A);
 
-  // Light — KatMusic daylight: cool paper with a blue-tinted rail.
-  static const lightBackground = Color(0xFFF1F6FD);
-  static const lightNavBackground = Color(0xFFE7EFFA);
-  static const lightContent = Color(0xFFF8FBFF);
+  // Light — Windows 11 neutral, NOT beige.
+  // Base app: #F3F3F3 Mica-like · nav: #ECECEC tinted · content: #F9F9F9
+  // clean · player: #FFFFFF elevated · flyouts: white acrylic.
+  static const lightBackground = Color(0xFFF3F3F3);
+  static const lightNavBackground = Color(0xFFECECEC);
+  static const lightContent = Color(0xFFF9F9F9);
   static const lightSurface = Color(0xFFFFFFFF);
   static const lightSurfaceRaised = Color(0xFFFFFFFF);
-  static const lightOverlay = Color(0xFFE5EDF8);
-  static const lightOutline = Color(0xFFD2DEEF);
-  static const lightOutlineSoft = Color(0xFFE8EFF9);
-  static const lightTextPrimary = Color(0xFF0B1524);
-  static const lightTextSecondary = Color(0xFF4D617D);
+  static const lightOverlay = Color(0xFFEDEBE9);
+  static const lightOutline = Color(0xFFE1DFDD);
+  static const lightOutlineSoft = Color(0xFFEDEBE9);
+  static const lightTextPrimary = Color(0xFF1B1A19);
+  static const lightTextSecondary = Color(0xFF605E5C);
 
-  /// Meta tier — 4.9:1 on white and 4.2:1 on the blue-tinted overlay. See
-  /// [textTertiary].
-  static const lightTextTertiary = Color(0xFF5F728C);
+  /// Meta tier — 4.8:1 on white (was `#8A8886`, 3.5:1). See [textTertiary].
+  static const lightTextTertiary = Color(0xFF74726F);
 
-  // AMOLED — pure-black KatMusic variant. The blue accent stays; only
-  // the base/shell surfaces collapse to black.
+  // AMOLED — pure-black Midnight variant (user pref `lw_amoled`). Only
+  // the base/shell surfaces collapse to black; text, outline and accent
+  // tokens are shared with the graphite theme so contrast is unchanged.
   static const amoledBackground = Color(0xFF000000);
-  static const amoledSurface = Color(0xFF060A11);
-  static const amoledSurfaceRaised = Color(0xFF0B1320);
+  static const amoledSurface = Color(0xFF0A0A0A);
+  static const amoledSurfaceRaised = Color(0xFF111111);
   static const amoledPanelTranslucent = Color(0xE6000000);
   static const amoledDockTranslucent = Color(0xF2000000);
   static const amoledRailTranslucent = Color(0xE6000000);
@@ -81,7 +84,7 @@ class KatColors {
   /// Fourth step of the AMOLED ladder (0A → 11 → 1A). Hover tiles and
   /// skeletons used the graphite `#262626` here and showed as grey
   /// patches on the black page.
-  static const amoledSurfaceOverlay = Color(0xFF101C2C);
+  static const amoledSurfaceOverlay = Color(0xFF1A1A1A);
 }
 
 /// Resolved base-surface palette for the active dark theme.
@@ -89,10 +92,10 @@ class KatColors {
 /// Published through [FluentThemeData.extensions] by
 /// [buildWaveFluentTheme] so AMOLED black reaches the shell chrome
 /// (rail, dock, title bar, panels) without every widget branching on
-/// prefs. Read it through [katBackground] / [katRailTranslucent] / ….
+/// prefs. Read it through [waveBackground] / [waveRailTranslucent] / ….
 /// Light themes never consult this — they use the `light*` constants.
 @immutable
-class KatSurfaces extends ThemeExtension<KatSurfaces> {
+class WaveSurfaces extends ThemeExtension<WaveSurfaces> {
   final Color background;
   final Color surface;
   final Color surfaceRaised;
@@ -115,39 +118,82 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
   /// constants).
   final bool isCustom;
 
-  const KatSurfaces({
+  const WaveSurfaces({
     required this.background,
     required this.surface,
     required this.surfaceRaised,
     required this.panelTranslucent,
     required this.dockTranslucent,
     required this.railTranslucent,
-    this.surfaceOverlay = KatColors.surfaceOverlay,
-    this.outline = KatColors.outline,
-    this.outlineSoft = KatColors.outlineSoft,
+    this.surfaceOverlay = WaveColors.surfaceOverlay,
+    this.outline = WaveColors.outline,
+    this.outlineSoft = WaveColors.outlineSoft,
     this.isCustom = false,
   });
 
-  /// Default KatMusic midnight palette.
-  static const graphite = KatSurfaces(
-    background: KatColors.background,
-    surface: KatColors.surface,
-    surfaceRaised: KatColors.surfaceRaised,
-    panelTranslucent: KatColors.panelTranslucent,
-    dockTranslucent: KatColors.dockTranslucent,
-    railTranslucent: KatColors.railTranslucent,
+  /// Default graphite Midnight palette.
+  static const graphite = WaveSurfaces(
+    background: WaveColors.background,
+    surface: WaveColors.surface,
+    surfaceRaised: WaveColors.surfaceRaised,
+    panelTranslucent: WaveColors.panelTranslucent,
+    dockTranslucent: WaveColors.dockTranslucent,
+    railTranslucent: WaveColors.railTranslucent,
   );
 
   /// Pure-black AMOLED palette.
-  static const amoled = KatSurfaces(
-    background: KatColors.amoledBackground,
-    surface: KatColors.amoledSurface,
-    surfaceRaised: KatColors.amoledSurfaceRaised,
-    surfaceOverlay: KatColors.amoledSurfaceOverlay,
-    panelTranslucent: KatColors.amoledPanelTranslucent,
-    dockTranslucent: KatColors.amoledDockTranslucent,
-    railTranslucent: KatColors.amoledRailTranslucent,
+  static const amoled = WaveSurfaces(
+    background: WaveColors.amoledBackground,
+    surface: WaveColors.amoledSurface,
+    surfaceRaised: WaveColors.amoledSurfaceRaised,
+    surfaceOverlay: WaveColors.amoledSurfaceOverlay,
+    panelTranslucent: WaveColors.amoledPanelTranslucent,
+    dockTranslucent: WaveColors.amoledDockTranslucent,
+    railTranslucent: WaveColors.amoledRailTranslucent,
   );
+
+  /// Pearl as a palette, so theme changes can blend into and out of it.
+  /// The helpers still answer Pearl from the constants (isCustom false).
+  static const pearl = WaveSurfaces(
+    background: WaveColors.lightBackground,
+    surface: WaveColors.lightSurface,
+    surfaceRaised: WaveColors.lightSurfaceRaised,
+    surfaceOverlay: WaveColors.lightOverlay,
+    panelTranslucent: WaveColors.lightSurface,
+    dockTranslucent: WaveColors.lightSurface,
+    railTranslucent: WaveColors.lightNavBackground,
+    outline: WaveColors.lightOutline,
+    outlineSoft: WaveColors.lightOutlineSoft,
+  );
+
+  /// Glassmorphism: the page and rail go clear over the cover wash, and
+  /// every layer above is plain white (black in light themes) at a few
+  /// percent: cards 6%, hover 9%, hairlines 8%. Tinted fills read muddy
+  /// over a colourful backdrop; a thin neutral film reads as glass. The
+  /// dock is a light dark film; menus and dialogs stay nearly opaque so
+  /// their text reads. isCustom so the helpers read these in both
+  /// brightnesses.
+  WaveSurfaces glass({required bool light}) {
+    final ink = light ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+    Color film(double dark, double pearl) =>
+        ink.withValues(alpha: light ? pearl : dark);
+    return WaveSurfaces(
+      background: background.withValues(alpha: 0),
+      surface: film(0.06, 0.04),
+      // Opaque: the floating layer (dialogs, menus, palette) must stay
+      // readable over a busy cover; 90% let the art bleed through.
+      surfaceRaised: surfaceRaised.withValues(alpha: 1),
+      surfaceOverlay: film(0.09, 0.06),
+      panelTranslucent: film(0.06, 0.04),
+      dockTranslucent: light
+          ? const Color(0x5CFFFFFF)
+          : const Color(0x5C000000),
+      railTranslucent: background.withValues(alpha: 0),
+      outline: film(0.16, 0.12),
+      outlineSoft: film(0.08, 0.07),
+      isCustom: true,
+    );
+  }
 
   /// Preset bases offered by the Custom theme picker (any colour works).
   static const customPresets = <(String, Color)>[
@@ -180,7 +226,7 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
   /// far brighter than a blue at the same value), so the page is then
   /// nudged darker (or lighter) until secondary text keeps WCAG AA (4.5:1)
   /// on the brightest (or darkest) step. Primary text then clears ~10:1.
-  factory KatSurfaces.fromCustomBase(Color base) {
+  factory WaveSurfaces.fromCustomBase(Color base) {
     final hsl = HSLColor.fromColor(base.withValues(alpha: 1));
     Color tone(double lightness, double saturation) => hsl
         .withLightness(lightness.clamp(0.0, 1.0))
@@ -189,16 +235,15 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
     if (isLightBase(base)) {
       final sat = hsl.saturation.clamp(0.0, 0.45);
       var l = hsl.lightness.clamp(0.88, 0.96);
-      for (
-        var i = 0;
-        i < 40 &&
-            _contrast(KatColors.lightTextSecondary, tone(l - 0.04, sat)) < 4.5;
-        i++
-      ) {
+      for (var i = 0;
+          i < 40 &&
+              _contrast(WaveColors.lightTextSecondary, tone(l - 0.04, sat)) <
+                  4.5;
+          i++) {
         l += 0.005;
       }
       final card = tone(math.min(l + 0.035, 0.99), sat);
-      return KatSurfaces(
+      return WaveSurfaces(
         background: tone(l, sat),
         surface: card,
         surfaceRaised: card,
@@ -213,29 +258,25 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
     }
     final sat = hsl.saturation.clamp(0.0, 0.55);
     var l = hsl.lightness.clamp(0.04, 0.16);
-    for (
-      var i = 0;
-      i < 40 &&
-          l > 0 &&
-          _contrast(KatColors.textSecondary, tone(l + 0.105, sat * 0.8)) < 4.5;
-      i++
-    ) {
+    for (var i = 0;
+        i < 40 &&
+            l > 0 &&
+            _contrast(WaveColors.textSecondary, tone(l + 0.105, sat * 0.8)) <
+                4.5;
+        i++) {
       l -= 0.005;
     }
     final background = tone(l, sat);
     final surface = tone(l + 0.035, sat * 0.9);
-    return KatSurfaces(
+    return WaveSurfaces(
       background: background,
       surface: surface,
       surfaceRaised: tone(l + 0.07, sat * 0.85),
       surfaceOverlay: tone(l + 0.105, sat * 0.8),
-      // Same alphas as the midnight translucents (E6 / F2 / E6).
+      // Same alphas as the graphite translucents (E6 / F2 / E6).
       panelTranslucent: surface.withValues(alpha: 0.90),
-      dockTranslucent: Color.lerp(
-        background,
-        surface,
-        0.5,
-      )!.withValues(alpha: 0.95),
+      dockTranslucent:
+          Color.lerp(background, surface, 0.5)!.withValues(alpha: 0.95),
       railTranslucent: background.withValues(alpha: 0.90),
       outline: tone(l + 0.10, sat * 0.6),
       outlineSoft: tone(l + 0.06, sat * 0.6),
@@ -251,7 +292,7 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
   }
 
   @override
-  KatSurfaces copyWith({
+  WaveSurfaces copyWith({
     Color? background,
     Color? surface,
     Color? surfaceRaised,
@@ -263,7 +304,7 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
     Color? outlineSoft,
     bool? isCustom,
   }) {
-    return KatSurfaces(
+    return WaveSurfaces(
       background: background ?? this.background,
       surface: surface ?? this.surface,
       surfaceRaised: surfaceRaised ?? this.surfaceRaised,
@@ -278,20 +319,19 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
   }
 
   @override
-  KatSurfaces lerp(ThemeExtension<KatSurfaces>? other, double t) {
-    if (other is! KatSurfaces) return this;
-    return KatSurfaces(
+  WaveSurfaces lerp(ThemeExtension<WaveSurfaces>? other, double t) {
+    if (other is! WaveSurfaces) return this;
+    return WaveSurfaces(
       background: Color.lerp(background, other.background, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
       surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
       surfaceOverlay: Color.lerp(surfaceOverlay, other.surfaceOverlay, t)!,
-      panelTranslucent: Color.lerp(
-        panelTranslucent,
-        other.panelTranslucent,
-        t,
-      )!,
-      dockTranslucent: Color.lerp(dockTranslucent, other.dockTranslucent, t)!,
-      railTranslucent: Color.lerp(railTranslucent, other.railTranslucent, t)!,
+      panelTranslucent:
+          Color.lerp(panelTranslucent, other.panelTranslucent, t)!,
+      dockTranslucent:
+          Color.lerp(dockTranslucent, other.dockTranslucent, t)!,
+      railTranslucent:
+          Color.lerp(railTranslucent, other.railTranslucent, t)!,
       outline: Color.lerp(outline, other.outline, t)!,
       outlineSoft: Color.lerp(outlineSoft, other.outlineSoft, t)!,
       isCustom: t < 0.5 ? isCustom : other.isCustom,
@@ -301,7 +341,7 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is KatSurfaces &&
+      (other is WaveSurfaces &&
           other.background == background &&
           other.surface == surface &&
           other.surfaceRaised == surfaceRaised &&
@@ -315,24 +355,23 @@ class KatSurfaces extends ThemeExtension<KatSurfaces> {
 
   @override
   int get hashCode => Object.hash(
-    background,
-    surface,
-    surfaceRaised,
-    surfaceOverlay,
-    panelTranslucent,
-    dockTranslucent,
-    railTranslucent,
-    outline,
-    outlineSoft,
-    isCustom,
-  );
+      background,
+      surface,
+      surfaceRaised,
+      surfaceOverlay,
+      panelTranslucent,
+      dockTranslucent,
+      railTranslucent,
+      outline,
+      outlineSoft,
+      isCustom);
 }
 
 /// Spacing scale (px): 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40.
 ///
 /// Field names are historic (`x2` = 4 … `x32` = 40); values are canonical.
-class KatSpacing {
-  KatSpacing._();
+class WaveSpacing {
+  WaveSpacing._();
   static const double x2 = 4;
   static const double x4 = 8;
   static const double x8 = 12;
@@ -360,8 +399,8 @@ class KatSpacing {
 ///
 /// Rule of thumb: a container that tightly wraps artwork shares the
 /// artwork radius, so covers and their hover scrims never mismatch.
-class KatRadius {
-  KatRadius._();
+class WaveRadius {
+  WaveRadius._();
   static const double tiny = 6;
   static const double controls = 10;
   static const double artwork = 12;
@@ -370,17 +409,21 @@ class KatRadius {
   static const double hero = 24;
   static const double structural = 0;
 
-  static BorderRadius get tinyRadius => BorderRadius.circular(tiny);
-  static BorderRadius get controlsRadius => BorderRadius.circular(controls);
-  static BorderRadius get artworkRadius => BorderRadius.circular(artwork);
+  static BorderRadius get tinyRadius =>
+      BorderRadius.circular(tiny);
+  static BorderRadius get controlsRadius =>
+      BorderRadius.circular(controls);
+  static BorderRadius get artworkRadius =>
+      BorderRadius.circular(artwork);
   static BorderRadius get menuRadius => BorderRadius.circular(menu);
-  static BorderRadius get floatingRadius => BorderRadius.circular(floating);
+  static BorderRadius get floatingRadius =>
+      BorderRadius.circular(floating);
   static BorderRadius get heroRadius => BorderRadius.circular(hero);
 }
 
 /// Compact density — real desktop music player zones.
-class KatDensity {
-  KatDensity._();
+class WaveDensity {
+  WaveDensity._();
   static const double railCollapsed = 60;
   static const double railExpanded = 200;
   static const double titleBar = 44;
@@ -402,46 +445,33 @@ class KatDensity {
 /// - body 13 · meta 12 · label 12/600/0.2 · overline 10.5/700/1.0
 /// - numeral: tabular figures for times/counts.
 /// - lyricActive 21/700 · lyricIdle 16/500.
-class KatType {
-  KatType._();
+class WaveType {
+  WaveType._();
   static const pageTitle = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 22,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.4,
     height: 1.15,
   );
   static const sectionTitle = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 15,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.2,
     height: 1.25,
   );
   static const trackTitle = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 13.5,
     fontWeight: FontWeight.w600,
     height: 1.3,
   );
-  static const body = TextStyle(
-    fontFamily: 'Figtree',
-    fontSize: 13,
-    height: 1.5,
-  );
-  static const meta = TextStyle(
-    fontFamily: 'Figtree',
-    fontSize: 12,
-    height: 1.45,
-  );
+  static const body = TextStyle(fontSize: 13, height: 1.5);
+  static const meta = TextStyle(fontSize: 12, height: 1.45);
   static const label = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 12,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.2,
   );
   static const overline = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 10.5,
     fontWeight: FontWeight.w700,
     letterSpacing: 1.0,
@@ -449,7 +479,6 @@ class KatType {
 
   /// Tabular numeral for durations, counts, ranks.
   static const numeral = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 24,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.5,
@@ -457,14 +486,12 @@ class KatType {
     fontFeatures: [FontFeature.tabularFigures()],
   );
   static const lyricActive = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 21,
     fontWeight: FontWeight.w700,
     height: 1.55,
     letterSpacing: -0.2,
   );
   static const lyricIdle = TextStyle(
-    fontFamily: 'Figtree',
     fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 1.6,
@@ -472,8 +499,8 @@ class KatType {
 }
 
 /// Motion: fast 110ms, normal 180ms, slow 260ms, easeOutCubic standard.
-class KatMotion {
-  KatMotion._();
+class WaveMotion {
+  WaveMotion._();
   static const fast = Duration(milliseconds: 110);
   static const normal = Duration(milliseconds: 180);
   static const slow = Duration(milliseconds: 260);
@@ -485,35 +512,35 @@ class KatMotion {
 /// The OS "reduce motion" switch — KDE's animation speed, GNOME's
 /// animations toggle, Windows "Show animations", macOS Reduce Motion.
 ///
-/// Only [KatBranchSwitcher] honoured it before: every entrance, press dip
+/// Only [WaveBranchSwitcher] honoured it before: every entrance, press dip
 /// and hover lift ran regardless, because each one reached for
-/// [KatMotion.fast] straight instead of asking. Route `duration:` through
-/// [katMotion] and the switch reaches all of them.
-bool katReduceMotion(BuildContext context) =>
+/// [WaveMotion.fast] straight instead of asking. Route `duration:` through
+/// [waveMotion] and the switch reaches all of them.
+bool waveReduceMotion(BuildContext context) =>
     MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
 /// Collapses an implicit-animation [duration] under reduce motion.
 ///
 /// The switch means "arrive, don't travel": a hover wash, a press dip or a
 /// selection change still happens, it just doesn't interpolate. Motion that
-/// is the whole affordance — entrances ([KatEntrance]), repeating tickers,
+/// is the whole affordance — entrances ([WaveEntrance]), repeating tickers,
 /// route scale flights — is skipped outright instead of landing at zero ms.
-Duration katMotion(BuildContext context, Duration duration) =>
-    katReduceMotion(context) ? Duration.zero : duration;
+Duration waveMotion(BuildContext context, Duration duration) =>
+    waveReduceMotion(context) ? Duration.zero : duration;
 
 /// Hover / focus / cursor contract.
 ///
-/// - hover: 7% wash (`0.07`) over [KatMotion.fast] (~120ms) — use
-///   [katHoverWash] so the wash flips with the theme.
-/// - pressed: 12% wash (`0.12`) — [katPressedWash].
-/// - focus: 2px [katFocusRing] outline (see Fluent `focusTheme`).
-/// - on-accent glyphs: [katOnAccent] (never a hardcoded white).
+/// - hover: 7% wash (`0.07`) over [WaveMotion.fast] (~120ms) — use
+///   [waveHoverWash] so the wash flips with the theme.
+/// - pressed: 12% wash (`0.12`) — [wavePressedWash].
+/// - focus: 2px [waveFocusRing] outline (see Fluent `focusTheme`).
+/// - on-accent glyphs: [waveOnAccent] (never a hardcoded white).
 /// - cursor: clickable targets wrap in `MouseRegion(cursor:
 ///   SystemMouseCursors.click)`.
-/// - tooltip: 400ms wait (see [KatState.tooltipDelay], `KatTooltip`,
+/// - tooltip: 400ms wait (see [WaveState.tooltipDelay], `LWTooltip`,
 ///   and the Fluent `tooltipTheme`).
-class KatState {
-  KatState._();
+class WaveState {
+  WaveState._();
 
   /// White-wash alpha for hover fills (7%).
   static const double hoverAlpha = 0.07;
@@ -521,7 +548,7 @@ class KatState {
   /// Wash alpha for pressed fills (12%).
   static const double pressedAlpha = 0.12;
 
-  /// Focus ring width (2px, [katFocusRing]).
+  /// Focus ring width (2px, [waveFocusRing]).
   static const double focusRing = 2;
 
   /// Tooltip hover delay (400ms).
@@ -531,115 +558,121 @@ class KatState {
 /// Responsive breakpoints (window width, px).
 ///
 /// - compact < 900 · normal 900–1300 · expanded 1300–1700 · ultrawide 1700+.
-enum KatBreakpoint { compact, normal, expanded, ultrawide }
+enum WaveBreakpoint { compact, normal, expanded, ultrawide }
 
-KatBreakpoint katBreakpointFor(double width) {
-  if (width >= 1700) return KatBreakpoint.ultrawide;
-  if (width >= 1300) return KatBreakpoint.expanded;
-  if (width >= 900) return KatBreakpoint.normal;
-  return KatBreakpoint.compact;
+WaveBreakpoint waveBreakpointFor(double width) {
+  if (width >= 1700) return WaveBreakpoint.ultrawide;
+  if (width >= 1300) return WaveBreakpoint.expanded;
+  if (width >= 900) return WaveBreakpoint.normal;
+  return WaveBreakpoint.compact;
 }
 
-bool katIsDark(BuildContext context) =>
+bool waveIsDark(BuildContext context) =>
     FluentTheme.of(context).brightness == Brightness.dark;
 
-Color katAccent(BuildContext context) =>
+Color waveAccent(BuildContext context) =>
     FluentTheme.of(context).accentColor.normal;
 
 /// Foreground for a glyph sitting on accent-filled chrome.
 ///
-/// The accent is user-chosen — the blue brand source, brand red, a pale
-/// artwork tint — so an on-accent glyph can never be a hardcoded white:
-/// with a pale accent the play glyphs used to disappear into their own disc.
+/// The accent is user-chosen — brand red, the off-white "KatMusic
+/// neutral" source, a pale artwork tint — so an on-accent glyph can never
+/// be a hardcoded white: with the off-white accent the play glyphs used to
+/// disappear into their own disc.
 Color onAccentFor(Color accent) =>
     accent.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
 /// [onAccentFor] for the current theme accent.
-Color katOnAccent(BuildContext context) => onAccentFor(katAccent(context));
+Color waveOnAccent(BuildContext context) => onAccentFor(waveAccent(context));
 
 /// Wash base: white on dark chrome, black on pearl. Every hover / pressed
-/// fill goes through [katWash], so a hardcoded white wash (invisible in
+/// fill goes through [waveWash], so a hardcoded white wash (invisible in
 /// light mode) can't creep back in.
-Color katWash(BuildContext context, double alpha) =>
-    (katIsDark(context) ? Colors.white : Colors.black).withValues(alpha: alpha);
+Color waveWash(BuildContext context, double alpha) =>
+    (waveIsDark(context) ? Colors.white : Colors.black)
+        .withValues(alpha: alpha);
 
-/// Hover fill over a neutral surface (7%, [KatState.hoverAlpha]).
-Color katHoverWash(BuildContext context) =>
-    katWash(context, KatState.hoverAlpha);
+/// Hover fill over a neutral surface (7%, [WaveState.hoverAlpha]).
+Color waveHoverWash(BuildContext context) =>
+    waveWash(context, WaveState.hoverAlpha);
 
-/// Pressed fill over a neutral surface (12%, [KatState.pressedAlpha]).
-Color katPressedWash(BuildContext context) =>
-    katWash(context, KatState.pressedAlpha);
+/// Pressed fill over a neutral surface (12%, [WaveState.pressedAlpha]).
+Color wavePressedWash(BuildContext context) =>
+    waveWash(context, WaveState.pressedAlpha);
 
-/// Focus ring colour (2px, [KatState.focusRing]).
+/// Focus ring colour (2px, [WaveState.focusRing]).
 ///
-/// The accent at near-full strength: the accent already means "this is
-/// the thing you selected" everywhere else, and KatMusic blue clears the
-/// midnight base cleanly.
-Color katFocusRing(BuildContext context) =>
-    katAccent(context).withValues(alpha: 0.85);
+/// The accent at near-full strength: the fixed dark grey it used to be
+/// was invisible against the graphite base, and the accent already means
+/// "this is the thing you selected" everywhere else.
+Color waveFocusRing(BuildContext context) =>
+    waveAccent(context).withValues(alpha: 0.85);
 
-Color katTextPrimary(BuildContext context) =>
-    katIsDark(context) ? KatColors.textPrimary : KatColors.lightTextPrimary;
+Color waveTextPrimary(BuildContext context) => waveIsDark(context)
+    ? WaveColors.textPrimary
+    : WaveColors.lightTextPrimary;
 
-Color katTextSecondary(BuildContext context) =>
-    katIsDark(context) ? KatColors.textSecondary : KatColors.lightTextSecondary;
+Color waveTextSecondary(BuildContext context) => waveIsDark(context)
+    ? WaveColors.textSecondary
+    : WaveColors.lightTextSecondary;
 
-Color katTextTertiary(BuildContext context) =>
-    katIsDark(context) ? KatColors.textTertiary : KatColors.lightTextTertiary;
+Color waveTextTertiary(BuildContext context) => waveIsDark(context)
+    ? WaveColors.textTertiary
+    : WaveColors.lightTextTertiary;
 
 /// Active base-surface palette: graphite, AMOLED, or the user's Custom
 /// theme. Falls back to graphite when no theme extension is published
 /// (e.g. a widget rendered outside [FluentApp] in a test).
-KatSurfaces katSurfaces(BuildContext context) =>
-    FluentTheme.of(context).extension<KatSurfaces>() ?? KatSurfaces.graphite;
+WaveSurfaces waveSurfaces(BuildContext context) =>
+    FluentTheme.of(context).extension<WaveSurfaces>() ??
+    WaveSurfaces.graphite;
 
 /// Resolves one surface role. A Custom palette answers in both
 /// brightnesses; otherwise dark reads the published palette (graphite or
 /// AMOLED) and light uses the pearl constant.
 Color _surfaceRole(
   BuildContext context,
-  Color Function(KatSurfaces s) pick,
+  Color Function(WaveSurfaces s) pick,
   Color pearl,
 ) {
-  final s = katSurfaces(context);
-  if (s.isCustom || katIsDark(context)) return pick(s);
+  final s = waveSurfaces(context);
+  if (s.isCustom || waveIsDark(context)) return pick(s);
   return pearl;
 }
 
+/// Glassmorphism is on: only the glass palette has a clear page.
+bool waveGlassOn(BuildContext context) => waveBackground(context).a < 1;
+
 /// Page/scaffold background. AMOLED- and Custom-aware.
-Color katBackground(BuildContext context) =>
-    _surfaceRole(context, (s) => s.background, KatColors.lightBackground);
+Color waveBackground(BuildContext context) =>
+    _surfaceRole(context, (s) => s.background, WaveColors.lightBackground);
 
-Color katSurface(BuildContext context) =>
-    _surfaceRole(context, (s) => s.surface, KatColors.lightSurface);
+Color waveSurface(BuildContext context) =>
+    _surfaceRole(context, (s) => s.surface, WaveColors.lightSurface);
 
-Color katSurfaceRaised(BuildContext context) =>
-    _surfaceRole(context, (s) => s.surfaceRaised, KatColors.lightSurfaceRaised);
+Color waveSurfaceRaised(BuildContext context) => _surfaceRole(
+    context, (s) => s.surfaceRaised, WaveColors.lightSurfaceRaised);
 
 /// Fourth surface step: hover tiles, skeletons, inset wells.
-Color katSurfaceOverlay(BuildContext context) =>
-    _surfaceRole(context, (s) => s.surfaceOverlay, KatColors.lightOverlay);
+Color waveSurfaceOverlay(BuildContext context) =>
+    _surfaceRole(context, (s) => s.surfaceOverlay, WaveColors.lightOverlay);
 
-Color katPanelTranslucent(BuildContext context) =>
-    _surfaceRole(context, (s) => s.panelTranslucent, KatColors.lightSurface);
+Color wavePanelTranslucent(BuildContext context) =>
+    _surfaceRole(context, (s) => s.panelTranslucent, WaveColors.lightSurface);
 
-Color katDockTranslucent(BuildContext context) =>
-    _surfaceRole(context, (s) => s.dockTranslucent, KatColors.lightSurface);
+Color waveDockTranslucent(BuildContext context) =>
+    _surfaceRole(context, (s) => s.dockTranslucent, WaveColors.lightSurface);
 
-Color katRailTranslucent(BuildContext context) => _surfaceRole(
-  context,
-  (s) => s.railTranslucent,
-  KatColors.lightNavBackground,
-);
+Color waveRailTranslucent(BuildContext context) => _surfaceRole(
+    context, (s) => s.railTranslucent, WaveColors.lightNavBackground);
 
 /// Control outline (inputs, chips, bordered tiles).
-Color katOutline(BuildContext context) =>
-    _surfaceRole(context, (s) => s.outline, KatColors.lightOutline);
+Color waveOutline(BuildContext context) =>
+    _surfaceRole(context, (s) => s.outline, WaveColors.lightOutline);
 
 /// Softer outline for quiet edges.
-Color katOutlineSoft(BuildContext context) =>
-    _surfaceRole(context, (s) => s.outlineSoft, KatColors.lightOutlineSoft);
+Color waveOutlineSoft(BuildContext context) =>
+    _surfaceRole(context, (s) => s.outlineSoft, WaveColors.lightOutlineSoft);
 
 /// Hairline stroke: dividers, panel edges, control outlines.
 ///
@@ -647,10 +680,10 @@ Color katOutlineSoft(BuildContext context) =>
 /// is `#F3F3F3` and its cards are white, so any single grey could only
 /// ever read on one of the two. A Custom palette uses its own hue-matched
 /// hairline, so dividers don't show as neutral grey lines on a tinted page.
-Color katDivider(BuildContext context) {
-  final s = katSurfaces(context);
+Color waveDivider(BuildContext context) {
+  final s = waveSurfaces(context);
   if (s.isCustom) return s.outlineSoft;
-  return katIsDark(context)
+  return waveIsDark(context)
       ? s.outlineSoft
       : Colors.black.withValues(alpha: 0.10);
 }
@@ -660,63 +693,81 @@ Color katDivider(BuildContext context) {
 /// Dark mode leans on value — three distinct surface tones — and a deep
 /// black shadow. The pearl page is `#F3F3F3` with `#FFFFFF` cards, and
 /// `lightSurface == lightSurfaceRaised`, so a light float has to separate
-/// by stroke ([katDivider]) and shadow instead; the same 45% black 32px
+/// by stroke ([waveDivider]) and shadow instead; the same 45% black 32px
 /// plate that reads as depth on graphite reads as a dirty smear on white.
 /// Light therefore keeps the dark shapes at roughly a third of the
 /// strength — Windows 11 flyout weight.
 ///
 /// Every floating surface goes through here so a shadow cannot drift back
 /// into a hardcoded literal that only ever suited one theme.
-class KatElevation {
-  KatElevation._();
+class WaveElevation {
+  WaveElevation._();
 
   /// Artwork hover lift: the cover rises off the grid.
   static List<BoxShadow> lift(bool dark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
-      blurRadius: 16,
-      offset: const Offset(0, 6),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ];
 
   /// Feature artwork at hero size — a deeper drop than [lift].
   static List<BoxShadow> artwork(bool dark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? 0.45 : 0.16),
-      blurRadius: 24,
-      offset: const Offset(0, 10),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: dark ? 0.45 : 0.16),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ];
 
   /// Full-height side panel (queue, lyrics, side sheets), cast inward.
   static List<BoxShadow> panel(bool dark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? 0.45 : 0.16),
-      blurRadius: dark ? 32 : 28,
-      offset: const Offset(-10, 0),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: dark ? 0.45 : 0.16),
+          blurRadius: dark ? 32 : 28,
+          offset: const Offset(-10, 0),
+        ),
+      ];
 
   /// Menu / dialog flyout: two layers, the tight one giving the edge.
   static List<BoxShadow> flyout(bool dark) => const [
-    BoxShadow(
-      color: Color(0x21000000),
-      blurRadius: 7.2,
-      offset: Offset(0, 3.2),
-    ),
-    BoxShadow(
-      color: Color(0x1C000000),
-      blurRadius: 1.8,
-      offset: Offset(0, 0.68),
-    ),
-  ];
+        BoxShadow(
+          color: Color(0x21000000),
+          blurRadius: 7.2,
+          offset: Offset(0, 3.2),
+        ),
+        BoxShadow(
+          color: Color(0x1C000000),
+          blurRadius: 1.8,
+          offset: Offset(0, 0.68),
+        ),
+      ];
 
   /// Round transport control sitting on the dock.
   static List<BoxShadow> transport(bool dark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
-    ),
-  ];
+        BoxShadow(
+          color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ];
 }
+
+/// End-of-page room for a dock floating over the page (glassmorphism):
+/// the shell reports the dock height as bottom MediaQuery padding, so the
+/// last row scrolls clear of the glass. Zero height otherwise. Place last
+/// in a page's `slivers:`.
+class WaveDockSpacer extends StatelessWidget {
+  const WaveDockSpacer({super.key});
+
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(
+        child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+      );
+}
+
+/// [base] plus room for a dock floating over the page (see
+/// [WaveDockSpacer]): for scroll views that set their own padding.
+EdgeInsets waveDockPadding(BuildContext context, EdgeInsets base) =>
+    base.copyWith(bottom: base.bottom + MediaQuery.paddingOf(context).bottom);

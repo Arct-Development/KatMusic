@@ -13,6 +13,7 @@ import 'package:katmusic_desktop/features/player/player_state.dart';
 import 'package:katmusic_desktop/features/search/shared_providers.dart';
 import 'package:katmusic_desktop/ui/components/ambient.dart';
 import 'package:katmusic_desktop/ui/lyrics/lyrics_panel.dart';
+import 'package:katmusic_desktop/ui/now_playing/immersive.dart';
 import 'package:katmusic_desktop/ui/now_playing/now_playing_page.dart';
 import 'package:katmusic_desktop/ui/theme/haze.dart';
 
@@ -46,8 +47,15 @@ PlayerSnapshot _snapshot() => const PlayerSnapshot(
   ),
 );
 
-Future<void> _pumpNowPlaying(WidgetTester tester, {required Size size}) async {
-  SharedPreferences.setMockInitialValues({'kat_visualizer_enabled': false});
+Future<void> _pumpNowPlaying(
+  WidgetTester tester, {
+  required Size size,
+  Widget Function(Widget page)? builder,
+}) async {
+  SharedPreferences.setMockInitialValues({
+    'lw_visualizer_enabled': false,
+    'lw_now_playing_style': 'standard',
+  });
   final prefs = await Prefs.load();
   final db = AppDatabase.inMemory();
   addTearDown(db.close);
@@ -56,6 +64,7 @@ Future<void> _pumpNowPlaying(WidgetTester tester, {required Size size}) async {
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
+  const page = WaveNowPlayingPage();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -66,13 +75,13 @@ Future<void> _pumpNowPlaying(WidgetTester tester, {required Size size}) async {
         artworkPaletteProvider.overrideWith(
           (ref, url) async => ArtworkPalette.fallback,
         ),
-        katLyricsProvider.overrideWith(
+        waveLyricsProvider.overrideWith(
           (ref, track) => Stream.value(const LyricsResult.empty()),
         ),
       ],
-      child: const FluentApp(
+      child: FluentApp(
         themeMode: ThemeMode.dark,
-        home: KatNowPlayingPage(),
+        home: builder != null ? builder(page) : page,
       ),
     ),
   );
@@ -97,11 +106,11 @@ void main() {
     expect(find.text('HI-RES'), findsOneWidget);
     expect(find.text('FLAC · 4608 kbps'), findsOneWidget);
     expect(
-      find.ancestor(of: find.text('HI-RES'), matching: find.byType(KatGlass)),
+      find.ancestor(of: find.text('HI-RES'), matching: find.byType(WaveGlass)),
       findsNothing,
     );
     expect(
-      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(KatGlass)),
+      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(WaveGlass)),
       findsNothing,
     );
     expect(_upNextRowRect(tester).bottom, lessThanOrEqualTo(size.height));
@@ -113,14 +122,44 @@ void main() {
     const size = Size(800, 516);
     await _pumpNowPlaying(tester, size: size);
 
-    await tester.tap(find.byTooltip('Hide lyrics'));
+    await tester.tap(find.byTooltip('More options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lyrics'));
+    await tester.pumpAndSettle();
+    // Dismiss flyout overlay before verifying layout below.
+    await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
 
     expect(find.text('Do Numbari (From "Mirzapur The Movie")'), findsOneWidget);
     expect(
-      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(KatGlass)),
+      find.ancestor(of: find.text('UP NEXT'), matching: find.byType(WaveGlass)),
       findsNothing,
     );
     expect(_upNextRowRect(tester).bottom, lessThanOrEqualTo(size.height));
+  });
+
+  testWidgets('unmounting before idle timeout resets mirror without StateError', (
+    tester,
+  ) async {
+    final show = ValueNotifier<bool>(true);
+    addTearDown(show.dispose);
+    await _pumpNowPlaying(
+      tester,
+      size: const Size(1024, 640),
+      builder: (page) => ValueListenableBuilder<bool>(
+        valueListenable: show,
+        builder: (_, visible, _) =>
+            visible ? page : const SizedBox.shrink(),
+      ),
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(FluentApp)),
+    );
+    container.read(nowPlayingControlsIdleProvider.notifier).state = true;
+
+    show.value = false;
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(container.read(nowPlayingControlsIdleProvider), isFalse);
   });
 }

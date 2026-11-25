@@ -4,7 +4,6 @@ import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -50,18 +49,12 @@ Future<void> main(List<String> args) async {
     writeFatalCrumb(fatalCrumb(error, stack));
     return false;
   };
-  // Desktop image cache budget: 64 MiB / 500 images.
-  //
-  // The previous 128 MiB was chosen when oversized tiles decoded at
-  // native size; after DPR-aware decode sizing (each tile decodes at
-  // `size × dpr` snapped to a 16px grid — see KatArtwork) a long session
-  // was observed filling that ceiling at roughly 5 MiB per track, i.e. up
-  // to 128 MiB of pure decoded-artwork residency that only ever ratchets.
-  // 64 MiB still holds ~150 tiles at a 320px decode or ~39 at 640px, so it
-  // comfortably covers a visible grid; the cost of going below that is
-  // re-decodes while scrolling large collections.
-  PaintingBinding.instance.imageCache.maximumSize = 500;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 64 << 20; // 64 MiB
+  // Desktop image cache budget: 24 MiB / 60 images.
+  // Caps resident uncompressed RGBA pixel buffers while preserving smooth
+  // scrolling and fast thumbnail reuse across lists and docks.
+  PaintingBinding.instance.imageCache
+    ..maximumSize = 60
+    ..maximumSizeBytes = 24 << 20; // 24 MiB
   if (runWebViewTitleBarWidget(args)) return;
   // libmpv is deliberately NOT dlopened here. MediaKit.ensureInitialized()
   // just dlopens a multi-MB .so (media_kit's NativeLibrary) — pure
@@ -101,13 +94,6 @@ Future<void> main(List<String> args) async {
   final prefsFuture = Prefs.load();
   final databaseFuture = AppDatabase.open();
   final windowFuture = setupWindow();
-  // Shader bytecode is loaded asynchronously; no GPU work happens here, so
-  // this runs beside prefs/database/window instead of delaying first paint.
-  final glassFuture = () async {
-    try {
-      await LiquidGlassWidgets.initialize(enablePerformanceMonitor: false);
-    } catch (_) {}
-  }();
   final prefs = await prefsFuture;
   // Verbose logging is a saved preference: without this the toggle would
   // only take effect on the next launch.
@@ -115,7 +101,6 @@ Future<void> main(List<String> args) async {
   final database = await databaseFuture;
   OfficialArtworkService.instance.init(db: database);
   await windowFuture;
-  await glassFuture;
 
   // Disk-side artwork cache bound. NOTE: this is currently a documented
   // no-op — the 759 heap "CacheObjects" were tiny metadata (~60 KB total),

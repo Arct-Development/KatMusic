@@ -1,18 +1,16 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 import '../../app/track_actions.dart';
 import '../../core/audio/stream_models.dart';
 import '../../features/downloads/download_manager.dart';
 import '../../features/player/playback_service.dart';
 import '../components/artwork.dart';
-import '../components/buttons.dart'
-    show KatTooltip, KatButton, KatFilledButton, KatLink;
+import '../components/buttons.dart' show LWTooltip, WaveButton, WaveFilledButton, WaveLink;
 import '../components/menus.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../theme/tokens.dart';
 
 /// Session-only. Closing the app clears it; it is not written to SQLite.
@@ -24,19 +22,17 @@ final queueLockedProvider = StateProvider<bool>((_) => false);
 /// Reorderable 48px rows: drag handle visible on hover but always
 /// accessible (low-opacity idle), hover X remove, right-click menu
 /// (Play next, Go to album/artist, Download, Add to playlist, Remove).
-class KatQueuePanel extends ConsumerWidget {
+class WaveQueuePanel extends ConsumerWidget {
   final VoidCallback? onClose;
   final bool embedded;
-  const KatQueuePanel({
-    super.key,
-    required this.onClose,
-    this.embedded = false,
-  });
+  const WaveQueuePanel({super.key, required this.onClose, this.embedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = katIsDark(context);
-    final queue = ref.watch(playbackServiceProvider.select((s) => s.queue));
+    final dark = waveIsDark(context);
+    final queue = ref.watch(
+      playbackServiceProvider.select((s) => s.queue),
+    );
     final index = ref.watch(
       playbackServiceProvider.select((s) => s.currentIndex),
     );
@@ -46,10 +42,11 @@ class KatQueuePanel extends ConsumerWidget {
       return _Shell(
         onClose: onClose,
         embedded: embedded,
-        child: KatQueueEmpty(onBrowse: () => context.go('/home')),
+        child: WaveQueueEmpty(onBrowse: () => context.go('/home')),
       );
     }
-    final current = index >= 0 && index < queue.length ? queue[index] : null;
+    final current =
+        index >= 0 && index < queue.length ? queue[index] : null;
     final upcoming = index >= 0
         ? queue.sublist((index + 1).clamp(0, queue.length))
         : queue;
@@ -62,10 +59,8 @@ class KatQueuePanel extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
-            child: Text(
-              'Queue',
-              style: KatType.pageTitle.copyWith(fontSize: 18),
-            ),
+            child: Text('Queue',
+                style: WaveType.pageTitle.copyWith(fontSize: 18)),
           ),
           if (current != null) ...[
             const SizedBox(height: 10),
@@ -73,19 +68,20 @@ class KatQueuePanel extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'NOW PLAYING',
-                style: KatType.overline.copyWith(
+                style: WaveType.overline.copyWith(
                   fontSize: 9,
                   color: dark
-                      ? KatColors.textTertiary
-                      : KatColors.lightTextTertiary,
+                      ? WaveColors.textTertiary
+                      : WaveColors.lightTextTertiary,
                 ),
               ),
             ),
             const SizedBox(height: 6),
             _NowRow(track: current, queueIndex: index),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Container(height: 1, color: katDivider(context)),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 10),
+              child: Container(height: 1, color: waveDivider(context)),
             ),
           ],
           Padding(
@@ -94,21 +90,22 @@ class KatQueuePanel extends ConsumerWidget {
               children: [
                 Text(
                   'UP NEXT · ${upcoming.length}',
-                  style: KatType.overline.copyWith(
+                  style: WaveType.overline.copyWith(
                     fontSize: 9,
                     color: dark
-                        ? KatColors.textTertiary
-                        : KatColors.lightTextTertiary,
+                        ? WaveColors.textTertiary
+                        : WaveColors.lightTextTertiary,
                   ),
                 ),
                 const Spacer(),
-                KatTooltip(
+                LWTooltip(
                   message: locked
                       ? 'Unlock reorder and remove'
                       : 'Lock reorder and remove',
-                  child: KatLink(
-                    onPressed: () =>
-                        ref.read(queueLockedProvider.notifier).state = !locked,
+                  child: WaveLink(
+                    onPressed: () => ref
+                        .read(queueLockedProvider.notifier)
+                        .state = !locked,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -119,26 +116,26 @@ class KatQueuePanel extends ConsumerWidget {
                         const SizedBox(width: 4),
                         Text(
                           locked ? 'Unlock' : 'Lock',
-                          style: KatType.label.copyWith(fontSize: 11),
+                          style: WaveType.label.copyWith(fontSize: 11),
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                KatTooltip(
+                LWTooltip(
                   message: locked
                       ? 'Queue is locked'
                       : upcoming.isEmpty
-                      ? 'Nothing to clear'
-                      : 'Clear up next',
-                  child: KatLink(
+                          ? 'Nothing to clear'
+                          : 'Clear up next',
+                  child: WaveLink(
                     onPressed: locked || upcoming.isEmpty
                         ? null
                         : notifier.clearUpcoming,
                     child: Text(
                       'Clear',
-                      style: KatType.label.copyWith(fontSize: 11),
+                      style: WaveType.label.copyWith(fontSize: 11),
                     ),
                   ),
                 ),
@@ -151,29 +148,29 @@ class KatQueuePanel extends ConsumerWidget {
                 ? Center(
                     child: Text(
                       'Queue ends here.',
-                      style: KatType.meta.copyWith(
+                      style: WaveType.meta.copyWith(
                         color: dark
-                            ? KatColors.textTertiary
-                            : KatColors.lightTextTertiary,
+                            ? WaveColors.textTertiary
+                            : WaveColors.lightTextTertiary,
                       ),
                     ),
                   )
                 : locked
-                ? ListView.builder(
-                    itemCount: upcoming.length,
-                    itemBuilder: (context, i) {
-                      final queueIndex = index + 1 + i;
-                      final t = upcoming[i];
-                      return _QueueRow(
-                        key: ValueKey('q:${t.queueKey}:$queueIndex'),
-                        track: t,
-                        queueIndex: queueIndex,
-                        dragIndex: i,
-                        locked: true,
-                      );
-                    },
-                  )
-                : ReorderableListView.builder(
+                    ? ListView.builder(
+                        itemCount: upcoming.length,
+                        itemBuilder: (context, i) {
+                          final queueIndex = index + 1 + i;
+                          final t = upcoming[i];
+                          return _QueueRow(
+                            key: ValueKey('q:${t.queueKey}:$queueIndex'),
+                            track: t,
+                            queueIndex: queueIndex,
+                            dragIndex: i,
+                            locked: true,
+                          );
+                        },
+                      )
+                    : ReorderableListView.builder(
                     buildDefaultDragHandles: false,
                     itemCount: upcoming.length,
                     // onReorderItem hands over post-removal coordinates;
@@ -203,12 +200,12 @@ class KatQueuePanel extends ConsumerWidget {
   }
 }
 
-class KatQueueEmpty extends StatelessWidget {
+class WaveQueueEmpty extends StatelessWidget {
   final VoidCallback onBrowse;
-  const KatQueueEmpty({super.key, required this.onBrowse});
+  const WaveQueueEmpty({super.key, required this.onBrowse});
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -220,36 +217,36 @@ class KatQueueEmpty extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: katSurfaceOverlay(context),
+                color: waveSurfaceOverlay(context),
                 border: Border.all(
-                  color: dark ? katOutlineSoft(context) : katOutline(context),
+                  color: dark
+                      ? waveOutlineSoft(context)
+                      : waveOutline(context),
                 ),
               ),
               child: Icon(
-                KatIcons.queue,
+                WaveIcons.queue,
                 size: 22,
                 color: dark
-                    ? KatColors.textTertiary
-                    : KatColors.lightTextTertiary,
+                    ? WaveColors.textTertiary
+                    : WaveColors.lightTextTertiary,
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Queue is empty',
-              style: KatType.sectionTitle.copyWith(fontSize: 15),
-            ),
+            Text('Queue is empty',
+                style: WaveType.sectionTitle.copyWith(fontSize: 15)),
             const SizedBox(height: 4),
             Text(
               'Play something to get started',
-              style: KatType.meta.copyWith(
+              style: WaveType.meta.copyWith(
                 color: dark
-                    ? KatColors.textSecondary
-                    : KatColors.lightTextSecondary,
+                    ? WaveColors.textSecondary
+                    : WaveColors.lightTextSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            KatFilledButton(
+            WaveFilledButton(
               onPressed: onBrowse,
               child: const Text('Browse music'),
             ),
@@ -264,11 +261,7 @@ class _Shell extends StatelessWidget {
   final VoidCallback? onClose;
   final Widget child;
   final bool embedded;
-  const _Shell({
-    required this.onClose,
-    required this.child,
-    this.embedded = false,
-  });
+  const _Shell({required this.onClose, required this.child, this.embedded = false});
   @override
   Widget build(BuildContext context) {
     // Haze Level 2 — contextual panel translucency; rows stay crisp
@@ -296,10 +289,14 @@ class _Shell extends StatelessWidget {
     // Fully opaque: nothing from the page may show through the panel.
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: katBackground(context),
-        border: Border(left: BorderSide(color: katDivider(context))),
+        // Raised, not background: under glass the page colour is clear.
+        color: waveSurfaceRaised(context),
+        border: Border(left: BorderSide(color: waveDivider(context))),
       ),
-      child: SizedBox(width: KatDensity.contextPanel, child: body),
+      child: SizedBox(
+        width: WaveDensity.contextPanel,
+        child: body,
+      ),
     );
   }
 }
@@ -315,7 +312,7 @@ class _CloseGlyphState extends State<_CloseGlyph> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    return KatTooltip(
+    return LWTooltip(
       message: 'Close (Esc)',
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -327,15 +324,18 @@ class _CloseGlyphState extends State<_CloseGlyph> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: _hover ? katHoverWash(context) : Colors.transparent,
-              borderRadius: BorderRadius.circular(KatRadius.controls),
+              color: _hover
+                  ? waveHoverWash(context)
+                  : Colors.transparent,
+              borderRadius:
+                  BorderRadius.circular(WaveRadius.controls),
             ),
             child: Icon(
               FluentIcons.chrome_close,
               size: 12,
               color: _hover
-                  ? katTextPrimary(context)
-                  : katTextTertiary(context),
+                  ? waveTextPrimary(context)
+                  : waveTextTertiary(context),
             ),
           ),
         ),
@@ -355,10 +355,10 @@ class _NowRow extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          KatArtwork(
+          WaveArtwork(
             url: track.artworkUrl,
             size: 44,
-            radius: KatRadius.artwork,
+            radius: WaveRadius.artwork,
             label: track.title,
             title: track.title,
             artist: track.artist,
@@ -369,22 +369,19 @@ class _NowRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  track.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.trackTitle.copyWith(fontSize: 13),
-                ),
-                Text(
-                  track.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: KatType.meta,
-                ),
+                Text(track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: WaveType.trackTitle.copyWith(fontSize: 13)),
+                Text(track.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: WaveType.meta),
               ],
             ),
           ),
-          Icon(KatIcons.queue, size: 15, color: katTextTertiary(context)),
+          Icon(WaveIcons.queue,
+              size: 15, color: waveTextTertiary(context)),
         ],
       ),
     );
@@ -410,17 +407,17 @@ class _QueueRow extends ConsumerStatefulWidget {
 class _QueueRowState extends ConsumerState<_QueueRow> {
   bool _hover = false;
 
-  List<KatMenuEntry> _menuItems(WidgetRef ref) {
+  List<WaveMenuEntry> _menuItems(WidgetRef ref) {
     final notifier = ref.read(playbackServiceProvider.notifier);
     final t = widget.track;
     return [
-      KatMenuAction(
-        leading: const Icon(KatIcons.queue, size: 15),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.queue, size: 15),
         label: 'Play next',
         onPressed: () => notifier.playNext(t),
       ),
-      KatMenuAction(
-        leading: const Icon(KatIcons.albums, size: 15),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.albums, size: 15),
         label: 'Go to album',
         onPressed: () => goToAlbumOfTrack(
           ref,
@@ -429,15 +426,15 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
           album: t.album,
         ),
       ),
-      KatMenuAction(
-        leading: const Icon(KatIcons.artists, size: 15),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.artists, size: 15),
         label: 'Go to artist',
-        onPressed: () =>
-            katOpen(context, '/artist/${Uri.encodeComponent(t.artist)}'),
+        onPressed: () => waveOpen(
+            context, '/artist/${Uri.encodeComponent(t.artist)}'),
       ),
-      const KatMenuSeparator(),
-      KatMenuAction(
-        leading: const Icon(KatIcons.downloadAction, size: 15),
+      const WaveMenuSeparator(),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.downloadAction, size: 15),
         label: 'Download',
         onPressed: () => ref
             .read(downloadManagerProvider.notifier)
@@ -446,25 +443,23 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
               artist: t.artist,
               album: t.album,
               artworkUrl: t.artworkUrl,
+              videoId: t.videoId,
             ),
       ),
-      KatMenuAction(
-        leading: const Icon(KatIcons.addTo, size: 15),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.addTo, size: 15),
         label: 'Add to playlist',
-        onPressed: () => showWaveAddToPlaylist(
-          context,
-          ref,
-          title: t.title,
-          artist: t.artist,
-          artworkUrl: t.artworkUrl,
-          videoId: t.videoId,
-          album: t.album,
-          durationSeconds: t.duration.inSeconds,
-        ),
+        onPressed: () => showWaveAddToPlaylist(context, ref,
+            title: t.title,
+            artist: t.artist,
+            artworkUrl: t.artworkUrl,
+            videoId: t.videoId,
+            album: t.album,
+            durationSeconds: t.duration.inSeconds),
       ),
-      const KatMenuSeparator(),
-      KatMenuAction(
-        leading: const Icon(KatIcons.delete, size: 15),
+      const WaveMenuSeparator(),
+      WaveMenuAction(
+        leading: const Icon(WaveIcons.delete, size: 15),
         label: 'Remove',
         onPressed: widget.locked
             ? null
@@ -475,21 +470,24 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final notifier = ref.read(playbackServiceProvider.notifier);
     final row = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => notifier.seekToQueueItem(widget.queueIndex),
-        onDoubleTap: () => notifier.seekToQueueItem(widget.queueIndex),
         child: Container(
           constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _hover ? katHoverWash(context) : Colors.transparent,
-            borderRadius: KatRadius.artworkRadius,
+            color: _hover
+                ? waveHoverWash(context)
+                : Colors.transparent,
+            borderRadius: WaveRadius.artworkRadius,
           ),
           child: Row(
             children: [
@@ -497,7 +495,7 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
               // reachable) → full opacity on hover. Hidden while locked
               // so the row cannot start a reorder.
               if (widget.locked)
-                KatTooltip(
+                LWTooltip(
                   message: 'Queue is locked',
                   child: Container(
                     width: 28,
@@ -507,16 +505,15 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
                     child: Icon(
                       FluentIcons.lock,
                       size: 13,
-                      color:
-                          (dark
-                                  ? KatColors.textTertiary
-                                  : KatColors.lightTextTertiary)
-                              .withValues(alpha: 0.7),
+                      color: (dark
+                              ? WaveColors.textTertiary
+                              : WaveColors.lightTextTertiary)
+                          .withValues(alpha: 0.7),
                     ),
                   ),
                 )
               else
-                KatTooltip(
+                LWTooltip(
                   message: 'Drag to reorder',
                   child: ReorderableDragStartListener(
                     index: widget.dragIndex,
@@ -531,22 +528,22 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
                           size: 15,
                           color: _hover
                               ? (dark
-                                    ? KatColors.textSecondary
-                                    : KatColors.lightTextSecondary)
+                                  ? WaveColors.textSecondary
+                                  : WaveColors.lightTextSecondary)
                               : (dark
-                                        ? KatColors.textTertiary
-                                        : KatColors.lightTextTertiary)
-                                    .withValues(alpha: 0.45),
+                                      ? WaveColors.textTertiary
+                                      : WaveColors.lightTextTertiary)
+                                  .withValues(alpha: 0.45),
                         ),
                       ),
                     ),
                   ),
                 ),
               const SizedBox(width: 4),
-              KatArtwork(
+              WaveArtwork(
                 url: widget.track.artworkUrl,
                 size: 36,
-                radius: KatRadius.artwork,
+                radius: WaveRadius.artwork,
                 label: widget.track.title,
                 title: widget.track.title,
                 artist: widget.track.artist,
@@ -557,26 +554,24 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      widget.track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(fontSize: 12.5),
-                    ),
-                    Text(
-                      widget.track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.meta.copyWith(fontSize: 11.5),
-                    ),
+                    Text(widget.track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.trackTitle
+                            .copyWith(fontSize: 12.5)),
+                    Text(widget.track.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WaveType.meta.copyWith(fontSize: 11.5)),
                   ],
                 ),
               ),
               if (_hover && !widget.locked)
-                KatTooltip(
+                LWTooltip(
                   message: 'Remove',
                   child: GestureDetector(
-                    onTap: () => notifier.removeAt(widget.queueIndex),
+                    onTap: () =>
+                        notifier.removeAt(widget.queueIndex),
                     child: Container(
                       width: 32,
                       height: 36,
@@ -590,7 +585,10 @@ class _QueueRowState extends ConsumerState<_QueueRow> {
         ),
       ),
     );
-    return KatContextMenu(items: () => _menuItems(ref), child: row);
+    return WaveContextMenu(
+      items: () => _menuItems(ref),
+      child: row,
+    );
   }
 }
 
@@ -609,10 +607,10 @@ Future<void> showWaveQueueSheet(BuildContext context) {
         content: SizedBox(
           width: w.toDouble(),
           height: 520,
-          child: KatQueuePanel(onClose: () => Navigator.of(context).pop()),
+          child: WaveQueuePanel(onClose: () => Navigator.of(context).pop()),
         ),
         actions: [
-          KatButton(
+          WaveButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
@@ -627,6 +625,8 @@ class QueueBodyPublic extends ConsumerWidget {
   const QueueBodyPublic({super.key, this.embedded = false});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return KatQueuePanel(onClose: null, embedded: embedded);
+    return WaveQueuePanel(onClose: null, embedded: embedded);
   }
 }
+
+

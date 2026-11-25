@@ -50,7 +50,6 @@ class DiscordPresenceService {
 
   static const _maxField = 120;
   static const _pushInterval = Duration(seconds: 15);
-
   /// Grace period before clearing a non-playing activity. Every track EOF
   /// dips `isPlaying` to false while the next track resolves, so an
   /// immediate clear would blink the presence off between songs.
@@ -69,7 +68,6 @@ class DiscordPresenceService {
   String _lastKey = '';
   DateTime _lastPush = DateTime.fromMillisecondsSinceEpoch(0);
   PlayerSnapshot? _lastSnap;
-
   /// Pending "not playing" clear (see [_scheduleClear]).
   Timer? _clearTimer;
 
@@ -173,17 +171,15 @@ class DiscordPresenceService {
   /// while playback is running — [_evaluate] clears instead of publishing a
   /// paused activity.
   Map<String, Object?> _build(
-    PlayableTrack track,
-    PlayerSnapshot snap,
-    DateTime now,
-  ) {
+      PlayableTrack track, PlayerSnapshot snap, DateTime now) {
     final title = _clip(track.title);
     final artist = track.artist.trim().isEmpty
         ? (track.album.trim().isEmpty ? 'KatMusic' : _clip(track.album))
         : _clip(track.artist);
     Map<String, Object?>? ts;
     if (snap.duration > Duration.zero) {
-      final pos = snap.position > snap.duration ? snap.duration : snap.position;
+      final pos =
+          snap.position > snap.duration ? snap.duration : snap.position;
       final end = now.add(snap.duration - pos);
       final start = end.subtract(snap.duration);
       ts = {
@@ -195,7 +191,8 @@ class DiscordPresenceService {
     final art = track.artworkUrl.trim();
     // External assets need http(s) — local file paths can't load in
     // Discord, so those fall back to the uploaded `logo` key.
-    final artIsUrl = art.startsWith('http://') || art.startsWith('https://');
+    final artIsUrl =
+        art.startsWith('http://') || art.startsWith('https://');
     // Discord buttons are plain URLs — they cannot detect the app. Listen
     // opens the track itself so the clicker can hear it right away; Get
     // always opens the repo.
@@ -219,15 +216,15 @@ class DiscordPresenceService {
       'assets': {
         if (artIsUrl) 'large_image': art,
         if (!artIsUrl) 'large_image': discordLogoAsset,
-        'large_text': track.album.trim().isEmpty ? title : _clip(track.album),
+        'large_text':
+            track.album.trim().isEmpty ? title : _clip(track.album),
         // Brand badge. Discord draws `small_image` as the little overlay in
         // the card's corner, so the logo rides along with whatever artwork
         // the track supplied; its tooltip is where the audio-format line
         // went once the subtitle became the artist.
         'small_image': discordLogoAsset,
         'small_text': _clip(
-          quality.isEmpty ? 'KatMusic' : 'KatMusic · $quality',
-        ),
+            quality.isEmpty ? 'KatMusic' : 'KatMusic · $quality'),
       },
       'buttons': [
         {
@@ -255,7 +252,8 @@ class DiscordPresenceService {
         ? out!.sampleRateHz / 1000.0
         : (stream?.samplingRateKhz ?? 0);
     if (stream?.isLossless ?? false) {
-      parts.add((rateKhz > 48 || depth > 16) ? 'Hi-Res Lossless' : 'Lossless');
+      parts.add(
+          (rateKhz > 48 || depth > 16) ? 'Hi-Res Lossless' : 'Lossless');
     }
     if (depth > 0) parts.add('$depth-bit');
     if (rateKhz > 0) parts.add(_rateLabel(rateKhz));
@@ -367,10 +365,12 @@ final discordPresenceProvider = Provider<DiscordPresenceService>((ref) {
   // (MPRIS/SMTC must keep the full snapshot: their seek detection diffs
   // consecutive positions. This one never consumes position per tick.)
   ref.listen(
-    playbackServiceProvider.select(
-      (s) =>
-          (s.current?.queueKey ?? '', s.isPlaying, s.duration, s.bitrateKbps),
-    ),
+    playbackServiceProvider.select((s) => (
+      s.current?.queueKey ?? '',
+      s.isPlaying,
+      s.duration,
+      s.bitrateKbps,
+    )),
     (_, _) {
       unawaited(svc.onSnapshot(ref.read(playbackServiceProvider)));
     },

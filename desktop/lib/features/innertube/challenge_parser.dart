@@ -2,7 +2,7 @@ import 'dart:convert';
 
 /// Parses YouTube `api/jnn/v1` BotGuard responses.
 ///
-/// Direct Dart port of KatMusic-native `ChallengeParser.kt`.
+/// Direct Dart port of KatMusic `ChallengeParser.kt`.
 String parseCreateChallenge(String rawResponse) {
   final outer = jsonDecode(rawResponse) as List;
   List challenge;
@@ -40,8 +40,10 @@ String parseCreateChallenge(String rawResponse) {
     'program': program,
     'globalName': globalName,
     'interpreterJavascript': {
-      'privateDoNotAccessOrElseSafeScriptWrappedValue': interpreterJs,
-      'privateDoNotAccessOrElseTrustedResourceUrlWrappedValue': interpreterUrl,
+      'privateDoNotAccessOrElseSafeScriptWrappedValue':
+          interpreterJs,
+      'privateDoNotAccessOrElseTrustedResourceUrlWrappedValue':
+          interpreterUrl,
     },
   });
 }
@@ -72,9 +74,8 @@ String commaSeparatedBytesToBase64(String commaBytes) {
 String _descramble(String base64Payload) {
   final bytes = _base64ToBytes(base64Payload);
   return utf8.decode(
-    bytes.map((b) => (b + 97) & 0xFF).toList(),
-    allowMalformed: true,
-  );
+      bytes.map((b) => (b + 97) & 0xFF).toList(),
+      allowMalformed: true);
 }
 
 String _base64ToJsUint8Array(String base64Value) {
@@ -87,7 +88,8 @@ List<int> _base64ToBytes(String base64Value) {
       .replaceAll('-', '+')
       .replaceAll('_', '/')
       .replaceAll('.', '=');
-  normalized = normalized.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
+  normalized =
+      normalized.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
   final pad = (4 - normalized.length % 4) % 4;
   normalized += '=' * pad;
   return base64.decode(normalized);

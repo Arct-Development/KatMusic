@@ -36,18 +36,18 @@ void main() {
     });
 
     test('splitCanvasArtists splits across feat, &, and x', () {
-      expect(splitCanvasArtists('Taylor Swift feat. Post Malone'), [
-        'taylor swift',
-        'post malone',
-      ]);
-      expect(splitCanvasArtists('Daft Punk & Pharrell Williams'), [
-        'daft punk',
-        'pharrell williams',
-      ]);
-      expect(splitCanvasArtists('Marshmello x Khalid'), [
-        'marshmello',
-        'khalid',
-      ]);
+      expect(
+        splitCanvasArtists('Taylor Swift feat. Post Malone'),
+        ['taylor swift', 'post malone'],
+      );
+      expect(
+        splitCanvasArtists('Daft Punk & Pharrell Williams'),
+        ['daft punk', 'pharrell williams'],
+      );
+      expect(
+        splitCanvasArtists('Marshmello x Khalid'),
+        ['marshmello', 'khalid'],
+      );
     });
 
     test('AnimatedArtwork.matches validates title, artist and album', () {
@@ -90,8 +90,10 @@ void main() {
   group('parseAnimatedArtworkPayload', () {
     test('reads square HLS url and tall variant', () {
       final art = parseAnimatedArtworkPayload({
-        'url': 'https://mvod.itunes.apple.com/itunes-assets/HLSMusic211/v4/x/P1_default.m3u8',
-        'url_tall': 'https://mvod.itunes.apple.com/itunes-assets/HLSMusic211/v4/y/P2_default.m3u8',
+        'url':
+            'https://mvod.itunes.apple.com/itunes-assets/HLSMusic211/v4/x/P1_default.m3u8',
+        'url_tall':
+            'https://mvod.itunes.apple.com/itunes-assets/HLSMusic211/v4/y/P2_default.m3u8',
         'artist': 'Gorillaz',
         'album': 'Plastic Beach',
         'isCached': true,
@@ -216,57 +218,48 @@ clip-.mp4
       calls = 0;
       status = 200;
       payload = {
-        'url': 'https://mvod.itunes.apple.com/itunes-assets/x/P1_default.m3u8',
+        'url':
+            'https://mvod.itunes.apple.com/itunes-assets/x/P1_default.m3u8',
       };
       dio = Dio();
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            final host = options.uri.host;
-            if (host == 'music.apple.com' ||
-                host == 'amp-api.music.apple.com' ||
-                host == 'api.tidal.com' ||
-                host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
-              handler.resolve(
-                Response<String>(
-                  requestOptions: options,
-                  statusCode: 404,
-                  data: '',
-                ),
-              );
-              return;
-            }
-            calls++;
-            if (host == 'itunes.apple.com') {
-              handler.resolve(
-                Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: 200,
-                  data: const {'results': []},
-                ),
-              );
-              return;
-            }
-            if (options.uri.path.contains('/api/')) {
-              handler.resolve(
-                Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: status,
-                  data: Map<String, dynamic>.from(payload),
-                ),
-              );
-              return;
-            }
-            handler.resolve(
-              Response<String>(
-                requestOptions: options,
-                statusCode: 200,
-                data: _masterPlaylist,
-              ),
-            );
-          },
-        ),
-      );
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final host = options.uri.host;
+          if (host == 'music.apple.com' ||
+              host == 'amp-api.music.apple.com' ||
+              host == 'api.tidal.com' ||
+              host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
+            handler.resolve(Response<String>(
+              requestOptions: options,
+              statusCode: 404,
+              data: '',
+            ));
+            return;
+          }
+          calls++;
+          if (host == 'itunes.apple.com') {
+            handler.resolve(Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: const {'results': []},
+            ));
+            return;
+          }
+          if (options.uri.path.contains('/api/')) {
+            handler.resolve(Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: status,
+              data: Map<String, dynamic>.from(payload),
+            ));
+            return;
+          }
+          handler.resolve(Response<String>(
+            requestOptions: options,
+            statusCode: 200,
+            data: _masterPlaylist,
+          ));
+        },
+      ));
       db = AppDatabase.inMemory();
     });
 
@@ -313,13 +306,11 @@ clip-.mp4
     test('second track on the same album reuses the cached clip', () async {
       final service = AnimatedArtworkService(dio: dio, db: db);
       await service.lookup(query);
-      final next = await service.lookup(
-        const AnimatedArtworkQuery(
-          artist: 'Gorillaz',
-          album: 'Plastic Beach',
-          title: 'Rhinestone Eyes',
-        ),
-      );
+      final next = await service.lookup(const AnimatedArtworkQuery(
+        artist: 'Gorillaz',
+        album: 'Plastic Beach',
+        title: 'Rhinestone Eyes',
+      ));
       expect(next?.url, 'https://cdn.example/avc486.m3u8');
       expect(calls, 3);
     });
@@ -337,48 +328,40 @@ clip-.mp4
 
     test('falls back to album-only search after a title miss', () async {
       dio.interceptors.clear();
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            final host = options.uri.host;
-            if (host == 'music.apple.com' ||
-                host == 'amp-api.music.apple.com' ||
-                host == 'api.tidal.com' ||
-                host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
-              handler.resolve(
-                Response<String>(
-                  requestOptions: options,
-                  statusCode: 404,
-                  data: '',
-                ),
-              );
-              return;
-            }
-            calls++;
-            if (options.uri.path.contains('/api/')) {
-              final hasTitle =
-                  options.uri.queryParameters['title']?.isNotEmpty == true;
-              handler.resolve(
-                Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: hasTitle ? 404 : 200,
-                  data: hasTitle
-                      ? <String, dynamic>{}
-                      : Map<String, dynamic>.from(payload),
-                ),
-              );
-              return;
-            }
-            handler.resolve(
-              Response<String>(
-                requestOptions: options,
-                statusCode: 200,
-                data: _masterPlaylist,
-              ),
-            );
-          },
-        ),
-      );
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final host = options.uri.host;
+          if (host == 'music.apple.com' ||
+              host == 'amp-api.music.apple.com' ||
+              host == 'api.tidal.com' ||
+              host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
+            handler.resolve(Response<String>(
+              requestOptions: options,
+              statusCode: 404,
+              data: '',
+            ));
+            return;
+          }
+          calls++;
+          if (options.uri.path.contains('/api/')) {
+            final hasTitle =
+                options.uri.queryParameters['title']?.isNotEmpty == true;
+            handler.resolve(Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: hasTitle ? 404 : 200,
+              data: hasTitle
+                  ? <String, dynamic>{}
+                  : Map<String, dynamic>.from(payload),
+            ));
+            return;
+          }
+          handler.resolve(Response<String>(
+            requestOptions: options,
+            statusCode: 200,
+            data: _masterPlaylist,
+          ));
+        },
+      ));
       final service = AnimatedArtworkService(dio: dio, db: db);
       final art = await service.lookup(query);
       expect(art?.url, 'https://cdn.example/avc486.m3u8');
@@ -395,141 +378,128 @@ clip-.mp4
         AppleMusicCanvas.resetForTesting();
         CommunityCanvas.resetForTesting();
         dio.interceptors.clear();
-        dio.interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) {
-              final host = options.uri.host;
-              final path = options.uri.path;
+        dio.interceptors.add(InterceptorsWrapper(
+          onRequest: (options, handler) {
+            final host = options.uri.host;
+            final path = options.uri.path;
 
-              if (host == 'music.apple.com' && path == '/us/browse') {
-                handler.resolve(
-                  Response<String>(
-                    requestOptions: options,
-                    statusCode: enableApple ? 200 : 404,
-                    data: enableApple
-                        ? '<script src="/assets/index-abc123.js"></script>'
-                        : '',
-                  ),
-                );
-                return;
-              }
-              if (host == 'music.apple.com' && path.startsWith('/assets/')) {
-                handler.resolve(
-                  Response<String>(
-                    requestOptions: options,
-                    statusCode: 200,
-                    data: 'const token = "$fakeJwt";',
-                  ),
-                );
-                return;
-              }
-              if (host == 'amp-api.music.apple.com') {
-                handler.resolve(
-                  Response<Map<String, dynamic>>(
-                    requestOptions: options,
-                    statusCode: enableApple ? 200 : 404,
-                    data: enableApple
-                        ? {
-                            'results': {
-                              'songs': {
-                                'data': [
-                                  {
-                                    'id': '1',
-                                    'attributes': {
-                                      'name': 'On Melancholy Hill',
-                                      'artistName': 'Gorillaz',
-                                      'albumName': 'Plastic Beach',
-                                      'editorialVideo': {
-                                        'motionDetailSquare': {
-                                          'video': 'https://mvod.itunes.apple.com/apple_square.m3u8',
-                                        },
-                                      },
+            if (host == 'music.apple.com' && path == '/us/browse') {
+              handler.resolve(Response<String>(
+                requestOptions: options,
+                statusCode: enableApple ? 200 : 404,
+                data: enableApple
+                    ? '<script src="/assets/index-abc123.js"></script>'
+                    : '',
+              ));
+              return;
+            }
+            if (host == 'music.apple.com' && path.startsWith('/assets/')) {
+              handler.resolve(Response<String>(
+                requestOptions: options,
+                statusCode: 200,
+                data: 'const token = "$fakeJwt";',
+              ));
+              return;
+            }
+            if (host == 'amp-api.music.apple.com') {
+              handler.resolve(Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: enableApple ? 200 : 404,
+                data: enableApple
+                    ? {
+                        'results': {
+                          'songs': {
+                            'data': [
+                              {
+                                'id': '1',
+                                'attributes': {
+                                  'name': 'On Melancholy Hill',
+                                  'artistName': 'Gorillaz',
+                                  'albumName': 'Plastic Beach',
+                                  'editorialVideo': {
+                                    'motionDetailSquare': {
+                                      'video':
+                                          'https://mvod.itunes.apple.com/apple_square.m3u8',
                                     },
                                   },
-                                ],
-                              },
-                            },
-                          }
-                        : const {},
-                  ),
-                );
-                return;
-              }
-              if (host == 'artwork.m8tec.top' || host == 'itunes.apple.com') {
-                handler.resolve(
-                  Response<Map<String, dynamic>>(
-                    requestOptions: options,
-                    statusCode: 404,
-                    data: const {},
-                  ),
-                );
-                return;
-              }
-              if (host == 'api.tidal.com') {
-                handler.resolve(
-                  Response<Map<String, dynamic>>(
-                    requestOptions: options,
-                    statusCode: enableTidal ? 200 : 404,
-                    data: enableTidal
-                        ? {
-                            'tracks': {
-                              'items': [
-                                {
-                                  'title': 'On Melancholy Hill',
-                                  'artists': [
-                                    {'name': 'Gorillaz'},
-                                  ],
-                                  'album': {
-                                    'title': 'Plastic Beach',
-                                    'videoCover':
-                                        '11111111-2222-3333-4444-555555555555',
-                                  },
                                 },
-                              ],
-                            },
-                          }
-                        : const {},
-                  ),
-                );
-                return;
-              }
-              if (host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
-                handler.resolve(
-                  Response<Map<String, dynamic>>(
-                    requestOptions: options,
-                    statusCode: enableCommunity ? 200 : 404,
-                    data: enableCommunity
-                        ? {
-                            'items': [
-                              {
-                                'song': 'On Melancholy Hill',
-                                'artist': 'Gorillaz',
-                                'album': 'Plastic Beach',
-                                'url':
-                                    'https://community.example/melancholy.mp4',
                               },
                             ],
-                          }
-                        : const {},
-                  ),
-                );
-                return;
-              }
-              handler.resolve(
-                Response<String>(
-                  requestOptions: options,
-                  statusCode: 200,
-                  data: _masterPlaylist,
-                ),
-              );
-            },
-          ),
-        );
+                          },
+                        },
+                      }
+                    : const {},
+              ));
+              return;
+            }
+            if (host == 'artwork.m8tec.top' || host == 'itunes.apple.com') {
+              handler.resolve(Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: 404,
+                data: const {},
+              ));
+              return;
+            }
+            if (host == 'api.tidal.com') {
+              handler.resolve(Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: enableTidal ? 200 : 404,
+                data: enableTidal
+                    ? {
+                        'tracks': {
+                          'items': [
+                            {
+                              'title': 'On Melancholy Hill',
+                              'artists': [
+                                {'name': 'Gorillaz'},
+                              ],
+                              'album': {
+                                'title': 'Plastic Beach',
+                                'videoCover':
+                                    '11111111-2222-3333-4444-555555555555',
+                              },
+                            },
+                          ],
+                        },
+                      }
+                    : const {},
+              ));
+              return;
+            }
+            if (host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
+              handler.resolve(Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: enableCommunity ? 200 : 404,
+                data: enableCommunity
+                    ? {
+                        'items': [
+                          {
+                            'song': 'On Melancholy Hill',
+                            'artist': 'Gorillaz',
+                            'album': 'Plastic Beach',
+                            'url': 'https://community.example/melancholy.mp4',
+                          },
+                        ],
+                      }
+                    : const {},
+              ));
+              return;
+            }
+            handler.resolve(Response<String>(
+              requestOptions: options,
+              statusCode: 200,
+              data: _masterPlaylist,
+            ));
+          },
+        ));
       }
 
       // 1. All 3 enabled -> Apple Music wins
       configurePriorityDio();
-      final svc1 = AnimatedArtworkService(dio: dio, db: AppDatabase.inMemory());
+      final svc1 = AnimatedArtworkService(
+        dio: dio,
+        db: AppDatabase.inMemory(),
+      );
       final res1 = await svc1.lookup(query);
       expect(res1?.source, CanvasSource.apple);
       expect(res1?.url, 'https://cdn.example/avc486.m3u8');
@@ -539,7 +509,10 @@ clip-.mp4
       enableTidal = true;
       enableCommunity = true;
       configurePriorityDio();
-      final svc2 = AnimatedArtworkService(dio: dio, db: AppDatabase.inMemory());
+      final svc2 = AnimatedArtworkService(
+        dio: dio,
+        db: AppDatabase.inMemory(),
+      );
       final res2 = await svc2.lookup(query);
       expect(res2?.source, CanvasSource.tidal);
       expect(
@@ -552,7 +525,10 @@ clip-.mp4
       enableTidal = false;
       enableCommunity = true;
       configurePriorityDio();
-      final svc3 = AnimatedArtworkService(dio: dio, db: AppDatabase.inMemory());
+      final svc3 = AnimatedArtworkService(
+        dio: dio,
+        db: AppDatabase.inMemory(),
+      );
       final res3 = await svc3.lookup(query);
       expect(res3?.source, CanvasSource.community);
       expect(res3?.url, 'https://community.example/melancholy.mp4');
@@ -562,40 +538,34 @@ clip-.mp4
       var communityManifestCalls = 0;
       CommunityCanvas.resetForTesting();
       dio.interceptors.clear();
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            final host = options.uri.host;
-            if (host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
-              communityManifestCalls++;
-              handler.resolve(
-                Response<Map<String, dynamic>>(
-                  requestOptions: options,
-                  statusCode: 200,
-                  data: const {
-                    'items': [
-                      {
-                        'song': 'Starboy (feat. Daft Punk)',
-                        'artist': 'The Weeknd',
-                        'album': 'Starboy',
-                        'url': 'https://vivimusicanvas.mkmdevilmi.workers.dev/Song/16.mp4',
-                      },
-                    ],
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final host = options.uri.host;
+          if (host == 'vivimusicanvas.mkmdevilmi.workers.dev') {
+            communityManifestCalls++;
+            handler.resolve(Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: const {
+                'items': [
+                  {
+                    'song': 'Starboy (feat. Daft Punk)',
+                    'artist': 'The Weeknd',
+                    'album': 'Starboy',
+                    'url': 'https://vivimusicanvas.mkmdevilmi.workers.dev/Song/16.mp4',
                   },
-                ),
-              );
-              return;
-            }
-            handler.resolve(
-              Response<Map<String, dynamic>>(
-                requestOptions: options,
-                statusCode: 404,
-                data: const {},
-              ),
-            );
-          },
-        ),
-      );
+                ],
+              },
+            ));
+            return;
+          }
+          handler.resolve(Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 404,
+            data: const {},
+          ));
+        },
+      ));
 
       final svc = AnimatedArtworkService(
         dio: dio,

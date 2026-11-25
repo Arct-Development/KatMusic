@@ -271,9 +271,7 @@ class AppleMusicCanvas {
       score -= 10;
     }
 
-    if (album != null &&
-        album.trim().isNotEmpty &&
-        hitAlbum.trim().isNotEmpty) {
+    if (album != null && album.trim().isNotEmpty && hitAlbum.trim().isNotEmpty) {
       final wantAlbum = normalizeCanvasMatch(album);
       final gotAlbum = normalizeCanvasMatch(hitAlbum);
       if (gotAlbum == wantAlbum) {
@@ -374,13 +372,12 @@ class AppleMusicCanvas {
     String? link(String key) {
       final asset = video[key];
       if (asset is! Map) return null;
-      final raw =
-          (asset['video'] ??
-                  asset['videoUrl'] ??
-                  asset['hlsUrl'] ??
-                  asset['url'])
-              ?.toString()
-              .trim();
+      final raw = (asset['video'] ??
+              asset['videoUrl'] ??
+              asset['hlsUrl'] ??
+              asset['url'])
+          ?.toString()
+          .trim();
       return (raw != null && raw.isNotEmpty) ? raw : null;
     }
 
@@ -429,10 +426,10 @@ class AppleMusicCanvas {
     final scripts = html == null
         ? const <String>[]
         : RegExp(r'/assets/index(?:-legacy)?[~-][A-Za-z0-9_-]+\.js')
-              .allMatches(html)
-              .map((m) => m.group(0)!)
-              .toSet()
-              .toList();
+            .allMatches(html)
+            .map((m) => m.group(0)!)
+            .toSet()
+            .toList();
 
     final jwtRegex = RegExp(
       r'ey[A-Za-z0-9_-]+\.ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+',
@@ -548,9 +545,9 @@ class AppleMusicCanvas {
   }
 
   static Map<String, String> _authHeaders(String bearer) => {
-    'Authorization': 'Bearer $bearer',
-    'Origin': 'https://music.apple.com',
-    'Referer': 'https://music.apple.com/',
-    'User-Agent': canvasUserAgent,
-  };
+        'Authorization': 'Bearer $bearer',
+        'Origin': 'https://music.apple.com',
+        'Referer': 'https://music.apple.com/',
+        'User-Agent': canvasUserAgent,
+      };
 }

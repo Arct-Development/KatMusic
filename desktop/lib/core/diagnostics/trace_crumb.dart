@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'diagnostics_log.dart';
 
-/// Crash-surviving breadcrumb sink shared by the player and the addon
+/// Crash-surviving breadcrumb sink shared by the player and the resolver
 /// resolver: `<temp>/katmusic/mpv-ops.log`.
 ///
 /// The player appends one line per native op *synchronously and

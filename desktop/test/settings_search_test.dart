@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/ui/settings/settings_search.dart';
 
 List<String> titles(String query) => [
-  for (final hit in filterSettings(settingsSearchEntries, query)) hit.title,
-];
+      for (final hit in filterSettings(settingsSearchEntries, query)) hit.title,
+    ];
 
 void main() {
   test('an empty query finds nothing', () {
@@ -49,23 +49,17 @@ void main() {
   });
 
   test('the index and the settings page list the same cards', () {
-    final source = File('lib/ui/settings/settings_page.dart')
-        .readAsStringSync();
-    final inPage = RegExp(
-      r"^\s+id: '([a-z]+\.[a-z]+)',$",
-      multiLine: true,
-    ).allMatches(source).map((m) => m.group(1)!).toSet();
+    final source =
+        File('lib/ui/settings/settings_page.dart').readAsStringSync();
+    final inPage = RegExp(r"^\s+id: '([a-z_]+\.[a-z_]+)',$", multiLine: true)
+        .allMatches(source)
+        .map((m) => m.group(1)!)
+        .toSet();
     final indexed = {for (final e in settingsSearchEntries) e.id};
-    expect(
-      indexed.difference(inPage),
-      isEmpty,
-      reason: 'searchable but no card carries this id',
-    );
-    expect(
-      inPage.difference(indexed),
-      isEmpty,
-      reason: 'a card with this id is not searchable',
-    );
+    expect(indexed.difference(inPage), isEmpty,
+        reason: 'searchable but no card carries this id');
+    expect(inPage.difference(indexed), isEmpty,
+        reason: 'a card with this id is not searchable');
   });
 
   test('every entry names a real section', () {
@@ -79,6 +73,7 @@ void main() {
       'appearance',
       'lastfm',
       'integrations',
+      'sources',
       'experimental',
       'about',
     };

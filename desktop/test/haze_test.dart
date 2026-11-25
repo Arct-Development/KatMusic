@@ -8,18 +8,18 @@ import 'package:katmusic_desktop/ui/theme/haze.dart';
 /// in Solid and at low intensity.
 void main() {
   Widget harness({
-    required KatMaterialMode material,
-    required KatHazeIntensity intensity,
+    required WaveMaterialMode material,
+    required WaveHazeIntensity intensity,
     required LwHazeLevel level,
     bool? enableBlur,
   }) {
     return FluentApp(
       themeMode: ThemeMode.dark,
-      home: KatHazeScope(
+      home: WaveHazeScope(
         material: material,
         intensity: intensity,
         child: Center(
-          child: KatHaze(
+          child: WaveHaze(
             level: level,
             enableBlur: enableBlur,
             child: const SizedBox(width: 120, height: 120),
@@ -34,16 +34,15 @@ void main() {
     return find.byType(BackdropFilter).evaluate().isNotEmpty;
   }
 
-  testWidgets('solid mode never filters, whatever the surface asks for', (
-    tester,
-  ) async {
+  testWidgets('solid mode never filters, whatever the surface asks for',
+      (tester) async {
     for (final level in [LwHazeLevel.l1, LwHazeLevel.l2, LwHazeLevel.l3]) {
       expect(
         await blurred(
           tester,
           harness(
-            material: KatMaterialMode.solid,
-            intensity: KatHazeIntensity.high,
+            material: WaveMaterialMode.solid,
+            intensity: WaveHazeIntensity.high,
             level: level,
             enableBlur: true,
           ),
@@ -54,13 +53,14 @@ void main() {
     }
   });
 
-  testWidgets('low intensity keeps L1 static, L2 still frosts', (tester) async {
+  testWidgets('low intensity keeps L1 static, L2 still frosts',
+      (tester) async {
     expect(
       await blurred(
         tester,
         harness(
-          material: KatMaterialMode.haze,
-          intensity: KatHazeIntensity.low,
+          material: WaveMaterialMode.haze,
+          intensity: WaveHazeIntensity.low,
           level: LwHazeLevel.l1,
           enableBlur: true,
         ),
@@ -71,8 +71,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: KatMaterialMode.haze,
-          intensity: KatHazeIntensity.low,
+          material: WaveMaterialMode.haze,
+          intensity: WaveHazeIntensity.low,
           level: LwHazeLevel.l2,
           enableBlur: true,
         ),
@@ -86,8 +86,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: KatMaterialMode.haze,
-          intensity: KatHazeIntensity.medium,
+          material: WaveMaterialMode.haze,
+          intensity: WaveHazeIntensity.medium,
           level: LwHazeLevel.l1,
           enableBlur: true,
         ),
@@ -101,8 +101,8 @@ void main() {
       await blurred(
         tester,
         harness(
-          material: KatMaterialMode.haze,
-          intensity: KatHazeIntensity.high,
+          material: WaveMaterialMode.haze,
+          intensity: WaveHazeIntensity.high,
           level: LwHazeLevel.l1,
           enableBlur: false,
         ),

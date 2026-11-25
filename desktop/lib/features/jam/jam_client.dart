@@ -19,27 +19,6 @@ String jamClock(int ms) {
 const jamModeCollaborative = 'collaborative';
 const jamModeHostOnly = 'host_only';
 
-/// Always-active stations. The server provisions these and never closes them.
-const jamStations = <JamStation>[
-  JamStation(code: 'INDIA', title: 'India', blurb: 'Always-on room for India'),
-  JamStation(
-    code: 'WORLD',
-    title: 'International',
-    blurb: 'Always-on room for everyone else',
-  ),
-];
-
-class JamStation {
-  final String code;
-  final String title;
-  final String blurb;
-  const JamStation({
-    required this.code,
-    required this.title,
-    required this.blurb,
-  });
-}
-
 class JamPerson {
   final String userId;
   final String name;
@@ -52,6 +31,20 @@ class JamPerson {
     required this.name,
     this.isHost = false,
     this.isCoHost = false,
+  });
+}
+
+/// A track a guest proposed to the room host (server `suggestion_received`).
+class JamSuggestion {
+  final String id;
+  final String fromUserId;
+  final String fromName;
+  final JamTrack track;
+  const JamSuggestion({
+    required this.id,
+    required this.fromUserId,
+    required this.fromName,
+    required this.track,
   });
 }
 
@@ -103,24 +96,24 @@ class JamTrack {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'artist': artist,
-    'album': album,
-    'artwork_url': artworkUrl,
-    'duration_ms': durationMs,
-  };
+        'id': id,
+        'title': title,
+        'artist': artist,
+        'album': album,
+        'artwork_url': artworkUrl,
+        'duration_ms': durationMs,
+      };
 
   factory JamTrack.fromJson(Map<String, dynamic> json) => JamTrack(
-    id: json['id']?.toString() ?? '',
-    title: json['title']?.toString() ?? '',
-    artist: json['artist']?.toString() ?? '',
-    album: json['album']?.toString(),
-    artworkUrl: json['artwork_url']?.toString(),
-    durationMs: json['duration_ms'] is num
-        ? (json['duration_ms'] as num).toInt()
-        : int.tryParse('${json['duration_ms'] ?? ''}'),
-  );
+        id: json['id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        artist: json['artist']?.toString() ?? '',
+        album: json['album']?.toString(),
+        artworkUrl: json['artwork_url']?.toString(),
+        durationMs: json['duration_ms'] is num
+            ? (json['duration_ms'] as num).toInt()
+            : int.tryParse('${json['duration_ms'] ?? ''}'),
+      );
 }
 
 sealed class JamRemote {
@@ -183,13 +176,6 @@ class JamSnapshot {
   final bool isHost;
   final String hostId;
   final String coHostId;
-  final bool permanent;
-
-  /// Always-on rooms are 24/7 radio stations driven by the server.
-  final bool radio;
-
-  /// Station on auto radio (true) or run by a station admin (false).
-  final bool stationAuto;
   final String roomMode;
   final List<JamPerson> people;
   final List<JamChatLine> chat;
@@ -199,8 +185,8 @@ class JamSnapshot {
   /// The admin's upcoming queue, shared read-only with the room.
   final List<JamTrack> queue;
 
-  /// Friendly title of an always-on room ("India"); empty otherwise.
-  final String roomName;
+  /// Pending track suggestions shown to the host.
+  final List<JamSuggestion> suggestions;
 
   /// Wall-clock ms until which pause/skip are locked for you; 0 when free.
   final int cooldownUntilMs;
@@ -214,9 +200,6 @@ class JamSnapshot {
   /// True only for the main host, who may give and remove co-hosts.
   bool get isMainHost => userId.isNotEmpty && userId == hostId;
 
-  /// A listener on a live station: no playback control at all.
-  bool get isStationListener => phase == JamPhase.active && radio && !isHost;
-
   const JamSnapshot({
     this.phase = JamPhase.disconnected,
     this.error = '',
@@ -226,16 +209,13 @@ class JamSnapshot {
     this.isHost = false,
     this.hostId = '',
     this.coHostId = '',
-    this.permanent = false,
-    this.radio = false,
-    this.stationAuto = true,
     this.roomMode = jamModeCollaborative,
     this.people = const [],
     this.chat = const [],
     this.track,
     this.isPlaying = false,
     this.queue = const [],
-    this.roomName = '',
+    this.suggestions = const [],
     this.cooldownUntilMs = 0,
     this.notice = '',
     this.retryAtMs = 0,
@@ -250,9 +230,6 @@ class JamSnapshot {
     bool? isHost,
     String? hostId,
     String? coHostId,
-    bool? permanent,
-    bool? radio,
-    bool? stationAuto,
     String? roomMode,
     List<JamPerson>? people,
     List<JamChatLine>? chat,
@@ -260,47 +237,36 @@ class JamSnapshot {
     bool clearTrack = false,
     bool? isPlaying,
     List<JamTrack>? queue,
-    String? roomName,
+    List<JamSuggestion>? suggestions,
     int? cooldownUntilMs,
     String? notice,
     int? retryAtMs,
-  }) => JamSnapshot(
-    phase: phase ?? this.phase,
-    error: error ?? this.error,
-    roomCode: roomCode ?? this.roomCode,
-    userId: userId ?? this.userId,
-    displayName: displayName ?? this.displayName,
-    isHost: isHost ?? this.isHost,
-    hostId: hostId ?? this.hostId,
-    coHostId: coHostId ?? this.coHostId,
-    permanent: permanent ?? this.permanent,
-    radio: radio ?? this.radio,
-    stationAuto: stationAuto ?? this.stationAuto,
-    roomMode: roomMode ?? this.roomMode,
-    people: people ?? this.people,
-    chat: chat ?? this.chat,
-    track: clearTrack ? null : (track ?? this.track),
-    isPlaying: isPlaying ?? this.isPlaying,
-    queue: queue ?? this.queue,
-    roomName: roomName ?? this.roomName,
-    cooldownUntilMs: cooldownUntilMs ?? this.cooldownUntilMs,
-    notice: notice ?? this.notice,
-    retryAtMs: retryAtMs ?? this.retryAtMs,
-  );
+  }) =>
+      JamSnapshot(
+        phase: phase ?? this.phase,
+        error: error ?? this.error,
+        roomCode: roomCode ?? this.roomCode,
+        userId: userId ?? this.userId,
+        displayName: displayName ?? this.displayName,
+        isHost: isHost ?? this.isHost,
+        hostId: hostId ?? this.hostId,
+        coHostId: coHostId ?? this.coHostId,
+        roomMode: roomMode ?? this.roomMode,
+        people: people ?? this.people,
+        chat: chat ?? this.chat,
+        track: clearTrack ? null : (track ?? this.track),
+        isPlaying: isPlaying ?? this.isPlaying,
+        queue: queue ?? this.queue,
+        suggestions: suggestions ?? this.suggestions,
+        cooldownUntilMs: cooldownUntilMs ?? this.cooldownUntilMs,
+        notice: notice ?? this.notice,
+        retryAtMs: retryAtMs ?? this.retryAtMs,
+      );
 }
 
 /// WebSocket client for the KatMusic Jam server.
 ///
 /// A failed connection sets [JamPhase.error] and does not touch playback.
-bool _isDefaultName(String name) => const {
-  '',
-  'listener',
-  'host',
-  'guest',
-  'user',
-  'anonymous',
-}.contains(name.trim().toLowerCase());
-
 class JamController extends StateNotifier<JamSnapshot> {
   JamController(this._ref) : super(const JamSnapshot());
 
@@ -330,6 +296,7 @@ class JamController extends StateNotifier<JamSnapshot> {
     return '$base/?code=$code';
   }
 
+
   /// Accepts a bare code or a pasted invite link (`...?code=ABC123`).
   static String parseCode(String raw) {
     final text = raw.trim();
@@ -338,7 +305,10 @@ class JamController extends StateNotifier<JamSnapshot> {
     return tail.split(RegExp(r'[&#\s]')).first.trim().toUpperCase();
   }
 
-  void createRoom(String displayName, {required bool collaborative}) {
+  void createRoom(
+    String displayName, {
+    required bool collaborative,
+  }) {
     final name = displayName.trim().isEmpty ? 'Listener' : displayName.trim();
     _connect(() {
       _send('create_room', {
@@ -355,13 +325,6 @@ class JamController extends StateNotifier<JamSnapshot> {
       state = state.copyWith(
         phase: JamPhase.error,
         error: 'Room code is required',
-      );
-      return;
-    }
-    if (jamStations.any((s) => s.code == code) && _isDefaultName(displayName)) {
-      state = state.copyWith(
-        phase: JamPhase.error,
-        error: 'Pick your own display name to join this public room',
       );
       return;
     }
@@ -387,19 +350,55 @@ class JamController extends StateNotifier<JamSnapshot> {
   /// Main host only: make [userId] a co-host (a room has at most two hosts).
   void grantHost(String userId) => _send('grant_host', {'user_id': userId});
 
-  /// Station admin only: hand the station to someone else.
-  void transferAdmin(String userId) =>
+  /// Main host only: hand the room to someone else.
+  void transferHost(String userId) =>
       _send('transfer_host', {'user_id': userId});
 
   /// Main host only: remove [userId]'s co-host role.
   void revokeHost(String userId) => _send('revoke_host', {'user_id': userId});
 
+  /// Main host only: switch the room between host-only and collaborative.
+  void changeRoomMode(bool collaborative) =>
+      _send('change_room_mode', {
+        'room_mode':
+            collaborative ? jamModeCollaborative : jamModeHostOnly,
+      });
+
+  /// Anyone but the host: propose a track for the host to queue.
+  void suggestTrack(JamTrack track) => _send('suggest_track', {
+        'track': track.toJson(),
+      });
+
+  /// Main host only: approve a suggestion; the server appends it to the queue.
+  void approveSuggestion(String id) {
+    if (id.isEmpty) return;
+    _send('approve_suggestion', {'suggestion_id': id});
+    state = state.copyWith(
+      suggestions:
+          state.suggestions.where((s) => s.id != id).toList(),
+    );
+  }
+
+  /// Main host only: dismiss a suggestion without queueing it.
+  void rejectSuggestion(String id) {
+    if (id.isEmpty) return;
+    _send('reject_suggestion', {'suggestion_id': id});
+    state = state.copyWith(
+      suggestions:
+          state.suggestions.where((s) => s.id != id).toList(),
+    );
+  }
+
   /// Main host only: publish the upcoming queue so listeners can see it.
   void broadcastQueue(List<JamTrack> queue) {
     if (state.phase != JamPhase.active) return;
+    final shared = queue.take(5).toList();
     _send('queue_update', {
-      'queue': [for (final t in queue.take(5)) t.toJson()],
+      'queue': [for (final t in shared) t.toJson()],
     });
+    // The server echoes queue_updated to everyone but the sender, so the
+    // host records its own queue.
+    state = state.copyWith(queue: shared);
   }
 
   List<JamTrack> _tracks(Object? raw) {
@@ -441,9 +440,8 @@ class JamController extends StateNotifier<JamSnapshot> {
         ..connectionTimeout = const Duration(seconds: 5);
       try {
         final request = await client.getUrl(http);
-        final response = await request.close().timeout(
-          const Duration(seconds: 5),
-        );
+        final response =
+            await request.close().timeout(const Duration(seconds: 5));
         if (response.statusCode != 200) return const {};
         final body = await response.transform(utf8.decoder).join();
         final decoded = jsonDecode(body);
@@ -467,30 +465,26 @@ class JamController extends StateNotifier<JamSnapshot> {
   }
 
   void broadcastPlay(int positionMs) => _action({
-    'action': 'play',
-    'position_ms': positionMs,
-    'client_time_ms': DateTime.now().millisecondsSinceEpoch,
-    'is_playing': true,
-  });
+        'action': 'play',
+        'position_ms': positionMs,
+        'client_time_ms': DateTime.now().millisecondsSinceEpoch,
+        'is_playing': true,
+      });
 
   void broadcastPause(int positionMs) => _action({
-    'action': 'pause',
-    'position_ms': positionMs,
-    'client_time_ms': DateTime.now().millisecondsSinceEpoch,
-    'is_playing': false,
-  });
+        'action': 'pause',
+        'position_ms': positionMs,
+        'client_time_ms': DateTime.now().millisecondsSinceEpoch,
+        'is_playing': false,
+      });
 
   void broadcastSeek(int positionMs) => _action({
-    'action': 'seek',
-    'position_ms': positionMs,
-    'client_time_ms': DateTime.now().millisecondsSinceEpoch,
-  });
+        'action': 'seek',
+        'position_ms': positionMs,
+        'client_time_ms': DateTime.now().millisecondsSinceEpoch,
+      });
 
-  void broadcastTrack(
-    JamTrack track, {
-    required int positionMs,
-    required bool isPlaying,
-  }) {
+  void broadcastTrack(JamTrack track, {required int positionMs, required bool isPlaying}) {
     _action({
       'action': 'change_track',
       'track': track.toJson(),
@@ -508,11 +502,15 @@ class JamController extends StateNotifier<JamSnapshot> {
   Future<void> _connect(void Function() onOpen, {String? code}) async {
     final generation = ++_generation;
     await _close(clear: false);
-    state = JamSnapshot(phase: JamPhase.connecting, roomCode: code ?? '');
+    state = JamSnapshot(
+      phase: JamPhase.connecting,
+      roomCode: code ?? '',
+    );
     final url = serverUrl;
     try {
-      final socket = await WebSocket.connect(url)
-          .timeout(const Duration(seconds: 12));
+      final socket = await WebSocket.connect(url).timeout(
+        const Duration(seconds: 12),
+      );
       if (generation != _generation) {
         await socket.close();
         return;
@@ -544,7 +542,10 @@ class JamController extends StateNotifier<JamSnapshot> {
       onOpen();
     } catch (error) {
       if (generation != _generation) return;
-      state = JamSnapshot(phase: JamPhase.error, error: error.toString());
+      state = JamSnapshot(
+        phase: JamPhase.error,
+        error: error.toString(),
+      );
     }
   }
 
@@ -570,14 +571,13 @@ class JamController extends StateNotifier<JamSnapshot> {
             displayName: name,
             isHost: true,
             hostId: userId,
-            roomMode: map['room_mode']?.toString() ?? jamModeCollaborative,
+            roomMode: map['room_mode']?.toString() ?? jamModeHostOnly,
             people: [JamPerson(userId: userId, name: name, isHost: true)],
           );
         case 'sync_state':
           final playback = map['playback'] is Map
-              ? (map['playback'] as Map).map(
-                  (k, v) => MapEntry(k.toString(), v),
-                )
+              ? (map['playback'] as Map)
+                  .map((k, v) => MapEntry(k.toString(), v))
               : const <String, dynamic>{};
           final trackRaw = playback['current_track'];
           final track = trackRaw is Map
@@ -595,25 +595,19 @@ class JamController extends StateNotifier<JamSnapshot> {
             isHost: map['is_host'] == true,
             hostId: map['host_id']?.toString() ?? '',
             coHostId: map['cohost_id']?.toString() ?? '',
-            permanent: map['permanent'] == true,
-            radio: map['radio'] == true,
-            stationAuto: map['station_auto'] != false,
-            roomName: map['room_name']?.toString() ?? '',
-            roomMode: map['room_mode']?.toString() ?? jamModeCollaborative,
+            roomMode: map['room_mode']?.toString() ?? jamModeHostOnly,
             people: people,
             chat: chat,
             track: track,
             isPlaying: playback['is_playing'] == true,
             queue: _tracks(playback['queue']),
           );
-          _remote.add(
-            JamRemoteFull(
-              track: track,
-              isPlaying: playback['is_playing'] == true,
-              positionMs: _int(playback['position_ms']),
-              serverTimeMs: _int(playback['server_time_ms']),
-            ),
-          );
+          _remote.add(JamRemoteFull(
+            track: track,
+            isPlaying: playback['is_playing'] == true,
+            positionMs: _int(playback['position_ms']),
+            serverTimeMs: _int(playback['server_time_ms']),
+          ));
         case 'user_joined':
           if (state.phase != JamPhase.active) return;
           final person = JamPerson(
@@ -637,14 +631,9 @@ class JamController extends StateNotifier<JamSnapshot> {
           final hostId = (map['host_id']?.toString() ?? '').isNotEmpty
               ? map['host_id'].toString()
               : (map['new_host_id']?.toString() ?? '').isNotEmpty
-              ? map['new_host_id'].toString()
-              : (map['user_id']?.toString() ?? '');
+                  ? map['new_host_id'].toString()
+                  : (map['user_id']?.toString() ?? '');
           _applyRoles(hostId, map['cohost_id']?.toString() ?? '');
-        case 'station_mode':
-          if (state.phase != JamPhase.active) return;
-          state = state.copyWith(stationAuto: map['auto'] == true);
-        case 'cooldown':
-          _startCooldown(_int(map['retry_at_ms']));
         case 'queue_updated':
           if (state.phase != JamPhase.active) return;
           state = state.copyWith(queue: _tracks(map['queue']));
@@ -658,6 +647,25 @@ class JamController extends StateNotifier<JamSnapshot> {
           state = state.copyWith(
             roomMode: map['room_mode']?.toString() ?? state.roomMode,
           );
+        case 'suggestion_received':
+          final trackRaw = map['track'];
+          final id = map['suggestion_id']?.toString() ?? '';
+          if (trackRaw is Map && id.isNotEmpty) {
+            final suggestion = JamSuggestion(
+              id: id,
+              fromUserId: map['from_user_id']?.toString() ?? '',
+              fromName: map['from_user_name']?.toString() ?? 'Listener',
+              track: JamTrack.fromJson(
+                trackRaw.map((k, v) => MapEntry(k.toString(), v)),
+              ),
+            );
+            state = state.copyWith(
+              suggestions: [
+                ...state.suggestions.where((s) => s.id != id),
+                suggestion,
+              ],
+            );
+          }
         case 'chat_message':
           final next = [...state.chat, _chatLine(map)];
           state = state.copyWith(
@@ -732,19 +740,27 @@ class JamController extends StateNotifier<JamSnapshot> {
   }
 
   void _applyPlayback(Map<String, dynamic> action) {
+    final actionName = action['action']?.toString();
     final trackRaw = action['track'];
-    final track = trackRaw is Map
+    final track = actionName == 'change_track' && trackRaw is Map
         ? JamTrack.fromJson(trackRaw.map((k, v) => MapEntry(k.toString(), v)))
         : state.track;
     final playing = action['is_playing'] == true;
-    state = state.copyWith(isPlaying: playing, track: track);
+    final queueRaw = action['queue'];
+    state = state.copyWith(
+      isPlaying: playing,
+      track: track,
+      queue: queueRaw is List ? _tracks(queueRaw) : state.queue,
+    );
     final from = action['from_user_id']?.toString();
     final position = _int(action['position_ms']);
-    switch (action['action']?.toString()) {
+    switch (actionName) {
       case 'play':
-        _remote.add(
-          JamRemotePlay(position, _int(action['server_time_ms']), from),
-        );
+        _remote.add(JamRemotePlay(
+          position,
+          _int(action['server_time_ms']),
+          from,
+        ));
       case 'pause':
         _remote.add(JamRemotePause(position, from));
       case 'seek':
@@ -816,8 +832,7 @@ class JamController extends StateNotifier<JamSnapshot> {
   }
 }
 
-final jamControllerProvider = StateNotifierProvider<JamController, JamSnapshot>(
-  (ref) {
-    return JamController(ref);
-  },
-);
+final jamControllerProvider =
+    StateNotifierProvider<JamController, JamSnapshot>((ref) {
+  return JamController(ref);
+});

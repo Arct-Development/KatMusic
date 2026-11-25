@@ -7,29 +7,29 @@ import 'package:katmusic_desktop/features/lyrics/lyrics_repository.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_snapshot.dart';
 
 LyricsResult _word(String source) => LyricsResult(
-  lines: const [
-    LyricLine(
-      timeMs: 1000,
-      durationMs: 3000,
-      text: 'Hello world',
-      transliteration: 'hello world',
-      syllables: [
-        LyricSyllable(timeMs: 1000, durationMs: 500, text: 'Hello '),
-        LyricSyllable(
-          timeMs: 1500,
-          durationMs: 500,
-          text: 'world',
-          isBackground: true,
+      lines: const [
+        LyricLine(
+          timeMs: 1000,
+          durationMs: 3000,
+          text: 'Hello world',
+          transliteration: 'hello world',
+          syllables: [
+            LyricSyllable(timeMs: 1000, durationMs: 500, text: 'Hello '),
+            LyricSyllable(
+              timeMs: 1500,
+              durationMs: 500,
+              text: 'world',
+              isBackground: true,
+            ),
+          ],
         ),
+        LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
       ],
-    ),
-    LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
-  ],
-  isSynced: true,
-  isWordSynced: true,
-  plainLyrics: 'Hello world\nSecond line',
-  source: source,
-);
+      isSynced: true,
+      isWordSynced: true,
+      plainLyrics: 'Hello world\nSecond line',
+      source: source,
+    );
 
 /// Stubbed providers, with an optional disk layer; counts provider calls.
 class _Repo extends LyricsRepository {
@@ -37,14 +37,14 @@ class _Repo extends LyricsRepository {
   int calls = 0;
 
   _Repo(this.answer, AppDatabase? db)
-    : super(
-        Dio(),
-        const Duration(milliseconds: 200),
-        const Duration(seconds: 2),
-        null,
-        db,
-      ) {
-    katGap = Duration.zero;
+      : super(
+          Dio(),
+          const Duration(milliseconds: 200),
+          const Duration(seconds: 2),
+          null,
+          db,
+        ) {
+    waveGap = Duration.zero;
   }
 
   @override
@@ -90,49 +90,35 @@ void main() {
     late AppDatabase db;
     setUp(() => db = AppDatabase.inMemory());
 
-    test(
-      'a restart finds the lyrics on disk and skips every provider',
-      () async {
-        final first = _Repo(_word('lrclib'), db);
-        final a = await first.getLyrics(
-          title: 'Song',
-          artist: 'Artist',
-          durationSeconds: 8,
-        );
-        expect(a.isEmpty, isFalse);
-        expect(first.calls, greaterThan(0));
-        expect(db.cacheStats()['lyrics']!.entries, 1);
+    test('a restart finds the lyrics on disk and skips every provider',
+        () async {
+      final first = _Repo(_word('lrclib'), db);
+      final a = await first.getLyrics(
+          title: 'Song', artist: 'Artist', durationSeconds: 8);
+      expect(a.isEmpty, isFalse);
+      expect(first.calls, greaterThan(0));
+      expect(db.cacheStats()['lyrics']!.entries, 1);
 
-        // New instance = empty memory LRU, same database.
-        final second = _Repo(null, db);
-        final b = await second.getLyrics(
-          title: 'Song',
-          artist: 'Artist',
-          durationSeconds: 8,
-        );
-        expect(second.calls, 0, reason: 'served from disk, no race');
-        expect(b.lines, hasLength(2));
-        expect(b.isWordSynced, isTrue);
-      },
-    );
+      // New instance = empty memory LRU, same database.
+      final second = _Repo(null, db);
+      final b = await second.getLyrics(
+          title: 'Song', artist: 'Artist', durationSeconds: 8);
+      expect(second.calls, 0, reason: 'served from disk, no race');
+      expect(b.lines, hasLength(2));
+      expect(b.isWordSynced, isTrue);
+    });
 
     test('without a database it behaves as before', () async {
       final repo = _Repo(_word('lrclib'), null);
       final r = await repo.getLyrics(
-        title: 'Song',
-        artist: 'Artist',
-        durationSeconds: 8,
-      );
+          title: 'Song', artist: 'Artist', durationSeconds: 8);
       expect(r.isEmpty, isFalse);
     });
 
     test('a track nobody has lyrics for is not cached', () async {
       final repo = _Repo(null, db);
       final r = await repo.getLyrics(
-        title: 'Nothing',
-        artist: 'Nobody',
-        durationSeconds: 8,
-      );
+          title: 'Nothing', artist: 'Nobody', durationSeconds: 8);
       expect(r.isEmpty, isTrue);
       expect(db.cacheStats()['lyrics'], isNull);
     });

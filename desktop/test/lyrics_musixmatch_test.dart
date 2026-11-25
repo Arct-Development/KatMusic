@@ -9,24 +9,20 @@ Dio _stubDio() {
       onRequest: (options, handler) {
         final url = options.uri.toString();
         Map<String, dynamic> envelope(dynamic body) => {
-          'message': {
-            'header': {'status_code': 200},
-            'body': body,
-          },
-        };
+              'message': {
+                'header': {'status_code': 200},
+                'body': body,
+              },
+            };
         if (url.contains('token.get')) {
-          handler.resolve(
-            Response(
+          handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
-              data: envelope({'user_token': 'tok123'}),
-            ),
-          );
+              data: envelope({'user_token': 'tok123'})));
           return;
         }
         if (url.contains('track.search')) {
-          handler.resolve(
-            Response(
+          handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
               data: envelope({
@@ -50,17 +46,14 @@ Dio _stubDio() {
                     },
                   },
                 ],
-              }),
-            ),
-          );
+              })));
           return;
         }
         if (url.contains('track.subtitle.get')) {
           // Only the right track carries a subtitle: picking the
           // same-title wrong-artist track must not yield lyrics.
           final picked = options.uri.queryParameters['track_id'];
-          handler.resolve(
-            Response(
+          handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
               data: envelope({
@@ -69,9 +62,7 @@ Dio _stubDio() {
                       ? '[{"text":"The club","time":{"total":9.73}},{"text":"So the bar","time":{"total":15.12}}]'
                       : null,
                 },
-              }),
-            ),
-          );
+              })));
           return;
         }
         handler.reject(
@@ -173,41 +164,37 @@ void main() {
         onRequest: (options, handler) {
           final url = options.uri.toString();
           Map<String, dynamic> envelope(dynamic body) => {
-            'message': {
-              'header': {'status_code': 200},
-              'body': body,
-            },
-          };
+                'message': {
+                  'header': {'status_code': 200},
+                  'body': body,
+                },
+              };
           Response<dynamic> unauthorized() => Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: {
-              'message': {
-                'header': {'status_code': 401},
-                'body': null,
-              },
-            },
-          );
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'message': {
+                  'header': {'status_code': 401},
+                  'body': null,
+                },
+              });
           if (url.contains('token.get')) {
             tokenGets++;
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: envelope({'user_token': 'tok-$tokenGets'}),
-              ),
-            );
+                data: envelope({'user_token': 'tok-$tokenGets'})));
             return;
           }
           if (url.contains('track.search')) {
             searches++;
-            searchTokens.add(options.uri.queryParameters['usertoken'] ?? '');
+            searchTokens.add(
+                options.uri.queryParameters['usertoken'] ?? '');
             if (searches == 1) {
               handler.resolve(unauthorized());
               return;
             }
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: envelope({
@@ -222,14 +209,11 @@ void main() {
                       },
                     },
                   ],
-                }),
-              ),
-            );
+                })));
             return;
           }
           if (url.contains('track.subtitle.get')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: envelope({
@@ -237,17 +221,11 @@ void main() {
                     'subtitle_body':
                         '[{"text":"The club","time":{"total":9.73}}]',
                   },
-                }),
-              ),
-            );
+                })));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );
@@ -273,8 +251,7 @@ void main() {
         onRequest: (options, handler) {
           final url = options.uri.toString();
           if (url.contains('token.get')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: {
@@ -282,15 +259,12 @@ void main() {
                     'header': {'status_code': 200},
                     'body': {'user_token': 'tok-x'},
                   },
-                },
-              ),
-            );
+                }));
             return;
           }
           if (url.contains('track.search')) {
             searches++;
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: {
@@ -298,17 +272,11 @@ void main() {
                     'header': {'status_code': 401},
                     'body': null,
                   },
-                },
-              ),
-            );
+                }));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );
@@ -332,24 +300,20 @@ void main() {
         onRequest: (options, handler) {
           final url = options.uri.toString();
           Map<String, dynamic> envelope(dynamic body) => {
-            'message': {
-              'header': {'status_code': 200},
-              'body': body,
-            },
-          };
+                'message': {
+                  'header': {'status_code': 200},
+                  'body': body,
+                },
+              };
           if (url.contains('token.get')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
-                data: envelope({'user_token': 'tok123'}),
-              ),
-            );
+                data: envelope({'user_token': 'tok123'})));
             return;
           }
           if (url.contains('track.search')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: envelope({
@@ -364,14 +328,11 @@ void main() {
                       },
                     },
                   ],
-                }),
-              ),
-            );
+                })));
             return;
           }
           if (url.contains('track.subtitle.get')) {
-            handler.resolve(
-              Response(
+            handler.resolve(Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: envelope({
@@ -379,17 +340,11 @@ void main() {
                     'subtitle_body':
                         '[{"text":"The club","time":{"total":9.73}}]',
                   },
-                }),
-              ),
-            );
+                })));
             return;
           }
-          handler.reject(
-            DioException(
-              requestOptions: options,
-              type: DioExceptionType.unknown,
-            ),
-          );
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.unknown));
         },
       ),
     );

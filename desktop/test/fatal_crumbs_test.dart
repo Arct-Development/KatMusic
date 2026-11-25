@@ -12,16 +12,11 @@ void main() {
   test('fatal crumb bounds long messages and notes the app frame', () {
     final long = List.filled(600, 'x').join();
     final stack = StackTrace.fromString(
-      '#0 main (dart:async)\n#1 playback (package:katmusic_desktop/foo.dart:1:2)',
-    );
+        '#0 main (dart:async)\n#1 playback (package:katmusic_desktop/foo.dart:1:2)');
     final line = fatalCrumb(ArgumentError(long), stack);
     expect(line.length, lessThan(700));
-    expect(
-      line.endsWith(
-        '... @ #1 playback (package:katmusic_desktop/foo.dart:1:2)',
-      ),
-      isTrue,
-    );
+    expect(line.endsWith('... @ #1 playback (package:katmusic_desktop/foo.dart:1:2)'),
+        isTrue);
   });
 
   test('fatal crumb without stack has no frame suffix', () {

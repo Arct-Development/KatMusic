@@ -17,16 +17,22 @@ import '../../core/app_info.dart';
 import '../../core/audio/stream_models.dart';
 import '../../core/diagnostics/diagnostics_log.dart';
 import '../../core/storage/prefs.dart';
+import '../../core/platform/renderer_mode.dart';
+import '../../core/l10n/app_language.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../../features/settings/app_fonts.dart';
+import '../../features/scrobblers/extra_scrobblers.dart';
 import '../../features/innertube/innertube_api.dart';
 import '../../features/innertube/yt_library_providers.dart';
 import '../../features/innertube/yt_session_keeper.dart';
-import '../../features/innertube/yt_phone_pairing.dart';
 import '../../features/innertube/yt_web_login.dart';
 import '../components/ambient.dart' show AmbientStyle, ambientStyleProvider;
 import '../components/artwork.dart';
 import '../components/select.dart';
+import '../../features/settings/ui_scale.dart';
+import '../now_playing/immersive.dart' show nowPlayingAutoHideSecondsProvider;
+import 'now_playing_style_picker.dart';
 import 'yt_profile_chooser.dart';
-import 'yt_phone_pairing_dialog.dart';
 import 'spotify_connect.dart';
 import '../../features/spotify/spotify_api.dart';
 import '../../features/spotify/spotify_auth.dart';
@@ -43,6 +49,8 @@ import '../../features/equalizer/equalizer_panel.dart';
 import '../../features/equalizer/headphone_profiles.dart';
 import '../../features/player/loudness.dart';
 import '../../features/player/playback_service.dart';
+import '../../features/smtc/smtc_service.dart';
+import '../../features/performance/performance_controller.dart';
 import '../../features/presence/discord_presence_service.dart';
 import '../../features/updates/update_service.dart';
 import '../updates/update_dialog.dart';
@@ -51,19 +59,20 @@ import 'cache_settings.dart';
 import 'diagnostics_actions.dart';
 import 'download_layout_settings.dart';
 import 'library_settings.dart';
+import 'performance_mode_card.dart';
 import 'settings_search.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
-const _waveSettingsSections = [
+const waveSettingsSections = [
   ('general', 'General', FluentIcons.settings),
+  ('integrations', 'Integrations', FluentIcons.link),
   ('playback', 'Playback', FluentIcons.play),
   ('audio', 'Audio', FluentIcons.speakers),
   ('downloads', 'Downloads', FluentIcons.download),
-  ('library', 'Library', KatIcons.library),
+  ('library', 'Library', WaveIcons.library),
   ('lyrics', 'Lyrics', FluentIcons.microphone),
   ('appearance', 'Appearance', FluentIcons.brush),
-  ('lastfm', 'Last.fm', KatIcons.liked),
-  ('integrations', 'Integrations', FluentIcons.link),
+  ('lastfm', 'Scrobbler', WaveIcons.liked),
   ('experimental', 'Experimental', FluentIcons.bug),
   ('about', 'About', FluentIcons.info),
 ];
@@ -71,19 +80,89 @@ const _waveSettingsSections = [
 /// Fluent settings: left nav list + right form.
 ///
 /// Reuses theme_controller + prefs logic; presentation is Fluent
-/// (ToggleSwitch, Slider, KatSelect, ContentDialog) — no old ledger
+/// (ToggleSwitch, Slider, WaveSelect, ContentDialog) — no old ledger
 /// switches or boxed groups.
-class KatSettingsPage extends ConsumerStatefulWidget {
+class WaveSettingsPage extends ConsumerStatefulWidget {
   /// Deep-link into a section rail entry (e.g. 'lastfm' from the
   /// profile empty state). Falls back to 'general' when unknown.
   final String? initialSection;
-  const KatSettingsPage({super.key, this.initialSection});
+  const WaveSettingsPage({super.key, this.initialSection});
 
   @override
-  ConsumerState<KatSettingsPage> createState() => _KatSettingsPageState();
+  ConsumerState<WaveSettingsPage> createState() => _WaveSettingsPageState();
 }
 
-class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
+String _sectionTitle(BuildContext context, String key, String fallback) {
+  final l10n = context.l10n;
+  return switch (key) {
+    'general' => l10n.settingsGeneral,
+    'playback' => l10n.settingsPlayback,
+    'audio' => l10n.settingsAudio,
+    'downloads' => l10n.settingsDownloads,
+    'library' => l10n.settingsLibrary,
+    'lyrics' => l10n.settingsLyrics,
+    'appearance' => l10n.settingsAppearance,
+    'lastfm' => l10n.settingsScrobbler,
+    'integrations' => l10n.settingsIntegrations,
+    'experimental' => l10n.settingsExperimental,
+    'about' => l10n.settingsAbout,
+    _ => fallback,
+  };
+}
+
+Future<void> _confirmDisablePerformanceMode(
+  BuildContext context,
+  WidgetRef ref,
+  String featureName,
+  VoidCallback onEnable,
+) async {
+  final l10n = context.l10n;
+  await showDialog<bool>(
+    context: context,
+    builder: (ctx) => ContentDialog(
+      constraints: const BoxConstraints(minWidth: 420, maxWidth: 460),
+      title: Text(
+        l10n.performanceModeConflictTitle,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      content: Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 12),
+        child: Text(
+          'Enabling "$featureName" requires background GPU shaders and animations. This will turn off Performance Mode to apply your change.',
+          style: const TextStyle(fontSize: 13, height: 1.4),
+        ),
+      ),
+      actions: [
+        Button(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            child: Text(
+              l10n.performanceModeConflictCancel,
+              maxLines: 1,
+            ),
+          ),
+        ),
+        FilledButton(
+          onPressed: () {
+            ref.read(performanceModeProvider.notifier).setPerformanceMode(false);
+            onEnable();
+            Navigator.pop(ctx, true);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            child: Text(
+              l10n.performanceModeConflictConfirm,
+              maxLines: 1,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WaveSettingsPageState extends ConsumerState<WaveSettingsPage> {
   late String _section;
   String? _highlightId;
   Timer? _highlightTimer;
@@ -99,7 +178,7 @@ class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
     _railScrollController = ScrollController();
     final initial = widget.initialSection;
     _section =
-        initial != null && _waveSettingsSections.any((s) => s.$1 == initial)
+        initial != null && waveSettingsSections.any((s) => s.$1 == initial)
         ? initial
         : 'general';
   }
@@ -181,23 +260,23 @@ class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
             child: ListView(
               controller: _narrowScrollController,
               physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: waveDockPadding(context, const EdgeInsets.fromLTRB(16, 16, 16, 24)),
               children: [
                 Text(
                   'SYSTEM',
-                  style: KatType.overline.copyWith(color: katAccent(context)),
+                  style: WaveType.overline.copyWith(color: waveAccent(context)),
                 ),
-                const Text('Settings', style: KatType.pageTitle),
+                const Text('Settings', style: WaveType.pageTitle),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    for (final s in _waveSettingsSections)
+                    for (final s in waveSettingsSections)
                       ToggleButton(
                         checked: _section == s.$1,
                         onChanged: (_) => setState(() => _section = s.$1),
-                        child: Text(s.$2),
+                        child: Text(_sectionTitle(context, s.$1, s.$2)),
                       ),
                   ],
                 ),
@@ -223,27 +302,27 @@ class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
                 child: SingleChildScrollView(
                   controller: _railScrollController,
                   physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 12, 20),
+                  padding: waveDockPadding(context, const EdgeInsets.fromLTRB(24, 20, 12, 20)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         'SYSTEM',
-                        style: KatType.overline.copyWith(
-                          color: katAccent(context),
+                        style: WaveType.overline.copyWith(
+                          color: waveAccent(context),
                         ),
                       ),
-                      const Text('Settings', style: KatType.pageTitle),
+                      Text(context.l10n.navSettings, style: WaveType.pageTitle),
                       const SizedBox(height: 12),
-                      for (final s in _waveSettingsSections)
+                      for (final s in waveSettingsSections)
                         ListTile.selectable(
                           shape: RoundedRectangleBorder(
-                            borderRadius: KatRadius.controlsRadius,
+                            borderRadius: WaveRadius.controlsRadius,
                           ),
                           selected: _section == s.$1,
                           selectionMode: ListTileSelectionMode.single,
                           leading: Icon(s.$3, size: 15),
-                          title: Text(s.$2),
+                          title: Text(_sectionTitle(context, s.$1, s.$2)),
                           onPressed: () => setState(() => _section = s.$1),
                         ),
                     ],
@@ -251,7 +330,7 @@ class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
                 ),
               ),
             ),
-            Container(width: 1, color: katDivider(context)),
+            Container(width: 1, color: waveDivider(context)),
             Expanded(
               child: Scrollbar(
                 controller: _contentScrollController,
@@ -259,7 +338,7 @@ class _KatSettingsPageState extends ConsumerState<KatSettingsPage> {
                 child: ListView(
                   controller: _contentScrollController,
                   physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                  padding: waveDockPadding(context, const EdgeInsets.fromLTRB(24, 20, 24, 24)),
                   children: [
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 640),
@@ -332,11 +411,11 @@ class _SectionSwap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSize(
-      duration: katMotion(context, KatMotion.normal),
+      duration: waveMotion(context, WaveMotion.normal),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topLeft,
       child: AnimatedSwitcher(
-        duration: katMotion(context, KatMotion.fast),
+        duration: waveMotion(context, WaveMotion.fast),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeOutCubic,
         layoutBuilder: (currentChild, previousChildren) {
@@ -380,7 +459,7 @@ class _AccentPreview extends StatelessWidget {
         '#${argb.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
     final text = switch (resolution.source) {
       AccentSource.custom => 'Custom colour · $hex',
-      AccentSource.katmusic => 'KatMusic Blue · $hex',
+      AccentSource.katmusic => 'KatMusic blue · $hex',
       AccentSource.system =>
         resolution.resolved
             ? 'Desktop accent · $hex'
@@ -397,15 +476,15 @@ class _AccentPreview extends StatelessWidget {
           height: 14,
           decoration: BoxDecoration(
             color: resolution.color,
-            borderRadius: BorderRadius.circular(KatRadius.tiny),
-            border: Border.all(color: katDivider(context)),
+            borderRadius: BorderRadius.circular(WaveRadius.tiny),
+            border: Border.all(color: waveDivider(context)),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
         ),
       ],
@@ -445,17 +524,19 @@ class _Group extends StatelessWidget {
             color: theme.resources.cardBackgroundFillColorDefault,
             border: Border.all(color: stroke),
             borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(KatRadius.floating),
+              top: Radius.circular(WaveRadius.floating),
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: KatType.sectionTitle),
+              Text(title, style: WaveType.sectionTitle),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
             ],
           ),
@@ -471,7 +552,7 @@ class _Group extends StatelessWidget {
               bottom: BorderSide(color: stroke),
             ),
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(KatRadius.floating),
+              bottom: Radius.circular(WaveRadius.floating),
             ),
           ),
           child: child,
@@ -509,7 +590,7 @@ class _Account extends ConsumerWidget {
                       signedIn
                           ? auth.username
                           : (guest ? 'Guest mode' : 'Not connected'),
-                      style: KatType.trackTitle,
+                      style: WaveType.trackTitle,
                     ),
                     Text(
                       signedIn
@@ -517,13 +598,13 @@ class _Account extends ConsumerWidget {
                           : (guest
                                 ? 'Last.fm disabled — save keys below, then connect'
                                 : 'Connect to scrobble and personalize'),
-                      style: KatType.meta,
+                      style: WaveType.meta,
                     ),
                   ],
                 ),
               ),
               signedIn
-                  ? KatButton(
+                  ? WaveButton(
                       onPressed: () => signOutEverywhere(ref),
                       child: const Text('Sign out'),
                     )
@@ -534,6 +615,8 @@ class _Account extends ConsumerWidget {
             const SizedBox(height: 10),
             const _InShellConnect(),
           ],
+          const SizedBox(height: 20),
+          const _ApiKeys(),
         ],
       ),
     );
@@ -612,10 +695,10 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_error != null) ...[
-          Text(_error!, style: KatType.meta.copyWith(color: Colors.red)),
+          Text(_error!, style: WaveType.meta.copyWith(color: Colors.red)),
           const SizedBox(height: 8),
         ],
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: _busy || !configured ? null : _begin,
           child: _busy && _handshake == null
               ? const Row(
@@ -641,12 +724,12 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
           const SizedBox(height: 6),
           Text(
             'Save your API keys below first.',
-            style: KatType.meta.copyWith(color: katTextTertiary(context)),
+            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
           ),
         ],
         if (_handshake != null) ...[
           const SizedBox(height: 8),
-          KatButton(
+          WaveButton(
             onPressed: _busy ? null : _finish,
             child: _busy
                 ? const Row(
@@ -692,26 +775,19 @@ class _Audio extends ConsumerWidget {
         _Group(
           id: 'audio.quality',
           title: 'Streaming and Download quality',
-          subtitle: 'Lossless-first with YouTube fallback',
+          subtitle: 'YouTube audio quality',
           child: Column(
             children: [
               _QualityRow(
                 title: 'Streaming quality',
-                value: prefs.losslessQuality,
-                onChanged: (q) => onUpdate((p) => p.setLosslessQuality(q)),
+                value: prefs.streamQuality,
+                onChanged: (q) => onUpdate((p) => p.setStreamQuality(q)),
               ),
               const SizedBox(height: 8),
               _QualityRow(
                 title: 'Download quality',
                 value: prefs.downloadQuality,
                 onChanged: (q) => onUpdate((p) => p.setDownloadQuality(q)),
-              ),
-              const SizedBox(height: 8),
-              _SwitchRow(
-                value: prefs.preferLossless,
-                onChanged: (v) => onUpdate((p) => p.setPreferLossless(v)),
-                title: 'Prefer lossless',
-                subtitle: 'Try lossless first, fall back to Opus',
               ),
             ],
           ),
@@ -724,14 +800,14 @@ class _Audio extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Normalization', style: KatType.trackTitle),
+              const Text('Normalization', style: WaveType.trackTitle),
               const SizedBox(height: 6),
-              KatSelect<String>(
+              WaveSelect<String>(
                 value: prefs.loudnessMode,
                 options: const [
-                  KatSelectOption(value: 'off', label: 'Off'),
-                  KatSelectOption(value: 'track', label: 'Track'),
-                  KatSelectOption(value: 'album', label: 'Album'),
+                  WaveSelectOption(value: 'off', label: 'Off'),
+                  WaveSelectOption(value: 'track', label: 'Track'),
+                  WaveSelectOption(value: 'album', label: 'Album'),
                 ],
                 onChanged: (mode) async {
                   await onUpdate((p) => p.setLoudnessMode(mode));
@@ -748,12 +824,12 @@ class _Audio extends ConsumerWidget {
           id: 'audio.headphones',
           title: 'Headphone correction',
           subtitle: 'A built-in curve for a few common headphones',
-          child: KatSelect<String>(
+          child: WaveSelect<String>(
             expanded: true,
             value: HeadphoneProfiles.byId(prefs.headphoneProfile).id,
             options: [
               for (final profile in HeadphoneProfiles.all)
-                KatSelectOption(
+                WaveSelectOption(
                   value: profile.id,
                   label: profile.name,
                   hint: profile.isOff ? null : profile.description,
@@ -776,7 +852,7 @@ class _Audio extends ConsumerWidget {
           subtitle: '10-band ISO curves with acoustic & stage compensation',
           child: const SizedBox(
             height: 560,
-            child: KatEqualizerPanel(embedded: true),
+            child: WaveEqualizerPanel(embedded: true),
           ),
         ),
       ],
@@ -803,12 +879,17 @@ class _Appearance extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(prefsProvider);
     final theme = ref.watch(themeControllerProvider);
+    final isPerfOn = ref.watch(performanceModeProvider);
+    final l10n = context.l10n;
+    // Each font's name drawn in its own typeface in the picker.
+    final previews =
+        ref.watch(appFontPreviewsProvider).valueOrNull ?? const {};
     return Column(
       children: [
         _Group(
           id: 'appearance.theme',
           title: 'Theme',
-          subtitle: 'Midnight, Pearl, or your own colours',
+          subtitle: 'Midnight, Pearl, artwork, or your own colours',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -817,6 +898,7 @@ class _Appearance extends ConsumerWidget {
                   for (final (mode, label) in const [
                     ('dark', 'Midnight'),
                     ('light', 'Pearl'),
+                    ('artwork', 'Artwork'),
                     ('custom', 'Custom'),
                   ]) ...[
                     if (mode != 'dark') const SizedBox(width: 8),
@@ -825,7 +907,11 @@ class _Appearance extends ConsumerWidget {
                         checked: switch (mode) {
                           'light' => theme.isLight,
                           'custom' => theme.isCustom,
-                          _ => !theme.isLight && !theme.isCustom,
+                          'artwork' => theme.isArtwork,
+                          _ =>
+                            !theme.isLight &&
+                                !theme.isCustom &&
+                                !theme.isArtwork,
                         },
                         onChanged: (_) => ref
                             .read(themeControllerProvider.notifier)
@@ -836,18 +922,48 @@ class _Appearance extends ConsumerWidget {
                   ],
                 ],
               ),
+              const SizedBox(height: 12),
+              _SwitchRow(
+                value: isPerfOn ? false : theme.glass,
+                enabled: !isPerfOn,
+                badgeText: isPerfOn ? l10n.performanceModeManagedTag : null,
+                onDisabledTap: isPerfOn
+                    ? () => _confirmDisablePerformanceMode(
+                          context,
+                          ref,
+                          'Glassmorphism',
+                          () => onUpdate((p) => p.setGlassmorphism(true)),
+                        )
+                    : null,
+                onChanged: (v) => onUpdate((p) => p.setGlassmorphism(v)),
+                title: 'Glassmorphism',
+                subtitle: isPerfOn
+                    ? 'Frosted glass is paused by Performance Mode to reduce GPU blur.'
+                    : 'The whole app as frosted glass over the playing '
+                        'artwork · works with every theme',
+              ),
               if (theme.isCustom) ...[
                 const SizedBox(height: 12),
                 _CustomThemeEditor(base: theme.customBase),
               ],
+              if (theme.isArtwork) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Surfaces take their colour from the song that is playing '
+                  'and blend as tracks change. Midnight while nothing plays.',
+                  style: WaveType.meta.copyWith(
+                    color: waveTextTertiary(context),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
-              const Text('Accent source', style: KatType.trackTitle),
+              const Text('Accent source', style: WaveType.trackTitle),
               const SizedBox(height: 6),
-              KatSelect<AccentSource>(
+              WaveSelect<AccentSource>(
                 value: AccentSource.fromId(theme.accentSource),
                 options: [
                   for (final source in AccentSource.values)
-                    KatSelectOption(value: source, label: source.label),
+                    WaveSelectOption(value: source, label: source.label),
                 ],
                 onChanged: (v) {
                   // Re-probe the desktop accent on every re-selection: the
@@ -861,7 +977,7 @@ class _Appearance extends ConsumerWidget {
               const SizedBox(height: 8),
               _AccentPreview(resolution: ref.watch(accentResolutionProvider)),
               const SizedBox(height: 10),
-              const Text('Accent colour', style: KatType.trackTitle),
+              const Text('Accent colour', style: WaveType.trackTitle),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -886,8 +1002,8 @@ class _Appearance extends ConsumerWidget {
                             color: c,
                             border: Border.all(
                               color: theme.accent.toARGB32() == c.toARGB32()
-                                  ? katAccent(context)
-                                  : katDivider(context),
+                                  ? waveAccent(context)
+                                  : waveDivider(context),
                               width: 2,
                             ),
                           ),
@@ -922,22 +1038,34 @@ class _Appearance extends ConsumerWidget {
         _Group(
           id: 'appearance.haze',
           title: 'Haze material',
-          subtitle:
-              'Automatic uses Haze L1–L3 as designed · Solid disables blur',
+          subtitle: isPerfOn
+              ? 'Solid mode active · Managed by Performance Mode'
+              : 'Automatic uses Haze L1–L3 as designed · Solid disables blur',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              KatSelect<String>(
-                value: theme.hazeMaterial,
+              WaveSelect<String>(
+                value: isPerfOn ? 'solid' : theme.hazeMaterial,
                 options: const [
-                  KatSelectOption(value: 'automatic', label: 'Automatic'),
-                  KatSelectOption(value: 'haze', label: 'Haze'),
-                  KatSelectOption(value: 'solid', label: 'Solid'),
+                  WaveSelectOption(value: 'automatic', label: 'Automatic'),
+                  WaveSelectOption(value: 'haze', label: 'Haze'),
+                  WaveSelectOption(value: 'solid', label: 'Solid'),
                 ],
-                onChanged: (v) => onUpdate((p) => p.setHazeMaterial(v)),
+                onChanged: isPerfOn
+                    ? (v) {
+                        if (v != 'solid') {
+                          _confirmDisablePerformanceMode(
+                            context,
+                            ref,
+                            'Haze glass effects',
+                            () => onUpdate((p) => p.setHazeMaterial(v)),
+                          );
+                        }
+                      }
+                    : (v) => onUpdate((p) => p.setHazeMaterial(v)),
               ),
               const SizedBox(height: 10),
-              const Text('Haze intensity', style: KatType.trackTitle),
+              const Text('Haze intensity', style: WaveType.trackTitle),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -946,8 +1074,14 @@ class _Appearance extends ConsumerWidget {
                       padding: const EdgeInsets.only(right: 6),
                       child: ToggleButton(
                         checked: theme.hazeIntensity == opt,
-                        onChanged: (_) =>
-                            onUpdate((p) => p.setHazeIntensity(opt)),
+                        onChanged: isPerfOn
+                            ? (_) => _confirmDisablePerformanceMode(
+                                  context,
+                                  ref,
+                                  'Haze intensity',
+                                  () => onUpdate((p) => p.setHazeIntensity(opt)),
+                                )
+                            : (_) => onUpdate((p) => p.setHazeIntensity(opt)),
                         child: Text(
                           '${opt[0].toUpperCase()}${opt.substring(1)}',
                         ),
@@ -955,6 +1089,37 @@ class _Appearance extends ConsumerWidget {
                     ),
                 ],
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        const _Group(
+          id: 'appearance.now_playing_style',
+          title: 'Now Playing style',
+          subtitle: 'Layout and presentation for the player screen',
+          child: NowPlayingStylePicker(),
+        ),
+        const SizedBox(height: 8),
+        _Group(
+          id: 'appearance.now_playing_autohide',
+          title: 'Auto-hide Now Playing controls',
+          subtitle: 'Fade out the top buttons after mouse inactivity',
+          child: Row(
+            children: [
+              for (final seconds in Prefs.nowPlayingAutoHideOptions) ...[
+                if (seconds != Prefs.nowPlayingAutoHideOptions.first)
+                  const SizedBox(width: 8),
+                Expanded(
+                  child: ToggleButton(
+                    checked:
+                        ref.watch(nowPlayingAutoHideSecondsProvider) == seconds,
+                    onChanged: (_) => ref
+                        .read(nowPlayingAutoHideSecondsProvider.notifier)
+                        .set(seconds),
+                    child: Text(seconds == 0 ? 'Off' : '$seconds sec'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -989,12 +1154,60 @@ class _Appearance extends ConsumerWidget {
                           'white text. Looks the same in every theme.'
                     : 'A calm tone from the artwork that follows your '
                           'theme (light in Pearl).',
-                style: KatType.meta.copyWith(color: katTextTertiary(context)),
+                style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
               ),
             ],
           ),
         ),
         const SizedBox(height: 8),
+        _Group(
+          id: 'appearance.font',
+          title: 'Font',
+          subtitle: 'The typeface used across the app',
+          child: _BehaviourSelectRow(
+            title: 'App font',
+            subtitle: appFonts.firstWhere((f) => f.id == theme.font,
+                        orElse: () => appFonts.first).web
+                ? 'Downloaded once, then works offline.'
+                : 'Installed with Windows.',
+            value: appFonts.any((f) => f.id == theme.font) ? theme.font : '',
+            options: [
+              for (final f in appFonts)
+                WaveSelectOption(
+                  value: f.id,
+                  label: f.label,
+                  fontFamily: previews[f.id],
+                ),
+            ],
+            onChanged: (v) => onUpdate((p) => p.setAppFont(v)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _Group(
+          id: 'appearance.scale',
+          title: 'Interface scale',
+          subtitle: 'Adjust app zoom for display resolution or preference (${Platform.isMacOS ? 'Cmd' : 'Ctrl'} +/-)',
+          child: _BehaviourSelectRow(
+            title: 'Zoom level',
+            subtitle: 'Shortcuts: ${Platform.isMacOS ? 'Cmd' : 'Ctrl'} + to zoom in, ${Platform.isMacOS ? 'Cmd' : 'Ctrl'} - to zoom out, ${Platform.isMacOS ? 'Cmd' : 'Ctrl'} 0 to reset.',
+            value: ref.watch(uiScaleProvider).toStringAsFixed(2),
+            options: [
+              for (final val in UiScalePresets.values)
+                WaveSelectOption<String>(
+                  value: val.toStringAsFixed(2),
+                  label: UiScalePresets.label(val),
+                  hint: (val - 1.0).abs() < 0.001 ? 'Default' : '${(val * 100).round()}%',
+                ),
+            ],
+            onChanged: (v) {
+              final parsed = double.tryParse(v);
+              if (parsed != null) {
+                ref.read(uiScaleProvider.notifier).setScale(parsed);
+              }
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
         _Group(
           id: 'appearance.surfaces',
           title: 'Surfaces',
@@ -1003,7 +1216,7 @@ class _Appearance extends ConsumerWidget {
             children: [
               _SwitchRow(
                 value: prefs.amoled,
-                enabled: !theme.isLight && !theme.isCustom,
+                enabled: !theme.isLight && !theme.isCustom && !theme.isArtwork,
                 onChanged: (v) => onUpdate((p) => p.setAmoled(v)),
                 title: 'AMOLED black',
                 subtitle: 'Pure-black surfaces · Midnight only',
@@ -1032,19 +1245,19 @@ class _CustomThemeEditor extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(themeControllerProvider.notifier);
     final argb = base.toARGB32();
-    final isPreset = KatSurfaces.customPresets.any(
+    final isPreset = WaveSurfaces.customPresets.any(
       (p) => p.$2.toARGB32() == argb,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Base colour', style: KatType.trackTitle),
+        const Text('Base colour', style: WaveType.trackTitle),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (name, color) in KatSurfaces.customPresets)
+            for (final (name, color) in WaveSurfaces.customPresets)
               _ColorSwatchButton(
                 color: color,
                 selected: color.toARGB32() == argb,
@@ -1062,14 +1275,14 @@ class _CustomThemeEditor extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         _ThemePreview(
-          surfaces: KatSurfaces.fromCustomBase(base),
-          light: KatSurfaces.isLightBase(base),
+          surfaces: WaveSurfaces.fromCustomBase(base),
+          light: WaveSurfaces.isLightBase(base),
         ),
         const SizedBox(height: 6),
         Text(
           'Dark colours give light text, light colours give dark text. '
           'Very bright or vivid picks are toned down so text stays readable.',
-          style: KatType.meta.copyWith(color: katTextTertiary(context)),
+          style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
         ),
       ],
     );
@@ -1095,7 +1308,7 @@ class _ColorSwatchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatTooltip(
+    return LWTooltip(
       message: tooltip,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -1108,7 +1321,7 @@ class _ColorSwatchButton extends StatelessWidget {
               shape: BoxShape.circle,
               color: color,
               border: Border.all(
-                color: selected ? katAccent(context) : katDivider(context),
+                color: selected ? waveAccent(context) : waveDivider(context),
                 width: 2,
               ),
             ),
@@ -1148,7 +1361,7 @@ class _PickColorSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ColorSwatchButton(
-      color: selected ? current : katSurfaceOverlay(context),
+      color: selected ? current : waveSurfaceOverlay(context),
       selected: selected,
       tooltip: tooltip,
       onTap: () async {
@@ -1161,7 +1374,7 @@ class _PickColorSwatch extends StatelessWidget {
       },
       child: selected
           ? null
-          : Icon(KatIcons.theme, size: 14, color: katTextSecondary(context)),
+          : Icon(WaveIcons.theme, size: 14, color: waveTextSecondary(context)),
     );
   }
 }
@@ -1210,17 +1423,17 @@ Future<Color?> showWaveColorPicker(
 /// Miniature of the generated theme: rail, page, card, raised and hover
 /// tiles, dock, with real text tokens on top.
 class _ThemePreview extends StatelessWidget {
-  final KatSurfaces surfaces;
+  final WaveSurfaces surfaces;
   final bool light;
   const _ThemePreview({required this.surfaces, required this.light});
 
   @override
   Widget build(BuildContext context) {
-    final text = light ? KatColors.lightTextPrimary : KatColors.textPrimary;
+    final text = light ? WaveColors.lightTextPrimary : WaveColors.textPrimary;
     final text2 = light
-        ? KatColors.lightTextSecondary
-        : KatColors.textSecondary;
-    final accent = katAccent(context);
+        ? WaveColors.lightTextSecondary
+        : WaveColors.textSecondary;
+    final accent = waveAccent(context);
     Widget tile(Color fill, String label) => Expanded(
       child: Container(
         height: 28,
@@ -1228,24 +1441,24 @@ class _ThemePreview extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: KatRadius.controlsRadius,
+          borderRadius: WaveRadius.controlsRadius,
         ),
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: KatType.meta.copyWith(color: text2),
+          style: WaveType.meta.copyWith(color: text2),
         ),
       ),
     );
     return ClipRRect(
-      borderRadius: KatRadius.artworkRadius,
+      borderRadius: WaveRadius.artworkRadius,
       child: Container(
         height: 132,
         decoration: BoxDecoration(
           color: surfaces.background,
           border: Border.all(color: surfaces.outlineSoft),
-          borderRadius: KatRadius.artworkRadius,
+          borderRadius: WaveRadius.artworkRadius,
         ),
         child: Column(
           children: [
@@ -1264,11 +1477,11 @@ class _ThemePreview extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        Icon(KatIcons.home, size: 14, color: accent),
+                        Icon(WaveIcons.home, size: 14, color: accent),
                         const SizedBox(height: 12),
-                        Icon(KatIcons.search, size: 14, color: text2),
+                        Icon(WaveIcons.search, size: 14, color: text2),
                         const SizedBox(height: 12),
-                        Icon(KatIcons.liked, size: 14, color: text2),
+                        Icon(WaveIcons.liked, size: 14, color: text2),
                       ],
                     ),
                   ),
@@ -1280,14 +1493,14 @@ class _ThemePreview extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: surfaces.surface,
                           border: Border.all(color: surfaces.outlineSoft),
-                          borderRadius: KatRadius.controlsRadius,
+                          borderRadius: WaveRadius.controlsRadius,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Now playing',
-                              style: KatType.trackTitle.copyWith(color: text),
+                              style: WaveType.trackTitle.copyWith(color: text),
                             ),
                             const Spacer(),
                             Row(
@@ -1328,7 +1541,7 @@ class _ThemePreview extends StatelessWidget {
                       height: 3,
                       decoration: BoxDecoration(
                         color: text2.withValues(alpha: 0.35),
-                        borderRadius: KatRadius.tinyRadius,
+                        borderRadius: WaveRadius.tinyRadius,
                       ),
                     ),
                   ),
@@ -1349,38 +1562,100 @@ class _Lyrics extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(prefsProvider);
-    return _Group(
-      id: 'lyrics.timing',
-      title: 'Timing',
-      subtitle: 'Synced lyrics providers',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SwitchRow(
-            value: prefs.wordByWord,
-            onChanged: (v) => onUpdate((p) => p.setWordByWord(v)),
-            title: 'Word-by-word lyrics',
-            subtitle:
-                'Karaoke word highlight. Off uses Apple Music line lyrics.',
-          ),
-          const SizedBox(height: 10),
-          const Text('Primary provider', style: KatType.trackTitle),
-          const SizedBox(height: 6),
-          KatSelect<String>(
-            value: LyricsProviderId.fromId(prefs.lyricsProviderId).id,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Group(
+          id: 'lyrics.animation',
+          title: 'Lyrics animation',
+          subtitle:
+              'Synced lyrics style · Studio/Aesthetic ports by LyricalStudio + theaestheticslyrics (MIT)',
+          child: _BehaviourSelectRow(
+            title: 'Animation style',
+            subtitle: switch (prefs.lyricsAnimation) {
+              'glow_pulse' =>
+                'Rich centered radial glow bloom with steady alignment',
+              'karaoke_bounce' => 'Energetic rhythmic syllable bounce',
+              'kinetic_pop' =>
+                'Ultra-bold punchy type with spring-popping syllables',
+              'neon_cyber' =>
+                'Accent-lit cyberpunk neon glow with forward kinetic slant',
+              'italic_wave' =>
+                'Expressive luxury italic type rippling like a liquid wave',
+              'glitch_snap' =>
+                'RGB chromatic split with crisp digital snap-in pulses',
+              'elastic_tilt' =>
+                '3D perspective stage lean with elastic overshoot motion',
+              'lyrical_studio' =>
+                'Auto kinetic typography: Stack, Slide, Zoom, Letters, Scatter, Flow and Graph',
+              'lyrical_studio_stack' =>
+                'Words stack into big rows and slide up as they are sung',
+              'lyrical_studio_slide' =>
+                'Huge staggered rows sweep in from alternating edges',
+              'lyrical_studio_zoom' =>
+                'Words fly in from huge and blurred, settling into centered rows',
+              'lyrical_studio_letters' =>
+                'Every letter flips in on its own like a split-flap board',
+              'lyrical_studio_scatter' =>
+                'A collage of different sizes, offsets and vertical words',
+              'lyrical_studio_flow' =>
+                'The whole line stays visible and lights up word by word',
+              'lyrical_studio_graph' =>
+                'A lyric tree: words joined by curves, leaves hanging below',
+              'aesthetic_ship' =>
+                'A drifting 3D word wall with the sung word popping forward',
+              'aesthetic_fisheye' =>
+                'A convex word stack focused on the word nearest the glass',
+              'aesthetic_fisheye_visual' =>
+                'Fisheye word stack with a matching icon on the sung word',
+              'aesthetic_visual' =>
+                'One large word at a time with a matching icon',
+              'smooth_fade' => 'Minimalist clean highlight without motion',
+              _ => 'Smooth fluid syllable wipe with gentle micro-float',
+            },
+            value: prefs.lyricsAnimation,
             options: [
-              for (final provider in LyricsProviderId.values)
-                KatSelectOption(value: provider.id, label: provider.title),
+              for (final entry in Prefs.lyricsAnimationOptions.entries)
+                WaveSelectOption(value: entry.key, label: entry.value),
             ],
-            onChanged: (v) => onUpdate((p) => p.setLyricsProviderId(v)),
+            onChanged: (v) => onUpdate((p) => p.setLyricsAnimation(v)),
           ),
-          const SizedBox(height: 4),
-          Text(
-            LyricsProviderId.fromId(prefs.lyricsProviderId).subtitle,
-            style: KatType.meta,
+        ),
+        const SizedBox(height: 8),
+        _Group(
+          id: 'lyrics.timing',
+          title: 'Timing',
+          subtitle: 'Synced lyrics providers',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SwitchRow(
+                value: prefs.wordByWord,
+                onChanged: (v) => onUpdate((p) => p.setWordByWord(v)),
+                title: 'Word-by-word lyrics',
+                subtitle:
+                    'Karaoke word highlight. Off uses Apple Music line lyrics.',
+              ),
+              const SizedBox(height: 10),
+              const Text('Primary provider', style: WaveType.trackTitle),
+              const SizedBox(height: 6),
+              WaveSelect<String>(
+                value: LyricsProviderId.fromId(prefs.lyricsProviderId).id,
+                options: [
+                  for (final provider in LyricsProviderId.values)
+                    WaveSelectOption(value: provider.id, label: provider.title),
+                ],
+                onChanged: (v) => onUpdate((p) => p.setLyricsProviderId(v)),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                LyricsProviderId.fromId(prefs.lyricsProviderId).subtitle,
+                style: WaveType.meta,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1404,8 +1679,8 @@ class _ScrobblerState extends ConsumerState<_Scrobbler> {
         .toDouble();
     return _Group(
       id: 'lastfm.scrobbling',
-      title: 'Last.fm scrobbling',
-      subtitle: 'Thresholds mirror Last.fm rules',
+      title: 'Scrobbler rules',
+      subtitle: 'Thresholds apply across all connected scrobblers',
       child: Column(
         children: [
           _SwitchRow(
@@ -1413,7 +1688,7 @@ class _ScrobblerState extends ConsumerState<_Scrobbler> {
             onChanged: (v) =>
                 widget.onUpdate((p) => p.setScrobbler(enabled: v)),
             title: 'Enable scrobbling',
-            subtitle: 'Requires a write-capable session',
+            subtitle: 'Send played tracks to connected scrobbler accounts',
           ),
           _SwitchRow(
             value: prefs.scrobbleNowPlaying,
@@ -1428,7 +1703,7 @@ class _ScrobblerState extends ConsumerState<_Scrobbler> {
                 Expanded(
                   child: Text(
                     'Scrobble at ${percent.round()}% of track',
-                    style: KatType.trackTitle,
+                    style: WaveType.trackTitle,
                   ),
                 ),
                 SizedBox(
@@ -1465,6 +1740,8 @@ class _SpotifyCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(spotifyAuthProvider);
     final prefs = ref.watch(prefsProvider);
+    final isPerfOn = ref.watch(performanceModeProvider);
+    final l10n = context.l10n;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1476,11 +1753,11 @@ class _SpotifyCard extends ConsumerWidget {
             Expanded(
               child: Text(
                 auth.connected ? 'Connected' : 'Not connected',
-                style: KatType.trackTitle,
+                style: WaveType.trackTitle,
               ),
             ),
             if (auth.connected)
-              KatButton(
+              WaveButton(
                 onPressed: () async {
                   await auth.disconnect();
                   ref.invalidate(spotifyPlaylistsProvider);
@@ -1488,7 +1765,7 @@ class _SpotifyCard extends ConsumerWidget {
                 child: const Text('Disconnect'),
               )
             else ...[
-              KatFilledButton(
+              WaveFilledButton(
                 onPressed: () => spotifyConnectWithCookie(context, ref),
                 child: const Text('Login with cookies'),
               ),
@@ -1497,12 +1774,50 @@ class _SpotifyCard extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         _SwitchRow(
-          value: prefs.spotifyCanvasEnabled,
+          value: isPerfOn ? false : prefs.spotifyCanvasEnabled,
+          enabled: !isPerfOn,
+          badgeText: isPerfOn ? l10n.performanceModeManagedTag : null,
+          onDisabledTap: isPerfOn
+              ? () => _confirmDisablePerformanceMode(
+                    context,
+                    ref,
+                    'Spotify Canvas',
+                    () => onUpdate((p) => p.setSpotifyCanvasEnabled(true)),
+                  )
+              : null,
           onChanged: (v) => onUpdate((p) => p.setSpotifyCanvasEnabled(v)),
           title: 'Spotify Canvas',
+          subtitle: isPerfOn
+              ? 'Video canvas is paused by Performance Mode to save CPU usage.'
+              : 'Use Spotify\'s vertical looping video in Full Bleed '
+                  '(needs a connected account)',
+        ),
+        const SizedBox(height: 6),
+        _SwitchRow(
+          value: isPerfOn || !prefs.spotifyCanvasEnabled
+              ? false
+              : prefs.preferSpotifyCanvas,
+          enabled: !isPerfOn && prefs.spotifyCanvasEnabled,
+          onChanged: (v) => onUpdate((p) => p.setPreferSpotifyCanvas(v)),
+          title: 'Prefer Spotify Canvas',
           subtitle:
-              'Use Spotify\'s vertical looping video in the Canvas panel '
-              '(needs a connected account)',
+              'Prefer Spotify Canvas over Apple Music & Tidal in Full Bleed',
+        ),
+        const SizedBox(height: 6),
+        _BehaviourSelectRow(
+          title: 'Recommendations',
+          subtitle: prefs.recommendationSource == 'spotify'
+              ? (auth.connected
+                    ? 'Autoplay and radio use Spotify\'s own song radio.'
+                    : 'Spotify is not connected, so YouTube Music is used '
+                          'until you sign in.')
+              : 'Autoplay and radio use YouTube Music\'s related songs.',
+          value: prefs.recommendationSource,
+          options: const [
+            WaveSelectOption(value: 'youtube', label: 'YouTube Music'),
+            WaveSelectOption(value: 'spotify', label: 'Spotify'),
+          ],
+          onChanged: (v) => onUpdate((p) => p.setRecommendationSource(v)),
         ),
       ],
     );
@@ -1551,19 +1866,14 @@ class _Ytm extends ConsumerWidget {
                     const Icon(FluentIcons.video, size: 18),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Not connected', style: KatType.trackTitle),
+                      child: Text('Not connected', style: WaveType.trackTitle),
                     ),
-                    KatButton(
-                      onPressed: () => _ytConnectFromPhone(context, ref),
-                      child: const Text('Android'),
-                    ),
-                    const SizedBox(width: 8),
-                    KatButton(
+                    WaveButton(
                       onPressed: () => _ytConnectWithCookies(context, ref),
                       child: const Text('Use cookies'),
                     ),
                     const SizedBox(width: 8),
-                    KatFilledButton(
+                    WaveFilledButton(
                       onPressed: () => _ytConnect(context, ref),
                       child: const Text('Connect'),
                     ),
@@ -1668,7 +1978,7 @@ class _Ytm extends ConsumerWidget {
     return Row(
       children: [
         if (photoUrl.isNotEmpty)
-          KatArtwork.circle(
+          WaveArtwork.circle(
             url: photoUrl,
             size: 40,
             label: name,
@@ -1688,13 +1998,15 @@ class _Ytm extends ConsumerWidget {
                 name.isNotEmpty ? name : 'Connected',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.trackTitle,
+                style: WaveType.trackTitle,
               ),
               Text(
                 name.isNotEmpty ? sub : 'Connected$sinceText',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
             ],
           ),
@@ -1749,13 +2061,13 @@ class _Ytm extends ConsumerWidget {
               ],
             ),
             actions: [
-              KatButton(
+              WaveButton(
                 onPressed: () {
                   YtWebLogin.reloadLoginPage();
                 },
                 child: const Text('Reload'),
               ),
-              KatButton(
+              WaveButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
@@ -1800,42 +2112,7 @@ class _Ytm extends ConsumerWidget {
       pageId: YtWebLogin.lastCapturedPageId ?? '',
     );
     await _refocusMain();
-}
-}
-
-/// Receives the already-authenticated YouTube session from KatMusic on an
-/// Android phone. The pairing server is local, expires after five minutes,
-/// and asks the desktop user to approve the requesting phone before the
-/// encrypted cookie payload can be accepted.
-Future<void> _ytConnectFromPhone(BuildContext context, WidgetRef ref) async {
-  YtPhonePairing pairing;
-  try {
-    pairing = await YtPhonePairing.create();
-  } catch (error) {
-    if (context.mounted) await _showYtFail(context, error);
-    return;
   }
-
-  YtPhoneTransfer? transfer;
-  try {
-    if (!context.mounted) return;
-    transfer = await showDialog<YtPhoneTransfer>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => YtPhonePairingDialog(pairing: pairing),
-    );
-  } finally {
-    await pairing.close();
-  }
-
-  if (transfer == null || !context.mounted) return;
-  await _ytConnectCaptured(
-    context,
-    ref,
-    header: transfer.cookies,
-    pageId: transfer.pageId,
-  );
-  await _refocusMain();
 }
 
 /// Shown when YouTube definitively rejected the stored jar.
@@ -1913,9 +2190,9 @@ class _YtStaleBannerState extends ConsumerState<_YtStaleBanner> {
               child: SizedBox(width: 14, height: 14, child: ProgressRing()),
             )
           else
-            KatLink(onPressed: _refresh, child: const Text('Refresh')),
+            WaveLink(onPressed: _refresh, child: const Text('Refresh')),
           const SizedBox(width: 12),
-          KatLink(
+          WaveLink(
             onPressed: () => _ytConnectWithCookies(context, ref),
             child: const Text('Reconnect'),
           ),
@@ -1943,30 +2220,26 @@ class _CardActions extends ConsumerWidget {
         if (channels >= 2)
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: KatButton(
+            child: WaveButton(
               onPressed: () => _ytSwitch(context, ref),
               child: const Text('Switch'),
             ),
           ),
         Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: KatButton(
+          child: WaveButton(
             onPressed: () => _ytAddMenu(context, ref),
             child: const Text('Add'),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: KatButton(
-            onPressed: () => _ytConnectFromPhone(context, ref),
-            child: const Text('Android'),
-          ),
-        ),
-        KatButton(
+        WaveButton(
           onPressed: () async {
             final tube = ref.read(innerTubeProvider);
             await tube.signOut();
             ref.read(ytConnectionProvider.notifier).state = tube.connection;
+            // Otherwise the window's persisted Google login is re-captured
+            // instantly on the next Connect.
+            await YtWebLogin.signOutWebview();
           },
           child: const Text('Disconnect'),
         ),
@@ -2029,8 +2302,8 @@ class _CardActions extends ConsumerWidget {
             Text(
               'Each identity keeps its own cookie jar, so adding one '
               'never signs the others out.',
-              style: KatType.meta.copyWith(
-                color: katTextSecondary(dialogContext),
+              style: WaveType.meta.copyWith(
+                color: waveTextSecondary(dialogContext),
               ),
             ),
             const SizedBox(height: 14),
@@ -2042,7 +2315,7 @@ class _CardActions extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             _YtAddOption(
-              icon: KatIcons.friends,
+              icon: WaveIcons.friends,
               title: 'Brand channel',
               subtitle:
                   'Add a channel on the current login (needs the '
@@ -2061,7 +2334,7 @@ class _CardActions extends ConsumerWidget {
           ],
         ),
         actions: [
-          KatButton(
+          WaveButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
@@ -2118,13 +2391,13 @@ class _CardActions extends ConsumerWidget {
               ],
             ),
             actions: [
-              KatButton(
+              WaveButton(
                 onPressed: () {
                   YtWebLogin.reloadLoginPage();
                 },
                 child: const Text('Reload'),
               ),
-              KatButton(
+              WaveButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
@@ -2202,14 +2475,14 @@ class _CardActions extends ConsumerWidget {
               ],
             ),
             actions: [
-              KatButton(
+              WaveButton(
                 onPressed: () {
                   cancelled = true;
                   Navigator.of(dialogContext).pop();
                 },
                 child: const Text('Cancel'),
               ),
-              KatFilledButton(
+              WaveFilledButton(
                 onPressed: () {
                   done = true;
                   Navigator.of(dialogContext).pop();
@@ -2303,12 +2576,14 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                 'Google sees a normal desktop session. Brand channels on '
                 'the same Google login are detected after connecting — '
                 'pick one in the channel chooser.',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  KatButton(
+                  WaveButton(
                     onPressed: _openYtInBrowser,
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -2320,7 +2595,7 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  KatButton(
+                  WaveButton(
                     onPressed: () async {
                       final text = await _pickCookieFile();
                       if (text == null || text.isEmpty) return;
@@ -2353,11 +2628,13 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
                 '(right-click → Copy value). Paste it below. '
                 'Firefox works the same way; a cookies.txt extension '
                 'export is also accepted.',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
               const SizedBox(height: 12),
               TextBox(
-                decoration: katInputDecoration(),
+                decoration: waveInputDecoration(),
                 controller: controller,
                 placeholder: 'SID=...; __Secure-3PAPISID=...; SAPISID=...',
                 maxLines: 7,
@@ -2380,11 +2657,11 @@ Future<void> _ytConnectWithCookies(BuildContext context, WidgetRef ref) async {
             ],
           ),
           actions: [
-            KatButton(
+            WaveButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
-            KatFilledButton(
+            WaveFilledButton(
               onPressed: () {
                 final text = controller.text.trim();
                 if (text.isEmpty) {
@@ -2488,7 +2765,7 @@ class _CookieChecklist extends StatelessWidget {
                 ? 'Session markers detected — this jar looks complete.'
                 : 'Not detected yet: ${missing.join(' · ')}. '
                       'YouTube needs these to treat the jar as signed in.',
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
         ),
       ],
@@ -2513,7 +2790,7 @@ class _YtAddOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: KatButton(
+      child: WaveButton(
         onPressed: onPressed,
         style: const ButtonStyle(
           padding: WidgetStatePropertyAll(
@@ -2534,7 +2811,7 @@ class _YtAddOption extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                    style: KatType.trackTitle,
+                    style: WaveType.trackTitle,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -2542,8 +2819,8 @@ class _YtAddOption extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                    style: KatType.meta.copyWith(
-                      color: katTextSecondary(context),
+                    style: WaveType.meta.copyWith(
+                      color: waveTextSecondary(context),
                     ),
                   ),
                 ],
@@ -2691,7 +2968,7 @@ Future<void> _showYtOk(BuildContext context, String title, String message) {
       title: Text(title),
       content: Text(message),
       actions: [
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),
@@ -2707,7 +2984,7 @@ Future<void> _showYtFail(BuildContext context, Object e) {
       title: const Text('Connection failed'),
       content: Text('$e'),
       actions: [
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('OK'),
         ),
@@ -2743,6 +3020,14 @@ Future<void> _ytSignInFailed(BuildContext context, WidgetRef ref) async {
           'Windows, WebKitGTK on Linux), so the sign-in window cannot '
           'open. Install the runtime, or connect with cookies instead — '
           'that path does not need a WebView.';
+    case YtSignInFailure.startFailed:
+      title = 'The sign-in window could not start';
+      body =
+          'WebView2 is installed, but the sign-in window failed to start '
+          'twice. Quit KatMusic completely (including the tray icon), '
+          'open it again and retry. If it keeps happening, connect with '
+          'cookies instead — that path does not need the window. The '
+          'reason is recorded in the exported diagnostic logs.';
     case YtSignInFailure.blankPage:
       title = 'The sign-in window did not load';
       body =
@@ -2777,11 +3062,11 @@ Future<void> _ytSignInFailed(BuildContext context, WidgetRef ref) async {
       title: Text(title),
       content: Text(body),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
           child: const Text('Close'),
         ),
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: const Text('Connect with cookies'),
         ),
@@ -2848,7 +3133,7 @@ class _AboutState extends ConsumerState<_About> {
 
   Widget _buildUpdateButton() {
     if (_checking) {
-      return const KatButton(
+      return const WaveButton(
         onPressed: null,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2866,7 +3151,7 @@ class _AboutState extends ConsumerState<_About> {
     }
 
     if (_updateAvailable != null) {
-      return KatFilledButton(
+      return WaveFilledButton(
         onPressed: () =>
             showUpdateDialog(context, _updateAvailable!, isManualCheck: true),
         child: Row(
@@ -2881,12 +3166,12 @@ class _AboutState extends ConsumerState<_About> {
     }
 
     if (_upToDate) {
-      return KatButton(
+      return WaveButton(
         onPressed: _checkForUpdates,
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(FluentIcons.check_mark, size: 14, color: KatColors.success),
+            Icon(FluentIcons.check_mark, size: 14, color: WaveColors.success),
             SizedBox(width: 6),
             Text('Up to date (check again)'),
           ],
@@ -2894,7 +3179,7 @@ class _AboutState extends ConsumerState<_About> {
       );
     }
 
-    return KatButton(
+    return WaveButton(
       onPressed: _checkForUpdates,
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -2923,17 +3208,22 @@ class _AboutState extends ConsumerState<_About> {
             children: [
               Text(
                 'KatMusic Desktop · v$appVersion',
-                style: KatType.trackTitle,
+                style: WaveType.trackTitle,
               ),
               _buildUpdateButton(),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'By Arct Developments',
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              KatButton(
+              WaveButton(
                 onPressed: () =>
                     _open('https://github.com/Arct-Development/KatMusic'),
                 child: const Row(
@@ -2945,18 +3235,20 @@ class _AboutState extends ConsumerState<_About> {
                   ],
                 ),
               ),
-              KatButton(
-                onPressed: () => _open('https://katmusic.pages.dev/#report'),
+              WaveButton(
+                onPressed: () => _open(
+                  'https://github.com/Arct-Development/KatMusic/issues',
+                ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(FluentIcons.error, size: 14),
                     SizedBox(width: 6),
-                    Text('Report a bug'),
+                    Text('Report an issue'),
                   ],
                 ),
               ),
-              KatButton(
+              WaveButton(
                 onPressed: () =>
                     _open('https://github.com/Arct-Development/KatMusic'),
                 child: const Row(
@@ -2984,6 +3276,8 @@ class _General extends ConsumerWidget {
     final prefs = ref.watch(prefsProvider);
     return Column(
       children: [
+        const PerformanceModeCard(),
+        const SizedBox(height: 16),
         _Group(
           id: 'general.behaviour',
           title: 'Behaviour',
@@ -2997,8 +3291,37 @@ class _General extends ConsumerWidget {
                 subtitle:
                     'Keep the player running in the background when closed.',
               ),
+              const SizedBox(height: 10),
+              _BehaviourSelectRow(
+                title: 'Miniplayer style',
+                subtitle: switch (prefs.miniPlayerStyle) {
+                  'compact' => 'Slim strip with just the essentials.',
+                  'card' => 'Square artwork card with controls over the cover.',
+                  'ambient' => 'Wide panel glowing with the blurred artwork and a timed scrubber.',
+                  'lyrics' =>
+                    'Ambient panel that widens to show the current lyric line '
+                        'when the song has synced lyrics.',
+                  _ => 'Bar with artwork, transport and window buttons.',
+                },
+                value: prefs.miniPlayerStyle,
+                options: const [
+                  WaveSelectOption(value: 'classic', label: 'Classic bar'),
+                  WaveSelectOption(value: 'compact', label: 'Compact strip'),
+                  WaveSelectOption(value: 'card', label: 'Artwork card'),
+                  WaveSelectOption(value: 'ambient', label: 'Ambient wide'),
+                  WaveSelectOption(value: 'lyrics', label: 'Ambient + lyrics'),
+                ],
+                onChanged: (v) => onUpdate((p) => p.setMiniPlayerStyle(v)),
+              ),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        _Group(
+          id: 'general.language',
+          title: context.l10n.settingsLanguage,
+          subtitle: context.l10n.settingsLanguageSub,
+          child: const _LanguageSelectRow(),
         ),
         const SizedBox(height: 16),
         const _Group(
@@ -3039,12 +3362,12 @@ class _General extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  KatFilledButton(
+                  WaveFilledButton(
                     onPressed: () => exportDiagnostics(context, ref),
                     child: const Text('Export diagnostic logs'),
                   ),
                   const SizedBox(width: 8),
-                  KatButton(
+                  WaveButton(
                     onPressed: openLogFolder,
                     child: const Text('Open log folder'),
                   ),
@@ -3055,7 +3378,9 @@ class _General extends ConsumerWidget {
                 'Packages the last 5 runs and the crash trail into one zip. '
                 'URLs, cookies and tokens are stripped; track titles are kept '
                 'so a wrong-song report stays actionable.',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
             ],
           ),
@@ -3079,6 +3404,8 @@ class _PlaybackState extends ConsumerState<_Playback> {
   @override
   Widget build(BuildContext context) {
     final prefs = ref.watch(prefsProvider);
+    final isPerfOn = ref.watch(performanceModeProvider);
+    final l10n = context.l10n;
     final currentSeconds = _dragSeconds ?? prefs.crossfadeSeconds.toDouble();
 
     return _Group(
@@ -3093,6 +3420,38 @@ class _PlaybackState extends ConsumerState<_Playback> {
             title: 'Autoplay similar',
             subtitle: 'Keep playing related tracks after a queue ends',
           ),
+          const SizedBox(height: 8),
+          _SwitchRow(
+            value: isPerfOn ? false : prefs.canvasEnabled,
+            enabled: !isPerfOn,
+            badgeText: isPerfOn ? l10n.performanceModeManagedTag : null,
+            onDisabledTap: isPerfOn
+                ? () => _confirmDisablePerformanceMode(
+                      context,
+                      ref,
+                      'Canvas & animated artwork',
+                      () => widget.onUpdate((p) => p.setCanvasEnabled(true)),
+                    )
+                : null,
+            onChanged: (v) => widget.onUpdate((p) => p.setCanvasEnabled(v)),
+            title: 'Canvas & animated artwork',
+            subtitle: isPerfOn
+                ? 'Paused by Performance Mode to save CPU & GPU usage.'
+                : 'Play looping Canvas and motion cover art in Now Playing',
+          ),
+          if (Platform.isMacOS) ...[
+            const SizedBox(height: 8),
+            _SwitchRow(
+              value: prefs.macOSNowPlaying,
+              onChanged: (v) async {
+                await widget.onUpdate((p) => p.setMacOSNowPlaying(v));
+                ref.read(smtcProvider).refresh();
+              },
+              title: 'macOS Now Playing controls',
+              subtitle:
+                  'Show KatMusic on the lock screen and enable system media controls',
+            ),
+          ],
           const SizedBox(height: 8),
           _SwitchRow(
             value: prefs.crossfadeEnabled,
@@ -3121,13 +3480,13 @@ class _PlaybackState extends ConsumerState<_Playback> {
                     children: [
                       const Text(
                         'Crossfade duration',
-                        style: KatType.trackTitle,
+                        style: WaveType.trackTitle,
                       ),
                       const Spacer(),
                       Text(
                         '${currentSeconds.round()}s',
-                        style: KatType.meta.copyWith(
-                          color: katAccent(context),
+                        style: WaveType.meta.copyWith(
+                          color: waveAccent(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -3151,20 +3510,20 @@ class _PlaybackState extends ConsumerState<_Playback> {
                     children: [
                       Text(
                         '3s (Short)',
-                        style: KatType.meta.copyWith(
-                          color: katTextSecondary(context),
+                        style: WaveType.meta.copyWith(
+                          color: waveTextSecondary(context),
                         ),
                       ),
                       Text(
                         '7s (Standard)',
-                        style: KatType.meta.copyWith(
-                          color: katTextSecondary(context),
+                        style: WaveType.meta.copyWith(
+                          color: waveTextSecondary(context),
                         ),
                       ),
                       Text(
                         '12s (Long)',
-                        style: KatType.meta.copyWith(
-                          color: katTextSecondary(context),
+                        style: WaveType.meta.copyWith(
+                          color: waveTextSecondary(context),
                         ),
                       ),
                     ],
@@ -3218,23 +3577,23 @@ class _Downloads extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Save location', style: KatType.trackTitle),
+                    Text('Save location', style: WaveType.trackTitle),
                     Text(
                       custom.isEmpty ? 'Default location' : custom,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: KatType.meta,
+                      style: WaveType.meta,
                     ),
                   ],
                 ),
               ),
-              KatButton(
+              WaveButton(
                 onPressed: () => _pickDir(ref),
                 child: const Text('Change'),
               ),
               if (custom.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                KatButton(
+                WaveButton(
                   onPressed: () => onUpdate((p) => p.resetDownloadDir()),
                   child: const Text('Reset'),
                 ),
@@ -3256,11 +3615,11 @@ class _LastFm extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
+        _Scrobbler(onUpdate: onUpdate),
+        const SizedBox(height: 8),
         _Account(onUpdate: onUpdate),
         const SizedBox(height: 8),
-        const _ApiKeys(),
-        const SizedBox(height: 8),
-        _Scrobbler(onUpdate: onUpdate),
+        const _OtherScrobblers(),
       ],
     );
   }
@@ -3339,13 +3698,18 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
     _key ??= TextEditingController(text: prefs.lastFmApiKey);
     _secret ??= TextEditingController(text: prefs.lastFmApiSecret);
     final configured = prefs.isLastFmConfigured;
-    return _Group(
+    // Lives inside the Last.fm connection card; the keys belong to it.
+    return SettingsTarget(
       id: 'lastfm.keys',
-      title: 'API keys',
-      subtitle: 'Your own keys from last.fm/api/account/create',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const Text('API keys', style: WaveType.label),
+          Text(
+            'Your own keys from last.fm/api/account/create',
+            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
+          ),
+          const SizedBox(height: 10),
           const LastFmKeyGuide(),
           const SizedBox(height: 10),
           Row(
@@ -3361,39 +3725,39 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
                   configured
                       ? 'Keys saved — values never shown here'
                       : 'Not configured — Last.fm is disabled',
-                  style: KatType.meta,
+                  style: WaveType.meta,
                 ),
               ),
               if (configured)
-                KatButton(
+                WaveButton(
                   onPressed: _busy ? null : _clear,
                   child: const Text('Clear'),
                 ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text('API key', style: KatType.label),
+          const Text('API key', style: WaveType.label),
           const SizedBox(height: 4),
           TextBox(
-            decoration: katInputDecoration(),
+            decoration: waveInputDecoration(),
             controller: _key,
             placeholder: '32-character hex key',
           ),
           const SizedBox(height: 8),
-          const Text('Shared secret', style: KatType.label),
+          const Text('Shared secret', style: WaveType.label),
           const SizedBox(height: 4),
           TextBox(
-            decoration: katInputDecoration(),
+            decoration: waveInputDecoration(),
             controller: _secret,
             placeholder: 'Shared secret',
             obscureText: true,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(_error!, style: KatType.meta.copyWith(color: Colors.red)),
+            Text(_error!, style: WaveType.meta.copyWith(color: Colors.red)),
           ],
           const SizedBox(height: 10),
-          KatFilledButton(
+          WaveFilledButton(
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const Row(
@@ -3415,7 +3779,7 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
           Text(
             'Saving different keys signs you out — sessions belong '
             'to their API key. Reconnect afterwards.',
-            style: KatType.meta.copyWith(color: katTextTertiary(context)),
+            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
           ),
         ],
       ),
@@ -3423,30 +3787,99 @@ class _ApiKeysState extends ConsumerState<_ApiKeys> {
   }
 }
 
-class _Experimental extends ConsumerWidget {
+class _Experimental extends ConsumerStatefulWidget {
   final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
   const _Experimental({required this.onUpdate});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Experimental> createState() => _ExperimentalState();
+}
+
+class _ExperimentalState extends ConsumerState<_Experimental> {
+  bool _impeller = false;
+  bool _restartNeeded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    RendererMode.isImpellerEnabled().then((val) {
+      if (mounted) {
+        setState(() => _impeller = val);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prefs = ref.watch(prefsProvider);
+    final isPerfOn = ref.watch(performanceModeProvider);
+    final l10n = context.l10n;
     return _Group(
       id: 'experimental.main',
-      title: 'Surface & motion',
-      subtitle: 'Desktop material and playback experiments',
+      title: 'Experimental',
+      subtitle: 'Opt-in desktop prototypes',
       child: Column(
         children: [
           _SwitchRow(
-            value: prefs.liquidGlass,
-            onChanged: (v) => onUpdate((p) => p.setLiquidGlass(v)),
-            title: 'Liquid Glass chrome',
-            subtitle: 'Shader-backed glass for the title bar, navigation rail and player dock. Turn off for a fully opaque shell.',
+            value: isPerfOn ? false : prefs.liquidGlass,
+            enabled: !isPerfOn,
+            badgeText: isPerfOn ? l10n.performanceModeManagedTag : null,
+            onDisabledTap: isPerfOn
+                ? () => _confirmDisablePerformanceMode(
+                      context,
+                      ref,
+                      'Extra translucency',
+                      () => widget.onUpdate((p) => p.setLiquidGlass(true)),
+                    )
+                : null,
+            onChanged: (v) => widget.onUpdate((p) => p.setLiquidGlass(v)),
+            title: 'Extra translucency',
+            subtitle: isPerfOn
+                ? 'Extra translucency is paused by Performance Mode to maintain FPS.'
+                : 'Stronger Haze on panels (may cost FPS)',
           ),
           _SwitchRow(
             value: prefs.wavySeekbar,
-            onChanged: (v) => onUpdate((p) => p.setWavySeekbar(v)),
+            onChanged: (v) => widget.onUpdate((p) => p.setWavySeekbar(v)),
             title: 'Wavy seekbar',
             subtitle: 'Experimental timeline treatment',
           ),
+          _SwitchRow(
+            value: _impeller,
+            onChanged: (v) async {
+              setState(() {
+                _impeller = v;
+                _restartNeeded = true;
+              });
+              await RendererMode.setImpellerEnabled(v);
+            },
+            title: 'Impeller rendering engine (Experimental)',
+            subtitle: 'Use Impeller backend instead of Skia (requires app restart)',
+          ),
+          if (_restartNeeded)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    FluentIcons.info,
+                    size: 14,
+                    color: FluentTheme.of(context).accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Restart KatMusic to apply graphics renderer changes.',
+                      style: TextStyle(
+                        color: FluentTheme.of(context).accentColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -3462,18 +3895,15 @@ class _TimedMixSettings extends ConsumerStatefulWidget {
 }
 
 class _TimedMixSettingsState extends ConsumerState<_TimedMixSettings> {
-  double? _dragSeconds;
-
   @override
   Widget build(BuildContext context) {
     final prefs = ref.watch(prefsProvider);
-    final seconds = _dragSeconds ?? prefs.autoMixSeconds.toDouble();
     return _Group(
       id: 'audio.automix',
       title: 'AutoMix',
       subtitle: prefs.autoMixEnabled
-          ? 'Timed dual-deck overlap, not beat-matched. Turns crossfade off.'
-          : 'Off. A timed mix between tracks, not a beat or key match.',
+          ? 'DJ-style blends on the beat. Turns crossfade off.'
+          : 'Off. Songs change without a blend.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3487,52 +3917,26 @@ class _TimedMixSettingsState extends ConsumerState<_TimedMixSettings> {
             },
             title: 'Timed mix',
             subtitle: prefs.autoMixEnabled
-                ? 'Up to ${prefs.autoMixSeconds}s, beat-matched on the downbeat when tempos are close. Skips silent intros and outros; album tracks stay gapless.'
+                ? 'Blends each ending into the next song over ${prefs.autoMixBars} bars, on the beat, with a DJ bass handover. Nothing is cut. Album tracks stay gapless.'
                 : 'Gapless until you turn this on',
           ),
           if (prefs.autoMixEnabled) ...[
             const SizedBox(height: 6),
+            const Text('Blend length', style: WaveType.trackTitle),
+            const SizedBox(height: 8),
             Row(
               children: [
-                const Text('Transition length', style: KatType.trackTitle),
-                const Spacer(),
-                Text(
-                  '${seconds.round()}s',
-                  style: KatType.meta.copyWith(
-                    color: katAccent(context),
-                    fontWeight: FontWeight.w600,
+                for (final bars in const [8, 16]) ...[
+                  if (bars != 8) const SizedBox(width: 8),
+                  Expanded(
+                    child: ToggleButton(
+                      checked: prefs.autoMixBars == bars,
+                      onChanged: (_) =>
+                          widget.onUpdate((p) => p.setAutoMixBars(bars)),
+                      child: Text('$bars bars'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Slider(
-              value: seconds.clamp(12.0, 18.0),
-              min: 12,
-              max: 18,
-              divisions: 6,
-              onChanged: (v) => setState(() => _dragSeconds = v),
-              onChangeEnd: (v) async {
-                setState(() => _dragSeconds = null);
-                await widget.onUpdate(
-                  (p) => p.setAutoMixSeconds(v.round().clamp(12, 18)),
-                );
-              },
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '12s',
-                  style: KatType.meta.copyWith(
-                    color: katTextSecondary(context),
-                  ),
-                ),
-                Text(
-                  '18s',
-                  style: KatType.meta.copyWith(
-                    color: katTextSecondary(context),
-                  ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
@@ -3544,8 +3948,8 @@ class _TimedMixSettingsState extends ConsumerState<_TimedMixSettings> {
                     .read(playbackServiceProvider.notifier)
                     .applyAudioPrefs();
               },
-              title: 'Filter sweep',
-              subtitle: 'Low-pass on the way out and high-pass on the way in. Turns itself off (volume blend only) if the audio engine lacks the filters.',
+              title: 'Bass swap & filters',
+              subtitle: 'Hands the bass over on the beat and crosses the highs, like a DJ mixer.',
             ),
           ],
         ],
@@ -3567,15 +3971,15 @@ class _WasapiOutputSettings extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Device', style: KatType.trackTitle),
+        const Text('Device', style: WaveType.trackTitle),
         const SizedBox(height: 6),
-        KatSelect<String>(
+        WaveSelect<String>(
           expanded: true,
           value: devices.any((d) => d.id == selected) ? selected : '',
           options: [
-            const KatSelectOption(value: '', label: 'System Default'),
+            const WaveSelectOption(value: '', label: 'System Default'),
             for (final d in devices)
-              KatSelectOption(
+              WaveSelectOption(
                 value: d.id,
                 label: d.displayName,
                 hint: d.isDefault ? 'default' : null,
@@ -3606,10 +4010,10 @@ class _WasapiOutputSettings extends ConsumerWidget {
           output.selected == null
               ? 'Probe the DAC after connecting it to see exclusive PCM rates.'
               : output.selected!.supportedSummary,
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
         ),
         const SizedBox(height: 12),
-        KatStreamPathPanel(path: output.path),
+        WaveStreamPathPanel(path: output.path),
       ],
     );
   }
@@ -3633,21 +4037,16 @@ class _QualityRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: KatType.trackTitle),
-              Text(AudioQualityTiers.label(value), style: KatType.meta),
+              Text(title, style: WaveType.trackTitle),
+              Text(AudioQualityTiers.label(value), style: WaveType.meta),
             ],
           ),
         ),
-        KatSelect<int>(
+        WaveSelect<int>(
           value: value,
           options: const [
-            KatSelectOption(value: 28, label: 'Dolby Atmos'),
-            KatSelectOption(value: 27, label: 'Hi-Res · 24/192'),
-            KatSelectOption(value: 7, label: 'Hi-Res · 24/96'),
-            KatSelectOption(value: 6, label: 'Lossless · 16/44.1'),
-            KatSelectOption(value: 5, label: '320k MP3'),
-            KatSelectOption(value: -1, label: 'Opus · YouTube'),
-            KatSelectOption(value: 4, label: 'Data saver'),
+            WaveSelectOption(value: -1, label: 'Opus · YouTube'),
+            WaveSelectOption(value: 4, label: 'Data saver'),
           ],
           onChanged: onChanged,
         ),
@@ -3660,45 +4059,372 @@ class _SwitchRow extends StatelessWidget {
   final bool value;
   final bool enabled;
   final ValueChanged<bool> onChanged;
+  final VoidCallback? onDisabledTap;
   final String title;
   final String? subtitle;
+  final String? badgeText;
   const _SwitchRow({
     required this.value,
     required this.onChanged,
     required this.title,
     this.subtitle,
     this.enabled = true,
+    this.onDisabledTap,
+    this.badgeText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rowContent = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(title, style: WaveType.trackTitle),
+                  if (badgeText != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF107C41).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badgeText!,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF107C41),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: WaveType.meta.copyWith(
+                    color: waveTextSecondary(context),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        IgnorePointer(
+          ignoring: !enabled,
+          child: MouseRegion(
+            cursor: enabled
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: ToggleSwitch(
+              checked: value,
+              onChanged: enabled ? onChanged : null,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (!enabled && onDisabledTap != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onDisabledTap,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: rowContent,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: rowContent,
+    );
+  }
+}
+
+class _BehaviourSelectRow extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String value;
+  final List<WaveSelectOption<String>> options;
+  final ValueChanged<String> onChanged;
+  const _BehaviourSelectRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.options,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: KatType.trackTitle),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: KatType.meta.copyWith(
-                      color: katTextSecondary(context),
-                    ),
+                Text(title, style: WaveType.trackTitle),
+                Text(
+                  subtitle,
+                  style: WaveType.meta.copyWith(
+                    color: waveTextSecondary(context),
                   ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: ToggleSwitch(
-              checked: value,
-              onChanged: enabled ? onChanged : null,
+          SizedBox(
+            width: 220,
+            child: WaveSelect<String>(
+              expanded: true,
+              minMenuWidth: 220,
+              value: value,
+              options: options,
+              onChanged: onChanged,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageSelectRow extends ConsumerWidget {
+  const _LanguageSelectRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(appLanguageProvider);
+    final l10n = context.l10n;
+    final sub = current == AppLanguage.system
+        ? l10n.tr('settings_language_system_sub')
+        : (current.nativeDisplayName == current.englishName
+            ? current.englishName
+            : '${current.nativeDisplayName} (${current.englishName})');
+    return _BehaviourSelectRow(
+      title: l10n.settingsLanguage,
+      subtitle: sub,
+      value: current.tag,
+      options: AppLanguage.values.map((lang) {
+        final label = lang == AppLanguage.system
+            ? l10n.tr('settings_language_system')
+            : (lang.nativeDisplayName == lang.englishName
+                ? lang.englishName
+                : '${lang.nativeDisplayName} — ${lang.englishName}');
+        return WaveSelectOption(value: lang.tag, label: label);
+      }).toList(),
+      onChanged: (tag) =>
+          ref.read(appLanguageProvider.notifier).setLanguage(AppLanguage.fromTag(tag)),
+    );
+  }
+}
+
+/// ListenBrainz and Libre.fm: each listen goes to every connected service,
+/// with or without Last.fm. Server fields take self-hosted instances.
+class _OtherScrobblers extends ConsumerStatefulWidget {
+  const _OtherScrobblers();
+  @override
+  ConsumerState<_OtherScrobblers> createState() => _OtherScrobblersState();
+}
+
+class _OtherScrobblersState extends ConsumerState<_OtherScrobblers> {
+  final _lbToken = TextEditingController();
+  final _lbServer = TextEditingController();
+  final _lfUser = TextEditingController();
+  final _lfPass = TextEditingController();
+  final _lfServer = TextEditingController();
+  bool _busy = false;
+  String? _lbError;
+  String? _lfError;
+
+  @override
+  void dispose() {
+    for (final c in [_lbToken, _lbServer, _lfUser, _lfPass, _lfServer]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _run(Future<void> Function() job) async {
+    setState(() => _busy = true);
+    try {
+      await job();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+      ref.read(extraScrobblersRevisionProvider.notifier).state++;
+    }
+  }
+
+  Widget _connected(
+    String name,
+    String user,
+    String server,
+    VoidCallback onOff,
+  ) {
+    return Row(
+      children: [
+        Icon(FluentIcons.completed, size: 14, color: waveAccent(context)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '$name connected as @$user${server.isEmpty ? '' : ' · $server'}',
+            style: WaveType.trackTitle,
+          ),
+        ),
+        WaveButton(
+          onPressed: _busy ? null : onOff,
+          child: const Text('Disconnect'),
+        ),
+      ],
+    );
+  }
+
+  Widget _error(String? message) => message == null
+      ? const SizedBox.shrink()
+      : Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            message,
+            style: WaveType.meta.copyWith(color: WaveColors.danger),
+          ),
+        );
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(extraScrobblersRevisionProvider);
+    final prefs = ref.watch(prefsProvider);
+    final lb = ref.read(listenBrainzProvider);
+    final lf = ref.read(libreFmProvider);
+    return _Group(
+      id: 'lastfm.others',
+      title: 'ListenBrainz & Libre.fm',
+      subtitle: 'Connect accounts to scrobble simultaneously with KatMusic',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('ListenBrainz', style: WaveType.trackTitle),
+          const SizedBox(height: 6),
+          if (lb.connected)
+            _connected(
+              'ListenBrainz',
+              lb.username,
+              prefs.listenBrainzServer,
+              () => _run(lb.disconnect),
+            )
+          else ...[
+            Text(
+              'Paste your user token from listenbrainz.org/settings. Leave the '
+              'server empty unless you self-host (Maloja, Koito, …).',
+              style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextBox(
+                    controller: _lbToken,
+                    placeholder: 'User token',
+                    obscureText: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: TextBox(
+                    controller: _lbServer,
+                    placeholder: 'Server (optional)',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                WaveFilledButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          final err = await lb.connect(
+                            _lbToken.text,
+                            server: _lbServer.text,
+                          );
+                          if (mounted) setState(() => _lbError = err);
+                        }),
+                  child: const Text('Connect'),
+                ),
+              ],
+            ),
+            _error(_lbError),
+          ],
+          const SizedBox(height: 16),
+          const Text('Libre.fm', style: WaveType.trackTitle),
+          const SizedBox(height: 6),
+          if (lf.connected)
+            _connected(
+              'Libre.fm',
+              lf.username,
+              prefs.libreFmServer,
+              () => _run(lf.disconnect),
+            )
+          else ...[
+            Text(
+              'Sign in with your Libre.fm account. The server field takes '
+              'other GNU FM instances.',
+              style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextBox(controller: _lfUser, placeholder: 'Username'),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextBox(
+                    controller: _lfPass,
+                    placeholder: 'Password',
+                    obscureText: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextBox(
+                    controller: _lfServer,
+                    placeholder: 'Server (optional)',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                WaveFilledButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          final err = await lf.connect(
+                            _lfUser.text,
+                            _lfPass.text,
+                            server: _lfServer.text,
+                          );
+                          if (err == null) _lfPass.clear();
+                          if (mounted) setState(() => _lfError = err);
+                        }),
+                  child: const Text('Sign in'),
+                ),
+              ],
+            ),
+            _error(_lfError),
+          ],
         ],
       ),
     );

@@ -1,27 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/features/player/mix_planner.dart';
 
-MixTrackInfo t(
-  String title, {
-  String artist = 'A',
-  String album = '',
-  int seconds = 200,
-}) => MixTrackInfo(
-  title: title,
-  artist: artist,
-  album: album,
-  duration: Duration(seconds: seconds),
-);
+MixTrackInfo t(String title,
+        {String artist = 'A', String album = '', int seconds = 200}) =>
+    MixTrackInfo(
+      title: title,
+      artist: artist,
+      album: album,
+      duration: Duration(seconds: seconds),
+    );
 
 void main() {
   group('filter errors are not stream errors', () {
     test('mpv filter-chain lines are classified as filter errors', () {
       // Exact lines from a user's mpv.log / media_kit error stream.
       expect(isFilterGraphError('Audio filter initialized failed!'), isTrue);
-      expect(
-        isFilterGraphError("AVFilterGraph: No such filter: 'lowpass'"),
-        isTrue,
-      );
+      expect(isFilterGraphError("AVFilterGraph: No such filter: 'lowpass'"),
+          isTrue);
       expect(isFilterGraphError("Creating filter 'lavfi' failed."), isTrue);
     });
 
@@ -67,18 +62,6 @@ void main() {
       expect(plan.reason, 'shortened');
     });
 
-    test('DJ curve keeps the outgoing track up through its ending', () {
-      final (o40, i40) = MixPlanner.djGains(0.4);
-      expect(o40, closeTo(1, 1e-9));
-      expect(i40, greaterThan(0.8));
-      final (o1, i1) = MixPlanner.djGains(1);
-      expect(o1, closeTo(0, 1e-9));
-      expect(i1, closeTo(1, 1e-9));
-      final (o0, i0) = MixPlanner.djGains(0);
-      expect(o0, 1);
-      expect(i0, 0);
-    });
-
     test('consecutive album tracks stay gapless', () {
       final plan = MixPlanner.plan(
         outgoing: t('Track 1', album: 'The Album'),
@@ -91,11 +74,8 @@ void main() {
     });
 
     test('live recordings and podcasts are not mixed', () {
-      for (final title in [
-        'Song (Live)',
-        'Song - Live at Wembley',
-        'Podcast Episode 12',
-      ]) {
+      for (final title in ['Song (Live)', 'Song - Live at Wembley',
+          'Podcast Episode 12']) {
         final plan = MixPlanner.plan(
           outgoing: t('Studio'),
           incoming: t(title),

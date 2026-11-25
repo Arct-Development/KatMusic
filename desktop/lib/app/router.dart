@@ -10,7 +10,7 @@ import '../ui/collections/album_detail_page.dart';
 import '../ui/collections/albums_page.dart';
 import '../ui/collections/artist_detail_page.dart';
 import '../ui/collections/artists_page.dart';
-import '../ui/collections/downloads_page.dart';
+import '../ui/library/library_page.dart';
 import '../ui/collections/history_page.dart';
 import '../ui/collections/liked_page.dart';
 import '../ui/collections/playlist_detail_page.dart';
@@ -18,9 +18,7 @@ import '../ui/collections/playlists_page.dart';
 import '../ui/collections/genre_detail_page.dart';
 import '../ui/collections/spotify_playlist_detail_page.dart';
 import '../ui/collections/yt_playlist_detail_page.dart';
-import '../ui/blend/group_blend_page.dart';
 import '../ui/collections/yt_shelf_page.dart';
-import '../ui/discover/discover_page.dart';
 import '../ui/podcasts/podcasts_page.dart';
 import '../ui/stats/stats_page.dart';
 import '../ui/home/home_layout_page.dart';
@@ -32,13 +30,15 @@ import '../ui/navigation/route_origin.dart';
 import '../ui/now_playing/now_playing_page.dart';
 import '../ui/search/search_page.dart';
 import '../ui/settings/settings_page.dart';
-import '../ui/shared/shared_track_page.dart';
 import '../ui/theme/tokens.dart';
 
 /// High-refresh-rate navigation transition: crisp 110ms crossfade without
 /// matrix translation overhead for immediate, zero-jank page changes.
-Page<void> _page(Widget child) =>
-    _fadePage(child, duration: KatMotion.fast, curve: Curves.easeOutCubic);
+Page<void> _page(Widget child) => _fadePage(
+      child,
+      duration: WaveMotion.fast,
+      curve: Curves.easeOutCubic,
+    );
 
 /// The one crossfade builder. Both directions are always explicit: go_router
 /// defaults `reverseTransitionDuration` to **300 ms regardless of**
@@ -58,7 +58,8 @@ Page<void> _fadePage(
 }) {
   return CustomTransitionPage(
     child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+    transitionsBuilder:
+        (context, animation, secondaryAnimation, child) {
       return FadeTransition(
         opacity: CurvedAnimation(parent: animation, curve: curve),
         child: child,
@@ -87,7 +88,7 @@ Page<void> _fadePage(
 /// crossfades into it instead of cutting to the shell background.
 ///
 /// The press anchor is consumed (and dropped) so a dock-cover tap that opened
-/// a stage cannot linger in [KatRouteOrigin] and be inherited by the next
+/// a stage cannot linger in [WaveRouteOrigin] and be inherited by the next
 /// route.
 ///
 /// 180 ms with a symmetric curve, deliberately: the old 110 ms in / 300 ms out
@@ -95,10 +96,10 @@ Page<void> _fadePage(
 /// animation on the way out to hide it — the closing dissolve is the whole
 /// gesture. `easeInOutCubic` makes the exit the exact reverse of the entrance.
 Page<void> _stagePage(Widget child) {
-  KatRouteOrigin.consume();
+  WaveRouteOrigin.consume();
   return _fadePage(
     child,
-    duration: KatMotion.normal,
+    duration: WaveMotion.normal,
     curve: Curves.easeInOutCubic,
   );
 }
@@ -107,7 +108,7 @@ Page<void> _stagePage(Widget child) {
 /// (a card, a cover).
 ///
 /// The destination grows out of the recorded press point — a 0.96 → 1 scale
-/// anchored at the pressed *height* (see [KatRouteOrigin.alignmentIn] for why
+/// anchored at the pressed *height* (see [WaveRouteOrigin.alignmentIn] for why
 /// it is not anchored horizontally), under the same crossfade — so a tap reads
 /// as the page expanding out of what was tapped instead of a hard cut.
 /// Reversing the route plays the same curve backwards, shrinking back toward
@@ -117,17 +118,18 @@ Page<void> _stagePage(Widget child) {
 /// command palette, session restore) and drops to a plain fade when the OS
 /// reduce-motion switch is on.
 Page<void> _anchoredPage(Widget child) {
-  final origin = KatRouteOrigin.consume();
+  final origin = WaveRouteOrigin.consume();
   if (origin == null) return _page(child);
   // A cover flight is already the motion (see flight.dart): scaling the page
   // underneath it would move the landing spot out from under the cover.
-  if (KatFlight.isArmed) return _page(child);
+  if (WaveFlight.isArmed) return _page(child);
   return CustomTransitionPage(
     child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+    transitionsBuilder:
+        (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(
         parent: animation,
-        curve: KatMotion.standard,
+        curve: WaveMotion.standard,
       );
       if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
         return FadeTransition(opacity: curved, child: child);
@@ -141,10 +143,10 @@ Page<void> _anchoredPage(Widget child) {
         ),
       );
     },
-    transitionDuration: KatMotion.normal,
+    transitionDuration: WaveMotion.normal,
     // Same bug as [_page]: go_router would otherwise pop this in 300 ms while
     // it entered in 180.
-    reverseTransitionDuration: KatMotion.normal,
+    reverseTransitionDuration: WaveMotion.normal,
   );
 }
 
@@ -161,7 +163,7 @@ Page<void> _anchoredPage(Widget child) {
 /// Playlists · Downloads · Friends / Settings · Now / Lyrics ·
 ///
 /// Album / Artist details are first-class music layouts.
-/// History + Mix Lab stay routable but off prime nav.
+/// History stays routable but off prime nav.
 GoRouter buildRouter({required AuthGate gate}) {
   return GoRouter(
     initialLocation: '/home',
@@ -175,17 +177,18 @@ GoRouter buildRouter({required AuthGate gate}) {
     routes: [
       GoRoute(
         path: '/welcome',
-        pageBuilder: (c, s) => _page(const KatWelcomePage()),
+        pageBuilder: (c, s) =>
+            _page(const WaveWelcomePage()),
       ),
       StatefulShellRoute(
         // Custom branch container: keeps every branch mounted (tab state and
-        // scroll survive) but animates the switch. See KatBranchSwitcher.
+        // scroll survive) but animates the switch. See WaveBranchSwitcher.
         navigatorContainerBuilder: (context, navigationShell, children) =>
-            KatBranchSwitcher(
-              currentIndex: navigationShell.currentIndex,
-              children: children,
-            ),
-        builder: (context, state, navigationShell) => KatShell(
+            WaveBranchSwitcher(
+          currentIndex: navigationShell.currentIndex,
+          children: children,
+        ),
+        builder: (context, state, navigationShell) => WaveShell(
           location: state.uri.hasQuery
               ? '${state.uri.path}?${state.uri.query}'
               : state.uri.path,
@@ -196,23 +199,13 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/home',
-                pageBuilder: (c, s) => _page(const KatHomePage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveHomePage()),
               ),
               GoRoute(
                 path: '/home-layout',
-                pageBuilder: (c, s) => _page(const KatHomeLayoutPage()),
-              ),
-              GoRoute(
-                path: '/shared-track',
-                pageBuilder: (c, s) => _page(
-                  KatSharedTrackPage(
-                    videoId: s.uri.queryParameters['v'] ?? '',
-                    title: s.uri.queryParameters['title'] ?? '',
-                    artist: s.uri.queryParameters['artist'] ?? '',
-                    album: s.uri.queryParameters['album'] ?? '',
-                    artworkUrl: s.uri.queryParameters['art'] ?? '',
-                  ),
-                ),
+                pageBuilder: (c, s) =>
+                    _page(const WaveHomeLayoutPage()),
               ),
             ],
           ),
@@ -220,7 +213,8 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/stats',
-                pageBuilder: (c, s) => _page(const KatStatsPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveStatsPage()),
               ),
             ],
           ),
@@ -228,9 +222,10 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/search',
-                pageBuilder: (c, s) => _page(
-                  KatSearchPage(initialQuery: s.uri.queryParameters['q'] ?? ''),
-                ),
+                pageBuilder: (c, s) => _page(WaveSearchPage(
+                  initialQuery:
+                      s.uri.queryParameters['q'] ?? '',
+                )),
               ),
             ],
           ),
@@ -238,7 +233,8 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/liked',
-                pageBuilder: (c, s) => _page(const KatLikedPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveLikedPage()),
               ),
             ],
           ),
@@ -246,16 +242,18 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/albums',
-                pageBuilder: (c, s) => _page(const KatAlbumsPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveAlbumsPage()),
               ),
               GoRoute(
                 path: '/album/:id',
                 pageBuilder: (c, s) => _anchoredPage(
-                  KatAlbumPage(
-                    browseId: Uri.decodeComponent(s.pathParameters['id'] ?? ''),
+                  WaveAlbumPage(
+                    browseId: Uri.decodeComponent(
+                        s.pathParameters['id'] ?? ''),
                     // What the pressed card already knew. The selection
                     // fills the header on the first frame (see
-                    // katAlbumLocation), so the entrance animates the album
+                    // waveAlbumLocation), so the entrance animates the album
                     // instead of a spinner while browseAlbum answers.
                     fallbackTitle: s.uri.queryParameters['title'] ?? '',
                     fallbackArtist: s.uri.queryParameters['artist'] ?? '',
@@ -269,13 +267,15 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/artists',
-                pageBuilder: (c, s) => _page(const KatArtistsPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveArtistsPage()),
               ),
               GoRoute(
                 path: '/artist/:name',
                 pageBuilder: (c, s) => _anchoredPage(
-                  KatArtistPage(
-                    name: Uri.decodeComponent(s.pathParameters['name'] ?? ''),
+                  WaveArtistPage(
+                    name: Uri.decodeComponent(
+                        s.pathParameters['name'] ?? ''),
                   ),
                 ),
               ),
@@ -285,13 +285,16 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/playlists',
-                pageBuilder: (c, s) => _page(const KatPlaylistsPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WavePlaylistsPage()),
                 routes: [
                   GoRoute(
                     path: ':id',
                     pageBuilder: (c, s) => _anchoredPage(
-                      KatPlaylistDetailPage(
-                        id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
+                      WavePlaylistDetailPage(
+                        id: int.tryParse(
+                                s.pathParameters['id'] ?? '') ??
+                            0,
                       ),
                     ),
                   ),
@@ -300,17 +303,20 @@ GoRouter buildRouter({required AuthGate gate}) {
               GoRoute(
                 path: '/ytplaylist/:id',
                 pageBuilder: (c, s) => _anchoredPage(
-                  KatYtPlaylistDetailPage(
-                    playlistId: s.pathParameters['id'] ?? '',
-                    title: s.uri.queryParameters['title'] ?? '',
-                    artworkUrl: s.uri.queryParameters['art'] ?? '',
+                  WaveYtPlaylistDetailPage(
+                    playlistId:
+                        s.pathParameters['id'] ?? '',
+                    title: s.uri.queryParameters['title'] ??
+                        '',
+                    artworkUrl:
+                        s.uri.queryParameters['art'] ?? '',
                   ),
                 ),
               ),
               GoRoute(
                 path: '/genre/:query',
                 pageBuilder: (c, s) => _anchoredPage(
-                  KatGenreDetailPage(
+                  WaveGenreDetailPage(
                     query: s.pathParameters['query'] ?? '',
                     title: s.uri.queryParameters['name'] ?? '',
                   ),
@@ -319,7 +325,7 @@ GoRouter buildRouter({required AuthGate gate}) {
               GoRoute(
                 path: '/spotifyplaylist/:id',
                 pageBuilder: (c, s) => _anchoredPage(
-                  KatSpotifyPlaylistDetailPage(
+                  WaveSpotifyPlaylistDetailPage(
                     playlistId: s.pathParameters['id'] ?? '',
                     title: s.uri.queryParameters['title'] ?? '',
                     artworkUrl: s.uri.queryParameters['art'] ?? '',
@@ -329,8 +335,9 @@ GoRouter buildRouter({required AuthGate gate}) {
               GoRoute(
                 path: '/ytshelf/:title',
                 pageBuilder: (c, s) => _page(
-                  KatYtShelfPage(
-                    title: Uri.decodeComponent(s.pathParameters['title'] ?? ''),
+                  WaveYtShelfPage(
+                    title: Uri.decodeComponent(
+                        s.pathParameters['title'] ?? ''),
                   ),
                 ),
               ),
@@ -340,16 +347,17 @@ GoRouter buildRouter({required AuthGate gate}) {
             routes: [
               GoRoute(
                 path: '/podcasts',
-                pageBuilder: (c, s) => _page(const KatPodcastsPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WavePodcastsPage()),
                 routes: [
                   GoRoute(
                     path: ':id',
                     pageBuilder: (c, s) => _anchoredPage(
-                      KatPodcastShowPage(
+                      WavePodcastShowPage(
                         showId: Uri.decodeComponent(
-                          s.pathParameters['id'] ?? '',
-                        ),
-                        fallbackTitle: s.uri.queryParameters['title'] ?? '',
+                            s.pathParameters['id'] ?? ''),
+                        fallbackTitle:
+                            s.uri.queryParameters['title'] ?? '',
                       ),
                     ),
                   ),
@@ -360,58 +368,46 @@ GoRouter buildRouter({required AuthGate gate}) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: '/library',
+                pageBuilder: (c, s) => _page(WaveLibraryPage(
+                  initialTab: s.uri.queryParameters['tab'],
+                )),
+              ),
+              // Downloads now lives in the Library.
+              GoRoute(
                 path: '/downloads',
-                pageBuilder: (c, s) => _page(const KatDownloadsPage()),
+                redirect: (c, s) => '/library?tab=downloads',
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/mixes',
-                pageBuilder: (c, s) => _page(const KatMixLabPage()),
-              ),
-              GoRoute(
-                path: '/discover',
-                pageBuilder: (c, s) => _page(const KatDiscoverPage()),
-              ),
-              GoRoute(
-                path: '/new-releases',
-                pageBuilder: (c, s) => _page(const KatNewReleasesPage()),
-              ),
-              GoRoute(
-                path: '/group-blend',
-                pageBuilder: (c, s) => _page(const KatGroupBlendPage()),
-              ),
-              GoRoute(
                 path: '/history',
-                pageBuilder: (c, s) => _page(const KatHistoryPage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveHistoryPage()),
               ),
               GoRoute(
                 path: '/now',
-                pageBuilder: (c, s) => _stagePage(const KatNowPlayingPage()),
+                pageBuilder: (c, s) =>
+                    _stagePage(const WaveNowPlayingPage()),
               ),
               GoRoute(
                 path: '/jam',
-                pageBuilder: (c, s) => _page(
-                  KatJamPage(initialCode: s.uri.queryParameters['code']),
-                ),
-              ),
-              GoRoute(
-                path: '/friends',
-                pageBuilder: (c, s) => _page(const KatFriendsPage()),
+                pageBuilder: (c, s) => _page(WaveJamPage(
+                  initialCode: s.uri.queryParameters['code'],
+                )),
               ),
               GoRoute(
                 path: '/profile',
-                pageBuilder: (c, s) => _page(const KatProfilePage()),
+                pageBuilder: (c, s) =>
+                    _page(const WaveProfilePage()),
               ),
               GoRoute(
                 path: '/settings',
-                pageBuilder: (c, s) => _page(
-                  KatSettingsPage(
-                    initialSection: s.uri.queryParameters['section'],
-                  ),
-                ),
+                pageBuilder: (c, s) => _page(WaveSettingsPage(
+                  initialSection: s.uri.queryParameters['section'],
+                )),
               ),
             ],
           ),

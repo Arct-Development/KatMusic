@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
@@ -15,14 +16,13 @@ import '../../features/home/home_providers.dart';
 import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../../features/search/shared_providers.dart';
-import '../../features/sharing/share_links.dart';
-import '../app_shell/kat_hotkeys.dart';
+import '../app_shell/wave_hotkeys.dart';
 import '../collections/playlist_dialogs.dart';
-import '../navigation/kat_nav.dart';
-import '../sharing/share_track_dialog.dart';
+import '../navigation/wave_nav.dart';
+import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import 'buttons.dart' show KatTooltip, KatButton, KatFilledButton;
-import '../theme/kat_icons.dart';
+import 'buttons.dart' show LWTooltip, WaveButton, WaveFilledButton;
+import '../theme/wave_icons.dart';
 
 /// Snappy flyout entrance shared by every DropDownButton/menu in the
 /// app. Same slide-from-edge language as fluent's default, compressed
@@ -44,7 +44,8 @@ Widget fastFlyoutTransition(
   final begin = switch (placementMode) {
     FlyoutPlacementMode.topCenter ||
     FlyoutPlacementMode.topLeft ||
-    FlyoutPlacementMode.topRight => const Offset(0, 1),
+    FlyoutPlacementMode.topRight =>
+      const Offset(0, 1),
     _ => const Offset(0, -1),
   };
   const fast = Interval(0.0, 0.55, curve: Curves.easeOutCubic);
@@ -53,50 +54,59 @@ Widget fastFlyoutTransition(
       opacity: CurvedAnimation(parent: animation, curve: fast),
       child: SlideTransition(
         textDirection: textDirection,
-        position: Tween<Offset>(
-          begin: begin,
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: fast)),
+        position: Tween<Offset>(begin: begin, end: Offset.zero).animate(
+          CurvedAnimation(parent: animation, curve: fast),
+        ),
         child: flyout,
       ),
     ),
   );
 }
 
-/// Menu data model for [KatFlyoutPanel].
+/// Menu data model for [WaveFlyoutPanel].
 ///
 /// Labels are plain strings (not Text widgets) so rows can enforce
 /// single-line ellipsis inside the fixed-width panel. Carries no layout
 /// of its own — rendering is owned by the panel.
-sealed class KatMenuEntry {
-  const KatMenuEntry();
+sealed class WaveMenuEntry {
+  const WaveMenuEntry();
 }
 
 /// One tappable row. `onPressed == null` renders disabled.
-class KatMenuAction extends KatMenuEntry {
+class WaveMenuAction extends WaveMenuEntry {
   final Widget? leading;
   final String label;
   final String? hint;
   final VoidCallback? onPressed;
-  const KatMenuAction({
+
+  /// Draws the label in this family (the font picker previews each font).
+  final String? fontFamily;
+
+  /// When false, activating this row runs [onPressed] without dismissing the
+  /// menu — useful for live-preview pickers (animation style, text size, etc.).
+  final bool closeOnTap;
+
+  const WaveMenuAction({
     this.leading,
     required this.label,
     this.hint,
     this.onPressed,
+    this.fontFamily,
+    this.closeOnTap = true,
   });
 }
 
 /// Horizontal divider.
-class KatMenuSeparator extends KatMenuEntry {
-  const KatMenuSeparator();
+class WaveMenuSeparator extends WaveMenuEntry {
+  const WaveMenuSeparator();
 }
 
 /// Hover-cascade nested menu (e.g. "Add to playlist").
-class KatMenuSubmenu extends KatMenuEntry {
+class WaveMenuSubmenu extends WaveMenuEntry {
   final Widget? leading;
   final String label;
-  final List<KatMenuEntry> Function() items;
-  const KatMenuSubmenu({
+  final List<WaveMenuEntry> Function() items;
+  const WaveMenuSubmenu({
     this.leading,
     required this.label,
     required this.items,
@@ -105,10 +115,10 @@ class KatMenuSubmenu extends KatMenuEntry {
 
 /// Single Fluent menu source for every track row / card / hero.
 ///
-/// One builder produces [KatMenuEntry] lists rendered by
-/// [KatFlyoutPanel] (right-click menus). Plugin DropDownButtons keep
+/// One builder produces [WaveMenuEntry] lists rendered by
+/// [WaveFlyoutPanel] (right-click menus). Plugin DropDownButtons keep
 /// their own inline item lists and are unaffected.
-List<KatMenuEntry> katTrackMenuItems({
+List<WaveMenuEntry> waveTrackMenuItems({
   required BuildContext context,
   required WidgetRef ref,
   required String title,
@@ -122,8 +132,7 @@ List<KatMenuEntry> katTrackMenuItems({
   VoidCallback? onRemove,
 }) {
   final player = ref.read(playbackServiceProvider.notifier);
-  final track =
-      playable ??
+  final track = playable ??
       PlayableTrack(
         title: title,
         artist: artist,
@@ -138,38 +147,45 @@ List<KatMenuEntry> katTrackMenuItems({
   final downloads = ref.read(downloadManagerProvider.notifier);
 
   StoredTrack stored() => StoredTrack(
-    name: title,
-    artist: artist,
-    artworkUrl: artworkUrl,
-    videoId: track.videoId,
-    album: album,
-    durationSeconds: durationSeconds,
-  );
+        name: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        videoId: track.videoId,
+        album: album,
+        durationSeconds: durationSeconds,
+        // Keep the file for Library songs, so a playlist plays it in place
+        // instead of searching for it online.
+        playbackUrl: track.playbackUrl,
+      );
 
-  final items = <KatMenuEntry>[
-    KatMenuAction(
+  final items = <WaveMenuEntry>[
+    WaveMenuAction(
       leading: const Icon(FluentIcons.play, size: 15),
       label: 'Play',
       hint: 'Enter',
-      onPressed: () => player.play(track, sourceLabel: 'Context menu'),
+      onPressed: () =>
+          player.play(track, sourceLabel: 'Context menu'),
     ),
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.add, size: 15),
       label: 'Play next',
       onPressed: () => player.playNext(track),
     ),
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.list, size: 15),
       label: 'Add to queue',
       onPressed: () => player.addToQueue(track),
     ),
-    const KatMenuSeparator(),
-    KatMenuAction(
-      leading: Icon(liked ? KatIcons.likedFill : KatIcons.liked, size: 15),
+    const WaveMenuSeparator(),
+    WaveMenuAction(
+      leading: Icon(
+        liked ? WaveIcons.likedFill : WaveIcons.liked,
+        size: 15,
+      ),
       label: liked ? 'Unlike' : 'Like',
       onPressed: () => library.toggleLiked(stored()),
     ),
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.download, size: 15),
       label: 'Download',
       hint: 'Ctrl+D',
@@ -177,21 +193,22 @@ List<KatMenuEntry> katTrackMenuItems({
         title: title,
         artist: artist,
         artworkUrl: artworkUrl,
+        videoId: track.videoId,
       ),
     ),
   ];
   items.add(
-    katAddToPlaylistEntry(
+    waveAddToPlaylistEntry(
       context: context,
       ref: ref,
       playlists: playlists,
       track: stored(),
     ),
   );
-  items.add(const KatMenuSeparator());
+  items.add(const WaveMenuSeparator());
   items.add(
-    KatMenuAction(
-      leading: const Icon(KatIcons.albums, size: 15),
+    WaveMenuAction(
+      leading: const Icon(WaveIcons.albums, size: 15),
       label: 'Go to album',
       onPressed: () => goToAlbumOfTrack(
         ref,
@@ -205,63 +222,48 @@ List<KatMenuEntry> katTrackMenuItems({
   if (artistList.length > 1) {
     for (final a in artistList) {
       items.add(
-        KatMenuAction(
+        WaveMenuAction(
           leading: const Icon(FluentIcons.microphone, size: 15),
           label: 'Go to $a',
-          onPressed: () =>
-              katOpen(ref.context, '/artist/${Uri.encodeComponent(a)}'),
+          onPressed: () => waveOpen(
+              ref.context, '/artist/${Uri.encodeComponent(a)}'),
         ),
       );
     }
   } else if (artistList.isNotEmpty) {
     items.add(
-      KatMenuAction(
+      WaveMenuAction(
         leading: const Icon(FluentIcons.microphone, size: 15),
         label: 'Go to ${artistList.first}',
-        onPressed: () => katOpen(
-          ref.context,
-          '/artist/${Uri.encodeComponent(artistList.first)}',
-        ),
+        onPressed: () => waveOpen(
+            ref.context, '/artist/${Uri.encodeComponent(artistList.first)}'),
       ),
     );
   }
-  items.add(const KatMenuSeparator());
+  items.add(const WaveMenuSeparator());
   final link = trackShareLink(track);
   items.add(
-    KatMenuAction(
-      leading: const Icon(KatIcons.share, size: 15),
-      label: 'Share track…',
-      onPressed: link == null
-          ? null
-          : () => showKatTrackShareDialog(
-              context,
-              videoId: track.videoId,
-              title: track.title,
-              artist: track.artist,
-              album: track.album,
-              artworkUrl: track.artworkUrl,
-            ),
-    ),
-  );
-  items.add(
-    KatMenuAction(
-      leading: const Icon(KatIcons.link, size: 15),
-      label: 'Copy share link',
+    WaveMenuAction(
+      leading: const Icon(FluentIcons.link, size: 15),
+      label: 'Copy link',
       onPressed: link == null
           ? null
           : () => _copyText(context, link, 'Link copied'),
     ),
   );
   items.add(
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.copy, size: 15),
       label: 'Copy title and artist',
-      onPressed: () =>
-          _copyText(context, '$title — $artist', 'Title and artist copied'),
+      onPressed: () => _copyText(
+        context,
+        '$title — $artist',
+        'Title and artist copied',
+      ),
     ),
   );
   items.add(
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.info, size: 15),
       label: 'Properties',
       onPressed: () {
@@ -300,9 +302,9 @@ List<KatMenuEntry> katTrackMenuItems({
     ),
   );
   if (removeLabel != null && onRemove != null) {
-    items.add(const KatMenuSeparator());
+    items.add(const WaveMenuSeparator());
     items.add(
-      KatMenuAction(
+      WaveMenuAction(
         leading: const Icon(FluentIcons.delete, size: 15),
         label: removeLabel,
         hint: 'Del',
@@ -310,14 +312,16 @@ List<KatMenuEntry> katTrackMenuItems({
       ),
     );
   }
-  items.add(const KatMenuSeparator());
+  items.add(const WaveMenuSeparator());
   items.add(
-    KatMenuAction(
+    WaveMenuAction(
       leading: const Icon(FluentIcons.blocked, size: 15),
       label: "Don't recommend",
       onPressed: () {
         try {
-          ref.read(databaseProvider).addExclusion(name: title, artist: artist);
+          ref
+              .read(databaseProvider)
+              .addExclusion(name: title, artist: artist);
           // Recommendations rebuild without it on next load.
           ref.invalidate(feedProvider);
         } catch (_) {}
@@ -327,16 +331,15 @@ List<KatMenuEntry> katTrackMenuItems({
   return items;
 }
 
-/// KatMusic's cross-device share page when [PlayableTrack.videoId] is set.
-/// Local-only files have no stable identity on another device, so they
-/// return null rather than leaking a filesystem path.
-String? trackShareLink(PlayableTrack track) => katTrackShareUrl(
-  videoId: track.videoId,
-  title: track.title,
-  artist: track.artist,
-  album: track.album,
-  artworkUrl: track.artworkUrl,
-);
+/// YouTube Music watch URL when [PlayableTrack.videoId] is set.
+/// Otherwise the local playback path. Null when neither exists.
+String? trackShareLink(PlayableTrack track) {
+  if (track.videoId.isNotEmpty) {
+    return 'https://music.youtube.com/watch?v=${track.videoId}';
+  }
+  if (track.playbackUrl.isNotEmpty) return track.playbackUrl;
+  return null;
+}
 
 /// Local file, download, or stream, plus a filesystem path when the
 /// bytes are already on disk.
@@ -346,8 +349,7 @@ String? trackShareLink(PlayableTrack track) => katTrackShareUrl(
 }) {
   final playback = track.playbackUrl;
   final playbackIsFile = playback.isNotEmpty && File(playback).existsSync();
-  final downloaded =
-      downloadPath != null &&
+  final downloaded = downloadPath != null &&
       downloadPath.isNotEmpty &&
       File(downloadPath).existsSync();
   if (playbackIsFile &&
@@ -438,12 +440,14 @@ Future<void> showWaveTrackProperties(
               if (i > 0) const SizedBox(height: 14),
               Text(
                 rows[i].$1,
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(
+                  color: waveTextSecondary(context),
+                ),
               ),
               const SizedBox(height: 3),
               SelectableText(
                 rows[i].$2,
-                style: KatType.body.copyWith(
+                style: WaveType.body.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   height: 1.35,
@@ -454,7 +458,7 @@ Future<void> showWaveTrackProperties(
         ),
       ),
       actions: [
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),
         ),
@@ -472,36 +476,44 @@ Future<void> showWaveTrackProperties(
 /// profiles) plus an Acrylic/PhysicalModel shell. This panel sizes by
 /// top-down constraints instead (stretch inside a fixed max width: O(n),
 /// cached, nothing to measure) with an opaque surface + cacheable
-/// BoxShadows. Rows are [KatMenuRow], which keeps the plugin's item
+/// BoxShadows. Rows are [WaveMenuRow], which keeps the plugin's item
 /// metrics (14px label, 16px leading, muted 12px trailing note) but derives
 /// its radius from the panel corner, so hover/selected fills stay
 /// concentric with the rounded surface instead of reading as square plates
 /// cut against it ([FlyoutListTile] hard-codes a 4px radius).
-class KatFlyoutPanel extends StatefulWidget {
-  final List<KatMenuEntry>? entries;
+class WaveFlyoutPanel extends StatefulWidget {
+  final List<WaveMenuEntry>? entries;
   final Widget? child;
   final double maxWidth;
   final double? maxHeight;
-  const KatFlyoutPanel.items({
+
+  /// Whether tapping a [WaveMenuAction] dismisses the flyout by default.
+  /// Individual actions can still override via [WaveMenuAction.closeOnTap].
+  final bool closeOnAction;
+
+  const WaveFlyoutPanel.items({
     super.key,
     required this.entries,
     this.maxWidth = 280,
     this.maxHeight,
+    this.closeOnAction = true,
   }) : child = null;
-  const KatFlyoutPanel.child({
+  const WaveFlyoutPanel.child({
     super.key,
     required this.child,
     this.maxWidth = 280,
     this.maxHeight,
-  }) : entries = null;
+  }) : entries = null,
+       closeOnAction = true;
   @override
-  State<KatFlyoutPanel> createState() => _KatFlyoutPanelState();
+  State<WaveFlyoutPanel> createState() => _WaveFlyoutPanelState();
 }
 
-class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
+class _WaveFlyoutPanelState extends State<WaveFlyoutPanel> {
   int _highlight = -1;
-  _KatSubmenuRowState? _openSubmenu;
-  final Map<int, GlobalKey<_KatSubmenuRowState>> _subKeys = {};
+  _WaveSubmenuRowState? _openSubmenu;
+  Timer? _submenuCloseTimer;
+  final Map<int, GlobalKey<_WaveSubmenuRowState>> _subKeys = {};
   final Map<int, GlobalKey> _rowKeys = {};
   late final ScrollController _scrollController;
 
@@ -513,6 +525,7 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
 
   @override
   void dispose() {
+    _submenuCloseTimer?.cancel();
     _scrollController.dispose();
     // The cascaded submenu is an OverlayPortal child of its row, so it
     // goes away with the parent; nothing to close here.
@@ -521,11 +534,11 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
 
   /// Indices of keyboard-focusable rows (actions + submenus, no dividers).
   List<int> get _actionable => [
-    for (var i = 0; i < (widget.entries?.length ?? 0); i++)
-      if (widget.entries![i] is KatMenuAction ||
-          widget.entries![i] is KatMenuSubmenu)
-        i,
-  ];
+        for (var i = 0; i < (widget.entries?.length ?? 0); i++)
+          if (widget.entries![i] is WaveMenuAction ||
+              widget.entries![i] is WaveMenuSubmenu)
+            i,
+      ];
 
   void _moveHighlight(int dir) {
     final stops = _actionable;
@@ -551,7 +564,26 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
     });
   }
 
+  void _cancelCloseSubmenu() {
+    _submenuCloseTimer?.cancel();
+    _submenuCloseTimer = null;
+  }
+
+  void _scheduleCloseSubmenu() {
+    if (_openSubmenu == null) return;
+    _submenuCloseTimer?.cancel();
+    // Grace delay prevents diagonal mouse movement toward the submenu from
+    // snapping it shut when briefly grazing a neighboring row.
+    _submenuCloseTimer = Timer(const Duration(milliseconds: 320), () {
+      _submenuCloseTimer = null;
+      if (!mounted) return;
+      _closeSubmenu();
+    });
+  }
+
   void _closeSubmenu() {
+    _submenuCloseTimer?.cancel();
+    _submenuCloseTimer = null;
     final sub = _openSubmenu;
     if (sub == null) return;
     _openSubmenu = null;
@@ -560,12 +592,15 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
 
   void _activate(BuildContext context, int index) {
     final entry = widget.entries![index];
-    if (entry is KatMenuSubmenu) {
+    if (entry is WaveMenuSubmenu) {
+      _cancelCloseSubmenu();
       _subKeys[index]?.currentState?.openNow();
-    } else if (entry is KatMenuAction) {
+    } else if (entry is WaveMenuAction) {
       final onPressed = entry.onPressed;
       if (onPressed == null) return;
-      Navigator.of(context).maybePop();
+      if (widget.closeOnAction && entry.closeOnTap) {
+        Navigator.of(context).maybePop();
+      }
       onPressed();
     }
   }
@@ -601,117 +636,143 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
       for (var i = 0; i < widget.entries!.length; i++) {
         final entry = widget.entries![i];
         final rowKey = _rowKeys.putIfAbsent(i, () => GlobalKey());
-        if (entry is KatMenuSeparator) {
+        if (entry is WaveMenuSeparator) {
           // Same spec as the plugin separator: 5px bottom pad, zero-margin
           // divider. Built inline — the plugin's is not a Widget.
-          rows.add(
-            KeyedSubtree(
-              key: rowKey,
-              child: const Padding(
-                padding: EdgeInsetsDirectional.only(bottom: 5, top: 5),
-                child: Divider(
-                  style: DividerThemeData(
-                    horizontalMargin: EdgeInsetsDirectional.zero,
-                  ),
-                ),
+          rows.add(KeyedSubtree(
+            key: rowKey,
+            child: const Padding(
+              padding: EdgeInsetsDirectional.only(bottom: 5, top: 5),
+              child: Divider(
+                style: DividerThemeData(
+                    horizontalMargin: EdgeInsetsDirectional.zero),
               ),
             ),
-          );
-        } else if (entry is KatMenuSubmenu) {
-          rows.add(
-            _KatSubmenuRow(
-              key: _subKeys.putIfAbsent(
-                i,
-                () => GlobalKey<_KatSubmenuRowState>(),
-              ),
-              entry: entry,
-              highlighted: i == _highlight,
-              onOpened: (c) {
-                if (_openSubmenu != null && _openSubmenu != c) {
-                  _openSubmenu!.close();
-                }
-                _openSubmenu = c;
-              },
-            ),
-          );
-        } else if (entry is KatMenuAction) {
+          ));
+        } else if (entry is WaveMenuSubmenu) {
+          rows.add(_WaveSubmenuRow(
+            key: _subKeys.putIfAbsent(
+                i, () => GlobalKey<_WaveSubmenuRowState>()),
+            entry: entry,
+            highlighted: i == _highlight,
+            hasOtherOpenSubmenu: () =>
+                _openSubmenu != null &&
+                _openSubmenu != _subKeys[i]?.currentState,
+            onSubmenuActivity: _cancelCloseSubmenu,
+            onOpened: (c) {
+              _cancelCloseSubmenu();
+              if (_openSubmenu != null && _openSubmenu != c) {
+                _openSubmenu!.close();
+              }
+              _openSubmenu = c;
+            },
+          ));
+        } else if (entry is WaveMenuAction) {
           final onPressed = entry.onPressed;
-          rows.add(
-            MouseRegion(
-              key: rowKey,
-              opaque: false,
-              onEnter: (_) => _closeSubmenu(),
-              child: KatMenuRow(
-                selected: i == _highlight,
-                icon: entry.leading,
-                text: Text(
-                  entry.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: entry.hint == null
+          rows.add(MouseRegion(
+            key: rowKey,
+            opaque: false,
+            onEnter: (_) => _scheduleCloseSubmenu(),
+            child: WaveMenuRow(
+              selected: i == _highlight,
+              icon: entry.leading,
+              text: Text(
+                entry.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: entry.fontFamily == null
                     ? null
-                    : Text(entry.hint!, style: const TextStyle(fontSize: 11)),
-                onPressed: onPressed == null
-                    ? null
-                    : () {
-                        Navigator.of(context).maybePop();
-                        onPressed();
-                      },
+                    : TextStyle(fontFamily: entry.fontFamily),
               ),
+              trailing: entry.hint == null
+                  ? null
+                  : Text(entry.hint!,
+                      style: const TextStyle(fontSize: 11)),
+              onPressed: onPressed == null
+                  ? null
+                  : () {
+                      if (widget.closeOnAction && entry.closeOnTap) {
+                        Navigator.of(context).maybePop();
+                      }
+                      onPressed();
+                    },
             ),
-          );
+          ));
         }
       }
-      body = Scrollbar(
-        controller: _scrollController,
-        interactive: true,
-        // Desktop ScrollBehavior would add its own Scrollbar on top of the
-        // explicit one above (doubled bars), so switch the implicit one off.
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const ClampingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: rows,
-            ),
+      // Scrolls by wheel and keyboard with no bar: a scrollbar line read as
+      // a stray stroke down the menu's edge.
+      body = ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const ClampingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: rows,
           ),
         ),
       );
     }
 
     final screenH = MediaQuery.maybeSizeOf(context)?.height ?? 600;
-    final effectiveMaxHeight =
-        widget.maxHeight ?? math.min(screenH * 0.65, 380.0);
+    final effectiveMaxHeight = widget.maxHeight ?? math.min(screenH * 0.65, 380.0);
 
+    final dark = theme.brightness == Brightness.dark;
+    // Glassmorphism: frosted glass, the page blurred through a thin film,
+    // with a light hairline edge. Solid material keeps it opaque.
+    final frosted = waveGlassOn(context) && WaveHazeScope.blurEnabled(context);
+    final content = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: widget.maxWidth,
+        maxHeight: effectiveMaxHeight,
+      ),
+      child: Padding(
+        // [WaveMenuRow.inset]: keeps row fills clear of the panel's
+        // rounded edge, and is what the row radius is measured against.
+        padding: const EdgeInsetsDirectional.all(WaveMenuRow.inset),
+        child: body,
+      ),
+    );
     final panel = Container(
       decoration: BoxDecoration(
-        color: theme.menuColor,
-        borderRadius: KatRadius.menuRadius,
+        color: frosted ? null : theme.menuColor,
+        borderRadius: WaveRadius.menuRadius,
         // The pearl theme has no value step left above a card
         // (`lightSurface == lightSurfaceRaised`), so a menu opened over one
         // has nothing but its shadow to separate it — the same hairline the
         // command palette carries gives it an edge again.
-        border: Border.all(color: katDivider(context)),
-        boxShadow: KatElevation.flyout(theme.brightness == Brightness.dark),
+        border: frosted ? null : Border.all(color: waveDivider(context)),
+        boxShadow: WaveElevation.flyout(dark),
       ),
+      // Over the frosted fill, so the edge stays visible.
+      foregroundDecoration: frosted
+          ? BoxDecoration(
+              borderRadius: WaveRadius.menuRadius,
+              border: Border.all(
+                color: (dark ? Colors.white : Colors.black)
+                    .withValues(alpha: dark ? 0.14 : 0.10),
+              ),
+            )
+          : null,
       child: ClipRRect(
-        borderRadius: KatRadius.menuRadius,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: widget.maxWidth,
-            maxHeight: effectiveMaxHeight,
-          ),
-          child: Padding(
-            // [KatMenuRow.inset]: keeps row fills clear of the panel's
-            // rounded edge, and is what the row radius is measured against.
-            padding: const EdgeInsetsDirectional.all(KatMenuRow.inset),
-            child: body,
-          ),
-        ),
+        borderRadius: WaveRadius.menuRadius,
+        child: frosted
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: ColoredBox(
+                  // Neutral smoked glass film rather than waveSurfaceRaised so
+                  // Artwork/Custom themes never tint glassmorphism menus into
+                  // colorful translucent blocks.
+                  color: (dark
+                          ? const Color(0xFF141418)
+                          : const Color(0xFFF5F5F7))
+                      .withValues(alpha: dark ? 0.56 : 0.74),
+                  child: content,
+                ),
+              )
+            : content,
       ),
     );
 
@@ -719,9 +780,13 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
     // Nav scope: Up/Down stay local while the menu has focus so the
     // global volume shortcuts yield to menu keyboard navigation.
     // (Space stays global: it toggles playback even with a menu open.)
-    return KatKeyNavScope(
+    return WaveKeyNavScope(
       consumeUpDown: true,
-      child: Focus(autofocus: true, onKeyEvent: _onKey, child: panel),
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: panel,
+      ),
     );
   }
 }
@@ -731,13 +796,13 @@ class _KatFlyoutPanelState extends State<KatFlyoutPanel> {
 ///
 /// WHY: [FlyoutListTile] hard-codes `BorderRadius.circular(4)` for its
 /// hover/selected fill and its focus ring. Inside a panel whose own corner
-/// is `KatRadius.menu`, the first and last rows then read as square plates
+/// is `WaveRadius.menu`, the first and last rows then read as square plates
 /// cut against the rounded surface. This row keeps the plugin's metrics
 /// (14px label, 16px leading, muted 12px trailing note) and derives its
-/// radius from [inset] — `KatRadius.menu` − 4 = [KatRadius.controls] — so
+/// radius from [inset] — `WaveRadius.menu` − 4 = [WaveRadius.controls] — so
 /// the highlight stays concentric with the panel.
-class KatMenuRow extends StatelessWidget {
-  /// Gap the panel keeps around its rows ([KatFlyoutPanel] padding). Row
+class WaveMenuRow extends StatelessWidget {
+  /// Gap the panel keeps around its rows ([WaveFlyoutPanel] padding). Row
   /// radius = panel radius − this, which is what keeps them concentric.
   static const double inset = 4;
 
@@ -749,7 +814,7 @@ class KatMenuRow extends StatelessWidget {
   /// Renders the hovered fill (keyboard highlight / current selection).
   final bool selected;
 
-  const KatMenuRow({
+  const WaveMenuRow({
     super.key,
     required this.text,
     this.icon,
@@ -774,7 +839,7 @@ class KatMenuRow extends StatelessWidget {
         return FocusBorder(
           focused: states.isFocused,
           renderOutside: true,
-          style: FocusThemeData(borderRadius: KatRadius.controlsRadius),
+          style: FocusThemeData(borderRadius: WaveRadius.controlsRadius),
           child: Container(
             decoration: BoxDecoration(
               color: ButtonThemeData.uncheckedInputColor(
@@ -782,7 +847,7 @@ class KatMenuRow extends StatelessWidget {
                 effective,
                 transparentWhenNone: true,
               ),
-              borderRadius: KatRadius.controlsRadius,
+              borderRadius: WaveRadius.controlsRadius,
             ),
             padding: const EdgeInsetsDirectional.only(
               top: 6,
@@ -822,7 +887,7 @@ class KatMenuRow extends StatelessWidget {
                       // *border* colour (~1.1:1 on the menu surface), which
                       // made shortcut hints like "Ctrl+K" nearly invisible.
                       // `textTertiary` is the app's 4.8:1 meta token.
-                      color: katTextTertiary(context),
+                      color: waveTextTertiary(context),
                       height: 0.7,
                     ),
                     child: trailing!,
@@ -836,24 +901,28 @@ class KatMenuRow extends StatelessWidget {
   }
 }
 
-/// Cascading submenu row: same [KatMenuRow] visuals as actions, opens
-/// a nested [KatFlyoutPanel] on hover (250ms) or tap/click/Enter.
-class _KatSubmenuRow extends StatefulWidget {
-  final KatMenuSubmenu entry;
+/// Cascading submenu row: same [WaveMenuRow] visuals as actions, opens
+/// a nested [WaveFlyoutPanel] on hover (250ms) or tap/click/Enter.
+class _WaveSubmenuRow extends StatefulWidget {
+  final WaveMenuSubmenu entry;
   final bool highlighted;
-  final ValueChanged<_KatSubmenuRowState> onOpened;
-  const _KatSubmenuRow({
+  final ValueChanged<_WaveSubmenuRowState> onOpened;
+  final VoidCallback? onSubmenuActivity;
+  final bool Function()? hasOtherOpenSubmenu;
+  const _WaveSubmenuRow({
     super.key,
     required this.entry,
     required this.highlighted,
     required this.onOpened,
+    this.onSubmenuActivity,
+    this.hasOtherOpenSubmenu,
   });
 
   @override
-  State<_KatSubmenuRow> createState() => _KatSubmenuRowState();
+  State<_WaveSubmenuRow> createState() => _WaveSubmenuRowState();
 }
 
-class _KatSubmenuRowState extends State<_KatSubmenuRow> {
+class _WaveSubmenuRowState extends State<_WaveSubmenuRow> {
   // The submenu is an OverlayPortal child of its row, NOT a second route:
   // a second route either needs a barrier (which swallows the parent's
   // hover/clicks) or has none (outside clicks then pop only the top route
@@ -863,6 +932,12 @@ class _KatSubmenuRowState extends State<_KatSubmenuRow> {
   final _link = LayerLink();
   Timer? _hoverTimer;
   bool _flipLeft = false;
+
+  /// Opens upward (bottom-aligned to the row) when there is more room
+  /// above than below; [_maxHeight] caps it to that room so a submenu
+  /// near the window's bottom scrolls instead of running off screen.
+  bool _openUp = false;
+  double? _maxHeight;
 
   bool get isOpen => _portal.isShowing;
 
@@ -883,9 +958,16 @@ class _KatSubmenuRowState extends State<_KatSubmenuRow> {
     // Flip to the left when the submenu (max 280 wide) would run off screen.
     final box = context.findRenderObject();
     if (box is RenderBox && box.hasSize) {
-      final right = box.localToGlobal(Offset(box.size.width, 0)).dx;
-      final screenW = MediaQuery.sizeOf(context).width;
-      _flipLeft = right + 284 > screenW;
+      final topLeft = box.localToGlobal(Offset.zero);
+      final right = topLeft.dx + box.size.width;
+      final screen = MediaQuery.sizeOf(context);
+      _flipLeft = right + 284 > screen.width;
+      const margin = 12.0;
+      final cap = math.min(screen.height * 0.65, 380.0);
+      final below = screen.height - topLeft.dy - margin;
+      final above = topLeft.dy + box.size.height - margin;
+      _openUp = below < math.min(cap, 220.0) && above > below;
+      _maxHeight = math.max(120.0, math.min(cap, _openUp ? above : below));
     }
     _portal.show();
     widget.onOpened(this);
@@ -902,10 +984,31 @@ class _KatSubmenuRowState extends State<_KatSubmenuRow> {
           child: CompositedTransformFollower(
             link: _link,
             showWhenUnlinked: false,
-            targetAnchor: _flipLeft ? Alignment.topLeft : Alignment.topRight,
-            followerAnchor: _flipLeft ? Alignment.topRight : Alignment.topLeft,
-            offset: Offset(_flipLeft ? -2 : 2, -KatMenuRow.inset),
-            child: KatFlyoutPanel.items(entries: widget.entry.items()),
+            targetAnchor: _openUp
+                ? (_flipLeft ? Alignment.bottomLeft : Alignment.bottomRight)
+                : (_flipLeft ? Alignment.topLeft : Alignment.topRight),
+            followerAnchor: _openUp
+                ? (_flipLeft ? Alignment.bottomRight : Alignment.bottomLeft)
+                : (_flipLeft ? Alignment.topRight : Alignment.topLeft),
+            offset: Offset(
+              0,
+              _openUp ? WaveMenuRow.inset : -WaveMenuRow.inset,
+            ),
+            // Padded bridge inside MouseRegion eliminates the dead gap between
+            // parent menu and submenu so diagonal mouse motion never falls off.
+            child: MouseRegion(
+              onEnter: (_) => widget.onSubmenuActivity?.call(),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: _flipLeft ? 6 : 0,
+                  left: _flipLeft ? 0 : 6,
+                ),
+                child: WaveFlyoutPanel.items(
+                  entries: widget.entry.items(),
+                  maxHeight: _maxHeight,
+                ),
+              ),
+            ),
           ),
         ),
         child: _row(),
@@ -917,11 +1020,17 @@ class _KatSubmenuRowState extends State<_KatSubmenuRow> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
+        if (_portal.isShowing) {
+          widget.onSubmenuActivity?.call();
+          return;
+        }
         _hoverTimer?.cancel();
-        _hoverTimer = Timer(const Duration(milliseconds: 250), openNow);
+        final delayMs =
+            (widget.hasOtherOpenSubmenu?.call() ?? false) ? 340 : 180;
+        _hoverTimer = Timer(Duration(milliseconds: delayMs), openNow);
       },
       onExit: (_) => _hoverTimer?.cancel(),
-      child: KatMenuRow(
+      child: WaveMenuRow(
         selected: widget.highlighted,
         icon: widget.entry.leading,
         text: Text(
@@ -936,16 +1045,20 @@ class _KatSubmenuRowState extends State<_KatSubmenuRow> {
   }
 }
 
-/// Right-click region opening a [KatFlyoutPanel] at the cursor.
-class KatContextMenu extends StatefulWidget {
-  final List<KatMenuEntry> Function() items;
+/// Right-click region opening a [WaveFlyoutPanel] at the cursor.
+class WaveContextMenu extends StatefulWidget {
+  final List<WaveMenuEntry> Function() items;
   final Widget child;
-  const KatContextMenu({super.key, required this.items, required this.child});
+  const WaveContextMenu({
+    super.key,
+    required this.items,
+    required this.child,
+  });
   @override
-  State<KatContextMenu> createState() => _KatContextMenuState();
+  State<WaveContextMenu> createState() => _WaveContextMenuState();
 }
 
-class _KatContextMenuState extends State<KatContextMenu> {
+class _WaveContextMenuState extends State<WaveContextMenu> {
   final _controller = FlyoutController();
   @override
   void dispose() {
@@ -960,7 +1073,9 @@ class _KatContextMenuState extends State<KatContextMenu> {
       placementMode: FlyoutPlacementMode.auto,
       transitionDuration: const Duration(milliseconds: 90),
       transitionBuilder: fastFlyoutTransition,
-      builder: (context) => KatFlyoutPanel.items(entries: widget.items()),
+      builder: (context) => WaveFlyoutPanel.items(
+        entries: widget.items(),
+      ),
     );
   }
 
@@ -980,25 +1095,36 @@ class _KatContextMenuState extends State<KatContextMenu> {
   }
 }
 
-/// Button opening a [KatFlyoutPanel]; the trigger keeps caller visuals
+/// Canonical context-menu alias: [LWContextMenu] is [WaveContextMenu].
+///
+/// Right-click / long-press region opening a 7px Fluent menu flyout.
+class LWContextMenu extends WaveContextMenu {
+  const LWContextMenu({
+    super.key,
+    required super.items,
+    required super.child,
+  });
+}
+
+/// Button opening a [WaveFlyoutPanel]; the trigger keeps caller visuals
 /// verbatim (replaces plugin DropDownButton, whose MenuFlyout pays the
 /// IntrinsicWidth measurement on every open).
-class KatMenuButton extends StatefulWidget {
-  final List<KatMenuEntry> entries;
+class WaveMenuButton extends StatefulWidget {
+  final List<WaveMenuEntry> entries;
   final FlyoutPlacementMode placement;
   final Widget Function(BuildContext context, VoidCallback onOpen)
-  buttonBuilder;
-  const KatMenuButton({
+      buttonBuilder;
+  const WaveMenuButton({
     super.key,
     required this.entries,
     required this.buttonBuilder,
     this.placement = FlyoutPlacementMode.auto,
   });
   @override
-  State<KatMenuButton> createState() => _KatMenuButtonState();
+  State<WaveMenuButton> createState() => _WaveMenuButtonState();
 }
 
-class _KatMenuButtonState extends State<KatMenuButton> {
+class _WaveMenuButtonState extends State<WaveMenuButton> {
   final _controller = FlyoutController();
   @override
   void dispose() {
@@ -1017,7 +1143,9 @@ class _KatMenuButtonState extends State<KatMenuButton> {
           : FlyoutAutoConfiguration(preferredMode: widget.placement),
       transitionDuration: const Duration(milliseconds: 90),
       transitionBuilder: fastFlyoutTransition,
-      builder: (context) => KatFlyoutPanel.items(entries: widget.entries),
+      builder: (context) => WaveFlyoutPanel.items(
+        entries: widget.entries,
+      ),
     );
   }
 
@@ -1030,12 +1158,12 @@ class _KatMenuButtonState extends State<KatMenuButton> {
   }
 }
 
-/// Overflow button opening a [KatFlyoutPanel] below-right.
-class KatOverflowButton extends StatelessWidget {
+/// Overflow button opening a [WaveFlyoutPanel] below-right.
+class WaveOverflowButton extends StatelessWidget {
   final String tooltip;
-  final List<KatMenuEntry> items;
+  final List<WaveMenuEntry> items;
   final IconData icon;
-  const KatOverflowButton({
+  const WaveOverflowButton({
     super.key,
     this.tooltip = 'More',
     required this.items,
@@ -1044,28 +1172,27 @@ class KatOverflowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    return KatTooltip(
+    final dark = waveIsDark(context);
+    return LWTooltip(
       message: tooltip,
-      child: KatMenuButton(
+      child: WaveMenuButton(
         entries: items,
         placement: FlyoutPlacementMode.bottomRight,
         buttonBuilder: (context, onOpen) => SizedBox(
-          width: KatDensity.hitArea,
-          height: KatDensity.hitArea,
+          width: WaveDensity.hitArea,
+          height: WaveDensity.hitArea,
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: IconButton(
-              icon: Icon(
-                icon,
-                size: 15,
-                color: dark
-                    ? KatColors.textSecondary
-                    : KatColors.lightTextSecondary,
-              ),
-              onPressed: onOpen,
+            icon: Icon(
+              icon,
+              size: 15,
+              color: dark
+                  ? WaveColors.textSecondary
+                  : WaveColors.lightTextSecondary,
             ),
-          ),
+            onPressed: onOpen,
+          )),
         ),
       ),
     );
@@ -1080,26 +1207,32 @@ class KatOverflowButton extends StatelessWidget {
 /// opening on a fresh library: without it the submenu had no entries at all,
 /// so hovering "Add to playlist" opened an empty panel and a new account had
 /// no route into a playlist.
-KatMenuSubmenu katAddToPlaylistEntry({
+WaveMenuSubmenu waveAddToPlaylistEntry({
   required BuildContext context,
   required WidgetRef ref,
   required List<SavedPlaylist> playlists,
   required StoredTrack track,
 }) {
   final library = ref.read(playlistRepositoryProvider.notifier);
-  final userPlaylists = playlists.where((p) => !p.isLikedSongs).toList();
-  return KatMenuSubmenu(
-    leading: const Icon(KatIcons.playlists, size: 15),
+  // Local songs is rebuilt from the music folders on every scan, so rows
+  // added to it by hand would vanish: not a target either.
+  final userPlaylists =
+      playlists.where((p) => !p.isLikedSongs && !p.isLocal).toList();
+  return WaveMenuSubmenu(
+    leading: const Icon(WaveIcons.playlists, size: 15),
     label: 'Add to playlist',
     items: () => [
       for (final p in userPlaylists)
-        KatMenuAction(
-          leading: const Icon(KatIcons.playlists, size: 15),
+        WaveMenuAction(
+          leading: const Icon(
+            WaveIcons.playlists,
+            size: 15,
+          ),
           label: p.title,
           onPressed: () => library.addTrack(p.id, track),
         ),
-      if (userPlaylists.isNotEmpty) const KatMenuSeparator(),
-      KatMenuAction(
+      if (userPlaylists.isNotEmpty) const WaveMenuSeparator(),
+      WaveMenuAction(
         leading: const Icon(FluentIcons.add, size: 15),
         label: 'New playlist…',
         onPressed: () => showWaveAddToNewPlaylist(context, ref, track),
@@ -1146,19 +1279,23 @@ Future<void> showWaveAddToPlaylist(
             for (final p in userPlaylists)
               ListTile.selectable(
                 shape: RoundedRectangleBorder(
-                  borderRadius: KatRadius.controlsRadius,
+                  borderRadius: WaveRadius.controlsRadius,
                 ),
                 title: Text(p.title),
                 subtitle: Text('${p.tracks.length} tracks'),
-                leading: const Icon(KatIcons.playlists, size: 15),
+                leading: const Icon(
+                  WaveIcons.playlists,
+                  size: 15,
+                ),
                 selectionMode: ListTileSelectionMode.single,
                 selected: false,
-                onPressed: () => Navigator.of(context).pop(p.id),
+                onPressed: () =>
+                    Navigator.of(context).pop(p.id),
               ),
             if (userPlaylists.isEmpty)
               ListTile.selectable(
                 shape: RoundedRectangleBorder(
-                  borderRadius: KatRadius.controlsRadius,
+                  borderRadius: WaveRadius.controlsRadius,
                 ),
                 title: const Text('New playlist…'),
                 leading: const Icon(FluentIcons.add, size: 15),
@@ -1170,7 +1307,7 @@ Future<void> showWaveAddToPlaylist(
         ),
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
@@ -1182,13 +1319,11 @@ Future<void> showWaveAddToPlaylist(
     if (context.mounted) await showWaveAddToNewPlaylist(context, ref, stored);
     return;
   }
-  await ref
-      .read(playlistRepositoryProvider.notifier)
-      .addTrack(selected, stored);
+  await ref.read(playlistRepositoryProvider.notifier).addTrack(selected, stored);
 }
 
 /// Like toggle helper for the new layer (no legacy toast host).
-Future<bool> katToggleLike(
+Future<bool> waveToggleLike(
   WidgetRef ref, {
   required String title,
   required String artist,
@@ -1197,9 +1332,7 @@ Future<bool> katToggleLike(
   String album = '',
   int durationSeconds = 0,
 }) {
-  return ref
-      .read(playlistRepositoryProvider.notifier)
-      .toggleLiked(
+  return ref.read(playlistRepositoryProvider.notifier).toggleLiked(
         StoredTrack(
           name: title,
           artist: artist,

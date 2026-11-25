@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/storage/app_database.dart';
 import '../search/shared_providers.dart';
+import 'library_index.dart' show wellFormedUtf16;
 import 'local_audio_tags.dart';
 import 'playlists.dart';
 
@@ -60,8 +61,7 @@ class LocalMusicLibrary {
       final dir = Directory(p.join(support.path, 'local_art'));
       if (!await dir.exists()) await dir.create(recursive: true);
       final hash = md5.convert(utf8.encode(sourcePath)).toString();
-      final png =
-          bytes.length > 3 &&
+      final png = bytes.length > 3 &&
           bytes[0] == 0x89 &&
           bytes[1] == 0x50 &&
           bytes[2] == 0x4E;
@@ -84,66 +84,51 @@ class LocalMusicLibrary {
       for (final folder in _db.localFolders()) {
         final dir = Directory(folder);
         if (!await dir.exists()) continue;
-        await for (final entity in dir.list(
-          recursive: true,
-          followLinks: false,
-        )) {
+        await for (final entity in dir.list(recursive: true, followLinks: false)) {
           if (entity is! File) continue;
-          final ext = p
-              .extension(entity.path)
-              .toLowerCase()
-              .replaceFirst('.', '');
+          final ext = p.extension(entity.path).toLowerCase().replaceFirst('.', '');
           if (!localAudioExtensions.contains(ext)) continue;
           if (!seen.add(entity.path.toLowerCase())) continue;
           final name = p.basename(entity.path);
           final tags = LocalAudioTags.read(entity.path, filename: name);
-          final title = tags.title.isEmpty ? name : tags.title;
-          final artist = tags.artist.isEmpty ? 'Local file' : tags.artist;
+          final title = wellFormedUtf16(tags.title.isEmpty ? name : tags.title);
+          final artist =
+              wellFormedUtf16(tags.artist.isEmpty ? 'Local file' : tags.artist);
           final art = await _coverFile(entity.path, tags.coverBytes);
-          final album = tags.album.isEmpty
+          final album = wellFormedUtf16(tags.album).isEmpty
               ? ''
               : (tags.year.isEmpty
-                    ? tags.album
-                    : '${tags.album} (${tags.year})');
-          tracks.add(
-            StoredTrack(
-              name: title,
-              artist: artist,
-              album: album,
-              artworkUrl: art,
-              playbackUrl: entity.path,
-              addedAtMillis: entity.statSync().modified.millisecondsSinceEpoch,
-            ),
-          );
+                  ? tags.album
+                  : '${tags.album} (${tags.year})');
+          tracks.add(StoredTrack(
+            name: title,
+            artist: artist,
+            album: album,
+            artworkUrl: art,
+            playbackUrl: entity.path,
+            addedAtMillis: entity.statSync().modified.millisecondsSinceEpoch,
+          ));
           found++;
           if (found % 40 == 0) {
-            _report(
-              LocalScanState(
-                running: true,
-                label: 'Scanning folders… $found files',
-              ),
-            );
+            _report(LocalScanState(
+              running: true,
+              label: 'Scanning folders… $found files',
+            ));
             await Future<void>.delayed(Duration.zero);
           }
         }
       }
       tracks.sort((a, b) {
-        final byArtist = a.artist.toLowerCase().compareTo(
-          b.artist.toLowerCase(),
-        );
+        final byArtist = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
         if (byArtist != 0) return byArtist;
         return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       });
       final playlist = await _playlists.ensureLocalSongs();
       await _playlists.replaceTracks(playlist.id, tracks);
-      _report(
-        LocalScanState(
-          running: false,
-          label: tracks.isEmpty
-              ? 'No audio files found'
-              : '${tracks.length} local songs',
-        ),
-      );
+      _report(LocalScanState(
+        running: false,
+        label: tracks.isEmpty ? 'No audio files found' : '${tracks.length} local songs',
+      ));
       return tracks.length;
     } catch (e) {
       _report(LocalScanState(running: false, label: 'Scan failed'));
@@ -152,9 +137,8 @@ class LocalMusicLibrary {
   }
 }
 
-final localScanProvider = StateProvider<LocalScanState>(
-  (ref) => const LocalScanState(),
-);
+final localScanProvider =
+    StateProvider<LocalScanState>((ref) => const LocalScanState());
 
 final localMusicLibraryProvider = Provider<LocalMusicLibrary>((ref) {
   return LocalMusicLibrary(

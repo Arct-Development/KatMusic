@@ -21,7 +21,10 @@ Future<bool?> showUpdateDialog(
   return showDialog<bool>(
     context: context,
     barrierDismissible: true,
-    builder: (_) => UpdateDialog(update: update, isManualCheck: isManualCheck),
+    builder: (_) => UpdateDialog(
+      update: update,
+      isManualCheck: isManualCheck,
+    ),
   );
 }
 
@@ -78,8 +81,7 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
     final name = _selectedAsset!.name.toLowerCase();
     if (name.endsWith('.exe')) return 'Install Update';
     if (name.endsWith('.appimage')) return 'Update AppImage';
-    if (name.endsWith('.deb') || name.endsWith('.rpm'))
-      return 'Download Package';
+    if (name.endsWith('.deb') || name.endsWith('.rpm')) return 'Download Package';
     if (name.endsWith('.zip')) return 'Download Portable';
     return 'Update Now';
   }
@@ -171,23 +173,30 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
     final releaseDate = widget.update.publishedAt != null
         ? DateFormat.yMMMMd().format(widget.update.publishedAt!)
         : null;
 
     return ContentDialog(
-      constraints: const BoxConstraints(maxWidth: 540, maxHeight: 520),
+      constraints: const BoxConstraints(
+        maxWidth: 540,
+        maxHeight: 520,
+      ),
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(KatRadius.controls),
+              borderRadius: BorderRadius.circular(WaveRadius.controls),
             ),
-            child: Icon(FluentIcons.update_restore, color: accent, size: 20),
+            child: Icon(
+              FluentIcons.update_restore,
+              color: accent,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -197,7 +206,7 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
               children: [
                 Row(
                   children: [
-                    const Text('Update Arrived', style: KatType.sectionTitle),
+                    const Text('Update Arrived', style: WaveType.sectionTitle),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -205,13 +214,13 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: KatColors.success.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(KatRadius.tiny),
+                        color: WaveColors.success.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(WaveRadius.tiny),
                       ),
                       child: Text(
                         'v${widget.update.version}',
-                        style: KatType.overline.copyWith(
-                          color: KatColors.success,
+                        style: WaveType.overline.copyWith(
+                          color: WaveColors.success,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -221,10 +230,8 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                 const SizedBox(height: 2),
                 Text(
                   'Current version: v$appVersion${releaseDate != null ? ' · $releaseDate' : ''}',
-                  style: KatType.meta.copyWith(
-                    color: dark
-                        ? KatColors.textSecondary
-                        : KatColors.lightTextSecondary,
+                  style: WaveType.meta.copyWith(
+                    color: dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -238,11 +245,10 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
         children: [
           const SizedBox(height: 8),
           Text(
-            widget.update.title.isNotEmpty &&
-                    widget.update.title != widget.update.tagName
+            widget.update.title.isNotEmpty && widget.update.title != widget.update.tagName
                 ? widget.update.title
                 : 'Changelog:',
-            style: KatType.body.copyWith(fontWeight: FontWeight.w600),
+            style: WaveType.body.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Flexible(
@@ -251,9 +257,11 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
               constraints: const BoxConstraints(maxHeight: 240),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: katSurface(context),
-                borderRadius: BorderRadius.circular(KatRadius.controls),
-                border: Border.all(color: katOutline(context)),
+                color: waveSurface(context),
+                borderRadius: BorderRadius.circular(WaveRadius.controls),
+                border: Border.all(
+                  color: waveOutline(context),
+                ),
               ),
               child: Scrollbar(
                 child: SingleChildScrollView(
@@ -271,21 +279,17 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: KatColors.danger.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(KatRadius.tiny),
+                color: WaveColors.danger.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(WaveRadius.tiny),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    FluentIcons.error_badge,
-                    color: KatColors.danger,
-                    size: 16,
-                  ),
+                  const Icon(FluentIcons.error_badge, color: WaveColors.danger, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: KatType.meta.copyWith(color: KatColors.danger),
+                      style: WaveType.meta.copyWith(color: WaveColors.danger),
                     ),
                   ),
                 ],
@@ -307,15 +311,13 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                       _totalBytes > 0
                           ? 'Downloading: ${(_progress * 100).toStringAsFixed(0)}%'
                           : 'Starting download...',
-                      style: KatType.meta,
+                      style: WaveType.meta,
                     ),
                     if (_totalBytes > 0)
                       Text(
                         '${_formatBytes(_receivedBytes)} / ${_formatBytes(_totalBytes)}',
-                        style: KatType.meta.copyWith(
-                          color: dark
-                              ? KatColors.textSecondary
-                              : KatColors.lightTextSecondary,
+                        style: WaveType.meta.copyWith(
+                          color: dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary,
                         ),
                       ),
                   ],
@@ -328,24 +330,20 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                 children: [
                   Text(
                     'Package:',
-                    style: KatType.meta.copyWith(
+                    style: WaveType.meta.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: dark
-                          ? KatColors.textSecondary
-                          : KatColors.lightTextSecondary,
+                      color: dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: KatSelect<AppReleaseAsset>(
+                    child: WaveSelect<AppReleaseAsset>(
                       value: _selectedAsset,
                       options: widget.update.assets
-                          .map(
-                            (a) => KatSelectOption(
-                              value: a,
-                              label: '${a.name} (${_formatBytes(a.size)})',
-                            ),
-                          )
+                          .map((a) => WaveSelectOption(
+                                value: a,
+                                label: '${a.name} (${_formatBytes(a.size)})',
+                              ))
                           .toList(),
                       onChanged: (asset) {
                         setState(() => _selectedAsset = asset);
@@ -369,14 +367,14 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
       ),
       actions: _isDownloading
           ? [
-              KatButton(
+              WaveButton(
                 onPressed: _cancelDownload,
                 child: const Text('Cancel Download'),
               ),
             ]
           : [
               if (widget.update.htmlUrl.isNotEmpty)
-                KatButton(
+                WaveButton(
                   onPressed: _openReleaseUrl,
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -387,11 +385,11 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
                     ],
                   ),
                 ),
-              KatButton(
+              WaveButton(
                 onPressed: _onDecline,
                 child: const Text('Remind Me Later'),
               ),
-              KatFilledButton(
+              WaveFilledButton(
                 onPressed: _startUpdate,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -415,7 +413,7 @@ class _ChangelogRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final lines = markdown.split('\n');
 
     final widgets = <Widget>[];
@@ -427,80 +425,68 @@ class _ChangelogRenderer extends StatelessWidget {
       }
 
       if (line.startsWith('### ')) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Text(
-              line.substring(4).replaceAll('**', ''),
-              style: KatType.body.copyWith(fontWeight: FontWeight.bold),
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 4),
+          child: Text(
+            line.substring(4).replaceAll('**', ''),
+            style: WaveType.body.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
+        ));
       } else if (line.startsWith('## ')) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 4),
-            child: Text(
-              line.substring(3).replaceAll('**', ''),
-              style: KatType.sectionTitle.copyWith(fontSize: 16),
-            ),
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 4),
+          child: Text(
+            line.substring(3).replaceAll('**', ''),
+            style: WaveType.sectionTitle.copyWith(fontSize: 16),
           ),
-        );
+        ));
       } else if (line.startsWith('# ')) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 6),
-            child: Text(
-              line.substring(2).replaceAll('**', ''),
-              style: KatType.pageTitle.copyWith(fontSize: 18),
-            ),
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 6),
+          child: Text(
+            line.substring(2).replaceAll('**', ''),
+            style: WaveType.pageTitle.copyWith(fontSize: 18),
           ),
-        );
+        ));
       } else if (line.startsWith('* ') || line.startsWith('- ')) {
         final content = line.substring(2).trim();
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '• ',
-                  style: TextStyle(
-                    color: katAccent(context),
-                    fontWeight: FontWeight.bold,
-                  ),
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '• ',
+                style: TextStyle(
+                  color: waveAccent(context),
+                  fontWeight: FontWeight.bold,
                 ),
-                Expanded(
-                  child: Text(
-                    content,
-                    style: KatType.body.copyWith(
-                      color: dark
-                          ? KatColors.textPrimary
-                          : KatColors.lightTextPrimary,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      } else {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              line,
-              style: KatType.body.copyWith(
-                color: dark
-                    ? KatColors.textSecondary
-                    : KatColors.lightTextSecondary,
-                height: 1.35,
               ),
+              Expanded(
+                child: Text(
+                  content,
+                  style: WaveType.body.copyWith(
+                    color: dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      } else {
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Text(
+            line,
+            style: WaveType.body.copyWith(
+              color: dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary,
+              height: 1.35,
             ),
           ),
-        );
+        ));
       }
     }
 

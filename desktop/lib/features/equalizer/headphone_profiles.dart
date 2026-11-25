@@ -36,8 +36,8 @@ class HeadphoneProfile {
     final parts = <String>[
       for (final band in bands)
         'equalizer=f=${band.hz.toStringAsFixed(0)}'
-            ':t=q:w=${band.q.toStringAsFixed(2)}'
-            ':g=${band.gainDb.toStringAsFixed(1)}',
+        ':t=q:w=${band.q.toStringAsFixed(2)}'
+        ':g=${band.gainDb.toStringAsFixed(1)}',
     ];
     return 'lavfi=[${parts.join(',')}]';
   }

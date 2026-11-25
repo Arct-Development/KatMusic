@@ -18,7 +18,8 @@ import 'package:katmusic_desktop/features/innertube/innertube_api.dart';
 ///   - `musicTastebuilderShelfRenderer` -> not renderable, must drop
 Map<String, dynamic> _fixture() {
   final file = File('test/fixtures/yt_home_shelves.json');
-  expect(file.existsSync(), isTrue, reason: 'missing fixture: ${file.path}');
+  expect(file.existsSync(), isTrue,
+      reason: 'missing fixture: ${file.path}');
   return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
 }
 
@@ -28,54 +29,39 @@ void main() {
 
   group('kindForBrowseId', () {
     test('artist channels', () {
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('UCabc123'),
-        YouTubeEntityKind.artist,
-      );
+      expect(InnerTubeMusicApi.kindForBrowseId('UCabc123'),
+          YouTubeEntityKind.artist);
     });
 
     test('albums are MPRE, with or without a VL wrapper', () {
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('MPREb_1234'),
-        YouTubeEntityKind.album,
-      );
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('VLAA123'),
-        YouTubeEntityKind.album,
-      );
+      expect(InnerTubeMusicApi.kindForBrowseId('MPREb_1234'),
+          YouTubeEntityKind.album);
+      expect(InnerTubeMusicApi.kindForBrowseId('VLAA123'),
+          YouTubeEntityKind.album);
     });
 
     test('playlists are VLPL, not a bare PL match', () {
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('VLPLlLI-kEw'),
-        YouTubeEntityKind.playlist,
-      );
+      expect(InnerTubeMusicApi.kindForBrowseId('VLPLlLI-kEw'),
+          YouTubeEntityKind.playlist);
     });
 
     // Regression from a live capture: the "Easy Evenings" carousel
     // shipped VLRDCLAK ids. Testing the bare 'RD' prefix instead of the
     // VL-wrapped form mislabelled every radio as a playlist.
     test('radios are VL-wrapped RD ids', () {
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('VLRDCLAK5uy_'),
-        YouTubeEntityKind.mix,
-      );
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('VLRDAMVMabc'),
-        YouTubeEntityKind.mix,
-      );
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('RDCLAK5uy_'),
-        YouTubeEntityKind.mix,
-      );
+      expect(InnerTubeMusicApi.kindForBrowseId('VLRDCLAK5uy_'),
+          YouTubeEntityKind.mix);
+      expect(InnerTubeMusicApi.kindForBrowseId('VLRDAMVMabc'),
+          YouTubeEntityKind.mix);
+      expect(InnerTubeMusicApi.kindForBrowseId('RDCLAK5uy_'),
+          YouTubeEntityKind.mix);
     });
 
     test('unknown ids fall back to album rather than throwing', () {
-      expect(
-        InnerTubeMusicApi.kindForBrowseId('VLLM'),
-        YouTubeEntityKind.album,
-      );
-      expect(InnerTubeMusicApi.kindForBrowseId(''), YouTubeEntityKind.album);
+      expect(InnerTubeMusicApi.kindForBrowseId('VLLM'),
+          YouTubeEntityKind.album);
+      expect(InnerTubeMusicApi.kindForBrowseId(''),
+          YouTubeEntityKind.album);
     });
   });
 
@@ -105,27 +91,25 @@ void main() {
         expect(e.artworkUrl, isNotEmpty);
         expect(e.subtitle, isNotEmpty);
       }
-      expect(
-        playlistShelf.entities.every(
-          (e) => e.kind == YouTubeEntityKind.playlist,
-        ),
-        isTrue,
-      );
+      expect(playlistShelf.entities.every(
+          (e) => e.kind == YouTubeEntityKind.playlist), isTrue);
 
       // Second carousel is a radio - must not be reported as a playlist.
-      expect(
-        shelves[1].entities.every((e) => e.kind == YouTubeEntityKind.mix),
-        isTrue,
-      );
+      expect(shelves[1].entities.every(
+          (e) => e.kind == YouTubeEntityKind.mix), isTrue);
     });
 
     test('honours maxShelves', () {
-      expect(tube.parseHomeShelves(_fixture(), maxShelves: 1).length, 1);
+      expect(
+        tube.parseHomeShelves(_fixture(), maxShelves: 1).length, 1);
       expect(tube.parseHomeShelves(_fixture(), maxShelves: 0), isEmpty);
     });
 
     test('honours maxItemsPerShelf', () {
-      final shelves = tube.parseHomeShelves(_fixture(), maxItemsPerShelf: 1);
+      final shelves = tube.parseHomeShelves(
+        _fixture(),
+        maxItemsPerShelf: 1,
+      );
       expect(shelves.length, 2);
       expect(shelves[0].entities.length, 1);
     });
@@ -138,31 +122,23 @@ void main() {
               {
                 'musicTastebuilderShelfRenderer': {
                   'primaryText': {'text': 'Made for you'},
-                },
+                }
               },
               {
                 'musicCarouselShelfRenderer': {
                   'header': {
                     'musicCarouselShelfBasicHeaderRenderer': {
-                      'title': {
-                        'runs': [
-                          {'text': 'Empty'},
-                        ],
-                      },
-                    },
+                      'title': {'runs': [{'text': 'Empty'}]},
+                    }
                   },
                   'contents': <Object?>[],
-                },
+                }
               },
               {
                 'musicShelfRenderer': {
-                  'title': {
-                    'runs': [
-                      {'text': 'No rows'},
-                    ],
-                  },
+                  'title': {'runs': [{'text': 'No rows'}]},
                   'contents': <Object?>[],
-                },
+                }
               },
             ],
           },
@@ -180,11 +156,7 @@ void main() {
             'contents': [
               {
                 'musicShelfRenderer': {
-                  'title': {
-                    'runs': [
-                      {'text': 'Recently played'},
-                    ],
-                  },
+                  'title': {'runs': [{'text': 'Recently played'}]},
                   'contents': [
                     {
                       'musicResponsiveListItemRenderer': {
@@ -301,7 +273,9 @@ void main() {
                   'contents': [
                     {
                       'musicResponsiveListItemRenderer': {
-                        'playlistItemData': {'videoId': 'abc123'},
+                        'playlistItemData': {
+                          'videoId': 'abc123',
+                        },
                         'flexColumns': [
                           {
                             'musicResponsiveListItemFlexColumnRenderer': {
@@ -334,21 +308,21 @@ void main() {
       // singleColumnBrowseResultsRenderer - the section list is found by
       // key so both shapes work.
       final fixture = _fixture();
-      final tabs =
-          ((fixture['contents'] as Map)['singleColumnBrowseResultsRenderer']
-                  as Map)['tabs']
-              as List;
-      final sectionList =
-          ((((tabs[0] as Map)['tabRenderer'] as Map)['content']
-                  as Map)['sectionListRenderer']
-              as Map);
+      final tabs = ((fixture['contents']
+              as Map)['singleColumnBrowseResultsRenderer']
+          as Map)['tabs'] as List;
+      final sectionList = ((((tabs[0]
+              as Map)['tabRenderer'] as Map)['content'] as Map)
+          ['sectionListRenderer'] as Map);
       final root = <String, dynamic>{
         'contents': {
           'twoColumnBrowseResultsRenderer': {
             'tabs': [
               {
                 'tabRenderer': {
-                  'content': {'sectionListRenderer': sectionList},
+                  'content': {
+                    'sectionListRenderer': sectionList,
+                  },
                 },
               },
             ],
@@ -361,19 +335,16 @@ void main() {
     test('missing or malformed payloads yield no shelves', () {
       expect(tube.parseHomeShelves(<String, dynamic>{}), isEmpty);
       expect(
-        tube.parseHomeShelves(<String, dynamic>{
-          'contents': <String, dynamic>{},
-        }),
-        isEmpty,
-      );
+        tube.parseHomeShelves(
+            <String, dynamic>{'contents': <String, dynamic>{}}),
+        isEmpty);
       expect(
         tube.parseHomeShelves({
           'contents': {
             'sectionListRenderer': {'contents': 'not-a-list'},
           },
         }),
-        isEmpty,
-      );
+        isEmpty);
     });
   });
 
@@ -393,7 +364,8 @@ void main() {
         YtHomeShelf(
           title: 'x',
           entities: const [
-            YouTubeMusicEntity(kind: YouTubeEntityKind.mix, name: 'n'),
+            YouTubeMusicEntity(
+                kind: YouTubeEntityKind.mix, name: 'n'),
           ],
         ).isRenderable,
         isTrue,
@@ -413,53 +385,51 @@ void main() {
 
   group('liked music card filtering', () {
     Map<String, dynamic> card(String name, String browseId) => {
-      'musicTwoRowItemRenderer': {
-        'title': {
-          'runs': [
-            {'text': name},
-          ],
-        },
-        'navigationEndpoint': {
-          'browseEndpoint': {'browseId': browseId},
-        },
-        'thumbnail': {
-          'thumbnails': [
-            {'url': 'https://art.example/a.jpg'},
-          ],
-        },
-      },
-    };
+          'musicTwoRowItemRenderer': {
+            'title': {
+              'runs': [
+                {'text': name}
+              ],
+            },
+            'navigationEndpoint': {
+              'browseEndpoint': {'browseId': browseId},
+            },
+            'thumbnail': {
+              'thumbnails': [
+                {'url': 'https://art.example/a.jpg'}
+              ],
+            },
+          },
+        };
 
     Map<String, dynamic> carouselRoot(List<Map<String, dynamic>> items) => {
-      'contents': {
-        'sectionListRenderer': {
-          'contents': [
-            {
-              'musicCarouselShelfRenderer': {
-                'header': {
-                  'musicCarouselShelfBasicHeaderRenderer': {
-                    'title': {
-                      'runs': [
-                        {'text': 'For you'},
-                      ],
+          'contents': {
+            'sectionListRenderer': {
+              'contents': [
+                {
+                  'musicCarouselShelfRenderer': {
+                    'header': {
+                      'musicCarouselShelfBasicHeaderRenderer': {
+                        'title': {
+                          'runs': [
+                            {'text': 'For you'}
+                          ],
+                        },
+                      },
                     },
+                    'contents': items,
                   },
                 },
-                'contents': items,
-              },
+              ],
             },
-          ],
-        },
-      },
-    };
+          },
+        };
 
     test('VLLM card is dropped, neighbors survive', () {
-      final shelves = tube.parseHomeShelves(
-        carouselRoot([
-          card('Liked Music', 'VLLM'),
-          card('After Hours', 'MPREb_afterhours'),
-        ]),
-      );
+      final shelves = tube.parseHomeShelves(carouselRoot([
+        card('Liked Music', 'VLLM'),
+        card('After Hours', 'MPREb_afterhours'),
+      ]));
       expect(shelves.length, 1);
       expect(shelves.first.entities.length, 1);
       expect(shelves.first.entities.first.name, 'After Hours');
@@ -467,7 +437,9 @@ void main() {
 
     test('LM-only carousel yields no shelves', () {
       expect(
-        tube.parseHomeShelves(carouselRoot([card('Liked Music', 'VLLM')])),
+        tube.parseHomeShelves(carouselRoot([
+          card('Liked Music', 'VLLM'),
+        ])),
         isEmpty,
       );
     });
@@ -478,59 +450,58 @@ void main() {
       String title,
       String subtitle,
       String videoId,
-    ) => {
-      'musicTwoRowItemRenderer': {
-        'title': {
-          'runs': [
-            {'text': title},
-          ],
-        },
-        'subtitle': {
-          'runs': [
-            {'text': subtitle},
-          ],
-        },
-        'navigationEndpoint': {
-          'watchEndpoint': {'videoId': videoId},
-        },
-        'thumbnail': {
-          'thumbnails': [
-            {'url': 'https://art.example/s.jpg'},
-          ],
-        },
-      },
-    };
+    ) =>
+        {
+          'musicTwoRowItemRenderer': {
+            'title': {
+              'runs': [
+                {'text': title}
+              ],
+            },
+            'subtitle': {
+              'runs': [
+                {'text': subtitle}
+              ],
+            },
+            'navigationEndpoint': {
+              'watchEndpoint': {'videoId': videoId},
+            },
+            'thumbnail': {
+              'thumbnails': [
+                {'url': 'https://art.example/s.jpg'}
+              ],
+            },
+          },
+        };
 
     Map<String, dynamic> carouselRoot(List<Map<String, dynamic>> items) => {
-      'contents': {
-        'sectionListRenderer': {
-          'contents': [
-            {
-              'musicCarouselShelfRenderer': {
-                'header': {
-                  'musicCarouselShelfBasicHeaderRenderer': {
-                    'title': {
-                      'runs': [
-                        {'text': 'Listen again'},
-                      ],
+          'contents': {
+            'sectionListRenderer': {
+              'contents': [
+                {
+                  'musicCarouselShelfRenderer': {
+                    'header': {
+                      'musicCarouselShelfBasicHeaderRenderer': {
+                        'title': {
+                          'runs': [
+                            {'text': 'Listen again'}
+                          ],
+                        },
+                      },
                     },
+                    'contents': items,
                   },
                 },
-                'contents': items,
-              },
+              ],
             },
-          ],
-        },
-      },
-    };
+          },
+        };
 
     test('watch cards parse as tracks, not entities', () {
-      final shelves = tube.parseHomeShelves(
-        carouselRoot([
-          songCard('South of the Border', 'Song • Ed Sheeran', 'v-song-1'),
-          songCard('Timeless', 'Song • The Weeknd', 'v-song-2'),
-        ]),
-      );
+      final shelves = tube.parseHomeShelves(carouselRoot([
+        songCard('South of the Border', 'Song • Ed Sheeran', 'v-song-1'),
+        songCard('Timeless', 'Song • The Weeknd', 'v-song-2'),
+      ]));
       expect(shelves.length, 1);
       final shelf = shelves.first;
       expect(shelf.entities, isEmpty);
@@ -543,17 +514,20 @@ void main() {
     });
 
     test('artist falls back gracefully without a type token', () {
-      final shelves = tube.parseHomeShelves(
-        carouselRoot([songCard('Chemical', 'Post Malone', 'v-song-3')]),
-      );
+      final shelves = tube.parseHomeShelves(carouselRoot([
+        songCard('Chemical', 'Post Malone', 'v-song-3'),
+      ]));
       expect(shelves.length, 1);
-      expect(shelves.first.trackCards.first.artist, 'Post Malone');
+      expect(
+        shelves.first.trackCards.first.artist,
+        'Post Malone',
+      );
     });
 
     test('cards without a video id are dropped', () {
-      final shelves = tube.parseHomeShelves(
-        carouselRoot([songCard('Ghost', 'Song • Nobody', '')]),
-      );
+      final shelves = tube.parseHomeShelves(carouselRoot([
+        songCard('Ghost', 'Song • Nobody', ''),
+      ]));
       expect(shelves, isEmpty);
     });
 
@@ -562,28 +536,31 @@ void main() {
       // playlist id. Previously defaulted to album and routed a
       // playlist at `/album/<VL…>` (artist "Private", dead list).
       Map<String, dynamic> playlistCard() => {
-        'musicTwoRowItemRenderer': {
-          'title': {
-            'runs': [
-              {'text': "June-August Recap '26"},
-            ],
-          },
-          'subtitle': {
-            'runs': [
-              {'text': 'Playlist • Private'},
-            ],
-          },
-          'navigationEndpoint': {
-            'watchEndpoint': {'playlistId': 'VLRDCLAKrecap123'},
-          },
-          'thumbnail': {
-            'thumbnails': [
-              {'url': 'https://art.example/recap.jpg'},
-            ],
-          },
-        },
-      };
-      final shelves = tube.parseHomeShelves(carouselRoot([playlistCard()]));
+            'musicTwoRowItemRenderer': {
+              'title': {
+                'runs': [
+                  {'text': "June-August Recap '26"}
+                ],
+              },
+              'subtitle': {
+                'runs': [
+                  {'text': 'Playlist • Private'}
+                ],
+              },
+              'navigationEndpoint': {
+                'watchEndpoint': {
+                  'playlistId': 'VLRDCLAKrecap123',
+                },
+              },
+              'thumbnail': {
+                'thumbnails': [
+                  {'url': 'https://art.example/recap.jpg'}
+                ],
+              },
+            },
+          };
+      final shelves =
+          tube.parseHomeShelves(carouselRoot([playlistCard()]));
       expect(shelves.length, 1);
       final shelf = shelves.first;
       expect(shelf.trackCards, isEmpty);

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/diagnostics/diagnostics_log.dart';
 import '../../core/storage/app_database.dart';
 import '../../core/storage/prefs.dart';
 import '../feed/feed_repository.dart';
@@ -30,12 +31,44 @@ class PodcastRepository {
         DateTime.now().difference(_homeAt!) < const Duration(minutes: 10)) {
       return cached;
     }
-    final shelves = await _tube.fetchPodcastHome();
+    List<PodcastShelf> shelves;
+    try {
+      shelves = await _tube.fetchPodcastHome();
+    } on InnerTubeHttpException catch (e) {
+      // YouTube Music's Podcasts page is not served in every region (it
+      // 404s from Italy, among others) while podcast search works there:
+      // build Home from search instead of failing the whole page.
+      if (e.responseCode != 404 && e.responseCode != 403) rethrow;
+      DiagnosticsLog.info('podcasts home http=${e.responseCode} fallback=search');
+      shelves = await _searchHome();
+      if (shelves.isEmpty) rethrow;
+    }
     if (shelves.isNotEmpty) {
       _home = shelves;
       _homeAt = DateTime.now();
     }
     return shelves;
+  }
+
+  /// Search-built Home for regions without the Podcasts page.
+  static const _fallbackShelves = [
+    ('Popular episodes', 'podcast'),
+    ('Interviews', 'interview podcast'),
+    ('News & stories', 'news podcast'),
+  ];
+
+  Future<List<PodcastShelf>> _searchHome() async {
+    final results = await Future.wait([
+      for (final (_, query) in _fallbackShelves)
+        _tube
+            .searchPodcastEpisodes(query, limit: 20)
+            .catchError((Object _) => const <PodcastEpisode>[]),
+    ]);
+    return [
+      for (var i = 0; i < _fallbackShelves.length; i++)
+        if (results[i].isNotEmpty)
+          PodcastShelf(title: _fallbackShelves[i].$1, episodes: results[i]),
+    ];
   }
 
   Future<PodcastShowPage?> show(String showId, {bool force = false}) async {
@@ -100,25 +133,24 @@ final podcastRepositoryProvider = Provider<PodcastRepository>((ref) {
   );
 });
 
-final podcastHomeProvider = FutureProvider.autoDispose<List<PodcastShelf>>((
-  ref,
-) async {
+final podcastHomeProvider =
+    FutureProvider.autoDispose<List<PodcastShelf>>((ref) async {
   if (!ref.watch(prefsProvider).podcastsEnabled) return const [];
   return ref.watch(podcastRepositoryProvider).home();
 });
 
 final podcastSearchProvider = FutureProvider.autoDispose
     .family<List<PodcastEpisode>, String>((ref, query) async {
-      if (!ref.watch(prefsProvider).podcastsEnabled) return const [];
-      if (query.trim().isEmpty) return const [];
-      return ref.watch(podcastRepositoryProvider).search(query);
-    });
+  if (!ref.watch(prefsProvider).podcastsEnabled) return const [];
+  if (query.trim().isEmpty) return const [];
+  return ref.watch(podcastRepositoryProvider).search(query);
+});
 
-final podcastShowProvider = FutureProvider.autoDispose
-    .family<PodcastShowPage?, String>((ref, showId) {
-      if (!ref.watch(prefsProvider).podcastsEnabled) return Future.value(null);
-      return ref.watch(podcastRepositoryProvider).show(showId);
-    });
+final podcastShowProvider =
+    FutureProvider.autoDispose.family<PodcastShowPage?, String>((ref, showId) {
+  if (!ref.watch(prefsProvider).podcastsEnabled) return Future.value(null);
+  return ref.watch(podcastRepositoryProvider).show(showId);
+});
 
 GeneratedTrack trackFromEpisode(PodcastEpisode episode) {
   final show = episode.showTitle.trim();

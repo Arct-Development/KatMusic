@@ -7,13 +7,13 @@ import 'package:super_sliver_list/super_sliver_list.dart';
 
 import '../../core/audio/stream_models.dart';
 import '../../features/player/playback_service.dart';
-import '../app_shell/kat_hotkeys.dart';
+import '../app_shell/wave_hotkeys.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 import 'artist_line.dart';
 import 'artwork.dart';
-import 'buttons.dart' show KatTooltip;
+import 'buttons.dart' show LWTooltip;
 import 'menus.dart';
 
 const _kDurationCol = 72.0;
@@ -28,7 +28,7 @@ const _kRowActions = 60.0;
 // spreadsheet-style view (frozen first column + horizontal scroll) is asked.
 
 /// Sort direction for a header tap cycle: asc → desc → asc …
-enum KatSortDir { asc, desc }
+enum WaveSortDir { asc, desc }
 
 /// Canonical reusable desktop music table.
 ///
@@ -45,11 +45,11 @@ enum KatSortDir { asc, desc }
 ///   selection is mouse-driven (Ctrl/Shift+click).
 /// - Mouse: hover wash + play overlay on art + hover-only like/more,
 ///   single tap focuses/selects, double-click plays, right-click menu.
-/// - Playing row: animated [KatEqDots] + accent title; durations tabular.
+/// - Playing row: animated [WaveEqDots] + accent title; durations tabular.
 ///
 /// Home / Discover / Collections render their track lists through this so
 /// density, truncation and keyboard behaviour stay identical everywhere.
-class KatDesktopTable<T extends Object> extends ConsumerStatefulWidget {
+class WaveDesktopTable<T extends Object> extends ConsumerStatefulWidget {
   final List<T> items;
   final String Function(T item) keyOf;
   final String Function(T item) titleOf;
@@ -87,14 +87,14 @@ class KatDesktopTable<T extends Object> extends ConsumerStatefulWidget {
   final bool Function(T item)? isLiked;
   final Future<void> Function(T item)? onToggleLike;
 
-  /// Play the row at [index]. Single tap only focuses — pass
-  /// [playOnSingleTap] to also play on single tap (e.g. search results).
+  /// Play the row at [index]. Defaults to playing on single tap (holding
+  /// Ctrl/Shift performs multi-selection without playing).
   final void Function(int index) onPlay;
   final bool playOnSingleTap;
   final String? removeLabel;
   final void Function(int index)? onRemove;
 
-  final List<KatMenuEntry> Function(WidgetRef ref, T item)? menuBuilder;
+  final List<WaveMenuEntry> Function(WidgetRef ref, T item)? menuBuilder;
   final bool showHeader;
   final bool showLike;
   final bool showArtistColumn;
@@ -117,7 +117,7 @@ class KatDesktopTable<T extends Object> extends ConsumerStatefulWidget {
   /// gutters). Mutually exclusive with [shrinkWrap].
   final bool sliver;
 
-  const KatDesktopTable({
+  const WaveDesktopTable({
     super.key,
     required this.items,
     required this.keyOf,
@@ -143,7 +143,7 @@ class KatDesktopTable<T extends Object> extends ConsumerStatefulWidget {
     this.isPlaying,
     this.isLiked,
     this.onToggleLike,
-    this.playOnSingleTap = false,
+    this.playOnSingleTap = true,
     this.removeLabel,
     this.onRemove,
     this.menuBuilder,
@@ -157,17 +157,16 @@ class KatDesktopTable<T extends Object> extends ConsumerStatefulWidget {
     this.scrollController,
     this.empty,
     this.sliver = false,
-  }) : assert(
-         !(sliver && shrinkWrap),
-         'sliver and shrinkWrap are mutually exclusive',
-       );
+  }) : assert(!(sliver && shrinkWrap),
+            'sliver and shrinkWrap are mutually exclusive');
 
   @override
-  ConsumerState<KatDesktopTable<T>> createState() => _KatDesktopTableState<T>();
+  ConsumerState<WaveDesktopTable<T>> createState() =>
+      _WaveDesktopTableState<T>();
 }
 
-class _KatDesktopTableState<T extends Object>
-    extends ConsumerState<KatDesktopTable<T>> {
+class _WaveDesktopTableState<T extends Object>
+    extends ConsumerState<WaveDesktopTable<T>> {
   final FocusNode _focus = FocusNode();
   final ListController _listController = ListController();
   int _hover = -1;
@@ -175,7 +174,7 @@ class _KatDesktopTableState<T extends Object>
   int _anchor = -1;
   Set<String> _internalSelected = {};
   int _sortCol = -1; // 0 title, 1 artist, 2 album, 3 duration, 4 added
-  KatSortDir _sortDir = KatSortDir.asc;
+  WaveSortDir _sortDir = WaveSortDir.asc;
 
   @override
   void dispose() {
@@ -184,7 +183,8 @@ class _KatDesktopTableState<T extends Object>
     super.dispose();
   }
 
-  Set<String> get _selected => widget.selectedKeys ?? _internalSelected;
+  Set<String> get _selected =>
+      widget.selectedKeys ?? _internalSelected;
 
   void _setSelected(Set<String> next) {
     if (widget.selectedKeys == null) {
@@ -199,7 +199,7 @@ class _KatDesktopTableState<T extends Object>
   /// 2 000-row table ran ~20 O(n log n) sorts. The inputs are only the
   /// widget config (invalidated in [didUpdateWidget]) and the sort state
   /// (invalidated in [_cycleSort]); the length guard keeps the old
-  /// behaviour if a caller ever mutates [KatDesktopTable.items] in place.
+  /// behaviour if a caller ever mutates [WaveDesktopTable.items] in place.
   List<int>? _orderCache;
 
   List<int> get _order {
@@ -211,7 +211,7 @@ class _KatDesktopTableState<T extends Object>
   }
 
   @override
-  void didUpdateWidget(covariant KatDesktopTable<T> oldWidget) {
+  void didUpdateWidget(covariant WaveDesktopTable<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     _orderCache = null;
   }
@@ -236,9 +236,10 @@ class _KatDesktopTableState<T extends Object>
     final capture = fn;
     final dir = _sortDir;
     order.sort((a, b) {
-      final c = capture(widget.items[a])
-          .compareTo(capture(widget.items[b]) as dynamic);
-      return dir == KatSortDir.asc ? c : -c;
+      final c = capture(widget.items[a]).compareTo(
+        capture(widget.items[b]) as dynamic,
+      );
+      return dir == WaveSortDir.asc ? c : -c;
     });
     return order;
   }
@@ -248,11 +249,11 @@ class _KatDesktopTableState<T extends Object>
       _orderCache = null;
       if (_sortCol != col) {
         _sortCol = col;
-        _sortDir = KatSortDir.asc;
+        _sortDir = WaveSortDir.asc;
       } else {
-        _sortDir = _sortDir == KatSortDir.asc
-            ? KatSortDir.desc
-            : KatSortDir.asc;
+        _sortDir = _sortDir == WaveSortDir.asc
+            ? WaveSortDir.desc
+            : WaveSortDir.asc;
       }
     });
   }
@@ -265,15 +266,17 @@ class _KatDesktopTableState<T extends Object>
     final next = order[pos];
     setState(() => _focusIndex = next);
     // Sliver-embed pages own the scroll: drive the primary controller.
-    final sc =
-        widget.scrollController ??
-        (widget.sliver ? PrimaryScrollController.maybeOf(context) : null);
+    final sc = widget.scrollController ??
+        (widget.sliver
+            ? PrimaryScrollController.maybeOf(context)
+            : null);
     if (!widget.shrinkWrap && sc != null) {
       _listController.animateToItem(
         index: widget.showHeader ? next + 1 : next,
         scrollController: sc,
         alignment: 0.5,
-        duration: (_) => katMotion(context, const Duration(milliseconds: 140)),
+        duration: (_) =>
+            waveMotion(context, const Duration(milliseconds: 140)),
         curve: (_) => Curves.easeOutCubic,
       );
     }
@@ -325,10 +328,12 @@ class _KatDesktopTableState<T extends Object>
       _moveFocus(-1);
       return KeyEventResult.handled;
     }
-    if (_focusIndex < 0 || _focusIndex >= widget.items.length) {
+    if (_focusIndex < 0 ||
+        _focusIndex >= widget.items.length) {
       return KeyEventResult.ignored;
     }
-    if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+    if (k == LogicalKeyboardKey.enter ||
+        k == LogicalKeyboardKey.numpadEnter) {
       widget.onPlay(_focusIndex);
       return KeyEventResult.handled;
     }
@@ -343,7 +348,8 @@ class _KatDesktopTableState<T extends Object>
       }
       return KeyEventResult.ignored;
     }
-    if ((k == LogicalKeyboardKey.delete || k == LogicalKeyboardKey.backspace) &&
+    if ((k == LogicalKeyboardKey.delete ||
+            k == LogicalKeyboardKey.backspace) &&
         widget.onRemove != null) {
       widget.onRemove!(_focusIndex);
       return KeyEventResult.handled;
@@ -372,7 +378,7 @@ class _KatDesktopTableState<T extends Object>
           // keeps Up/Down local while the table has focus (global volume
           // yields); Space stays global playback everywhere.
           SliverToBoxAdapter(
-            child: KatKeyNavScope(
+            child: WaveKeyNavScope(
               consumeUpDown: true,
               child: Focus(
                 focusNode: _focus,
@@ -395,9 +401,11 @@ class _KatDesktopTableState<T extends Object>
         final w = constraints.maxWidth;
         // Responsive: collapse secondary columns instead of h-scrolling.
         final showAlbum = w >= 1000;
-        final showQuality = widget.qualityOf != null && w >= 800;
+        final showQuality =
+            widget.qualityOf != null && w >= 800;
         final showAdded = widget.dateAddedOf != null && w >= 1100;
-        final showArtist = widget.showArtistColumn && w >= 640;
+        final showArtist =
+            widget.showArtistColumn && w >= 640;
 
         Widget list;
         if (widget.shrinkWrap) {
@@ -407,13 +415,13 @@ class _KatDesktopTableState<T extends Object>
           // detail pages must use sliver mode instead (no cap, one
           // outer scroll) — this branch is for small embeds only.
           if (_order.length > 60) {
-            final estHeight =
-                _order.length * KatDensity.trackRow +
+            final estHeight = _order.length * WaveDensity.trackRow +
                 (widget.showHeader ? 36 : 0);
             list = SizedBox(
               height: math.min(estHeight, 620),
               child: SuperListView.builder(
-                itemCount: _order.length + (widget.showHeader ? 1 : 0),
+                itemCount:
+                    _order.length + (widget.showHeader ? 1 : 0),
                 itemBuilder: (context, i) => _buildSliverChild(
                   i,
                   showAlbum: showAlbum,
@@ -427,7 +435,8 @@ class _KatDesktopTableState<T extends Object>
             list = SuperListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _order.length + (widget.showHeader ? 1 : 0),
+              itemCount:
+                  _order.length + (widget.showHeader ? 1 : 0),
               itemBuilder: (context, i) => _buildSliverChild(
                 i,
                 showAlbum: showAlbum,
@@ -440,19 +449,22 @@ class _KatDesktopTableState<T extends Object>
         } else {
           list = CustomScrollView(
             controller: widget.scrollController,
-            slivers: _tableSlivers(
-              showAlbum: showAlbum,
-              showQuality: showQuality,
-              showAdded: showAdded,
-              showArtist: showArtist,
-            ),
+            slivers: [
+              ..._tableSlivers(
+                showAlbum: showAlbum,
+                showQuality: showQuality,
+                showAdded: showAdded,
+                showArtist: showArtist,
+              ),
+              const WaveDockSpacer(),
+            ],
           );
         }
 
         // Shrink-wrap path renders the header as the first list child.
         // Nav scope: see the sliver focus host above (Up/Down local,
         // Space global).
-        return KatKeyNavScope(
+        return WaveKeyNavScope(
           consumeUpDown: true,
           child: Focus(
             focusNode: _focus,
@@ -483,7 +495,8 @@ class _KatDesktopTableState<T extends Object>
             sortableArtist: widget.artistSortOf != null,
             sortableAlbum: widget.albumSortOf != null && showAlbum,
             sortableDuration: widget.durationSortOf != null,
-            sortableAdded: widget.dateAddedSortOf != null && showAdded,
+            sortableAdded:
+                widget.dateAddedSortOf != null && showAdded,
             showAlbum: showAlbum,
             showQuality: showQuality,
             showAdded: showAdded,
@@ -547,59 +560,62 @@ class _KatDesktopTableState<T extends Object>
     final item = widget.items[index];
     final current = widget.isCurrent?.call(item) ?? false;
     final playing = widget.isPlaying?.call(item) ?? false;
-    // Staggered WinUI entrance: driven by the page's KatEntranceGroup
+    // Staggered WinUI entrance: driven by the page's WaveEntranceGroup
     // timeline, so rows built lazily during scroll render fully visible.
-    return KatEntrance(
+    return WaveEntrance(
       index: index,
       rise: 10,
       child: _TableRow<T>(
-        index: index,
-        hovered: _hover == index,
-        focused: _focusIndex == index,
-        selected: _selected.contains(widget.keyOf(item)),
-        current: current,
-        playing: playing,
-        title: widget.titleOf(item),
-        subtitle: widget.subtitleOf(item),
-        artist: showArtist ? widget.subtitleOf(item) : '',
-        showArtistColumn: showArtist,
-        album: showAlbum ? widget.albumOf(item) : '',
-        showAlbum: showAlbum,
-        quality: showQuality ? widget.qualityOf!(item) : '',
-        showQuality: showQuality,
-        dateAdded: showAdded ? widget.dateAddedOf!(item) : '',
-        showAdded: showAdded,
-        duration: widget.durationOf?.call(item) ?? '',
-        artworkUrl: widget.artworkOf(item),
-        artworkKind: widget.artworkKind,
-        artworkTitle: widget.artworkTitleOf?.call(item) ?? widget.titleOf(item),
-        artworkArtist:
-            widget.artworkArtistOf?.call(item) ?? widget.subtitleOf(item),
-        videoId: widget.videoIdOf?.call(item) ?? '',
-        showLike: widget.showLike,
-        liked: widget.isLiked?.call(item) ?? false,
-        onHover: (v) => setState(() => _hover = v ? index : -1),
-        onTap: ({required bool ctrl, required bool shift}) =>
-            _onRowTap(index, ctrl: ctrl, shift: shift),
-        onDoubleTap: () => widget.onPlay(index),
-        onPlayOverlay: () => widget.onPlay(index),
-        onToggleLike: widget.onToggleLike == null
-            ? null
-            : () => widget.onToggleLike!(item),
-        menuItems: () =>
-            widget.menuBuilder?.call(ref, item) ??
-            katTrackMenuItems(
-              context: context,
-              ref: ref,
-              playable: widget.playableOf(item),
-              title: widget.titleOf(item),
-              artist: widget.subtitleOf(item),
-              artworkUrl: widget.artworkOf(item),
-              removeLabel: widget.removeLabel,
-              onRemove: widget.onRemove == null
-                  ? null
-                  : () => widget.onRemove!(index),
-            ),
+      index: index,
+      hovered: _hover == index,
+      focused: _focusIndex == index,
+      selected: _selected.contains(widget.keyOf(item)),
+      current: current,
+      playing: playing,
+      title: widget.titleOf(item),
+      subtitle: widget.subtitleOf(item),
+      artist: showArtist ? widget.subtitleOf(item) : '',
+      showArtistColumn: showArtist,
+      album: showAlbum ? widget.albumOf(item) : '',
+      showAlbum: showAlbum,
+      quality: showQuality ? widget.qualityOf!(item) : '',
+      showQuality: showQuality,
+      dateAdded: showAdded ? widget.dateAddedOf!(item) : '',
+      showAdded: showAdded,
+      duration: widget.durationOf?.call(item) ?? '',
+      artworkUrl: widget.artworkOf(item),
+      artworkKind: widget.artworkKind,
+      artworkTitle: widget.artworkTitleOf?.call(item) ??
+          widget.titleOf(item),
+      artworkArtist: widget.artworkArtistOf?.call(item) ??
+          widget.subtitleOf(item),
+      videoId: widget.videoIdOf?.call(item) ?? '',
+      showLike: widget.showLike,
+      liked: widget.isLiked?.call(item) ?? false,
+      onHover: (v) => setState(
+        () => _hover = v ? index : -1,
+      ),
+      onTap: ({required bool ctrl, required bool shift}) =>
+          _onRowTap(index, ctrl: ctrl, shift: shift),
+      onDoubleTap: () => widget.onPlay(index),
+      onPlayOverlay: () => widget.onPlay(index),
+      onToggleLike: widget.onToggleLike == null
+          ? null
+          : () => widget.onToggleLike!(item),
+      menuItems: () =>
+          widget.menuBuilder?.call(ref, item) ??
+          waveTrackMenuItems(
+            context: context,
+            ref: ref,
+            playable: widget.playableOf(item),
+            title: widget.titleOf(item),
+            artist: widget.subtitleOf(item),
+            artworkUrl: widget.artworkOf(item),
+            removeLabel: widget.removeLabel,
+            onRemove: widget.onRemove == null
+                ? null
+                : () => widget.onRemove!(index),
+          ),
       ),
     );
   }
@@ -607,7 +623,7 @@ class _KatDesktopTableState<T extends Object>
 
 class _HeaderRow extends StatelessWidget {
   final int sortCol;
-  final KatSortDir sortDir;
+  final WaveSortDir sortDir;
   final void Function(int col) onSort;
   final bool sortableTitle;
   final bool sortableArtist;
@@ -635,10 +651,10 @@ class _HeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final style = KatType.overline.copyWith(
+    final dark = waveIsDark(context);
+    final style = WaveType.overline.copyWith(
       fontSize: 9.5,
-      color: dark ? KatColors.textTertiary : KatColors.lightTextTertiary,
+      color: dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary,
     );
     Widget cell(
       String label,
@@ -661,7 +677,9 @@ class _HeaderRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: style.copyWith(
-                color: active ? katAccent(context) : style.color,
+                color: active
+                    ? waveAccent(context)
+                    : style.color,
               ),
             ),
           ),
@@ -669,15 +687,20 @@ class _HeaderRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 3),
               child: Icon(
-                sortDir == KatSortDir.asc ? KatIcons.sortUp : KatIcons.sortDown,
+                sortDir == WaveSortDir.asc
+                    ? WaveIcons.sortUp
+                    : WaveIcons.sortDown,
                 size: 10,
-                color: katAccent(context),
+                color: waveAccent(context),
               ),
             ),
         ],
       );
       final content = sortable
-          ? _HeaderTap(onTap: () => onSort(col), child: inner)
+          ? _HeaderTap(
+              onTap: () => onSort(col),
+              child: inner,
+            )
           : inner;
       if (width != null) {
         return SizedBox(width: width, child: content);
@@ -690,21 +713,17 @@ class _HeaderRow extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 30),
-          const SizedBox(width: KatDensity.trackArt),
+          const SizedBox(width: WaveDensity.trackArt),
           const SizedBox(width: 12),
           cell('TITLE', 0, sortableTitle, flex: 5),
           if (showArtist) cell('ARTIST', 1, sortableArtist),
           if (showAlbum) cell('ALBUM', 2, sortableAlbum),
-          if (showQuality) cell('QUALITY', -1, false, width: 64),
+          if (showQuality)
+            cell('QUALITY', -1, false, width: 64),
           if (showAdded) cell('ADDED', 4, sortableAdded, width: 92),
           const SizedBox(width: _kRowActions),
-          cell(
-            'DURATION',
-            3,
-            sortableDuration,
-            width: _kDurationCol,
-            numeric: true,
-          ),
+          cell('DURATION', 3, sortableDuration,
+              width: _kDurationCol, numeric: true),
         ],
       ),
     );
@@ -729,7 +748,10 @@ class _HeaderTapState extends State<_HeaderTap> {
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: Opacity(opacity: _hover ? 1 : 0.85, child: widget.child),
+        child: Opacity(
+          opacity: _hover ? 1 : 0.85,
+          child: widget.child,
+        ),
       ),
     );
   }
@@ -765,7 +787,7 @@ class _TableRow<T extends Object> extends StatelessWidget {
   final VoidCallback onDoubleTap;
   final VoidCallback onPlayOverlay;
   final VoidCallback? onToggleLike;
-  final List<KatMenuEntry> Function() menuItems;
+  final List<WaveMenuEntry> Function() menuItems;
   const _TableRow({
     required this.index,
     required this.hovered,
@@ -801,17 +823,17 @@ class _TableRow<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
-    final tertiary = dark
-        ? KatColors.textTertiary
-        : KatColors.lightTextTertiary;
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
+    final tertiary =
+        dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary;
 
     Color bg;
     if (selected) {
       bg = accent.withValues(alpha: 0.10);
     } else if (hovered || focused) {
-      bg = (dark ? Colors.white : Colors.black).withValues(alpha: 0.05);
+      bg = (dark ? Colors.white : Colors.black)
+          .withValues(alpha: 0.05);
     } else {
       bg = Colors.transparent;
     }
@@ -821,159 +843,162 @@ class _TableRow<T extends Object> extends StatelessWidget {
       onEnter: (_) => onHover(true),
       onExit: (_) => onHover(false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTapDown: (d) {
           final keys = HardwareKeyboard.instance.logicalKeysPressed;
-          final ctrl =
-              keys.contains(LogicalKeyboardKey.controlLeft) ||
+          final ctrl = keys.contains(LogicalKeyboardKey.controlLeft) ||
               keys.contains(LogicalKeyboardKey.controlRight) ||
               keys.contains(LogicalKeyboardKey.metaLeft) ||
               keys.contains(LogicalKeyboardKey.metaRight);
-          final shift =
-              keys.contains(LogicalKeyboardKey.shiftLeft) ||
+          final shift = keys.contains(LogicalKeyboardKey.shiftLeft) ||
               keys.contains(LogicalKeyboardKey.shiftRight);
           onTap(ctrl: ctrl, shift: shift);
         },
         onDoubleTap: onDoubleTap,
         child: AnimatedContainer(
-          duration: katMotion(context, KatMotion.fast),
-          height: KatDensity.trackRow,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: KatRadius.artworkRadius,
-            border: focused
-                ? Border.all(
-                    color: katFocusRing(context),
-                    width: KatState.focusRing,
-                  )
-                : selected
-                ? Border.all(color: accent.withValues(alpha: 0.35), width: 1)
-                : Border.all(color: Colors.transparent),
-          ),
-          child: Row(
-            children: [
-              // 30px gutter: number → play on hover → animated EQ when playing.
-              SizedBox(
-                width: 30,
-                child: Center(
-                  child: Text(
-                    (index + 1).toString().padLeft(2, '0'),
-                    style: KatType.meta.copyWith(
-                      fontSize: 12,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                      color: current ? accent : tertiary,
-                    ),
-                    textAlign: TextAlign.center,
+          duration: waveMotion(context, WaveMotion.fast),
+            height: WaveDensity.trackRow,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: WaveRadius.artworkRadius,
+              border: focused
+                  ? Border.all(
+                      color: waveFocusRing(context), width: WaveState.focusRing)
+                  : selected
+                      ? Border.all(
+                          color: accent.withValues(alpha: 0.35), width: 1)
+                      : Border.all(color: Colors.transparent),
+            ),
+            child: Row(
+              children: [
+                // 30px gutter: number → play on hover → animated EQ when playing.
+                SizedBox(
+                  width: 30,
+                  child: Center(
+                    child: Text(
+                                (index + 1).toString().padLeft(2, '0'),
+                                style: WaveType.meta.copyWith(
+                                  fontSize: 12,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ],
+                                  color: current ? accent : tertiary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                   ),
                 ),
-              ),
-              // 40px art, radius 4, hover play overlay.
-              _ArtPlay(
-                url: artworkUrl,
-                title: artworkTitle.isNotEmpty ? artworkTitle : title,
-                artist: artworkArtist.isNotEmpty ? artworkArtist : artist,
-                kind: artworkKind,
-                videoId: videoId,
-                hovered: hovered,
-                playing: playing,
-                onPlay: onPlayOverlay,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 5,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: KatType.trackTitle.copyWith(
-                        color: current
-                            ? accent
-                            : (dark
-                                  ? KatColors.textPrimary
-                                  : KatColors.lightTextPrimary),
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty)
-                      KatArtistLine(
-                        artist: subtitle,
+                // 40px art, radius 4, hover play overlay.
+                _ArtPlay(
+                  url: artworkUrl,
+                  title: artworkTitle.isNotEmpty ? artworkTitle : title,
+                  artist: artworkArtist.isNotEmpty ? artworkArtist : artist,
+                  kind: artworkKind,
+                  videoId: videoId,
+                  hovered: hovered,
+                  playing: playing,
+                  onPlay: onPlayOverlay,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: KatType.meta.copyWith(
-                          color: dark
-                              ? KatColors.textSecondary
-                              : KatColors.lightTextSecondary,
+                        style: WaveType.trackTitle.copyWith(
+                          color: current
+                              ? accent
+                              : (dark
+                                  ? WaveColors.textPrimary
+                                  : WaveColors.lightTextPrimary),
                         ),
                       ),
-                  ],
-                ),
-              ),
-              if (showArtistColumn)
-                Expanded(
-                  flex: 3,
-                  child: KatArtistLine(
-                    artist: artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: KatType.meta.copyWith(color: tertiary),
-                  ),
-                ),
-              if (showAlbum)
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    album,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: KatType.meta.copyWith(color: tertiary),
-                  ),
-                ),
-              if (showQuality)
-                SizedBox(
-                  width: 64,
-                  child: quality.isEmpty
-                      ? const SizedBox.shrink()
-                      : Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: katOutline(context)),
-                            borderRadius: KatRadius.controlsRadius,
-                          ),
-                          child: Text(
-                            quality,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: KatType.meta.copyWith(
-                              fontSize: 10.5,
-                              color: dark
-                                  ? KatColors.textSecondary
-                                  : KatColors.lightTextSecondary,
-                            ),
+                      if (subtitle.isNotEmpty)
+                        WaveArtistLine(
+                          artist: subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: WaveType.meta.copyWith(
+                            color: dark
+                                ? WaveColors.textSecondary
+                                : WaveColors.lightTextSecondary,
                           ),
                         ),
-                ),
-              if (showAdded)
-                SizedBox(
-                  width: 92,
-                  child: Text(
-                    dateAdded,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: KatType.meta.copyWith(color: tertiary),
+                    ],
                   ),
                 ),
-              // Hover-only like + more.
-              SizedBox(
-                width: _kRowActions,
-                child: AnimatedOpacity(
-                  duration: katMotion(context, KatMotion.fast),
+                if (showArtistColumn)
+                  Expanded(
+                    flex: 3,
+                    child: WaveArtistLine(
+                      artist: artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: WaveType.meta.copyWith(color: tertiary),
+                    ),
+                  ),
+                if (showAlbum)
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      album,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: WaveType.meta.copyWith(color: tertiary),
+                    ),
+                  ),
+                if (showQuality)
+                  SizedBox(
+                    width: 64,
+                    child: quality.isEmpty
+                        ? const SizedBox.shrink()
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: waveOutline(context),
+                              ),
+                              borderRadius: WaveRadius.controlsRadius,
+                            ),
+                            child: Text(
+                              quality,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: WaveType.meta.copyWith(
+                                fontSize: 10.5,
+                                color: dark
+                                    ? WaveColors.textSecondary
+                                    : WaveColors
+                                        .lightTextSecondary,
+                              ),
+                            ),
+                          ),
+                  ),
+                if (showAdded)
+                  SizedBox(
+                    width: 92,
+                    child: Text(
+                      dateAdded,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: WaveType.meta.copyWith(color: tertiary),
+                    ),
+                  ),
+                // Hover-only like + more.
+                SizedBox(
+                  width: _kRowActions,
+                  child: AnimatedOpacity(
+                  duration: waveMotion(context, WaveMotion.fast),
                   opacity: (hovered || current || liked) ? 1 : 0,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -982,39 +1007,41 @@ class _TableRow<T extends Object> extends StatelessWidget {
                       if (showLike && onToggleLike != null)
                         _HoverGlyph(
                           tooltip: liked ? 'Unlike' : 'Like',
-                          icon: liked ? KatIcons.likedFill : KatIcons.liked,
+                          icon: liked ? WaveIcons.likedFill : WaveIcons.liked,
                           active: liked,
                           onTap: onToggleLike!,
                         ),
                       _HoverGlyph(
                         tooltip: 'More',
-                        icon: KatIcons.more,
+                        icon: WaveIcons.more,
                         menuItems: menuItems(),
                       ),
                     ],
                   ),
                 ),
-              ),
-              SizedBox(
-                width: _kDurationCol,
-                child: Text(
-                  duration,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  textAlign: TextAlign.right,
-                  style: KatType.meta.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                    color: tertiary,
+                ),
+                SizedBox(
+                  width: _kDurationCol,
+                  child: Text(
+                    duration,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    textAlign: TextAlign.right,
+                    style: WaveType.meta.copyWith(
+                      fontFeatures: const [
+                        FontFeature.tabularFigures()
+                      ],
+                      color: tertiary,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
           ),
         ),
       ),
     );
 
-    return KatContextMenu(items: menuItems, child: row);
+    return WaveContextMenu(items: menuItems, child: row);
   }
 }
 
@@ -1043,10 +1070,10 @@ class _ArtPlay extends StatelessWidget {
       onTap: onPlay,
       child: Stack(
         children: [
-          KatArtwork(
+          WaveArtwork(
             url: url,
-            size: KatDensity.trackArt,
-            radius: KatRadius.artwork,
+            size: WaveDensity.trackArt,
+            radius: WaveRadius.artwork,
             title: title,
             artist: artist,
             label: title,
@@ -1057,12 +1084,18 @@ class _ArtPlay extends StatelessWidget {
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: playing ? 0.35 : 0.5),
-                  borderRadius: KatRadius.artworkRadius,
+                  color: Colors.black.withValues(
+                    alpha: playing ? 0.35 : 0.5,
+                  ),
+                  borderRadius: WaveRadius.artworkRadius,
                 ),
                 child: playing
-                    ? const Center(child: KatEqDots.light())
-                    : const Icon(KatIcons.play, size: 15, color: Colors.white),
+                    ? const Center(child: WaveEqDots.light())
+                    : const Icon(
+                        WaveIcons.play,
+                        size: 15,
+                        color: Colors.white,
+                      ),
               ),
             ),
         ],
@@ -1072,15 +1105,15 @@ class _ArtPlay extends StatelessWidget {
 }
 
 /// Animated 3-bar playing indicator in the accent colour.
-class KatEqDots extends ConsumerStatefulWidget {
+class WaveEqDots extends ConsumerStatefulWidget {
   final bool light;
-  const KatEqDots({super.key}) : light = false;
-  const KatEqDots.light({super.key}) : light = true;
+  const WaveEqDots({super.key}) : light = false;
+  const WaveEqDots.light({super.key}) : light = true;
   @override
-  ConsumerState<KatEqDots> createState() => _KatEqDotsState();
+  ConsumerState<WaveEqDots> createState() => _WaveEqDotsState();
 }
 
-class _KatEqDotsState extends ConsumerState<KatEqDots>
+class _WaveEqDotsState extends ConsumerState<WaveEqDots>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c;
   bool _tickerActive = false;
@@ -1137,9 +1170,10 @@ class _KatEqDotsState extends ConsumerState<KatEqDots>
           // Reduce motion: a bouncing equaliser is decoration, not state —
           // the bars stay drawn frozen on a frame the row still reads as
           // "this is the current track".
-          !katReduceMotion(context),
+          !waveReduceMotion(context),
     );
-    final color = widget.light ? Colors.white : katAccent(context);
+    final color =
+        widget.light ? Colors.white : waveAccent(context);
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _c,
@@ -1149,7 +1183,6 @@ class _KatEqDotsState extends ConsumerState<KatEqDots>
             final norm = (math.sin(phase) + 1.0) / 2.0;
             return 3.0 + norm * 9.0;
           }
-
           return SizedBox(
             width: 22,
             height: 12,
@@ -1176,7 +1209,7 @@ class _HoverGlyph extends StatefulWidget {
   final IconData icon;
   final bool active;
   final VoidCallback? onTap;
-  final List<KatMenuEntry>? menuItems;
+  final List<WaveMenuEntry>? menuItems;
   const _HoverGlyph({
     required this.tooltip,
     required this.icon,
@@ -1192,12 +1225,16 @@ class _HoverGlyphState extends State<_HoverGlyph> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final color = widget.active
-        ? katAccent(context)
+        ? waveAccent(context)
         : _hover
-        ? (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
-        : (dark ? KatColors.textTertiary : KatColors.lightTextTertiary);
+            ? (dark
+                ? WaveColors.textPrimary
+                : WaveColors.lightTextPrimary)
+            : (dark
+                ? WaveColors.textTertiary
+                : WaveColors.lightTextTertiary);
     final glyph = Container(
       width: 30,
       height: 36,
@@ -1205,7 +1242,7 @@ class _HoverGlyphState extends State<_HoverGlyph> {
       child: Center(
         child: AnimatedScale(
           scale: _hover ? 1.15 : 1.0,
-          duration: katMotion(context, KatMotion.fast),
+          duration: waveMotion(context, WaveMotion.fast),
           curve: Curves.easeOutCubic,
           child: Icon(widget.icon, size: 14, color: color),
         ),
@@ -1218,18 +1255,23 @@ class _HoverGlyphState extends State<_HoverGlyph> {
       child: glyph,
     );
     if (widget.menuItems != null) {
-      return KatTooltip(
+      return LWTooltip(
         message: widget.tooltip,
-        child: KatMenuButton(
+        child: WaveMenuButton(
           entries: widget.menuItems!,
-          buttonBuilder: (context, onOpen) =>
-              GestureDetector(onTap: onOpen, child: hovered),
+          buttonBuilder: (context, onOpen) => GestureDetector(
+            onTap: onOpen,
+            child: hovered,
+          ),
         ),
       );
     }
-    return KatTooltip(
+    return LWTooltip(
       message: widget.tooltip,
-      child: GestureDetector(onTap: widget.onTap, child: hovered),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: hovered,
+      ),
     );
   }
 }

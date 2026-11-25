@@ -3,7 +3,7 @@ import 'dart:io';
 
 /// Build-time secret obfuscation for KatMusic Desktop.
 ///
-/// Mirrors KatMusic-native's `obfuscateSecret()` (XOR each byte with a
+/// Mirrors KatMusic's `obfuscateSecret()` (XOR each byte with a
 /// repeating mask, stored as byte arrays in BuildConfig, decoded at
 /// runtime via `decodeSecretBytes`):
 ///
@@ -19,12 +19,13 @@ import 'dart:io';
 /// ships inside the built application.
 const _mask = [0x5A, 0x3F, 0x7E, 0x1B, 0x92, 0x4C, 0xA1, 0x6D];
 
-const _keys = ['ADDON_CLIENT_SECRET', 'LYRICS_API_KEY'];
+const _keys = [
+  'LYRICS_API_KEY',
+];
 
 String _constName(String key) {
   final parts = key.toLowerCase().split('_');
-  final camel =
-      parts.first +
+  final camel = parts.first +
       parts.skip(1).map((p) => p[0].toUpperCase() + p.substring(1)).join();
   return 'k${camel[0].toUpperCase()}${camel.substring(1)}';
 }
@@ -60,13 +61,16 @@ void main() {
     );
     buf.writeln('/// Obfuscated bytes for `$key`.');
     buf.writeln(
-      'const List<int> ${_constName(key)} = <int>[${obfuscated.join(', ')}];',
-    );
+        'const List<int> ${_constName(key)} = <int>[${obfuscated.join(', ')}];');
     buf.writeln();
   }
   final outPath =
       '$root${Platform.pathSeparator}lib${Platform.pathSeparator}core${Platform.pathSeparator}env${Platform.pathSeparator}secrets.g.dart';
-  File(outPath).writeAsStringSync(buf.toString());
+  final outFile = File(outPath);
+  // Git does not track empty directories, so a fresh CI checkout has no
+  // lib/core/env/ even though the generated file is expected there.
+  outFile.parent.createSync(recursive: true);
+  outFile.writeAsStringSync(buf.toString());
 
   var filled = 0;
   for (final key in _keys) {

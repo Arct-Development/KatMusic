@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../app/deep_link.dart';
 import '../../app/router.dart';
@@ -12,10 +12,15 @@ import '../../app/window_lifecycle.dart';
 import '../../app/auth_gate.dart';
 import '../../core/artwork/official_artwork_service.dart';
 import '../../core/storage/prefs.dart';
-import '../../design_system/fluent/kat_scrollbar.dart';
+import '../../core/l10n/app_language.dart';
+import '../../core/l10n/app_localizations.dart';
+import '../../design_system/fluent/lw_scrollbar.dart';
 import '../../features/lastfm/auth_repository.dart';
+import '../../ui/app_shell/wave_resize_area.dart';
 import '../../ui/theme/fluent_theme.dart';
+import '../../ui/components/glass_stage.dart';
 import '../../ui/theme/haze.dart';
+import '../../ui/theme/tokens.dart';
 import '../player/playback_service.dart';
 import '../audio_output/output_controller.dart';
 import '../jam/jam_sync.dart';
@@ -24,12 +29,15 @@ import '../library/yt_library_sync.dart';
 import '../mpris/mpris_service.dart';
 import '../smtc/smtc_service.dart';
 import '../presence/discord_presence_service.dart';
+import '../performance/performance_controller.dart';
 import 'accent.dart';
+import 'app_fonts.dart';
 import 'theme_controller.dart';
+import 'ui_scale.dart';
 
 /// KatMusic desktop application root.
 ///
-/// Single primary system: FluentApp router + Kat Fluent theme.
+/// Single primary system: FluentApp router + Wave Fluent theme.
 /// Native window material via flutter_acrylic/window_manager.
 ///
 /// Last.fm authentication is compulsory: [AuthGate] is seeded from the
@@ -43,6 +51,16 @@ class KatMusicApp extends ConsumerStatefulWidget {
 }
 
 class _KatMusicAppState extends ConsumerState<KatMusicApp> {
+  // Palette fades only follow a song change in the Artwork theme; settings
+  // and Custom colour edits apply at once. The window covers the async
+  // palette (and artwork accent) landing a moment after the track starts.
+  String _song = '';
+  DateTime _songFadeUntil = DateTime(0);
+  (Color, WaveSurfaces)? _target;
+  bool _fade = false;
+  Object? _themedKey;
+  Widget? _themedApp;
+
   StreamSubscription<String>? _linkSub;
   AppLifecycleListener? _lifecycle;
 
@@ -60,8 +78,7 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
     // Prefs are fully loaded before runApp, and AuthRepository restores
     // the same state synchronously — the first frame routes correctly.
     _gate = AuthGate(
-      initialInside:
-          ref.read(prefsProvider).isAuthenticated ||
+      initialInside: ref.read(prefsProvider).isAuthenticated ||
           ref.read(prefsProvider).isGuest,
     );
     _router = buildRouter(gate: _gate);
@@ -70,38 +87,33 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
     _linkSub = DeepLinks.stream.listen(_openLink);
     final launchLink = DeepLinks.takeInitial();
     if (launchLink != null) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _openLink(launchLink),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openLink(launchLink));
     }
-    // Warm start (non-blocking, best-effort): create the single
-    // persistent media_kit/libmpv player. BotGuard pre-warms once on a
-    // delay (single hidden window, reused for app lifetime): this moves
-    // the one-time WebView init off the first ciphered playback, so a
-    // WEB_REMIX fallback never stalls transport on a cold window spawn.
-    // Direct-only mode (kat_disable_potoken) skips it — zero WebViews.
-    Future.microtask(() {
+    // Defer heavy native startup (libmpv dlopen, WASAPI COM device probe,
+    // YT library sync, Discord/SMTC IPC) until after the first frame paints
+    // so the window opens immediately responsive without a launch stall.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       // Artist tiles whose Deezer lookup fails (rate limit, no press
       // photo) fall back to the YouTube Music portrait, same as the
       // artist detail page.
       OfficialArtworkService.instance.artistPhotoFallback = (name) async {
-        final artists = await ref
-            .read(innerTubeProvider)
-            .searchArtists(name, limit: 3);
+        final artists =
+            await ref.read(innerTubeProvider).searchArtists(name, limit: 3);
         return artists.isEmpty ? '' : artists.first.artworkUrl;
       };
       OfficialArtworkService.instance.trackCoverFallback =
           (title, artist) async {
-            final hit = await ref
-                .read(innerTubeProvider)
-                .findBestMatchOrNull(title, artist);
-            return hit?.artworkUrl ?? '';
-          };
-      OfficialArtworkService
-          .instance
-          .albumCoverFallback = (album, artist) async {
+        final hit = await ref
+            .read(innerTubeProvider)
+            .findBestMatchOrNull(title, artist);
+        return hit?.artworkUrl ?? '';
+      };
+      OfficialArtworkService.instance.albumCoverFallback =
+          (album, artist) async {
         final tube = ref.read(innerTubeProvider);
-        String norm(String s) => OfficialArtworkService.normalizeForSearch(s);
+        String norm(String s) =>
+            OfficialArtworkService.normalizeForSearch(s);
         // Last.fm bills "Aarzu (with Asim Azhar)", "X (From "Film")",
         // "Y (feat. Z)"; the catalog files plain "Aarzu" / "X" / "Y".
         final plain = album.replaceFirst(RegExp(r'\s*[\(\[].*$'), '').trim();
@@ -132,17 +144,7 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
         ref.read(playbackServiceProvider.notifier).ensurePlayer();
       } catch (_) {}
       try {
-        // Two-way YouTube Music sync; idle until an account is connected.
-        final sync = ref.read(ytLibrarySyncProvider)..start();
-        _lifecycle = AppLifecycleListener(onResume: sync.kick);
-      } catch (_) {}
-      try {
         ref.read(audioOutputProvider.notifier).attach();
-      } catch (_) {}
-      try {
-        // Discord Rich Presence: own block so an audio failure above can
-        // never skip it; never throws (Discord closed degrades to silence).
-        ref.read(discordPresenceProvider).startup();
       } catch (_) {}
       try {
         // MPRIS (Linux): exposes now-playing + transport on the session
@@ -150,11 +152,28 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
         ref.read(mprisProvider).startup();
       } catch (_) {}
       try {
-        // SMTC (Windows): volume flyout, lock screen, Bluetooth and
-        // hardware media keys. No-op elsewhere.
+        // SMTC (Windows) / Now Playing (macOS): volume flyout or
+        // Control Center, lock screen, Bluetooth and hardware media
+        // keys. No-op elsewhere.
         ref.read(smtcProvider).startup();
       } catch (_) {}
+      // Stagger secondary background network/IPC startups slightly so the
+      // initial UI frames and first click stay completely lag-free.
+      Future<void>.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        try {
+          // Two-way YouTube Music sync; idle until an account is connected.
+          final sync = ref.read(ytLibrarySyncProvider)..start();
+          _lifecycle = AppLifecycleListener(onResume: sync.kick);
+        } catch (_) {}
+        try {
+          // Discord Rich Presence: own block so an audio failure above can
+          // never skip it; never throws (Discord closed degrades to silence).
+          ref.read(discordPresenceProvider).startup();
+        } catch (_) {}
+      });
       Future<void>.delayed(const Duration(seconds: 20), () {
+        if (!mounted) return;
         try {
           if (ref.read(prefsProvider).disablePoToken) return;
           ref.read(innerTubeProvider).preWarmBotGuard();
@@ -173,93 +192,257 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Native frame colour follows the mode and, for Custom / Artwork, the
+    // generated page colour (which changes per song in the Artwork theme).
+    void syncWindow() {
+      final t = ref.read(themeControllerProvider);
+      applyWindowMaterial(
+        isLight: t.effectiveLight,
+        amoled: t.amoled,
+        background: ref.read(paletteSurfacesProvider)?.background,
+      );
+    }
+
     ref.listen(
-      themeControllerProvider.select(
-        (t) => (t.effectiveLight, t.amoled, t.customSurfaces?.background),
-      ),
-      (_, mode) => applyWindowMaterial(
-        isLight: mode.$1,
-        amoled: mode.$2,
-        background: mode.$3,
-      ),
-    );
+        themeControllerProvider.select((t) => (t.effectiveLight, t.amoled)),
+        (_, _) => syncWindow());
+    ref.listen(paletteSurfacesProvider.select((s) => s?.background),
+        (_, _) => syncWindow());
     // Live auth state drives the gate (login, logout, guest entry,
-    // session expiry). Guests count as inside.
+    // session expiry). Guests count as inside, and transient states
+    // preserve the current route so in-app Last.fm flows (e.g.
+    // connecting from Settings) are not interrupted by /welcome.
     ref.listen(
-      authRepositoryProvider.select(
-        (a) => a.status == AuthStatus.signedIn || a.status == AuthStatus.guest,
-      ),
-      (_, inside) => _gate.update(inside),
+      authRepositoryProvider,
+      (previous, next) {
+        switch (next.status) {
+          case AuthStatus.signedIn:
+          case AuthStatus.guest:
+            _gate.update(true);
+            break;
+
+          case AuthStatus.signedOut:
+            // Saving API keys while in guest mode must not eject
+            // the user from the application.
+            _gate.update(ref.read(prefsProvider).isGuest);
+            break;
+
+          case AuthStatus.signingIn:
+          case AuthStatus.error:
+          case AuthStatus.unknown:
+            // Preserve the current navigation state.
+            break;
+        }
+      },
     );
     // Bridges Jam room events to the player; idle until a room is joined.
     ref.watch(jamSyncProvider);
     final theme = ref.watch(themeControllerProvider);
-    // Accent source (custom / KatMusic neutral / system / artwork) is
+    final performanceMode = ref.watch(performanceModeProvider);
+    // Accent source (custom / KatMusic blue / system / artwork) is
     // resolved in one place; anything that can't answer falls back to the
     // custom pick there.
     final accent = ref.watch(accentResolutionProvider).color;
 
-    // Custom theme: one generated palette, published as the dark or the
-    // light theme depending on how bright its base is.
-    final custom = theme.customSurfaces;
-    final customLight = custom != null && theme.effectiveLight;
+    // One palette for every mode (Custom / Artwork generate theirs), so a
+    // change always blends. FluentApp's own lerp swaps theme extensions
+    // halfway through 200ms, which made the Artwork theme snap per song;
+    // the palette and accent are faded here instead.
+    final light = theme.effectiveLight;
+    final base = ref.watch(paletteSurfacesProvider) ??
+        (light
+            ? WaveSurfaces.pearl
+            : (theme.amoled ? WaveSurfaces.amoled : WaveSurfaces.graphite));
+
+    final song = ref.watch(
+        playbackServiceProvider.select((s) => s.current?.artworkUrl ?? ''));
+    if (song != _song) {
+      _song = song;
+      _songFadeUntil = DateTime.now().add(const Duration(seconds: 4));
+    }
+    final target = (accent, base);
+    if (target != _target) {
+      _target = target;
+      _fade = theme.isArtwork && DateTime.now().isBefore(_songFadeUntil);
+    }
+
+    return TweenAnimationBuilder<(Color, WaveSurfaces)>(
+      tween: _PaletteTween(end: target),
+      duration: _fade ? const Duration(milliseconds: 1400) : Duration.zero,
+      curve: Curves.easeInOutCubic,
+      builder: (context, p, _) {
+        // Same colours as last frame (the fade is quantised below): hand
+        // back the identical widget so Flutter skips rebuilding the app.
+        // Everything _themed reads: palette, theme state, brightness, font, language.
+        final currentLanguage = ref.watch(appLanguageProvider);
+        final key = (
+          p,
+          theme,
+          light,
+          ref.watch(appFontFamilyProvider).valueOrNull,
+          currentLanguage,
+          performanceMode,
+        );
+        if (key == _themedKey && _themedApp != null) return _themedApp!;
+        _themedKey = key;
+        return _themedApp = _themed(theme, p.$1, p.$2, light, currentLanguage, performanceMode);
+      },
+    );
+  }
+
+  Widget _themed(
+    ThemeState theme,
+    Color accent,
+    WaveSurfaces base,
+    bool light,
+    AppLanguage lang,
+    bool performanceMode,
+  ) {
+    final effectiveGlass = !performanceMode && theme.glass;
+    final surfaces = effectiveGlass ? base.glass(light: light) : base;
+    final font = ref.watch(appFontFamilyProvider).valueOrNull;
     final darkTheme = buildWaveFluentTheme(
       accent: accent,
       isLight: false,
       amoled: theme.amoled,
-      custom: customLight ? null : custom,
+      custom: light ? null : surfaces,
+      fontFamily: font,
     );
     final lightTheme = buildWaveFluentTheme(
       accent: accent,
       isLight: true,
-      custom: customLight ? custom : null,
+      custom: light ? surfaces : null,
+      fontFamily: font,
     );
 
-    return KatHazeScope(
-      material: switch (theme.hazeMaterial) {
-        'haze' => KatMaterialMode.haze,
-        'solid' => KatMaterialMode.solid,
-        _ => KatMaterialMode.automatic,
-      },
+    return WaveHazeScope(
+      material: performanceMode
+          ? WaveMaterialMode.solid
+          : switch (theme.hazeMaterial) {
+              'haze' => WaveMaterialMode.haze,
+              'solid' => WaveMaterialMode.solid,
+              _ => WaveMaterialMode.automatic,
+            },
       intensity: switch (theme.hazeIntensity) {
-        'low' => KatHazeIntensity.low,
-        'high' => KatHazeIntensity.high,
-        _ => KatHazeIntensity.medium,
+        'low' => WaveHazeIntensity.low,
+        'high' => WaveHazeIntensity.high,
+        _ => WaveHazeIntensity.medium,
       },
-      liquidGlass: theme.liquidGlass,
-      child: LiquidGlassWidgets.wrap(
-        adaptiveQuality: true,
-        brightnessResolver: (_) =>
-            theme.effectiveLight ? Brightness.light : Brightness.dark,
-        theme: GlassThemeData.simple(
-          blur: 9,
-          thickness: 26,
-          quality: GlassQuality.standard,
-          lightIntensity: 0.65,
-          ambientStrength: 0.12,
-          saturation: 1.25,
-        ),
-        child: WindowLifecycle(
-          child: FluentApp.router(
-            title: 'KatMusic',
-            debugShowCheckedModeBanner: false,
-            theme: lightTheme,
-            darkTheme: darkTheme,
-            themeMode: theme.effectiveLight ? ThemeMode.light : ThemeMode.dark,
-            routerConfig: _router,
-            // ONE Fluent scrollbar treatment everywhere: thin, fades when
-            // idle, no browser-style horizontal bars under carousels.
-            scrollBehavior: const KatScrollBehavior(),
-            // No acrylic anywhere: fluent MenuFlyout/ComboBox render a
-            // fullscreen BackdropFilter blur unless DisableAcrylic is
-            // present — that blur sample on the open frame is the hitch
-            // on every toolbar popup. The app is opaque dark anyway, so
-            // solid flyouts read identically. (Own haze system untouched.)
-            builder: (context, child) =>
-                DisableAcrylic(child: child ?? const SizedBox.shrink()),
-          ),
+      liquidGlass: performanceMode ? false : theme.liquidGlass,
+      child: WindowLifecycle(
+        child: FluentApp.router(
+          title: 'KatMusic By Arct Developments',
+          debugShowCheckedModeBanner: false,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode:
+              theme.effectiveLight ? ThemeMode.light : ThemeMode.dark,
+          routerConfig: _router,
+          locale: lang.locale,
+          supportedLocales: AppLanguage.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            FluentLocalizations.delegate,
+          ],
+          // ONE Fluent scrollbar treatment everywhere: thin, fades when
+          // idle, no browser-style horizontal bars under carousels.
+          scrollBehavior: const WaveScrollBehavior(),
+          // No acrylic anywhere: fluent MenuFlyout/ComboBox render a
+          // fullscreen BackdropFilter blur unless DisableAcrylic is
+          // present — that blur sample on the open frame is the hitch
+          // on every toolbar popup. The app is opaque dark anyway, so
+          // solid flyouts read identically. (Own haze system untouched.)
+          builder: (context, child) {
+            return Consumer(
+              builder: (context, ref, _) {
+                final page = child ?? const SizedBox.shrink();
+                final directed = Directionality(
+                  textDirection:
+                      lang.isRtl ? TextDirection.rtl : TextDirection.ltr,
+                  child: page,
+                );
+                final content = DisableAcrylic(
+                  child: effectiveGlass
+                      ? WaveGlassStage(
+                          veil: base.background,
+                          light: light,
+                          accent: accent,
+                          flavor: theme.isArtwork
+                              ? GlassFlavor.artwork
+                              : theme.isCustom
+                                  ? GlassFlavor.custom
+                                  : GlassFlavor.midnight,
+                          child: directed,
+                        )
+                      : directed,
+                );
+
+                final uiScale = ref.watch(uiScaleProvider);
+                Widget root = content;
+                if ((uiScale - 1.0).abs() >= 0.001) {
+                  root = LayoutBuilder(
+                    builder: (context, constraints) {
+                      final scaledW = constraints.maxWidth / uiScale;
+                      final scaledH = constraints.maxHeight / uiScale;
+                      return SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        child: FittedBox(
+                          key: const ValueKey('wave-ui-scale-transform'),
+                          fit: BoxFit.fill,
+                          alignment: Alignment.topLeft,
+                          child: SizedBox(
+                            width: scaledW,
+                            height: scaledH,
+                            child: MediaQuery(
+                              data: MediaQuery.of(context).copyWith(
+                                size: Size(scaledW, scaledH),
+                              ),
+                              child: content,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                if (Platform.isLinux) {
+                  final isMaximized = ref.watch(windowMaximizedProvider);
+                  return WaveWindowResizeArea(
+                    enabled: !isMaximized,
+                    edgeSize: 4.0,
+                    cornerSize: 14.0,
+                    child: root,
+                  );
+                }
+
+                return root;
+              },
+            );
+          },
         ),
       ),
+    );
+  }
+}
+
+/// Fades accent and surfaces together (see the theme build above).
+class _PaletteTween extends Tween<(Color, WaveSurfaces)> {
+  _PaletteTween({super.end});
+
+  /// Colour steps across a fade. Each step rebuilds every themed widget,
+  /// so one per display frame (85 at 60 Hz, 200 at 144 Hz) was a burst of
+  /// full-app rebuilds on every Artwork song change; 30 steps over 1.4 s
+  /// read as the same smooth blend.
+  static const _steps = 30;
+
+  @override
+  (Color, WaveSurfaces) lerp(double t) {
+    final q = (t * _steps).round() / _steps;
+    return (
+      Color.lerp(begin!.$1, end!.$1, q)!,
+      begin!.$2.lerp(end!.$2, q),
     );
   }
 }

@@ -30,16 +30,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.itzfallenme.katmusic.desktop</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>katmusic</string>
-			</array>
-		</dict>
-	</array>
+	<key>FLTEnableImpeller</key>
+	<false/>
 </dict>
 </plist>

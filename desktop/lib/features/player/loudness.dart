@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 /// ReplayGain-style loudness correction aimed at about -14 LUFS.
 ///
-/// Tag math follows KatMusic-Native [LoudnessNormalizer]: stored
+/// Tag math follows KatMusic [LoudnessNormalizer]: stored
 /// ReplayGain already targets the -18 LUFS reference, so a +4 dB preamp
 /// lands near -14 LUFS. This file does not measure loudness. When a
 /// stream or file exposes no gain tag, playback uses [fallbackDb].

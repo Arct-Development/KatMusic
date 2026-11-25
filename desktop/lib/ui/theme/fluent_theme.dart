@@ -4,14 +4,14 @@ import 'tokens.dart';
 
 /// Single Fluent component system factory.
 ///
-/// - Dark: midnight-navy surfaces over native Mica (set in app/window.dart).
-/// - Light: cool daylight surfaces.
+/// - Dark: charcoal smoked surfaces over native Mica (set in app/window.dart).
+/// - Light: pearl surfaces.
 /// - Accent: user accent from prefs, defaulting to KatMusic blue
-///   ([KatColors.defaultAccent]).
-/// - Component radii follow [KatRadius]: menus/popovers 7px, dialogs 10px
+///   ([WaveColors.defaultAccent]).
+/// - Component radii follow [WaveRadius]: menus/popovers 7px, dialogs 10px
 ///   max, buttons/controls 5px. No pill buttons — pill shapes are reserved
 ///   for meta chips and the circular transport button.
-/// - Tooltips use a 400ms wait ([KatState.tooltipDelay]).
+/// - Tooltips use a 400ms wait ([WaveState.tooltipDelay]).
 /// - No competing Material/ledger theming inside lib/ui/.
 AccentColor _accentFrom(Color color) {
   // Build a minimal swatch around the user accent so Fluent hover/press
@@ -20,32 +20,25 @@ AccentColor _accentFrom(Color color) {
   final darker = hsl.withLightness((hsl.lightness - 0.12).clamp(0.0, 1.0));
   final lighter = hsl.withLightness((hsl.lightness + 0.14).clamp(0.0, 1.0));
   return AccentColor.swatch({
-    'darkest': darker
-        .withLightness((darker.lightness - 0.1).clamp(0.0, 1.0))
-        .toColor(),
+    'darkest': darker.withLightness((darker.lightness - 0.1).clamp(0.0, 1.0)).toColor(),
     'darker': darker.toColor(),
-    'dark': darker
-        .withLightness((darker.lightness + 0.05).clamp(0.0, 1.0))
-        .toColor(),
+    'dark': darker.withLightness((darker.lightness + 0.05).clamp(0.0, 1.0)).toColor(),
     'normal': color,
-    'light': lighter
-        .withLightness((lighter.lightness - 0.05).clamp(0.0, 1.0))
-        .toColor(),
+    'light': lighter.withLightness((lighter.lightness - 0.05).clamp(0.0, 1.0)).toColor(),
     'lighter': lighter.toColor(),
-    'lightest': lighter
-        .withLightness((lighter.lightness + 0.1).clamp(0.0, 1.0))
-        .toColor(),
+    'lightest': lighter.withLightness((lighter.lightness + 0.1).clamp(0.0, 1.0)).toColor(),
   });
 }
 
 /// Shape shared by every button/control: 5px, never a pill.
 const _controlShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(KatRadius.controls)),
+  borderRadius: BorderRadius.all(Radius.circular(WaveRadius.controls)),
 );
 
 ButtonThemeData _waveButtonTheme() {
-  ButtonStyle control(ButtonStyle base) =>
-      base.copyWith(shape: const WidgetStatePropertyAll(_controlShape));
+  ButtonStyle control(ButtonStyle base) => base.copyWith(
+        shape: const WidgetStatePropertyAll(_controlShape),
+      );
   // Fluent exposes default/constructor styles; keep them rectangular.
   return ButtonThemeData(
     defaultButtonStyle: control(ButtonStyle()),
@@ -61,60 +54,67 @@ ContentDialogThemeData _waveDialogTheme({required Color surface}) {
   return ContentDialogThemeData(
     decoration: BoxDecoration(
       color: surface,
-      borderRadius: BorderRadius.circular(KatRadius.floating), // 10px max.
+      borderRadius:
+          BorderRadius.circular(WaveRadius.floating), // 10px max.
     ),
     actionsDecoration: BoxDecoration(
       color: surface,
       borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(KatRadius.floating),
+        bottom: Radius.circular(WaveRadius.floating),
       ),
     ),
   );
 }
 
 const _waveTooltipTheme = TooltipThemeData(
-  waitDuration: KatState.tooltipDelay, // 400ms.
+  waitDuration: WaveState.tooltipDelay, // 400ms.
 );
 
 /// [custom] is the user's Custom theme palette
-/// ([KatSurfaces.fromCustomBase]). When set it replaces the graphite /
+/// ([WaveSurfaces.fromCustomBase]). When set it replaces the graphite /
 /// AMOLED / pearl surfaces; [isLight] must match
-/// [KatSurfaces.isLightBase] for its base so the text tokens contrast.
+/// [WaveSurfaces.isLightBase] for its base so the text tokens contrast.
 FluentThemeData buildWaveFluentTheme({
   required Color accent,
   required bool isLight,
   bool amoled = false,
-  KatSurfaces? custom,
+  WaveSurfaces? custom,
+  String? fontFamily,
 }) {
-  final safeAccent = accent.a == 0 ? KatColors.defaultAccent : accent;
+  final safeAccent =
+      accent.a == 0 ? WaveColors.defaultAccent : accent;
   final accentColor = _accentFrom(safeAccent);
   final buttonTheme = _waveButtonTheme();
   // AMOLED only ever collapses the *dark* base — light ignores it.
-  final surfaces =
-      custom ??
-      ((!isLight && amoled) ? KatSurfaces.amoled : KatSurfaces.graphite);
+  final surfaces = custom ??
+      ((!isLight && amoled) ? WaveSurfaces.amoled : WaveSurfaces.graphite);
   if (isLight) {
-    final page = custom?.background ?? KatColors.lightBackground;
-    final card = custom?.surface ?? KatColors.lightSurface;
+    final page = custom?.background ?? WaveColors.lightBackground;
+    final card = custom?.surface ?? WaveColors.lightSurface;
     return FluentThemeData(
+      fontFamily: fontFamily,
       brightness: Brightness.light,
       accentColor: accentColor,
       scaffoldBackgroundColor: page,
       micaBackgroundColor: page,
       cardColor: card,
-      menuColor: card,
-      activeColor: KatColors.lightTextPrimary,
-      inactiveColor: KatColors.lightTextSecondary,
+      menuColor: custom?.surfaceRaised ?? card,
+      activeColor: WaveColors.lightTextPrimary,
+      inactiveColor: WaveColors.lightTextSecondary,
       selectionColor: safeAccent.withValues(alpha: 0.25),
       visualDensity: VisualDensity.standard,
-      focusTheme: const FocusThemeData(glowFactor: 2.0),
+      focusTheme: const FocusThemeData(
+        glowFactor: 2.0,
+      ),
       buttonTheme: buttonTheme,
-      dialogTheme: _waveDialogTheme(surface: card),
+      // Raised, not card: under glass the card is a 4% film.
+      dialogTheme: _waveDialogTheme(surface: custom?.surfaceRaised ?? card),
       tooltipTheme: _waveTooltipTheme,
-      extensions: [custom ?? KatSurfaces.graphite],
+      extensions: [custom ?? WaveSurfaces.graphite],
     );
   }
   return FluentThemeData(
+    fontFamily: fontFamily,
     brightness: Brightness.dark,
     accentColor: accentColor,
     scaffoldBackgroundColor: surfaces.background,
@@ -122,11 +122,13 @@ FluentThemeData buildWaveFluentTheme({
     acrylicBackgroundColor: surfaces.panelTranslucent,
     cardColor: surfaces.surface,
     menuColor: surfaces.surfaceRaised,
-    activeColor: KatColors.textPrimary,
-    inactiveColor: KatColors.textSecondary,
+    activeColor: WaveColors.textPrimary,
+    inactiveColor: WaveColors.textSecondary,
     selectionColor: safeAccent.withValues(alpha: 0.3),
     visualDensity: VisualDensity.standard,
-    focusTheme: const FocusThemeData(glowFactor: 2.0),
+    focusTheme: const FocusThemeData(
+      glowFactor: 2.0,
+    ),
     buttonTheme: buttonTheme,
     dialogTheme: _waveDialogTheme(surface: surfaces.surfaceRaised),
     tooltipTheme: _waveTooltipTheme,

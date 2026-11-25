@@ -26,10 +26,9 @@ class AutomixAnalyzer {
     String? cacheDir,
     this.wanted,
     this.decoder,
-  }) : cacheDir =
-           cacheDir ??
-           '${Directory.systemTemp.path}${Platform.pathSeparator}katmusic'
-               '${Platform.pathSeparator}automix' {
+  }) : cacheDir = cacheDir ??
+            '${Directory.systemTemp.path}${Platform.pathSeparator}katmusic'
+                '${Platform.pathSeparator}automix' {
     _checkCrashMarker();
   }
 
@@ -38,13 +37,8 @@ class AutomixAnalyzer {
   final bool Function(String key)? wanted;
 
   /// Test hook replacing the libmpv decode.
-  final Future<Int16List?> Function(
-    AnalysisSide side,
-    String url,
-    Map<String, String> headers,
-    Duration duration,
-  )?
-  decoder;
+  final Future<Int16List?> Function(AnalysisSide side, String url,
+      Map<String, String> headers, Duration duration)? decoder;
 
   /// After this many decode failures in a row the analyzer turns itself
   /// off for the session (AutoMix then mixes without analysis).
@@ -119,10 +113,8 @@ class AutomixAnalyzer {
               _consecutiveFailures++;
               if (_consecutiveFailures >= maxConsecutiveFailures) {
                 _disabled = true;
-                log(
-                  'automix analysis off for this session after '
-                  '$_consecutiveFailures failed decodes',
-                );
+                log('automix analysis off for this session after '
+                    '$_consecutiveFailures failed decodes');
               }
             } else {
               _consecutiveFailures = 0;
@@ -145,13 +137,8 @@ class AutomixAnalyzer {
     return completer.future;
   }
 
-  Future<TrackAnalysis?> _decodeAndAnalyse(
-    String key,
-    AnalysisSide side,
-    String url,
-    Map<String, String> headers,
-    Duration duration,
-  ) async {
+  Future<TrackAnalysis?> _decodeAndAnalyse(String key, AnalysisSide side,
+      String url, Map<String, String> headers, Duration duration) async {
     final sw = Stopwatch()..start();
     final Int16List? pcm;
     final hook = decoder;
@@ -174,20 +161,17 @@ class AutomixAnalyzer {
         ? _tailStart(duration).inMilliseconds / 1000.0
         : 0.0;
     final analysis = sanitizeAnalysis(
-      await compute(analyzePcmWindow, PcmWindow(pcm, sampleRate, offset)),
-    );
+        await compute(analyzePcmWindow, PcmWindow(pcm, sampleRate, offset)));
     if (analysis == null) {
       log('automix analysis rejected key=$key (implausible values)');
       return null;
     }
-    log(
-      'automix analysed key=$key side=${side.name} '
-      'bpm=${analysis.bpm.toStringAsFixed(1)} '
-      'conf=${analysis.confidence.toStringAsFixed(2)} '
-      'audible=${analysis.audibleStart.toStringAsFixed(1)}'
-      '-${analysis.contentEnd.toStringAsFixed(1)} '
-      'decode_ms=$decodeMs total_ms=${sw.elapsedMilliseconds}',
-    );
+    log('automix analysed key=$key side=${side.name} '
+        'bpm=${analysis.bpm.toStringAsFixed(1)} '
+        'conf=${analysis.confidence.toStringAsFixed(2)} '
+        'audible=${analysis.audibleStart.toStringAsFixed(1)}'
+        '-${analysis.contentEnd.toStringAsFixed(1)} '
+        'decode_ms=$decodeMs total_ms=${sw.elapsedMilliseconds}');
     unawaited(_toDisk(key, analysis));
     return analysis;
   }
@@ -197,12 +181,8 @@ class AutomixAnalyzer {
     return s > Duration.zero ? s : Duration.zero;
   }
 
-  Future<Int16List?> _decode(
-    AnalysisSide side,
-    String url,
-    Map<String, String> headers,
-    Duration duration,
-  ) async {
+  Future<Int16List?> _decode(AnalysisSide side, String url,
+      Map<String, String> headers, Duration duration) async {
     final dir = Directory(cacheDir);
     try {
       await dir.create(recursive: true);
@@ -321,8 +301,7 @@ class AutomixAnalyzer {
       final j = jsonDecode(await f.readAsString());
       if (j is! Map<String, Object?> || j['key'] != key) return null;
       final a = sanitizeAnalysis(
-        TrackAnalysis.fromJson((j['a'] as Map).cast<String, Object?>()),
-      );
+          TrackAnalysis.fromJson((j['a'] as Map).cast<String, Object?>()));
       if (a == null) {
         // Corrupt / older file: drop it so it is rebuilt.
         try {
@@ -359,10 +338,8 @@ class AutomixAnalyzer {
       if (f.existsSync()) {
         _disabled = true;
         f.deleteSync();
-        log(
-          'automix analysis off for this session: the previous run '
-          'ended during an analysis decode',
-        );
+        log('automix analysis off for this session: the previous run '
+            'ended during an analysis decode');
       }
     } catch (_) {}
   }
@@ -372,10 +349,8 @@ class AutomixAnalyzer {
       final f = File(_markerPath);
       if (on) {
         await Directory(cacheDir).create(recursive: true);
-        await f.writeAsString(
-          '${DateTime.now().toIso8601String()} pid=$pid',
-          flush: true,
-        );
+        await f.writeAsString('${DateTime.now().toIso8601String()} pid=$pid',
+            flush: true);
       } else if (await f.exists()) {
         await f.delete();
       }

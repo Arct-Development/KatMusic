@@ -16,9 +16,7 @@ void main() {
     );
     expect(
       InnerTubeMusicApi.coreSongTitle(
-        'Love - Remix (Official Video)',
-        'Someone Else',
-      ),
+          'Love - Remix (Official Video)', 'Someone Else'),
       'Love - Remix',
     );
   });

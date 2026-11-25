@@ -1,6 +1,5 @@
 import '../components/buttons.dart';
 import '../components/inputs.dart';
-
 import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -10,7 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/search/search_repository.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Keyboard-first command palette (Ctrl+K).
 ///
@@ -25,27 +24,27 @@ Future<void> showWaveCommandPalette(
 }) {
   final controller = TextEditingController();
   final routes = <(String path, String label, IconData icon)>[
-    (('/home'), 'Go to Home', KatIcons.home),
-    (('/discover'), 'Go to Discover', KatIcons.discover),
-    (('/new-releases'), 'Go to New Releases', KatIcons.albums),
-    (('/search'), 'Go to Search', KatIcons.search),
-    (('/liked'), 'Go to Liked Songs', KatIcons.liked),
+    (('/home'), 'Go to Home', WaveIcons.home),
+    (('/search'), 'Go to Search', WaveIcons.search),
+    (('/liked'), 'Go to Liked Songs', WaveIcons.liked),
     (('/albums'), 'Go to Albums', FluentIcons.music_note),
     (('/artists'), 'Go to Artists', FluentIcons.contact),
-    (('/playlists'), 'Go to Playlists', KatIcons.playlists),
+    (('/playlists'), 'Go to Playlists', WaveIcons.playlists),
     (('/podcasts'), 'Go to Podcasts', FluentIcons.headset),
-    (('/mixes'), 'Open Mix Lab', FluentIcons.lightbulb),
-    (('/group-blend'), 'Open Group Blend', KatIcons.friends),
-    (('/downloads'), 'Go to Downloads', FluentIcons.download),
-    (('/history'), 'Go to History', KatIcons.history),
+    (('/library'), 'Go to Library', FluentIcons.library),
+    (('/library?tab=downloads'), 'Go to Downloads', FluentIcons.download),
+    (('/history'), 'Go to History', WaveIcons.history),
     (('/now'), 'Open Now Playing', FluentIcons.circle_fill),
     (('/settings'), 'Open Settings', FluentIcons.settings),
   ];
   return showDialog(
     context: context,
     barrierDismissible: true,
-    builder: (context) =>
-        _PaletteDialog(controller: controller, routes: routes, onGo: onGo),
+    builder: (context) => _PaletteDialog(
+      controller: controller,
+      routes: routes,
+      onGo: onGo,
+    ),
   );
 }
 
@@ -128,18 +127,16 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (entries.isNotEmpty) {
-        setState(
-          () => _selected = (_selected + 1).clamp(0, entries.length - 1),
-        );
+        setState(() => _selected =
+            (_selected + 1).clamp(0, entries.length - 1));
         _revealSelected(down: true);
       }
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       if (entries.isNotEmpty) {
-        setState(
-          () => _selected = (_selected - 1).clamp(0, entries.length - 1),
-        );
+        setState(() => _selected =
+            (_selected - 1).clamp(0, entries.length - 1));
         _revealSelected(down: false);
       }
       return KeyEventResult.handled;
@@ -157,15 +154,13 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
 
     for (final r in widget.routes) {
       if (q.isEmpty || r.$2.toLowerCase().contains(q)) {
-        out.add(
-          _PaletteEntry(
-            label: r.$2,
-            sub: 'Navigate',
-            group: 'Navigate',
-            icon: r.$3,
-            action: () => widget.onGo(r.$1),
-          ),
-        );
+        out.add(_PaletteEntry(
+          label: r.$2,
+          sub: 'Navigate',
+          group: 'Navigate',
+          icon: r.$3,
+          action: () => widget.onGo(r.$1),
+        ));
       }
     }
     return out;
@@ -173,9 +168,11 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final results = _results();
-    final sel = results.isEmpty ? 0 : _selected.clamp(0, results.length - 1);
+    final sel = results.isEmpty
+        ? 0
+        : _selected.clamp(0, results.length - 1);
     // Group consecutive entries under mini-section headers. Rows are
     // built lazily (ListView.builder below) so open only pays for
     // visible items; each row is a light _PaletteRow with NO tooltip
@@ -201,11 +198,12 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
         constraints: const BoxConstraints(maxWidth: 440),
         style: ContentDialogThemeData(
           decoration: BoxDecoration(
-            color: katSurfaceRaised(context),
-            borderRadius: const BorderRadius.all(
-              Radius.circular(KatRadius.floating),
+            color: waveSurfaceRaised(context),
+            borderRadius:
+                const BorderRadius.all(Radius.circular(WaveRadius.floating)),
+            border: Border.all(
+              color: waveDivider(context),
             ),
-            border: Border.all(color: katDivider(context)),
             // Cheap open frame: blur 28/2 rasterizes a large shadow on
             // the exact frame the dialog appears; 12/0 reads the same
             // at 440px width.
@@ -225,20 +223,21 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextBox(
-                decoration: katInputDecoration(),
+                decoration: waveInputDecoration(),
                 controller: widget.controller,
                 autofocus: true,
                 placeholder: 'Type a command…',
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 8),
-                  child: Icon(KatIcons.search, size: 15),
+                  child: Icon(WaveIcons.search, size: 15),
                 ),
                 onChanged: _onChanged,
                 onSubmitted: (_) => _activate(results),
               ),
-              const SizedBox(height: KatSpacing.x8),
+              const SizedBox(height: WaveSpacing.x8),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 320),
+                constraints:
+                    const BoxConstraints(maxHeight: 320),
                 child: results.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.all(16),
@@ -251,12 +250,13 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
                           final item = items[i];
                           if (item is _PaletteHeader) {
                             return Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 10, 10, 2),
+                              padding: const EdgeInsets.fromLTRB(
+                                  10, 10, 10, 2),
                               child: Text(
                                 item.title.toUpperCase(),
-                                style: KatType.overline.copyWith(
+                                style: WaveType.overline.copyWith(
                                   fontSize: 9,
-                                  color: katTextTertiary(context),
+                                  color: waveTextTertiary(context),
                                 ),
                               ),
                             );
@@ -278,7 +278,7 @@ class _PaletteDialogState extends ConsumerState<_PaletteDialog> {
           ),
         ),
         actions: [
-          KatButton(
+          WaveButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
@@ -320,12 +320,22 @@ class _PaletteRow extends StatelessWidget {
     final r = entry;
     final leading = Icon(r.icon, size: 15);
     return ListTile.selectable(
-      shape: RoundedRectangleBorder(borderRadius: KatRadius.controlsRadius),
+      shape: RoundedRectangleBorder(
+        borderRadius: WaveRadius.controlsRadius,
+      ),
       selected: selected,
       selectionMode: ListTileSelectionMode.single,
       leading: SizedBox(width: 28, height: 28, child: leading),
-      title: Text(r.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(r.sub, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(
+        r.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        r.sub,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       onPressed: onTap,
     );
   }
@@ -333,12 +343,11 @@ class _PaletteRow extends StatelessWidget {
 
 /// Search tab labels shared by the palette and the search page.
 String searchTabLabel(SearchTab tab) => switch (tab) {
-  SearchTab.tracks => 'Songs',
-  SearchTab.artists => 'Artists',
-  SearchTab.albums => 'Albums',
-  SearchTab.playlists => 'Playlists',
-  SearchTab.users => 'People',
-};
+      SearchTab.tracks => 'Songs',
+      SearchTab.artists => 'Artists',
+      SearchTab.albums => 'Albums',
+      SearchTab.playlists => 'Playlists',
+    };
 
 /// Navigate helper that preserves title/artist resolution context.
 void goSearch(BuildContext context, String query) {

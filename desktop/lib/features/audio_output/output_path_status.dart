@@ -20,29 +20,34 @@ enum BitPerfectReason {
   autoMixActive;
 
   String get label => switch (this) {
-    BitPerfectReason.bitPerfect => 'Bit-Perfect',
-    BitPerfectReason.dspActive => 'Bit-Perfect unavailable — DSP is active.',
-    BitPerfectReason.peqActive => 'Bit-Perfect unavailable — PEQ is active.',
-    BitPerfectReason.softwareVolume => 'Software — Bit-Perfect unavailable',
-    BitPerfectReason.resampling => 'Bit-Perfect unavailable — resampling.',
-    BitPerfectReason.formatConversion => 'Native format unavailable',
-    BitPerfectReason.exclusiveUnavailable => 'WASAPI Exclusive unavailable',
-    BitPerfectReason.deviceUnavailable => 'Output device unavailable',
-    BitPerfectReason.formatUnsupported => 'Native format unavailable',
-    BitPerfectReason.sharedMode =>
-      Platform.isWindows
-          ? 'WASAPI Shared — mixer in path'
-          : 'Shared — mixer in path',
-    BitPerfectReason.speedNotUnity =>
-      'Bit-Perfect unavailable — playback speed ≠ 1.0.',
-    BitPerfectReason.crossfadeActive =>
-      'Bit-Perfect unavailable — crossfade is enabled.',
-    BitPerfectReason.pitchNotUnity => 'Bit-Perfect unavailable — pitch ≠ 1.0.',
-    BitPerfectReason.loudnessActive =>
-      'Bit-Perfect unavailable — loudness normalization is on.',
-    BitPerfectReason.autoMixActive =>
-      'Bit-Perfect unavailable — timed AutoMix is on.',
-  };
+        BitPerfectReason.bitPerfect => 'Bit-Perfect',
+        BitPerfectReason.dspActive =>
+          'Bit-Perfect unavailable — DSP is active.',
+        BitPerfectReason.peqActive =>
+          'Bit-Perfect unavailable — PEQ is active.',
+        BitPerfectReason.softwareVolume =>
+          'Software — Bit-Perfect unavailable',
+        BitPerfectReason.resampling =>
+          'Bit-Perfect unavailable — resampling.',
+        BitPerfectReason.formatConversion => 'Native format unavailable',
+        BitPerfectReason.exclusiveUnavailable =>
+          'WASAPI Exclusive unavailable',
+        BitPerfectReason.deviceUnavailable => 'Output device unavailable',
+        BitPerfectReason.formatUnsupported => 'Native format unavailable',
+        BitPerfectReason.sharedMode => Platform.isWindows
+            ? 'WASAPI Shared — mixer in path'
+            : 'Shared — mixer in path',
+        BitPerfectReason.speedNotUnity =>
+          'Bit-Perfect unavailable — playback speed ≠ 1.0.',
+        BitPerfectReason.crossfadeActive =>
+          'Bit-Perfect unavailable — crossfade is enabled.',
+        BitPerfectReason.pitchNotUnity =>
+          'Bit-Perfect unavailable — pitch ≠ 1.0.',
+        BitPerfectReason.loudnessActive =>
+          'Bit-Perfect unavailable — loudness normalization is on.',
+        BitPerfectReason.autoMixActive =>
+          'Bit-Perfect unavailable — timed AutoMix is on.',
+      };
 }
 
 enum WasapiShareMode { exclusive, shared }
@@ -125,22 +130,23 @@ class OutputPathStatus {
     BitPerfectReason? reason,
     String? error,
     bool clearError = false,
-  }) => OutputPathStatus(
-    deviceName: deviceName ?? this.deviceName,
-    deviceId: deviceId ?? this.deviceId,
-    mode: mode ?? this.mode,
-    exclusiveRequested: exclusiveRequested ?? this.exclusiveRequested,
-    exclusiveActive: exclusiveActive ?? this.exclusiveActive,
-    source: source ?? this.source,
-    output: output ?? this.output,
-    resampling: resampling ?? this.resampling,
-    dspActive: dspActive ?? this.dspActive,
-    peqActive: peqActive ?? this.peqActive,
-    softwareVolume: softwareVolume ?? this.softwareVolume,
-    hardwareVolume: hardwareVolume ?? this.hardwareVolume,
-    crossfade: crossfade ?? this.crossfade,
-    speed: speed ?? this.speed,
-    reason: reason ?? this.reason,
-    error: clearError ? null : (error ?? this.error),
-  );
+  }) =>
+      OutputPathStatus(
+        deviceName: deviceName ?? this.deviceName,
+        deviceId: deviceId ?? this.deviceId,
+        mode: mode ?? this.mode,
+        exclusiveRequested: exclusiveRequested ?? this.exclusiveRequested,
+        exclusiveActive: exclusiveActive ?? this.exclusiveActive,
+        source: source ?? this.source,
+        output: output ?? this.output,
+        resampling: resampling ?? this.resampling,
+        dspActive: dspActive ?? this.dspActive,
+        peqActive: peqActive ?? this.peqActive,
+        softwareVolume: softwareVolume ?? this.softwareVolume,
+        hardwareVolume: hardwareVolume ?? this.hardwareVolume,
+        crossfade: crossfade ?? this.crossfade,
+        speed: speed ?? this.speed,
+        reason: reason ?? this.reason,
+        error: clearError ? null : (error ?? this.error),
+      );
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../theme/tokens.dart';
@@ -9,7 +10,7 @@ import '../theme/tokens.dart';
 /// the visible branch with no motion at all, so the side rail cut between
 /// pages. This container keeps that exact keep-alive contract and layers the
 /// app's one motion language on top: the incoming branch fades in and rises
-/// 6px over [KatMotion.normal], while the outgoing branch fades out beneath
+/// 6px over [WaveMotion.normal], while the outgoing branch fades out beneath
 /// it. Only content moves — the rail, title bar and dock are outside the
 /// branch and stay put.
 ///
@@ -24,8 +25,8 @@ import '../theme/tokens.dart';
 ///
 /// Honours the OS reduce-motion switch (`MediaQuery.disableAnimations`):
 /// the switch then applies instantly, with no fade or rise.
-class KatBranchSwitcher extends StatefulWidget {
-  const KatBranchSwitcher({
+class WaveBranchSwitcher extends StatefulWidget {
+  const WaveBranchSwitcher({
     super.key,
     required this.currentIndex,
     required this.children,
@@ -38,15 +39,15 @@ class KatBranchSwitcher extends StatefulWidget {
   final List<Widget> children;
 
   @override
-  State<KatBranchSwitcher> createState() => _KatBranchSwitcherState();
+  State<WaveBranchSwitcher> createState() => _WaveBranchSwitcherState();
 }
 
-class _KatBranchSwitcherState extends State<KatBranchSwitcher>
+class _WaveBranchSwitcherState extends State<WaveBranchSwitcher>
     with SingleTickerProviderStateMixin {
   /// 0 → the incoming branch is fully transparent, 1 → settled.
   late final AnimationController _fade = AnimationController(
     vsync: this,
-    duration: katMotion(context, KatMotion.normal),
+    duration: waveMotion(context, WaveMotion.normal),
     value: 1,
   );
 
@@ -57,10 +58,36 @@ class _KatBranchSwitcherState extends State<KatBranchSwitcher>
   /// without reaching for an inherited widget outside a build.
   bool _reducedMotion = false;
 
+  /// Inactivity timers for non-home branches.
+  final Map<int, Timer> _inactivityTimers = {};
+
+  /// Set of branches currently evicted due to prolonged inactivity (> 45s).
+  final Set<int> _evicted = <int>{};
+
   @override
-  void didUpdateWidget(covariant KatBranchSwitcher oldWidget) {
+  void didUpdateWidget(covariant WaveBranchSwitcher oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentIndex == widget.currentIndex) return;
+
+    // Reactivate incoming branch if previously evicted
+    _inactivityTimers[widget.currentIndex]?.cancel();
+    _inactivityTimers.remove(widget.currentIndex);
+    _evicted.remove(widget.currentIndex);
+
+    // Schedule eviction for departed non-home branch after 45s
+    final departed = oldWidget.currentIndex;
+    if (departed > 0) {
+      _inactivityTimers[departed]?.cancel();
+      _inactivityTimers[departed] = Timer(const Duration(seconds: 45), () {
+        if (!mounted) return;
+        if (widget.currentIndex != departed) {
+          setState(() {
+            _evicted.add(departed);
+          });
+        }
+      });
+    }
+
     if (_reducedMotion) {
       setState(() => _leaving = null);
       _fade.value = 1;
@@ -75,6 +102,10 @@ class _KatBranchSwitcherState extends State<KatBranchSwitcher>
 
   @override
   void dispose() {
+    for (final timer in _inactivityTimers.values) {
+      timer.cancel();
+    }
+    _inactivityTimers.clear();
     _fade.dispose();
     super.dispose();
   }
@@ -82,6 +113,7 @@ class _KatBranchSwitcherState extends State<KatBranchSwitcher>
   Widget _branch(int i, double rise) {
     final active = i == widget.currentIndex;
     final visible = active || _leaving == i;
+    final isEvicted = _evicted.contains(i) && !visible;
     return IgnorePointer(
       ignoring: !active,
       child: Offstage(
@@ -90,7 +122,7 @@ class _KatBranchSwitcherState extends State<KatBranchSwitcher>
           enabled: active,
           child: AnimatedBuilder(
             animation: _fade,
-            child: widget.children[i],
+            child: isEvicted ? const SizedBox.shrink() : widget.children[i],
             builder: (context, child) {
               final t = _reducedMotion
                   ? 1.0

@@ -54,16 +54,16 @@ class NetworkMonitor extends StateNotifier<bool> {
   // so the flag is never stale when it can be seen. Playback failure
   // handling does not consult this flag, so nothing audible depends on it.
   static const _backgroundInterval = Duration(minutes: 1);
-  static final _primary = Uri.parse('https://www.youtube.com/generate_204');
+  static final _primary =
+      Uri.parse('https://www.youtube.com/generate_204');
   static final _secondary = Uri.parse(
-    'https://www.apple.com/library/test/success.html',
-  );
+      'https://www.apple.com/library/test/success.html');
 
   NetworkMonitor()
-    : _client = HttpClient()
-        ..connectionTimeout = _probeTimeout
-        ..idleTimeout = const Duration(seconds: 10),
-      super(true) {
+      : _client = HttpClient()
+          ..connectionTimeout = _probeTimeout
+          ..idleTimeout = const Duration(seconds: 10),
+        super(true) {
     _check();
     _restartTimer();
   }
@@ -89,8 +89,10 @@ class NetworkMonitor extends StateNotifier<bool> {
   /// persistent connection is reusable; never throws.
   Future<bool> _probe(Uri url) async {
     try {
-      final request = await _client.getUrl(url).timeout(_probeTimeout);
-      final response = await request.close().timeout(_probeTimeout);
+      final request =
+          await _client.getUrl(url).timeout(_probeTimeout);
+      final response =
+          await request.close().timeout(_probeTimeout);
       await response.drain().timeout(_probeTimeout);
       return true;
     } catch (_) {
@@ -106,7 +108,8 @@ class NetworkMonitor extends StateNotifier<bool> {
     _checking = true;
     try {
       // Secondary runs only when the primary stays silent.
-      final responded = await _probe(_primary) || await _probe(_secondary);
+      final responded =
+          await _probe(_primary) || await _probe(_secondary);
       _emit(_strikes.recordResult(responded: responded));
     } finally {
       _checking = false;
@@ -128,9 +131,8 @@ class NetworkMonitor extends StateNotifier<bool> {
   }
 }
 
-final networkMonitorProvider = StateNotifierProvider<NetworkMonitor, bool>((
-  ref,
-) {
+final networkMonitorProvider =
+    StateNotifierProvider<NetworkMonitor, bool>((ref) {
   final monitor = NetworkMonitor();
   ref.onDispose(monitor.dispose);
   return monitor;

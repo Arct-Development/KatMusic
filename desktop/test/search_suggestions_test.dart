@@ -6,10 +6,7 @@ void main() {
   group('suggestionNameMatchesQuery', () {
     test('matches artist names for a typed prefix', () {
       expect(suggestionNameMatchesQuery('Metro Boomin', 'metro'), isTrue);
-      expect(
-        suggestionNameMatchesQuery('Metro Boomin', 'metro boomin'),
-        isTrue,
-      );
+      expect(suggestionNameMatchesQuery('Metro Boomin', 'metro boomin'), isTrue);
       expect(suggestionNameMatchesQuery('Too Many Nights', 'metro'), isFalse);
     });
 
@@ -29,11 +26,11 @@ void main() {
     });
   });
 
-  group('katActivePath', () {
+  group('waveActivePath', () {
     test('keeps Search selected when the query string is present', () {
-      expect(katActivePath('/search?q=metro%20boomin'), '/search');
-      expect(katActivePath('/home'), '/home');
-      expect(katRoutePath('/search?q=metro'), '/search');
+      expect(waveActivePath('/search?q=metro%20boomin'), '/search');
+      expect(waveActivePath('/home'), '/home');
+      expect(waveRoutePath('/search?q=metro'), '/search');
     });
   });
 }

@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../features/feed/home_shelf_layout.dart';
 import '../components/buttons.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Reorder and hide the Home shelves. Order and the hidden set live in
 /// SQLite `kv_store` (`home_shelf_layout`), not Prefs.
-class KatHomeLayoutPage extends ConsumerWidget {
-  const KatHomeLayoutPage({super.key});
+class WaveHomeLayoutPage extends ConsumerWidget {
+  const WaveHomeLayoutPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,25 +22,25 @@ class KatHomeLayoutPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Edit home', style: KatType.pageTitle.copyWith(fontSize: 24)),
+          Text('Edit home', style: WaveType.pageTitle.copyWith(fontSize: 24)),
           const SizedBox(height: 4),
           Text(
             'Show, hide, and reorder shelves. Reset restores the default order.',
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              KatGhostButton(
+              WaveGhostButton(
                 label: 'Reset',
-                icon: KatIcons.history,
+                icon: WaveIcons.history,
                 onPressed: notifier.reset,
               ),
-              KatPrimaryButton(
+              WavePrimaryButton(
                 label: 'Done',
-                icon: KatIcons.back,
+                icon: WaveIcons.back,
                 onPressed: () => context.go('/home'),
               ),
             ],
@@ -62,17 +62,17 @@ class KatHomeLayoutPage extends ConsumerWidget {
                       cursor: SystemMouseCursors.move,
                       child: Padding(
                         padding: EdgeInsets.all(6),
-                        child: Icon(
-                          FluentIcons.gripper_dots_vertical,
-                          size: 16,
-                        ),
+                        child:
+                            Icon(FluentIcons.gripper_dots_vertical, size: 16),
                       ),
                     ),
                   ),
                   title: Text(
                     HomeShelfCatalog.label(id),
-                    style: KatType.body.copyWith(
-                      color: shown ? null : katTextTertiary(context),
+                    style: WaveType.body.copyWith(
+                      color: shown
+                          ? null
+                          : waveTextTertiary(context),
                     ),
                   ),
                   trailing: ToggleSwitch(

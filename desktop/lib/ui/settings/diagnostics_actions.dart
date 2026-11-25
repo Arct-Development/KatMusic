@@ -22,7 +22,7 @@ import '../theme/tokens.dart';
 ///
 /// Names *states*, never values: no URLs, no cookies/tokens, no account
 /// e-mail. Track titles are kept (a "wrong song" report needs them), the
-/// addon host is only counted, and every row is something a support reply
+/// and every row is something a support reply
 /// would otherwise have to ask for.
 Future<String> buildDiagnosticsReport(WidgetRef ref) async {
   final prefs = ref.read(prefsProvider);
@@ -35,84 +35,57 @@ Future<String> buildDiagnosticsReport(WidgetRef ref) async {
   b.writeln('generated: ${DateTime.now().toIso8601String()}');
   b.writeln('version: $appVersion');
   b.writeln('mode: ${kReleaseMode ? 'release' : 'debug'}');
-  b.writeln(
-    'platform: ${Platform.operatingSystem} '
-    '${Platform.operatingSystemVersion}',
-  );
+  b.writeln('platform: ${Platform.operatingSystem} '
+      '${windowsVersionLabel(Platform.operatingSystemVersion)}');
   b.writeln('dart: ${Platform.version}');
   b.writeln('locale: ${Platform.localeName}');
   b.writeln('processors: ${Platform.numberOfProcessors}');
-  b.writeln(
-    'previous_exit: '
-    '${DiagnosticsLog.previousExitClean ? 'clean' : 'unclean'}',
-  );
+  b.writeln('previous_exit: '
+      '${DiagnosticsLog.previousExitClean ? 'clean' : 'unclean'}');
   b.writeln();
 
   b.writeln('audio output');
-  b.writeln(
-    '  device: '
-    '${out.path.deviceName.isEmpty ? '(none)' : out.path.deviceName}',
-  );
+  b.writeln('  device: '
+      '${out.path.deviceName.isEmpty ? '(none)' : out.path.deviceName}');
   b.writeln('  devices_visible: ${out.devices.length}');
-  b.writeln(
-    '  mode: ${out.path.mode.name}, '
-    'exclusive_requested=${out.exclusiveRequested}, '
-    'exclusive_active=${out.path.exclusiveActive}',
-  );
-  b.writeln(
-    '  source=${out.path.sourceLabel} -> '
-    'output=${out.path.outputLabel}, '
-    'resampling=${out.path.resampling}, '
-    'dsp=${out.path.dspActive}, eq=${out.path.peqActive}, '
-    'software_volume=${out.path.softwareVolume}',
-  );
-  b.writeln(
-    '  bit_perfect: ${out.path.reason.name} '
-    '(${out.path.reason.label})',
-  );
+  b.writeln('  mode: ${out.path.mode.name}, '
+      'exclusive_requested=${out.exclusiveRequested}, '
+      'exclusive_active=${out.path.exclusiveActive}');
+  b.writeln('  source=${out.path.sourceLabel} -> '
+      'output=${out.path.outputLabel}, '
+      'resampling=${out.path.resampling}, '
+      'dsp=${out.path.dspActive}, eq=${out.path.peqActive}, '
+      'software_volume=${out.path.softwareVolume}');
+  b.writeln('  bit_perfect: ${out.path.reason.name} '
+      '(${out.path.reason.label})');
   if (out.path.error != null) {
     b.writeln('  error: ${out.path.error}');
   }
-  b.writeln(
-    '  prefer_lossless: ${prefs.preferLossless}, '
-    'lossless_quality: ${prefs.losslessQuality}, '
-    'download_quality: ${prefs.downloadQuality}',
-  );
-  b.writeln(
-    '  crossfade: ${prefs.crossfadeEnabled} '
-    '(${prefs.crossfadeSeconds}s), scrobbling: ${prefs.scrobblerEnabled}',
-  );
+  b.writeln('  stream_quality: ${prefs.streamQuality}, '
+      'download_quality: ${prefs.downloadQuality}');
+  b.writeln('  crossfade: ${prefs.crossfadeEnabled} '
+      '(${prefs.crossfadeSeconds}s), scrobbling: ${prefs.scrobblerEnabled}');
   b.writeln();
 
   final track = player.current;
   final stream = player.stream;
   b.writeln('playback');
-  b.writeln(
-    '  state: ${_stateLabel(player)}, queue: ${player.queue.length} '
-    '@ ${player.currentIndex}',
-  );
+  b.writeln('  state: ${_stateLabel(player)}, queue: ${player.queue.length} '
+      '@ ${player.currentIndex}');
   if (track != null) {
-    b.writeln(
-      '  current: ${track.title} - ${track.artist}'
-      '${track.album.isEmpty ? '' : ' | album=${track.album}'}'
-      '${track.duration.inSeconds == 0 ? '' : ' | ${_mmss(track.duration)}'}',
-    );
+    b.writeln('  current: ${track.title} - ${track.artist}'
+        '${track.album.isEmpty ? '' : ' | album=${track.album}'}'
+        '${track.duration.inSeconds == 0 ? '' : ' | ${_mmss(track.duration)}'}');
   }
-  b.writeln(
-    '  repeat: ${player.repeatMode.name}, '
-    'shuffle: ${player.shuffleEnabled}, speed: ${player.speed}',
-  );
-  b.writeln(
-    '  position: ${_mmss(player.position)} / '
-    '${_mmss(player.duration)}, buffering: ${player.isBuffering}',
-  );
+  b.writeln('  repeat: ${player.repeatMode.name}, '
+      'shuffle: ${player.shuffleEnabled}, speed: ${player.speed}');
+  b.writeln('  position: ${_mmss(player.position)} / '
+      '${_mmss(player.duration)}, buffering: ${player.isBuffering}');
   if (stream != null) {
-    b.writeln(
-      '  source: ${player.sourceLabel}, '
-      'codec=${stream.audioCodec}, lossless=${stream.isLossless}, '
-      'bit_depth=${stream.bitDepth}, rate_khz=${stream.samplingRateKhz}, '
-      'bitrate_kbps=${stream.bitrateKbps}',
-    );
+    b.writeln('  source: ${player.sourceLabel}, '
+        'codec=${stream.audioCodec}, lossless=${stream.isLossless}, '
+        'bit_depth=${stream.bitDepth}, rate_khz=${stream.samplingRateKhz}, '
+        'bitrate_kbps=${stream.bitrateKbps}');
   }
   if (player.error != null) b.writeln('  error: ${player.error}');
   b.writeln();
@@ -121,7 +94,6 @@ Future<String> buildDiagnosticsReport(WidgetRef ref) async {
   b.writeln('  lastfm_signed_in: ${prefs.isAuthenticated}');
   b.writeln('  youtube_connected: ${yt.connected}');
   b.writeln('  spotify_connected: ${ref.read(spotifyAuthProvider).connected}');
-  b.writeln('  addon_hosts: ${prefs.addonUrls.length}');
   b.writeln('  lyrics_provider: ${prefs.lyricsProviderId}');
   b.writeln();
 
@@ -132,7 +104,6 @@ Future<String> buildDiagnosticsReport(WidgetRef ref) async {
     'artwork_cache',
     'stream_cache',
     'match_cache',
-    'addon_match_cache',
     'search_history',
     'local_plays',
   ]) {
@@ -142,10 +113,8 @@ Future<String> buildDiagnosticsReport(WidgetRef ref) async {
 
   b.writeln('logs');
   final files = DiagnosticsLog.sessionFiles();
-  b.writeln(
-    '  session_files: ${files.length} '
-    '(${DiagnosticsLog.directory?.path ?? 'unavailable'})',
-  );
+  b.writeln('  session_files: ${files.length} '
+      '(${DiagnosticsLog.directory?.path ?? 'unavailable'})');
   for (final f in files.take(5)) {
     final size = _size(f);
     b.writeln('    ${_basename(f.path)} $size');
@@ -170,7 +139,7 @@ Future<void> exportDiagnostics(BuildContext context, WidgetRef ref) async {
         title: const Text('Could not export logs'),
         content: Text('$error'),
         actions: [
-          KatFilledButton(
+          WaveFilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Close'),
           ),
@@ -189,23 +158,23 @@ Future<void> exportDiagnostics(BuildContext context, WidgetRef ref) async {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(path, style: KatType.meta),
+          Text(path, style: WaveType.meta),
           const SizedBox(height: 10),
           Text(
             'URLs, cookies and tokens were stripped. Attach this file to a '
             'bug report — nothing was uploaded.',
-            style: KatType.meta.copyWith(
-              color: katTextSecondary(dialogContext),
+            style: WaveType.meta.copyWith(
+              color: waveTextSecondary(dialogContext),
             ),
           ),
         ],
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => LogBundle.revealFile(path),
           child: const Text('Show in folder'),
         ),
-        KatFilledButton(
+        WaveFilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Done'),
         ),
@@ -261,14 +230,23 @@ String _basename(String path) {
 /// install prunes nothing, so an absent table is informational, not fatal).
 int _count(WidgetRef ref, String table) {
   try {
-    final rows = ref
-        .read(databaseProvider)
-        .raw
-        .select('SELECT COUNT(*) AS c FROM $table');
+    final rows =
+        ref.read(databaseProvider).raw.select('SELECT COUNT(*) AS c FROM $table');
     if (rows.isEmpty) return 0;
     final value = rows.first['c'];
     return value is int ? value : int.tryParse('$value') ?? 0;
   } catch (_) {
     return -1;
   }
+}
+
+/// Windows 11 keeps the product name "Windows 10" in the registry, so
+/// the raw OS string misreports it; build 22000+ is Windows 11.
+String windowsVersionLabel(String raw) {
+  final build = RegExp(r'Build (\d+)').firstMatch(raw);
+  final n = int.tryParse(build?.group(1) ?? '') ?? 0;
+  if (n >= 22000 && raw.contains('Windows 10')) {
+    return raw.replaceFirst('Windows 10', 'Windows 11');
+  }
+  return raw;
 }

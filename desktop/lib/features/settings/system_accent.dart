@@ -141,8 +141,8 @@ class SystemAccent {
   };
 
   static Future<Color?> linux() async {
-    final desktop = (Platform.environment['XDG_CURRENT_DESKTOP'] ?? '')
-        .toLowerCase();
+    final desktop =
+        (Platform.environment['XDG_CURRENT_DESKTOP'] ?? '').toLowerCase();
     final kdeFirst = desktop.contains('kde') || desktop.contains('plasma');
     final probes = kdeFirst
         ? <Future<Color?> Function()>[kdeAccent, gnomeAccent]
@@ -192,8 +192,7 @@ class SystemAccent {
         break;
       }
     }
-    final dataHome =
-        Platform.environment['XDG_DATA_HOME'] ??
+    final dataHome = Platform.environment['XDG_DATA_HOME'] ??
         (home.isEmpty ? '' : '$home/.local/share');
     final dataDirs =
         (Platform.environment['XDG_DATA_DIRS'] ?? '/usr/local/share:/usr/share')
@@ -225,7 +224,9 @@ class SystemAccent {
         .toList();
     if (parts.length < 3) return null;
     if (parts.any((p) => p == null || p < 0 || p > 255)) return null;
-    return _sanitize(Color.fromARGB(0xFF, parts[0]!, parts[1]!, parts[2]!));
+    return _sanitize(
+      Color.fromARGB(0xFF, parts[0]!, parts[1]!, parts[2]!),
+    );
   }
 
   /// `[Colors:Selection] BackgroundNormal=R,G,B` out of a KDE `.colors`
@@ -282,7 +283,8 @@ class SystemAccent {
   /// Runs a probe binary, swallowing "not installed" and timeouts.
   static Future<String?> _run(String exe, List<String> args) async {
     try {
-      final result = await Process.run(exe, args).timeout(timeout);
+      final result =
+          await Process.run(exe, args).timeout(timeout);
       if (result.exitCode != 0) return null;
       final out = result.stdout;
       return out is String ? out : null;

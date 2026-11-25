@@ -14,7 +14,7 @@ class DioFactory {
 
   static const String desktopUserAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) '
-      'Gecko/20100101 Firefox/140.0 KatMusic-Desktop/1.0';
+      'Gecko/20100101 Firefox/140.0 KatMusic/1.0';
 
   static Dio create({LastFmRateGuard? rateGuard}) {
     final dio = Dio(
@@ -48,7 +48,8 @@ class DioFactory {
                 (e.requestOptions.extra['lfm_retried'] != true)) {
               rateGuard.onRequestLimited();
               e.requestOptions.extra['lfm_retried'] = true;
-              await Future<void>.delayed(const Duration(milliseconds: 1500));
+              await Future<void>.delayed(
+                  const Duration(milliseconds: 1500));
               try {
                 final res = await dio.fetch(e.requestOptions);
                 return handler.resolve(res);
@@ -111,7 +112,8 @@ class DioFactory {
       } on DioException catch (e) {
         lastError = e;
         if (!_isTransient(e) || attempt == maxAttempts) rethrow;
-        final backoff = Duration(milliseconds: 250 * (1 << (attempt - 1)));
+        final backoff =
+            Duration(milliseconds: 250 * (1 << (attempt - 1)));
         await Future<void>.delayed(backoff);
       }
     }

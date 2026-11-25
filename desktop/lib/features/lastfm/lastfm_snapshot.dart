@@ -14,12 +14,7 @@ const lastFmCacheMaxAge = Duration(days: 14);
 
 /// Key for one Last.fm view. [owner] is the signed-in user and [viewing] the
 /// friend being browsed (null = own profile). Null when nobody is signed in.
-String? lastFmCacheKey(
-  String what,
-  String owner, {
-  String? viewing,
-  String extra = '',
-}) {
+String? lastFmCacheKey(String what, String owner, {String? viewing, String extra = ''}) {
   if (owner.isEmpty) return null;
   final subject = (viewing == null || viewing.isEmpty) ? owner : viewing;
   return 'lf_${what}_v1|${owner.toLowerCase()}|${subject.toLowerCase()}'
@@ -61,24 +56,6 @@ final homeTracksSnapshotCodec = SnapshotCodec<List<HomeTrack>>(
       artworkUrl: e['art']?.toString() ?? '',
       timestampMillis: (e['t'] as num?)?.toInt(),
       playCount: (e['pc'] as num?)?.toInt() ?? 0,
-    ),
-  ),
-  isEmpty: (list) => list.isEmpty,
-);
-
-final friendEntriesSnapshotCodec = SnapshotCodec<List<FriendEntry>>(
-  encode: (list) => jsonEncode({
-    'v': 1,
-    'items': [
-      for (final f in list) {'n': f.name, 'r': f.realName, 'av': f.avatarUrl},
-    ],
-  }),
-  decode: (raw) => _list(
-    raw,
-    (e) => FriendEntry(
-      name: e['n']?.toString() ?? '',
-      realName: e['r']?.toString() ?? '',
-      avatarUrl: e['av']?.toString() ?? '',
     ),
   ),
   isEmpty: (list) => list.isEmpty,

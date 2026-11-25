@@ -13,8 +13,7 @@ const _lineSyncedRecord = {
   'duration': 234.0,
   'instrumental': false,
   'plainLyrics': "The club isn't the best place to find a lover",
-  'syncedLyrics':
-      '[00:09.73] The club isn\'t the best place to find a lover\n'
+  'syncedLyrics': '[00:09.73] The club isn\'t the best place to find a lover\n'
       '[00:15.12] So the bar is where I go',
 };
 
@@ -39,7 +38,10 @@ Dio _stubDio() {
             DioException(
               requestOptions: options,
               type: DioExceptionType.badResponse,
-              response: Response(requestOptions: options, statusCode: 404),
+              response: Response(
+                requestOptions: options,
+                statusCode: 404,
+              ),
             ),
           );
           return;

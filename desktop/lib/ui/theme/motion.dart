@@ -10,36 +10,40 @@ import 'tokens.dart';
 /// drifting upward a short distance, with a small per-item stagger so
 /// sections cascade instead of popping as one slab.
 ///
-/// Recycling safety: [KatEntranceGroup] owns ONE controller started when
+/// Recycling safety: [WaveEntranceGroup] owns ONE controller started when
 /// the content mounts (typically when async data first arrives). Every
-/// [KatEntrance] maps its index onto an interval of that single
+/// [WaveEntrance] maps its index onto an interval of that single
 /// timeline, so lazily-built list/grid rows that mount AFTER the timeline
 /// finished render fully visible — no fade-replay when scrolling back up
 /// in virtualized lists ([SuperSliverList], [SliverGrid], …).
 ///
 /// Usage:
 /// ```dart
-/// KatEntranceGroup(
+/// WaveEntranceGroup(
 ///   child: CustomScrollView(slivers: [
-///     SliverToBoxAdapter(child: KatEntrance(index: 0, child: header)),
-///     SliverGrid(... KatEntrance(index: i, child: card) ...),
+///     SliverToBoxAdapter(child: WaveEntrance(index: 0, child: header)),
+///     SliverGrid(... WaveEntrance(index: i, child: card) ...),
 ///   ]),
 /// )
 /// ```
-class KatEntranceGroup extends StatefulWidget {
+class WaveEntranceGroup extends StatefulWidget {
   final Widget child;
 
   /// Set false while data loads and flip to true when content is ready —
   /// the timeline starts on the first `true` and never restarts.
   final bool start;
 
-  const KatEntranceGroup({super.key, required this.child, this.start = true});
+  const WaveEntranceGroup({
+    super.key,
+    required this.child,
+    this.start = true,
+  });
 
   @override
-  State<KatEntranceGroup> createState() => _KatEntranceGroupState();
+  State<WaveEntranceGroup> createState() => _WaveEntranceGroupState();
 }
 
-class _KatEntranceGroupState extends State<KatEntranceGroup>
+class _WaveEntranceGroupState extends State<WaveEntranceGroup>
     with SingleTickerProviderStateMixin {
   /// Total window: must exceed max stagger + item duration.
   static const _window = Duration(milliseconds: 220);
@@ -55,7 +59,7 @@ class _KatEntranceGroupState extends State<KatEntranceGroup>
   }
 
   @override
-  void didUpdateWidget(KatEntranceGroup oldWidget) {
+  void didUpdateWidget(WaveEntranceGroup oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.start) _go();
   }
@@ -76,7 +80,7 @@ class _KatEntranceGroupState extends State<KatEntranceGroup>
   Widget build(BuildContext context) {
     // Reduce motion: the whole point of this widget is the movement, so
     // there is no "instant" version to fall back to — hand the child over.
-    if (katReduceMotion(context)) return widget.child;
+    if (waveReduceMotion(context)) return widget.child;
     // The scope stays for the group's whole life. Dropping it once the
     // timeline finished looked like a saving, but a descendant that rebuilds
     // afterwards — a rail row on expand/collapse, a table on sort, a row whose
@@ -84,30 +88,33 @@ class _KatEntranceGroupState extends State<KatEntranceGroup>
     // replayed its fade, so the content blinked back in. A completed group
     // already hands plain children back (`_groupDriven` short-circuits), so
     // keeping the scope costs one inherited lookup and nothing else.
-    return _KatEntranceScope(controller: _controller, child: widget.child);
+    return _WaveEntranceScope(
+      controller: _controller,
+      child: widget.child,
+    );
   }
 }
 
-class _KatEntranceScope extends InheritedWidget {
+class _WaveEntranceScope extends InheritedWidget {
   final AnimationController controller;
-  const _KatEntranceScope({required this.controller, required super.child});
+  const _WaveEntranceScope({required this.controller, required super.child});
 
   static AnimationController? of(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<_KatEntranceScope>()
+      .dependOnInheritedWidgetOfExactType<_WaveEntranceScope>()
       ?.controller;
 
   @override
-  bool updateShouldNotify(_KatEntranceScope oldWidget) =>
+  bool updateShouldNotify(_WaveEntranceScope oldWidget) =>
       oldWidget.controller != controller;
 }
 
 /// Staggered fade + rise entrance for one child.
 ///
-/// - Inside a [KatEntranceGroup]: driven by the shared timeline
+/// - Inside a [WaveEntranceGroup]: driven by the shared timeline
 ///   (recycle-safe for virtualized lists).
 /// - Standalone (no group): animates once on mount, but only for
 ///   [index] < [_standaloneCap] so deep rows in lazy lists never replay.
-class KatEntrance extends StatelessWidget {
+class WaveEntrance extends StatefulWidget {
   final int index;
   final Widget child;
 
@@ -115,11 +122,11 @@ class KatEntrance extends StatelessWidget {
   final double rise;
 
   /// When true, always run a local one-shot entrance even inside a
-  /// [KatEntranceGroup] — for content that must animate at page mount
+  /// [WaveEntranceGroup] — for content that must animate at page mount
   /// instead of waiting for the group's start gate (e.g. page headers).
   final bool local;
 
-  const KatEntrance({
+  const WaveEntrance({
     super.key,
     this.index = 0,
     this.rise = 14,
@@ -140,64 +147,86 @@ class KatEntrance extends StatelessWidget {
   static const _standaloneCap = 6;
 
   @override
-  Widget build(BuildContext context) {
-    // Reduce motion: skip the stagger entirely (see [KatEntranceGroup]).
-    if (katReduceMotion(context)) return child;
-    final group = local ? null : _KatEntranceScope.of(context);
-    if (group != null) return _groupDriven(group);
-    if (index >= _standaloneCap) return child;
-    return _standalone();
-  }
+  State<WaveEntrance> createState() => _WaveEntranceState();
+}
 
-  Widget _groupDriven(AnimationController controller) {
-    if (controller.isCompleted || controller.value >= 1.0) return child;
-    final totalMs = controller.duration?.inMilliseconds ?? 220;
-    final slot = math.min(index, maxStagger);
-    final startMs = math.min(slot * stepMs, totalMs - itemMs - 20);
-    final begin = (startMs / totalMs).clamp(0.0, 0.97);
-    final end = ((startMs + itemMs) / totalMs).clamp(begin + 0.01, 1.0);
-    final curved = CurvedAnimation(
-      parent: controller,
-      curve: Interval(begin, end, curve: Curves.easeOutCubic),
-    );
-    return AnimatedBuilder(
-      animation: controller,
-      child: child,
-      builder: (context, child) {
-        if (controller.isCompleted || controller.value >= 1.0) return child!;
-        return _paint(curved.value, child!);
-      },
-    );
-  }
+class _WaveEntranceState extends State<WaveEntrance>
+    with SingleTickerProviderStateMixin {
+  /// Decided once, on first build, and kept for this element's life: the
+  /// wrapper structure never changes, so the child is never remounted.
+  /// (It used to swap between `child`, `Opacity(child)` and
+  /// `Opacity(Transform(child))` as the fade began and ended, tearing down
+  /// and rebuilding every entering row twice — images re-requested, state
+  /// reset — which is what made pages stutter as they opened.)
+  CurvedAnimation? _t;
+  AnimationController? _own;
+  bool _decided = false;
 
-  Widget _standalone() {
-    // Bake the stagger delay into an Interval curve so the one-shot
-    // TweenAnimationBuilder needs no timers or extra controllers.
-    final delayMs = index * stepMs;
-    final totalMs = delayMs + itemMs;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: totalMs),
-      curve: Interval(delayMs / totalMs, 1, curve: Curves.easeOutCubic),
-      child: child,
-      builder: (context, value, child) {
-        if (value >= 1.0) return child!;
-        return _paint(value, child!);
-      },
-    );
-  }
-
-  Widget _paint(double t, Widget child) {
-    if (t >= 1.0) return child;
-    if (t <= 0.0) {
-      return Opacity(opacity: 0.0, child: child);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_decided) return;
+    _decided = true;
+    final w = widget;
+    if (waveReduceMotion(context)) return;
+    final group = w.local ? null : _WaveEntranceScope.of(context);
+    if (group != null) {
+      // A finished cascade hands rows built later back untouched.
+      if (group.isCompleted || group.value >= 1.0) return;
+      final totalMs = group.duration?.inMilliseconds ?? 220;
+      final slot = math.min(w.index, WaveEntrance.maxStagger);
+      final startMs =
+          math.min(slot * WaveEntrance.stepMs, totalMs - WaveEntrance.itemMs - 20);
+      final begin = (startMs / totalMs).clamp(0.0, 0.97);
+      final end =
+          ((startMs + WaveEntrance.itemMs) / totalMs).clamp(begin + 0.01, 1.0);
+      _t = CurvedAnimation(
+        parent: group,
+        curve: Interval(begin, end, curve: Curves.easeOutCubic),
+      );
+      return;
     }
-    return Opacity(
-      opacity: t,
-      child: Transform.translate(
-        offset: Offset(0, rise * (1 - t)),
-        child: child,
-      ),
+    if (w.index >= WaveEntrance._standaloneCap) return;
+    // Bake the stagger delay into an Interval curve: one controller, no timers.
+    final delayMs = w.index * WaveEntrance.stepMs;
+    final totalMs = delayMs + WaveEntrance.itemMs;
+    _own = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: totalMs),
+    )..forward();
+    _t = CurvedAnimation(
+      parent: _own!,
+      curve: Interval(delayMs / totalMs, 1, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _t?.dispose(); // drops its status listener on a shared group
+    _own?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _t;
+    if (t == null) return widget.child;
+    final rise = widget.rise;
+    // At rest this is Opacity(1) + a zero translation: both paint the child
+    // directly (no layer), so the settled cost is nil.
+    return AnimatedBuilder(
+      animation: t,
+      child: widget.child,
+      builder: (context, child) {
+        final v = t.value.clamp(0.0, 1.0);
+        return Opacity(
+          opacity: v,
+          child: Transform.translate(
+            offset: Offset(0, rise * (1 - v)),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

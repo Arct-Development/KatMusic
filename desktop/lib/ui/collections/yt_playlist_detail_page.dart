@@ -11,25 +11,25 @@ import '../../features/innertube/yt_library_providers.dart';
 import '../../features/library/playlists.dart';
 import '../../features/player/playback_service.dart';
 import '../components/buttons.dart'
-    show KatTooltip, KatGhostButton, KatPrimaryButton;
+    show LWTooltip, WaveGhostButton, WavePrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// YouTube Music playlist detail: artwork hero + filter + track table.
 ///
-/// Read-only mirror of [KatPlaylistDetailPage] for account playlists —
+/// Read-only mirror of [WavePlaylistDetailPage] for account playlists —
 /// no pin/rename/delete/remove. [title]/[artworkUrl] are instant-hero
 /// hints from the shelf; tracks load via [ytPlaylistDetailProvider].
-class KatYtPlaylistDetailPage extends ConsumerStatefulWidget {
+class WaveYtPlaylistDetailPage extends ConsumerStatefulWidget {
   final String playlistId;
   final String title;
   final String artworkUrl;
-  const KatYtPlaylistDetailPage({
+  const WaveYtPlaylistDetailPage({
     super.key,
     required this.playlistId,
     this.title = '',
@@ -37,12 +37,12 @@ class KatYtPlaylistDetailPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<KatYtPlaylistDetailPage> createState() =>
-      _KatYtPlaylistDetailPageState();
+  ConsumerState<WaveYtPlaylistDetailPage> createState() =>
+      _WaveYtPlaylistDetailPageState();
 }
 
-class _KatYtPlaylistDetailPageState
-    extends ConsumerState<KatYtPlaylistDetailPage> {
+class _WaveYtPlaylistDetailPageState
+    extends ConsumerState<WaveYtPlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -55,21 +55,25 @@ class _KatYtPlaylistDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(ytPlaylistDetailProvider(widget.playlistId));
+    final async =
+        ref.watch(ytPlaylistDetailProvider(widget.playlistId));
     return async.when(
-      loading: () => const KatLoading(label: 'Loading playlist…'),
-      error: (e, _) => KatError(
+      loading: () => const WaveLoading(
+        label: 'Loading playlist…',
+      ),
+      error: (e, _) => WaveError(
         title: 'Could not load playlist',
         message: '$e',
-        onRetry: () =>
-            ref.invalidate(ytPlaylistDetailProvider(widget.playlistId)),
+        onRetry: () => ref
+            .invalidate(ytPlaylistDetailProvider(widget.playlistId)),
       ),
       data: (res) {
         if (res == null || res.tracks.isEmpty) {
-          return KatEmpty(
-            icon: KatIcons.playlists,
+          return WaveEmpty(
+            icon: WaveIcons.playlists,
             title: 'Playlist unavailable',
-            subtitle: 'It may be private, deleted, or offline.',
+            subtitle:
+                'It may be private, deleted, or offline.',
             actionLabel: 'Back to playlists',
             onAction: () => context.go('/playlists'),
           );
@@ -77,7 +81,9 @@ class _KatYtPlaylistDetailPageState
         return _Body(
           playlistId: widget.playlistId,
           res: res,
-          heroTitle: widget.title.isNotEmpty ? widget.title : res.title,
+          heroTitle: widget.title.isNotEmpty
+              ? widget.title
+              : res.title,
           heroArt: widget.artworkUrl.isNotEmpty
               ? widget.artworkUrl
               : res.artworkUrl,
@@ -118,9 +124,9 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var tracks = res.tracks
         .where(
-          (t) => '${t.title} ${t.artist}'.toLowerCase().contains(
-            query.toLowerCase(),
-          ),
+          (t) => '${t.title} ${t.artist}'
+              .toLowerCase()
+              .contains(query.toLowerCase()),
         )
         .toList();
     if (sort == 'title') {
@@ -153,36 +159,42 @@ class _Body extends ConsumerWidget {
       }
     }
 
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              padding:
+                  const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: KatDensity.contentMax,
+                  maxWidth: WaveDensity.contentMax,
                 ),
-                child: KatEntrance(
+                child: WaveEntrance(
                   rise: 10,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
-                      KatCollectionHero(
+                      WaveCollectionHero(
                         flightKind: 'ytplaylist',
                         flightId: playlistId,
                         overline: 'YouTube Music playlist',
-                        title: heroTitle.isNotEmpty ? heroTitle : 'Playlist',
+                        title: heroTitle.isNotEmpty
+                            ? heroTitle
+                            : 'Playlist',
                         meta:
                             '${res.tracks.length} tracks${query.isNotEmpty ? ' · ${tracks.length} match' : ''}',
                         artworkUrl: cover,
-                        fallbackIcon: KatIcons.playlists,
+                        fallbackIcon:
+                            WaveIcons.playlists,
                         primaryActions: [
                           if (tracks.isNotEmpty) ...[
-                            KatPrimaryButton(
+                            WavePrimaryButton(
                               label: 'Play all',
                               icon: FluentIcons.play,
-                              onPressed: () => playGenerated(
+                              onPressed: () =>
+                                  playGenerated(
                                 ref,
                                 context,
                                 asGenerated().first,
@@ -190,11 +202,13 @@ class _Body extends ConsumerWidget {
                                 queueAll: asGenerated(),
                               ),
                             ),
-                            KatGhostButton(
+                            WaveGhostButton(
                               label: 'Shuffle',
-                              icon: KatIcons.shuffle,
+                              icon: WaveIcons.shuffle,
                               onPressed: () {
-                                final shuffled = asGenerated()..shuffle();
+                                final shuffled =
+                                    asGenerated()
+                                      ..shuffle();
                                 playGenerated(
                                   ref,
                                   context,
@@ -204,45 +218,46 @@ class _Body extends ConsumerWidget {
                                 );
                               },
                             ),
-                            KatGhostButton(
+                            WaveGhostButton(
                               label: 'Save to library',
                               icon: FluentIcons.save,
                               onPressed: () async {
                                 final saved = await ref
                                     .read(playlistRepositoryProvider.notifier)
                                     .saveGenerated(
-                                      heroTitle.isEmpty
-                                          ? 'YouTube playlist'
-                                          : heroTitle,
-                                      [
-                                        for (final t in res.tracks)
-                                          StoredTrack(
-                                            name: t.title,
-                                            artist: t.artist,
-                                            album: t.album,
-                                            artworkUrl: t.artworkUrl,
-                                            videoId: t.videoId,
-                                            durationSeconds: t.durationSeconds,
-                                          ),
-                                      ],
-                                    );
+                                  heroTitle.isEmpty ? 'YouTube playlist' : heroTitle,
+                                  [
+                                    for (final t in res.tracks)
+                                      StoredTrack(
+                                        name: t.title,
+                                        artist: t.artist,
+                                        album: t.album,
+                                        artworkUrl: t.artworkUrl,
+                                        videoId: t.videoId,
+                                        durationSeconds: t.durationSeconds,
+                                      ),
+                                  ],
+                                );
                                 if (context.mounted) {
                                   context.go('/playlists/${saved.id}');
                                 }
                               },
                             ),
-                            KatGhostButton(
+                            WaveGhostButton(
                               label: 'Download',
                               icon: FluentIcons.download,
                               onPressed: () {
                                 final manager = ref.read(
-                                  downloadManagerProvider.notifier,
-                                );
-                                for (final t in asGenerated()) {
+                                    downloadManagerProvider
+                                        .notifier);
+                                for (final t
+                                    in asGenerated()) {
                                   manager.downloadTrack(
                                     title: t.name,
                                     artist: t.artist,
-                                    artworkUrl: t.artworkUrl,
+                                    artworkUrl:
+                                        t.artworkUrl,
+                                    videoId: t.videoId,
                                   );
                                 }
                               },
@@ -251,28 +266,24 @@ class _Body extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      KatFilterBar(
+                      WaveFilterBar(
                         controller: filter,
                         onChanged: onQuery,
                         hint: 'Filter in playlist…',
-                        countLabel: '${tracks.length} tracks',
-                        sortSlot: KatTooltip(
-                          message: 'Sort (also sortable via table headers)',
-                          child: KatSelect<String>(
+                        countLabel:
+                            '${tracks.length} tracks',
+                        sortSlot: LWTooltip(
+                          message:
+                              'Sort (also sortable via table headers)',
+                          child: WaveSelect<String>(
                             value: sort,
                             options: const [
-                              KatSelectOption(
-                                value: 'default',
-                                label: 'Default order',
-                              ),
-                              KatSelectOption(
-                                value: 'title',
-                                label: 'Title A–Z',
-                              ),
-                              KatSelectOption(
-                                value: 'artist',
-                                label: 'Artist A–Z',
-                              ),
+                              WaveSelectOption(
+                                  value: 'default', label: 'Default order'),
+                              WaveSelectOption(
+                                  value: 'title', label: 'Title A–Z'),
+                              WaveSelectOption(
+                                  value: 'artist', label: 'Artist A–Z'),
                             ],
                             onChanged: onSort,
                           ),
@@ -287,16 +298,17 @@ class _Body extends ConsumerWidget {
           ),
           if (tracks.isEmpty)
             const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: KatIcons.playlists,
+              child: WaveEmpty(
+                icon: WaveIcons.playlists,
                 title: 'No matches',
                 subtitle: 'Try a different filter.',
               ),
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: KatDesktopTable<GeneratedTrack>(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16),
+              sliver: WaveDesktopTable<GeneratedTrack>(
                 items: asGenerated(),
                 keyOf: (t) => t.key,
                 titleOf: (t) => t.name,
@@ -305,7 +317,8 @@ class _Body extends ConsumerWidget {
                 artworkOf: (t) => t.artworkUrl,
                 playableOf: playableFromGenerated,
                 durationOf: (t) => t.durationSeconds > 0
-                    ? formatDuration(Duration(seconds: t.durationSeconds))
+                    ? formatDuration(Duration(
+                        seconds: t.durationSeconds))
                     : '',
                 durationSortOf: (t) => t.durationSeconds,
                 titleSortOf: (t) => t.name.toLowerCase(),
@@ -313,7 +326,8 @@ class _Body extends ConsumerWidget {
                 isCurrent: (t) => playingKey == t.key,
                 isPlaying: (t) {
                   final playing = ref.watch(
-                    playbackServiceProvider.select((p) => p.isPlaying),
+                    playbackServiceProvider
+                        .select((p) => p.isPlaying),
                   );
                   return playingKey == t.key && playing;
                 },
@@ -330,7 +344,10 @@ class _Body extends ConsumerWidget {
                 ),
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 24),
+          ),
+          const WaveDockSpacer(),
         ],
       ),
     );

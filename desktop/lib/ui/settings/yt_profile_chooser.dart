@@ -54,8 +54,12 @@ class _LiveRow {
     required this.current,
   });
 
-  _LiveRow withChannel(YtChannel c) =>
-      _LiveRow(email: email, cookies: cookies, channel: c, current: current);
+  _LiveRow withChannel(YtChannel c) => _LiveRow(
+        email: email,
+        cookies: cookies,
+        channel: c,
+        current: current,
+      );
 }
 
 class _ChooserDialog extends ConsumerStatefulWidget {
@@ -73,10 +77,12 @@ class _ChooserDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ChooserDialog> createState() => _ChooserDialogState();
+  ConsumerState<_ChooserDialog> createState() =>
+      _ChooserDialogState();
 }
 
-class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
+class _ChooserDialogState
+    extends ConsumerState<_ChooserDialog> {
   late List<_LiveRow> _rows;
   bool _loading = true;
 
@@ -85,13 +91,14 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
     super.initState();
     _rows = [
       for (final p in widget.roster)
-        for (final c in (p.channels.isEmpty ? const [YtChannel()] : p.channels))
+        for (final c in (p.channels.isEmpty
+            ? const [YtChannel()]
+            : p.channels))
           _LiveRow(
             email: p.email,
             cookies: p.cookies,
             channel: c,
-            current:
-                p.email == widget.activeEmail &&
+            current: p.email == widget.activeEmail &&
                 c.pageId == widget.activePageId,
           ),
     ];
@@ -126,10 +133,10 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
       final liveName = identity.name.isNotEmpty
           ? identity.name
           : (r.channel.name.isNotEmpty
-                ? r.channel.name
-                : (identity.handle.isNotEmpty
-                      ? identity.handle
-                      : identity.email));
+              ? r.channel.name
+              : (identity.handle.isNotEmpty
+                  ? identity.handle
+                  : identity.email));
       final liveHandle = identity.handle.isNotEmpty
           ? identity.handle
           : r.channel.handle;
@@ -137,14 +144,12 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
           ? identity.photoUrl
           : r.channel.photoUrl;
       setState(() {
-        _rows[i] = r.withChannel(
-          YtChannel(
-            pageId: r.channel.pageId,
-            name: liveName,
-            handle: liveHandle == 'unknown' ? '' : liveHandle,
-            photoUrl: livePhoto,
-          ),
-        );
+        _rows[i] = r.withChannel(YtChannel(
+          pageId: r.channel.pageId,
+          name: liveName,
+          handle: liveHandle == 'unknown' ? '' : liveHandle,
+          photoUrl: livePhoto,
+        ));
       });
     }
     if (mounted) setState(() => _loading = false);
@@ -155,13 +160,20 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
     return ContentDialog(
       title: Text(widget.title),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 380),
+        constraints: const BoxConstraints(
+          maxWidth: 420,
+          maxHeight: 380,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch,
             children: [
-              Text(widget.hint, style: const TextStyle(fontSize: 12)),
+              Text(
+                widget.hint,
+                style: const TextStyle(fontSize: 12),
+              ),
               if (_loading) ...[
                 const SizedBox(height: 8),
                 const Row(
@@ -170,21 +182,27 @@ class _ChooserDialogState extends ConsumerState<_ChooserDialog> {
                     SizedBox(
                       width: 12,
                       height: 12,
-                      child: ProgressRing(strokeWidth: 2),
+                      child: ProgressRing(
+                        strokeWidth: 2,
+                      ),
                     ),
                     SizedBox(width: 8),
-                    Text('Refreshing…', style: TextStyle(fontSize: 12)),
+                    Text(
+                      'Refreshing…',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ],
                 ),
               ],
               const SizedBox(height: 8),
-              for (final r in _rows) _row(context, r),
+              for (final r in _rows)
+                _row(context, r),
             ],
           ),
         ),
       ),
       actions: [
-        KatButton(
+        WaveButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
@@ -200,12 +218,15 @@ String ytDisplayHandle(YtChannel channel) =>
     channel.handle.startsWith('@') ? channel.handle : '';
 
 /// Displayable email: never the 'unknown' sentinel.
-String ytDisplayEmail(String email) => email != 'unknown' ? email : '';
+String ytDisplayEmail(String email) =>
+    email != 'unknown' ? email : '';
 
 Widget _row(BuildContext dialogContext, _LiveRow r) {
   final handle = ytDisplayHandle(r.channel);
   final mail = ytDisplayEmail(r.email);
-  final rawName = r.channel.name.isNotEmpty ? r.channel.name : handle;
+  final rawName = r.channel.name.isNotEmpty
+      ? r.channel.name
+      : handle;
   // Provisional rows (identity transiently empty right after login)
   // show the account email — or a plain label while the live refresh
   // resolves the real channel name — never a bare "Channel".
@@ -214,22 +235,24 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
       : (mail.isNotEmpty ? mail : 'YouTube account');
   final idLine = handle.isNotEmpty ? handle : mail;
   final sub = [
-    if (r.channel.name.isNotEmpty && idLine.isNotEmpty) idLine,
+    if (r.channel.name.isNotEmpty && idLine.isNotEmpty)
+      idLine,
     if (r.channel.isMain) 'Main channel' else 'Brand channel',
     if (r.current) 'Current',
   ].join(' · ');
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
-    child: KatButton(
-      onPressed: () =>
-          Navigator.of(dialogContext)
-              .pop((email: r.email, pageId: r.channel.pageId)),
+    child: WaveButton(
+      onPressed: () => Navigator.of(dialogContext).pop((
+        email: r.email,
+        pageId: r.channel.pageId,
+      )),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
             if (r.channel.photoUrl.isNotEmpty)
-              KatArtwork.circle(
+              WaveArtwork.circle(
                 url: r.channel.photoUrl,
                 size: 36,
                 label: name,
@@ -240,22 +263,23 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
             const SizedBox(width: 10),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: KatType.trackTitle,
+                    style: WaveType.trackTitle,
                   ),
                   Text(
                     sub,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: KatType.meta.copyWith(
-                      color: katTextSecondary(dialogContext),
-                    ),
+                    style: WaveType.meta.copyWith(
+                        color: waveTextSecondary(
+                            dialogContext)),
                   ),
                 ],
               ),
@@ -263,7 +287,8 @@ Widget _row(BuildContext dialogContext, _LiveRow r) {
             if (r.current)
               const Padding(
                 padding: EdgeInsets.only(left: 8),
-                child: Icon(FluentIcons.check_mark, size: 14),
+                child: Icon(FluentIcons.check_mark,
+                    size: 14),
               ),
           ],
         ),

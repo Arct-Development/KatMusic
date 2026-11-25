@@ -2,7 +2,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/track_actions.dart'
-    show formatDuration, mergeYtTracks, playGenerated, playableFromGenerated;
+    show
+        formatDuration,
+        mergeYtTracks,
+        playGenerated,
+        playableFromGenerated;
 import '../../core/storage/prefs.dart';
 import '../../features/feed/feed_repository.dart';
 import '../../features/innertube/innertube_api.dart' show YouTubeMusicTrack;
@@ -16,17 +20,19 @@ import '../components/select.dart';
 import '../components/states.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Liked Songs: hero + filter + sort + dense table.
-class KatLikedPage extends ConsumerStatefulWidget {
-  const KatLikedPage({super.key});
+class WaveLikedPage extends ConsumerStatefulWidget {
+  const WaveLikedPage({super.key});
 
   @override
-  ConsumerState<KatLikedPage> createState() => _KatLikedPageState();
+  ConsumerState<WaveLikedPage> createState() =>
+      _WaveLikedPageState();
 }
 
-class _KatLikedPageState extends ConsumerState<KatLikedPage> {
+class _WaveLikedPageState
+    extends ConsumerState<WaveLikedPage> {
   final _filter = TextEditingController();
   String _q = '';
   String _sort = 'default';
@@ -48,7 +54,8 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
   @override
   Widget build(BuildContext context) {
     final playlists = ref.watch(playlistRepositoryProvider);
-    final liked = playlists.where((p) => p.isLikedSongs).firstOrNull;
+    final liked =
+        playlists.where((p) => p.isLikedSongs).firstOrNull;
     final all = liked?.tracks ?? const [];
     final query = _q.trim().toLowerCase();
     // With two-way sync on, YouTube likes are already rows in `all`; merging
@@ -58,8 +65,7 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
         : ref.watch(ytLikedSongsProvider).value ?? const [];
 
     final bool tracksChanged = !identical(all, _lastAll) || all != _lastAll;
-    final bool ytChanged =
-        !identical(ytLiked, _lastYtLiked) || ytLiked != _lastYtLiked;
+    final bool ytChanged = !identical(ytLiked, _lastYtLiked) || ytLiked != _lastYtLiked;
     final bool filterChanged = query != _lastQ || _sort != _lastSort;
 
     if (tracksChanged || ytChanged || _lastAll == null) {
@@ -94,10 +100,12 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
       var tracks = query.isEmpty
           ? List<StoredTrack>.from(all)
           : all
-                .where(
-                  (t) => '${t.name} ${t.artist}'.toLowerCase().contains(query),
-                )
-                .toList();
+              .where(
+                (t) => '${t.name} ${t.artist}'
+                    .toLowerCase()
+                    .contains(query),
+              )
+              .toList();
       if (_sort == 'title') {
         tracks.sort((a, b) => a.name.compareTo(b.name));
       } else if (_sort == 'artist') {
@@ -107,10 +115,12 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
       final ytFiltered = query.isEmpty
           ? ytLiked
           : ytLiked
-                .where(
-                  (t) => '${t.title} ${t.artist}'.toLowerCase().contains(query),
-                )
-                .toList();
+              .where(
+                (t) => '${t.title} ${t.artist}'
+                    .toLowerCase()
+                    .contains(query),
+              )
+              .toList();
       final localGenerated = tracks
           .map(
             (t) => GeneratedTrack(
@@ -137,35 +147,33 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
     // plus a second giant icon.
     if (mergedTotal == 0) {
       return ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        padding: waveDockPadding(context, const EdgeInsets.fromLTRB(24, 20, 24, 32)),
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: KatDensity.contentMax),
+            constraints: const BoxConstraints(
+              maxWidth: WaveDensity.contentMax,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'PLAYLIST',
-                  style: KatType.overline.copyWith(
-                    fontSize: 10,
-                    color: katTextTertiary(context),
-                  ),
-                ),
+                Text('PLAYLIST',
+                    style: WaveType.overline.copyWith(
+                        fontSize: 10,
+                        color: waveTextTertiary(context))),
                 const SizedBox(height: 4),
-                Text(
-                  'Liked Songs',
-                  style: KatType.pageTitle.copyWith(fontSize: 28),
-                ),
+                Text('Liked Songs',
+                    style: WaveType.pageTitle
+                        .copyWith(fontSize: 28)),
                 const SizedBox(height: 4),
-                Text(
-                  '0 tracks',
-                  style: KatType.meta.copyWith(color: katTextTertiary(context)),
-                ),
+                Text('0 tracks',
+                    style: WaveType.meta.copyWith(
+                        color: waveTextTertiary(context))),
                 const SizedBox(height: 8),
-                const KatEmpty(
-                  icon: KatIcons.liked,
+                const WaveEmpty(
+                  icon: WaveIcons.liked,
                   title: 'No liked songs yet',
-                  subtitle: 'Tap the heart on any track to save it here.',
+                  subtitle:
+                      'Tap the heart on any track to save it here.',
                 ),
               ],
             ),
@@ -173,141 +181,149 @@ class _KatLikedPageState extends ConsumerState<KatLikedPage> {
         ],
       );
     }
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: KatDensity.contentMax,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    KatEntrance(
-                      rise: 10,
-                      child: KatCollectionHero(
-                        overline: 'Playlist',
-                        title: 'Liked Songs',
-                        meta:
-                            '$mergedTotal tracks${_q.isNotEmpty ? ' · ${asGenerated().length} match' : ''}',
-                        artworkUrl: cover,
-                        fallbackIcon: KatIcons.likedFill,
-                        primaryActions: [
-                          if (asGenerated().isNotEmpty)
-                            KatPrimaryButton(
-                              label: 'Play all',
-                              icon: FluentIcons.play,
-                              onPressed: () => playGenerated(
-                                ref,
-                                context,
-                                asGenerated().first,
-                                sourceLabel: 'Liked Songs',
-                                queueAll: asGenerated(),
-                              ),
-                            ),
-                          KatGhostButton(
-                            label: 'Shuffle',
-                            icon: KatIcons.shuffle,
-                            onPressed: asGenerated().isEmpty
-                                ? null
-                                : () {
-                                    // Shuffle BEFORE picking first —
-                                    // first must come from the shuffled list.
-                                    final shuffled = asGenerated()..shuffle();
-                                    playGenerated(
-                                      ref,
-                                      context,
-                                      shuffled.first,
-                                      sourceLabel: 'Liked Songs',
-                                      queueAll: shuffled,
-                                    );
-                                  },
+        SliverToBoxAdapter(
+          child: Padding(
+            padding:
+                const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: WaveDensity.contentMax,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  WaveEntrance(
+                    rise: 10,
+                    child: WaveCollectionHero(
+                    overline: 'Playlist',
+                    title: 'Liked Songs',
+                    meta:
+                        '$mergedTotal tracks${_q.isNotEmpty ? ' · ${asGenerated().length} match' : ''}',
+                    artworkUrl: cover,
+                    fallbackIcon: WaveIcons.likedFill,
+                    primaryActions: [
+                      if (asGenerated().isNotEmpty)
+                        WavePrimaryButton(
+                          label: 'Play all',
+                          icon: FluentIcons.play,
+                          onPressed: () =>
+                              playGenerated(
+                            ref,
+                            context,
+                            asGenerated().first,
+                            sourceLabel: 'Liked Songs',
+                            queueAll: asGenerated(),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    KatFilterBar(
-                      controller: _filter,
-                      onChanged: (v) => setState(() => _q = v),
-                      hint: 'Filter liked songs…',
-                      countLabel: '${asGenerated().length} tracks',
-                      sortSlot: KatTooltip(
-                        message: 'Sort (also sortable via table headers)',
-                        child: KatSelect<String>(
-                          value: _sort,
-                          options: const [
-                            KatSelectOption(
-                              value: 'default',
-                              label: 'Default order',
-                            ),
-                            KatSelectOption(value: 'title', label: 'Title A–Z'),
-                            KatSelectOption(
-                              value: 'artist',
-                              label: 'Artist A–Z',
-                            ),
-                          ],
-                          onChanged: (v) => setState(() => _sort = v),
                         ),
+                      WaveGhostButton(
+                        label: 'Shuffle',
+                        icon: WaveIcons.shuffle,
+                        onPressed: asGenerated().isEmpty
+                            ? null
+                            : () {
+                                // Shuffle BEFORE picking first —
+                                // first must come from the shuffled list.
+                                final shuffled =
+                                    asGenerated()..shuffle();
+                                playGenerated(
+                                  ref,
+                                  context,
+                                  shuffled.first,
+                                  sourceLabel: 'Liked Songs',
+                                  queueAll: shuffled,
+                                );
+                              },
+                      ),
+                    ],
+                  ),
+                  ),
+                  const SizedBox(height: 12),
+                  WaveFilterBar(
+                    controller: _filter,
+                    onChanged: (v) =>
+                        setState(() => _q = v),
+                    hint: 'Filter liked songs…',
+                    countLabel:
+                        '${asGenerated().length} tracks',
+                    sortSlot: LWTooltip(
+                      message: 'Sort (also sortable via table headers)',
+                      child: WaveSelect<String>(
+                        value: _sort,
+                        options: const [
+                          WaveSelectOption(
+                              value: 'default', label: 'Default order'),
+                          WaveSelectOption(value: 'title', label: 'Title A–Z'),
+                          WaveSelectOption(value: 'artist', label: 'Artist A–Z'),
+                        ],
+                        onChanged: (v) => setState(() => _sort = v),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
           ),
-          if (asGenerated().isEmpty)
-            const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: KatIcons.liked,
-                title: 'No liked songs yet',
-                subtitle: 'Tap the heart on any track to save it here.',
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: KatDesktopTable<GeneratedTrack>(
-                items: asGenerated(),
-                keyOf: (t) => t.key,
-                titleOf: (t) => t.name,
-                subtitleOf: (t) => t.artist,
-                albumOf: (_) => '',
-                artworkOf: (t) => t.artworkUrl,
-                playableOf: playableFromGenerated,
-                durationOf: (t) => t.durationSeconds > 0
-                    ? formatDuration(Duration(seconds: t.durationSeconds))
-                    : '',
-                durationSortOf: (t) => t.durationSeconds,
-                titleSortOf: (t) => t.name.toLowerCase(),
-                artistSortOf: (t) => t.artist.toLowerCase(),
-                isCurrent: (t) => playingKey == t.key,
-                isPlaying: (t) {
-                  final playing = ref.watch(
-                    playbackServiceProvider.select((p) => p.isPlaying),
-                  );
-                  return playingKey == t.key && playing;
-                },
-                showArtistColumn: true,
-                sliver: true,
-                selectable: true,
-                onPlay: (i) => playGenerated(
-                  ref,
-                  context,
-                  asGenerated()[i],
-                  sourceLabel: 'Liked Songs',
-                  queueAll: asGenerated(),
-                  startIndex: i,
-                ),
+        ),
+        if (asGenerated().isEmpty)
+          const SliverToBoxAdapter(
+            child: WaveEmpty(
+              icon: WaveIcons.liked,
+              title: 'No liked songs yet',
+              subtitle:
+                  'Tap the heart on any track to save it here.',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: WaveDesktopTable<GeneratedTrack>(
+              items: asGenerated(),
+              keyOf: (t) => t.key,
+              titleOf: (t) => t.name,
+              subtitleOf: (t) => t.artist,
+              albumOf: (_) => '',
+              artworkOf: (t) => t.artworkUrl,
+              playableOf: playableFromGenerated,
+              durationOf: (t) => t.durationSeconds > 0
+                  ? formatDuration(
+                      Duration(seconds: t.durationSeconds))
+                  : '',
+              durationSortOf: (t) => t.durationSeconds,
+              titleSortOf: (t) => t.name.toLowerCase(),
+              artistSortOf: (t) => t.artist.toLowerCase(),
+              isCurrent: (t) => playingKey == t.key,
+              isPlaying: (t) {
+                final playing = ref.watch(
+                  playbackServiceProvider.select((p) => p.isPlaying),
+                );
+                return playingKey == t.key && playing;
+              },
+              showArtistColumn: true,
+              sliver: true,
+              selectable: true,
+              onPlay: (i) => playGenerated(
+                ref,
+                context,
+                asGenerated()[i],
+                sourceLabel: 'Liked Songs',
+                queueAll: asGenerated(),
+                startIndex: i,
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+          ),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 24),
+        ),
+        const WaveDockSpacer(),
+      ],
       ),
     );
   }
 }
+
+

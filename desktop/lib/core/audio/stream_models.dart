@@ -1,10 +1,9 @@
 /// Shared audio/track models.
 ///
-/// Quality tier constants (YouTube / data saver / 320k / 16·44.1 /
-/// 24·96 / 24·192 / Dolby Atmos):
-/// -1 = YouTube only, 4 = data saver (smallest YouTube audio; the
-/// addon has no 96 kbps code), 5 = 320k MP3, 6 = CD 16/44.1 FLAC,
-/// 7 = Hi-Res 24/96, 27 = Max Hi-Res 24/192, 28 = Dolby Atmos.
+/// Quality tier constants:
+/// -1 = YouTube only, 4 = data saver (smallest YouTube audio),
+/// 5 = 320k MP3, 6 = CD 16/44.1 FLAC, 7 = Hi-Res 24/96,
+/// 27 = Max Hi-Res 24/192, 28 = Dolby Atmos.
 class AudioQualityTiers {
   static const int youtubeOnly = -1;
   static const int dataSaver = 4;
@@ -63,11 +62,10 @@ class PlayableTrack {
   final String playbackUrl;
   final String playbackMimeType;
 
-  /// Length the source advertised for this track, when known. Carried so
-  /// the lossless matcher can separate the album cut from a radio edit /
-  /// short variant of the same title (the addon duration gate is ±8s);
-  /// zero when the row never had it (saved playlists imported before it
-  /// was stored, local files).
+  /// Length the source advertised for this track, when known. Used to
+  /// separate an album cut from a radio edit / short variant of the same
+  /// title; zero when the row never had it (saved playlists imported
+  /// before it was stored, local files).
   final Duration duration;
 
   const PlayableTrack({
@@ -87,31 +85,33 @@ class PlayableTrack {
     return 'query:${artist.toLowerCase()}|${title.toLowerCase()}';
   }
 
-  String get queueKey => '${title.toLowerCase()}|${artist.toLowerCase()}';
+  String get queueKey =>
+      '${title.toLowerCase()}|${artist.toLowerCase()}';
 
   Map<String, dynamic> toJson() => {
-    'title': title,
-    'artist': artist,
-    'album': album,
-    'artworkUrl': artworkUrl,
-    'videoId': videoId,
-    'playbackUrl': playbackUrl,
-    'playbackMimeType': playbackMimeType,
-    'durationMs': duration.inMilliseconds,
-  };
+        'title': title,
+        'artist': artist,
+        'album': album,
+        'artworkUrl': artworkUrl,
+        'videoId': videoId,
+        'playbackUrl': playbackUrl,
+        'playbackMimeType': playbackMimeType,
+        'durationMs': duration.inMilliseconds,
+      };
 
-  factory PlayableTrack.fromJson(Map<String, dynamic> json) => PlayableTrack(
-    title: json['title']?.toString() ?? '',
-    artist: json['artist']?.toString() ?? '',
-    album: json['album']?.toString() ?? '',
-    artworkUrl: json['artworkUrl']?.toString() ?? '',
-    videoId: json['videoId']?.toString() ?? '',
-    playbackUrl: json['playbackUrl']?.toString() ?? '',
-    playbackMimeType: json['playbackMimeType']?.toString() ?? '',
-    duration: Duration(
-      milliseconds: int.tryParse('${json['durationMs'] ?? 0}') ?? 0,
-    ),
-  );
+  factory PlayableTrack.fromJson(Map<String, dynamic> json) =>
+      PlayableTrack(
+        title: json['title']?.toString() ?? '',
+        artist: json['artist']?.toString() ?? '',
+        album: json['album']?.toString() ?? '',
+        artworkUrl: json['artworkUrl']?.toString() ?? '',
+        videoId: json['videoId']?.toString() ?? '',
+        playbackUrl: json['playbackUrl']?.toString() ?? '',
+        playbackMimeType: json['playbackMimeType']?.toString() ?? '',
+        duration: Duration(
+          milliseconds: int.tryParse('${json['durationMs'] ?? 0}') ?? 0,
+        ),
+      );
 
   PlayableTrack copyWith({
     String? title,
@@ -122,16 +122,17 @@ class PlayableTrack {
     String? playbackUrl,
     String? playbackMimeType,
     Duration? duration,
-  }) => PlayableTrack(
-    title: title ?? this.title,
-    artist: artist ?? this.artist,
-    album: album ?? this.album,
-    artworkUrl: artworkUrl ?? this.artworkUrl,
-    videoId: videoId ?? this.videoId,
-    playbackUrl: playbackUrl ?? this.playbackUrl,
-    playbackMimeType: playbackMimeType ?? this.playbackMimeType,
-    duration: duration ?? this.duration,
-  );
+  }) =>
+      PlayableTrack(
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        album: album ?? this.album,
+        artworkUrl: artworkUrl ?? this.artworkUrl,
+        videoId: videoId ?? this.videoId,
+        playbackUrl: playbackUrl ?? this.playbackUrl,
+        playbackMimeType: playbackMimeType ?? this.playbackMimeType,
+        duration: duration ?? this.duration,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -186,15 +187,16 @@ class ResolvedStream {
   bool get isExpired {
     final exp = expiresAt;
     if (exp == null) return false;
-    return DateTime.now().isAfter(exp.subtract(const Duration(minutes: 2)));
+    return DateTime.now()
+        .isAfter(exp.subtract(const Duration(minutes: 2)));
   }
 
   String get qualityBadge => AudioQualityTiers.shortBadge(
-    isLossless: isLossless,
-    bitDepth: bitDepth,
-    samplingRateKhz: samplingRateKhz,
-    codec: audioCodec,
-  );
+        isLossless: isLossless,
+        bitDepth: bitDepth,
+        samplingRateKhz: samplingRateKhz,
+        codec: audioCodec,
+      );
 }
 
 /// In-memory LRU of resolved stream URLs. Playback and the lossless

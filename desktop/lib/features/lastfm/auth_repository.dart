@@ -22,7 +22,11 @@ class AuthState {
     this.message = '',
   });
 
-  AuthState copyWith({AuthStatus? status, String? username, String? message}) =>
+  AuthState copyWith({
+    AuthStatus? status,
+    String? username,
+    String? message,
+  }) =>
       AuthState(
         status: status ?? this.status,
         username: username ?? this.username,
@@ -39,7 +43,7 @@ class WebAuthHandshake {
 
 /// Last.fm auth repository.
 ///
-/// Ported from KatMusic-native `data/repository/AuthRepository.kt`:
+/// Ported from KatMusic `data/repository/AuthRepository.kt`:
 /// - web auth via `https://www.last.fm/api/auth/?api_key=..&cb=..`
 /// - `auth.getToken` / `auth.getSession` exchange
 /// - direct credential sign-in verification via `user.getinfo`
@@ -50,13 +54,16 @@ class AuthRepository extends StateNotifier<AuthState> {
   final SecureStore _secure;
 
   AuthRepository(this._api, this._prefs, this._secure)
-    : super(const AuthState()) {
+      : super(const AuthState()) {
     _restore();
   }
 
   void _restore() {
     if (_prefs.username.isNotEmpty) {
-      state = AuthState(status: AuthStatus.signedIn, username: _prefs.username);
+      state = AuthState(
+        status: AuthStatus.signedIn,
+        username: _prefs.username,
+      );
     } else if (_prefs.isGuest) {
       state = const AuthState(status: AuthStatus.guest);
     } else {
@@ -104,10 +111,10 @@ class AuthRepository extends StateNotifier<AuthState> {
       final wasGuest = _prefs.isGuest;
       await _prefs.signOut();
       await _secure.writeSessionKey(null);
+      if (wasGuest) await _prefs.setGuestMode(true);
       state = AuthState(
         status: wasGuest ? AuthStatus.guest : AuthStatus.signedOut,
       );
-      if (wasGuest) await _prefs.setGuestMode(true);
     }
     state = state.copyWith(status: AuthStatus.signingIn);
     try {
@@ -123,9 +130,14 @@ class AuthRepository extends StateNotifier<AuthState> {
         throw LastFmException('Last.fm rejected these API keys');
       }
       await _prefs.saveLastFmKeys(apiKey: key, apiSecret: secret);
-      state = const AuthState(status: AuthStatus.signedOut);
+      state = AuthState(
+        status: _prefs.isGuest ? AuthStatus.guest : AuthStatus.signedOut,
+      );
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: AuthStatus.error,
+        message: e.toString(),
+      );
       rethrow;
     }
   }
@@ -163,7 +175,8 @@ class AuthRepository extends StateNotifier<AuthState> {
       );
       throw LastFmException('Empty auth token');
     }
-    final url = 'https://www.last.fm/api/auth/?api_key=$_apiKey&token=$token';
+    final url =
+        'https://www.last.fm/api/auth/?api_key=$_apiKey&token=$token';
     return WebAuthHandshake(token, url);
   }
 
@@ -188,11 +201,20 @@ class AuthRepository extends StateNotifier<AuthState> {
       if (key.isEmpty || name.isEmpty) {
         throw LastFmException('Approval not completed yet');
       }
-      await _prefs.saveSession(sessionKey: key, username: name);
+      await _prefs.saveSession(
+        sessionKey: key,
+        username: name,
+      );
       await _secure.writeSessionKey(key);
-      state = AuthState(status: AuthStatus.signedIn, username: name);
+      state = AuthState(
+        status: AuthStatus.signedIn,
+        username: name,
+      );
     } catch (e) {
-      state = state.copyWith(status: AuthStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: AuthStatus.error,
+        message: e.toString(),
+      );
       rethrow;
     }
   }
@@ -207,27 +229,26 @@ class AuthRepository extends StateNotifier<AuthState> {
   void clearError() {
     if (state.status == AuthStatus.error) {
       state = state.copyWith(
-        status: _prefs.username.isEmpty
-            ? AuthStatus.signedOut
-            : AuthStatus.signedIn,
+        status: _prefs.username.isNotEmpty
+            ? AuthStatus.signedIn
+            : (_prefs.isGuest ? AuthStatus.guest : AuthStatus.signedOut),
         message: '',
       );
     }
   }
 }
 
-final authRepositoryProvider = StateNotifierProvider<AuthRepository, AuthState>(
-  (ref) {
-    final dio = DioFactory.create(rateGuard: LastFmRateGuard());
-    dio.options.baseUrl = LastFmApiService.baseUrl;
-    final api = LastFmApiService(dio, LastFmRateGuard());
-    return AuthRepository(
-      api,
-      ref.watch(prefsProvider),
-      ref.watch(secureStoreProvider),
-    );
-  },
-);
+final authRepositoryProvider =
+    StateNotifierProvider<AuthRepository, AuthState>((ref) {
+  final dio = DioFactory.create(rateGuard: LastFmRateGuard());
+  dio.options.baseUrl = LastFmApiService.baseUrl;
+  final api = LastFmApiService(dio, LastFmRateGuard());
+  return AuthRepository(
+    api,
+    ref.watch(prefsProvider),
+    ref.watch(secureStoreProvider),
+  );
+});
 
 /// Shared Last.fm API provider for repositories.
 final lastFmApiProvider = Provider<LastFmApiService>((ref) {

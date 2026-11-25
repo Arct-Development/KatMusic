@@ -1,4 +1,4 @@
-/// Lyrics provider registry + fetchers ported from KatMusic-native
+/// Lyrics provider registry + fetchers ported from KatMusic
 /// `data/lyrics/*.kt`.
 ///
 /// [LyricsProviderId.lrcRed] takes the first-party slot: lrc.red serves
@@ -15,37 +15,67 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
 import 'lyrics_models.dart';
-
 enum LyricsProviderId {
-  auto('auto', 'Auto', 'Fastest word-sync wins, LRCLIB fallback'),
-  lastwave('lastwave', 'LastWave', 'Syllable & line-synced Apple lyrics first'),
-  lrcRed('lrc_red', 'lrc.red', 'ISRC-indexed syllable TTML & LRC first'),
+  auto(
+    'auto',
+    'Auto',
+    'Fastest word-sync wins, LRCLIB fallback',
+  ),
+  katmusic(
+    'katmusic',
+    'KatMusic',
+    'Syllable & line-synced Apple lyrics first',
+  ),
+  lrcRed(
+    'lrc_red',
+    'lrc.red',
+    'ISRC-indexed syllable TTML & LRC first',
+  ),
   appleMusic(
     'apple_music',
     'Apple Music',
     'Syllable-synced Apple Music lyrics first',
   ),
-  betterLyrics('better_lyrics', 'BetterLyrics', 'Word-synced lyrics first'),
+  betterLyrics(
+    'better_lyrics',
+    'BetterLyrics',
+    'Word-synced lyrics first',
+  ),
   betterLyricsPortato(
     'better_lyrics_portato',
     'QQ Karaoke',
     'QQ Music karaoke word timings first',
   ),
-  kugou('kugou', 'Kugou', 'KRC word-synced lyrics first'),
+  kugou(
+    'kugou',
+    'Kugou',
+    'KRC word-synced lyrics first',
+  ),
   biniLyrics(
     'bini_lyrics',
     'Syllable-Sync',
     'Recording-matched syllable lyrics first',
   ),
-  simpMusic('simp_music', 'Video-Match', 'Matched on the playing video first'),
-  musixmatch('musixmatch', 'Catalog', 'Largest catalogue line-sync first'),
-  lrclib('lrclib', 'LRCLIB', 'Line-synced community lyrics first'),
+  musixmatch(
+    'musixmatch',
+    'Catalog',
+    'Largest catalogue line-sync first',
+  ),
+  lrclib(
+    'lrclib',
+    'LRCLIB',
+    'Line-synced community lyrics first',
+  ),
   lyricsPlus(
     'lyrics_plus',
     'LyricsPlus',
     'Syllable-synced on community mirrors first',
   ),
-  unison('unison', 'Unison', 'Community-submitted synced lyrics first'),
+  unison(
+    'unison',
+    'Unison',
+    'Community-submitted synced lyrics first',
+  ),
   youtubeCaptions(
     'youtube_captions',
     'YouTube Captions',
@@ -56,8 +86,16 @@ enum LyricsProviderId {
     'YouTube Music',
     'Plain lyrics from the video\'s Lyrics tab first',
   ),
-  megalobiz('megalobiz', 'Megalobiz', 'Community line-synced LRC first'),
-  genius('genius', 'Genius', 'Plain-text web catalogue, tried last');
+  megalobiz(
+    'megalobiz',
+    'Megalobiz',
+    'Community line-synced LRC first',
+  ),
+  genius(
+    'genius',
+    'Genius',
+    'Plain-text web catalogue, tried last',
+  );
 
   final String id;
   final String title;
@@ -68,25 +106,31 @@ enum LyricsProviderId {
   /// True for providers that can return syllable/word timing and take
   /// part in the word-sync race with a preferred head start.
   bool get isWordProvider => switch (this) {
-    auto ||
-    lrclib ||
-    musixmatch ||
-    megalobiz ||
-    genius ||
-    youtubeMusic ||
-    youtubeCaptions => false,
-    _ => true,
-  };
+        auto ||
+        lrclib ||
+        musixmatch ||
+        megalobiz ||
+        genius ||
+        youtubeMusic ||
+        youtubeCaptions =>
+          false,
+        _ => true,
+      };
 
   static LyricsProviderId fromId(String? id) =>
-      values.firstWhere((p) => p.id == id, orElse: () => auto);
+      values.firstWhere(
+        (p) => p.id == id,
+        orElse: () => auto,
+      );
 }
 
 /// Map a result `source` label back to its provider id. Unknown labels
 /// yield null (no exclusion possible for them).
 String? lyricsSourceToProviderId(String source) {
   final s = source.toLowerCase();
-  if (s.startsWith('lastwave')) return LyricsProviderId.lastwave.id;
+  if (s.startsWith('katmusic') || s.startsWith('lastwave')) {
+    return LyricsProviderId.katmusic.id;
+  }
   if (s.startsWith('lrc.red')) return LyricsProviderId.lrcRed.id;
   if (s.startsWith('apple music') || s.contains('apple')) {
     return LyricsProviderId.appleMusic.id;
@@ -98,9 +142,6 @@ String? lyricsSourceToProviderId(String source) {
   if (s.startsWith('kugou')) return LyricsProviderId.kugou.id;
   if (s.startsWith('syllable-sync') || s.startsWith('bini')) {
     return LyricsProviderId.biniLyrics.id;
-  }
-  if (s.startsWith('video-match') || s.startsWith('simp')) {
-    return LyricsProviderId.simpMusic.id;
   }
   if (s.startsWith('catalog') || s.startsWith('musixmatch')) {
     return LyricsProviderId.musixmatch.id;
@@ -143,7 +184,10 @@ String? lyricsSourceToProviderId(String source) {
 Set<String> retryLyricsExcludingCurrent({
   required String? currentId,
   required Set<String> excludes,
-}) => currentId == null ? Set<String>.from(excludes) : {...excludes, currentId};
+}) =>
+    currentId == null
+        ? Set<String>.from(excludes)
+        : {...excludes, currentId};
 
 // -- BetterLyrics (lyrics-api.boidu.dev) -----------------------------------
 // Free, no key. Apple-Music TTML with per-syllable timing; both TTML
@@ -153,7 +197,7 @@ Set<String> retryLyricsExcludingCurrent({
 // with no candidate identity (no title/artist/duration to compare),
 // so client-side version gating is infeasible here — the server's
 // fuzzy match is trusted, with only the duration-plausibility lever
-// applied. Same exposure as KatMusic-native.
+// applied. Same exposure as KatMusic.
 
 const _betterBases = [
   'https://lyrics-api.boidu.dev/getLyrics',
@@ -187,7 +231,8 @@ Future<LyricsResult?> fetchBetterLyrics(
 }) async {
   if (title.trim().isEmpty || artist.trim().isEmpty) return null;
   final attempts = [(title, artist)];
-  final cleaned = (lyricsForSearchTitle(title), lyricsForSearchArtist(artist));
+  final cleaned =
+      (lyricsForSearchTitle(title), lyricsForSearchArtist(artist));
   if (cleaned.$1 != title || cleaned.$2 != artist) attempts.add(cleaned);
   for (final attempt in attempts) {
     if (attempt.$1.trim().isEmpty || attempt.$2.trim().isEmpty) continue;
@@ -199,7 +244,8 @@ Future<LyricsResult?> fetchBetterLyrics(
       durationSeconds: durationSeconds,
     );
     final lines = fetched?.lines;
-    if (lines != null && lyricsPlausibleDuration(lines, durationSeconds)) {
+    if (lines != null &&
+        lyricsPlausibleDuration(lines, durationSeconds)) {
       final wordSynced = fetched!.wordSynced;
       return LyricsResult(
         lines: lines,
@@ -347,9 +393,8 @@ String? _extractBetterContent(dynamic element) {
 }
 
 final _karaokeLineRegex = RegExp(r'^\[(\d{1,8}),(\d{1,8})](.*)$');
-final _karaokeWordRegex = RegExp(
-  r'\((\d{1,8}),(\d{1,8})(?:,\d{1,8})?\)([^()]*)',
-);
+final _karaokeWordRegex =
+    RegExp(r'\((\d{1,8}),(\d{1,8})(?:,\d{1,8})?\)([^()]*)');
 final _karaokeTimeRegex = RegExp(r'\(\d{1,8},\d{1,8}(?:,\d{1,8})?\)');
 
 /// QQ karaoke rows: `[lineStart,lineDur](wStart,wDur[,?])word …`.
@@ -365,31 +410,28 @@ List<LyricLine> parseBetterKaraoke(String raw) {
     final body = match.group(3) ?? '';
     final words = <LyricSyllable>[];
     for (final word in _karaokeWordRegex.allMatches(body)) {
-      final text = lyricsDecodeEntities(word.group(3) ?? '').trim();
+      final text =
+          lyricsDecodeEntities(word.group(3) ?? '').trim();
       if (text.isEmpty) continue;
       final startMs = int.tryParse(word.group(1) ?? '');
       if (startMs == null) continue;
       final durMs = int.tryParse(word.group(2) ?? '') ?? 0;
-      words.add(
-        LyricSyllable(
-          timeMs: startMs,
-          durationMs: durMs.clamp(0, 1 << 31),
-          text: text,
-        ),
-      );
+      words.add(LyricSyllable(
+        timeMs: startMs,
+        durationMs: durMs.clamp(0, 1 << 31),
+        text: text,
+      ));
     }
     if (words.isEmpty) continue;
-    final text = lyricsDecodeEntities(body.replaceAll(_karaokeTimeRegex, ''))
-        .trim();
+    final text =
+        lyricsDecodeEntities(body.replaceAll(_karaokeTimeRegex, '')).trim();
     if (text.isEmpty) continue;
-    rows.add(
-      LyricLine(
-        timeMs: math.min(lineStart, words.first.timeMs),
-        durationMs: lineDuration.clamp(0, 1 << 31),
-        text: text,
-        syllables: words,
-      ),
-    );
+    rows.add(LyricLine(
+      timeMs: math.min(lineStart, words.first.timeMs),
+      durationMs: lineDuration.clamp(0, 1 << 31),
+      text: text,
+      syllables: words,
+    ));
   }
   rows.sort((a, b) => a.timeMs.compareTo(b.timeMs));
   return stripLyricCreditLines(
@@ -424,14 +466,14 @@ class LrcRedHit {
   });
 
   factory LrcRedHit.fromJson(Map<String, dynamic> json) => LrcRedHit(
-    trackName: json['track_name']?.toString(),
-    artistName: json['artist_name']?.toString(),
-    albumName: json['album_name']?.toString(),
-    duration: (json['duration'] as num?)?.toInt(),
-    isrc: json['isrc']?.toString(),
-    timingType: json['timing_type']?.toString(),
-    lyricsUrl: json['lyricsUrl']?.toString(),
-  );
+        trackName: json['track_name']?.toString(),
+        artistName: json['artist_name']?.toString(),
+        albumName: json['album_name']?.toString(),
+        duration: (json['duration'] as num?)?.toInt(),
+        isrc: json['isrc']?.toString(),
+        timingType: json['timing_type']?.toString(),
+        lyricsUrl: json['lyricsUrl']?.toString(),
+      );
 }
 
 /// Floor: exact title + artist agreement (3 + 2). Fuzzy-title hits
@@ -501,14 +543,14 @@ LrcRedHit? selectLrcRedBest(
   scored.sort((a, b) {
     final byScore = b.score.compareTo(a.score);
     if (byScore != 0) return byScore;
-    final aWord = a.hit.timingType?.toLowerCase() == 'word' ? 0 : 1;
-    final bWord = b.hit.timingType?.toLowerCase() == 'word' ? 0 : 1;
+    final aWord =
+        a.hit.timingType?.toLowerCase() == 'word' ? 0 : 1;
+    final bWord =
+        b.hit.timingType?.toLowerCase() == 'word' ? 0 : 1;
     final byWord = aWord.compareTo(bWord);
     if (byWord != 0) return byWord;
-    return _lrcRedDurationDelta(
-      a.hit,
-      durationSeconds,
-    ).compareTo(_lrcRedDurationDelta(b.hit, durationSeconds));
+    return _lrcRedDurationDelta(a.hit, durationSeconds)
+        .compareTo(_lrcRedDurationDelta(b.hit, durationSeconds));
   });
   return scored.isEmpty ? null : scored.first.hit;
 }
@@ -527,8 +569,7 @@ Future<List<LrcRedHit>> _queryLrcRed(
     if (results is! List) return const [];
     return [
       for (final item in results)
-        if (item is Map<String, dynamic>)
-          LrcRedHit.fromJson(item)
+        if (item is Map<String, dynamic>) LrcRedHit.fromJson(item)
         else if (item is Map)
           LrcRedHit.fromJson(Map<String, dynamic>.from(item)),
     ];
@@ -550,8 +591,10 @@ Future<LrcRedHit?> identifyLrcRed(
     // word-timed file when the catalogue holds several.
     final hits = await _queryLrcRed(dio, {'isrc': isrc.trim()});
     hits.sort((a, b) {
-      final aWord = a.timingType?.toLowerCase() == 'word' ? 0 : 1;
-      final bWord = b.timingType?.toLowerCase() == 'word' ? 0 : 1;
+      final aWord =
+          a.timingType?.toLowerCase() == 'word' ? 0 : 1;
+      final bWord =
+          b.timingType?.toLowerCase() == 'word' ? 0 : 1;
       return aWord.compareTo(bWord);
     });
     if (hits.isNotEmpty) return hits.first;
@@ -632,7 +675,8 @@ Future<LyricsResult?> fetchLrcRed(
     isSynced: true,
     isWordSynced: wordSynced,
     plainLyrics: lines.map((l) => l.text).join('\n'),
-    source: wordSynced ? 'Lrc.Red (Word-Sync)' : 'Lrc.Red (Line-Sync)',
+    source:
+        wordSynced ? 'Lrc.Red (Word-Sync)' : 'Lrc.Red (Line-Sync)',
   );
 }
 
@@ -642,31 +686,15 @@ Future<LyricsResult?> fetchLrcRed(
 // native `KugouLyricsApi` (round-trip verified live 2026-10-06).
 
 const _kugouKey = [
-  0x40,
-  0x47,
-  0x61,
-  0x77,
-  0x5e,
-  0x32,
-  0x74,
-  0x47,
-  0x51,
-  0x36,
-  0x31,
-  0x2d,
-  0xce,
-  0xd2,
-  0x6e,
-  0x69,
+  0x40, 0x47, 0x61, 0x77, 0x5e, 0x32, 0x74, 0x47,
+  0x51, 0x36, 0x31, 0x2d, 0xce, 0xd2, 0x6e, 0x69,
 ];
 
 const _kugouUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
-final _krcOffsetRegex = RegExp(
-  r'^\[offset:\s*([+-]?\d+)\s*]',
-  caseSensitive: false,
-);
+final _krcOffsetRegex =
+    RegExp(r'^\[offset:\s*([+-]?\d+)\s*]', caseSensitive: false);
 final _krcLineRegex = RegExp(r'^\[(\d+),(\d+)](.*)$');
 final _krcSyllableRegex = RegExp(r'<(\d+),(\d+),\d+>([^<]*)');
 final _krcCreditRegex = RegExp(
@@ -685,7 +713,9 @@ bool _isKugouCreditLine(String text, bool isFirstLine) {
     return true;
   }
   if (isFirstLine &&
-      (text.contains(' - ') || text.contains(' – ') || text.contains(' — '))) {
+      (text.contains(' - ') ||
+          text.contains(' – ') ||
+          text.contains(' — '))) {
     return true;
   }
   return false;
@@ -737,7 +767,8 @@ List<LyricLine> parseKugouKrc(String krcText) {
       final durMs = int.tryParse(sylMatch.group(2) ?? '') ?? 0;
       final sylText = sylMatch.group(3) ?? '';
       if (sylText.trim().isEmpty) {
-        if (syllables.isNotEmpty && !syllables.last.text.endsWith(' ')) {
+        if (syllables.isNotEmpty &&
+            !syllables.last.text.endsWith(' ')) {
           final last = syllables.last;
           syllables[syllables.length - 1] = LyricSyllable(
             timeMs: last.timeMs,
@@ -749,13 +780,11 @@ List<LyricLine> parseKugouKrc(String krcText) {
         buf.write(sylText);
         continue;
       }
-      syllables.add(
-        LyricSyllable(
-          timeMs: math.max(0, lineStartMs + offsetMs),
-          durationMs: durMs,
-          text: sylText,
-        ),
-      );
+      syllables.add(LyricSyllable(
+        timeMs: math.max(0, lineStartMs + offsetMs),
+        durationMs: durMs,
+        text: sylText,
+      ));
       buf.write(sylText);
     }
 
@@ -764,14 +793,12 @@ List<LyricLine> parseKugouKrc(String krcText) {
       final isCredit = _isKugouCreditLine(fullLineText, isFirstRawLine);
       isFirstRawLine = false;
       if (isCredit) continue;
-      lines.add(
-        LyricLine(
-          timeMs: lineStartMs,
-          durationMs: lineDurationMs,
-          text: fullLineText,
-          syllables: syllables,
-        ),
-      );
+      lines.add(LyricLine(
+        timeMs: lineStartMs,
+        durationMs: lineDurationMs,
+        text: fullLineText,
+        syllables: syllables,
+      ));
     }
   }
   lines.sort((a, b) => a.timeMs.compareTo(b.timeMs));
@@ -781,14 +808,13 @@ List<LyricLine> parseKugouKrc(String krcText) {
 String _kugouCleanArtist(String raw) {
   final noFeat = raw
       .replaceAll(
-        RegExp(r'\s*(?:feat\.?|ft\.?)\s+.*$', caseSensitive: false),
-        '',
-      )
+          RegExp(r'\s*(?:feat\.?|ft\.?)\s+.*$', caseSensitive: false), '')
       .trim();
   return lyricsForSearchArtist(noFeat.isEmpty ? raw : noFeat);
 }
 
-int _kugouDurationDelta(Map<String, dynamic> cand, int? durationSeconds) {
+int _kugouDurationDelta(
+    Map<String, dynamic> cand, int? durationSeconds) {
   final candMs = (cand['duration'] as num?)?.toInt() ?? 0;
   if (durationSeconds == null || durationSeconds <= 0 || candMs <= 0) {
     return 0;
@@ -796,8 +822,10 @@ int _kugouDurationDelta(Map<String, dynamic> cand, int? durationSeconds) {
   return (candMs - durationSeconds * 1000).abs();
 }
 
-final _krcMetaTiRegex = RegExp(r'^\[ti:\s*(.*?)\s*\]$', caseSensitive: false);
-final _krcMetaAlRegex = RegExp(r'^\[al:\s*(.*?)\s*\]$', caseSensitive: false);
+final _krcMetaTiRegex =
+    RegExp(r'^\[ti:\s*(.*?)\s*\]$', caseSensitive: false);
+final _krcMetaAlRegex =
+    RegExp(r'^\[al:\s*(.*?)\s*\]$', caseSensitive: false);
 
 final _djMixTagRegex = RegExp(
   r'[\(\[]\s*(?:mixed|dj\s+mix)\s*[\)\]]',
@@ -886,19 +914,14 @@ Future<LyricsResult?> fetchKugou(
           lyricsTitlesMatchStrict(candSong, searchTitle);
     }
 
-    final matched =
-        [
-          for (final c in candidates)
-            if (c is Map<String, dynamic> && textMatches(c))
-              c
-            else if (c is Map && textMatches(Map<String, dynamic>.from(c)))
-              Map<String, dynamic>.from(c),
-        ]..sort(
-          (a, b) => _kugouDurationDelta(
-            a,
-            durationSeconds,
-          ).compareTo(_kugouDurationDelta(b, durationSeconds)),
-        );
+    final matched = [
+      for (final c in candidates)
+        if (c is Map<String, dynamic> && textMatches(c)) c
+        else if (c is Map &&
+            textMatches(Map<String, dynamic>.from(c)))
+          Map<String, dynamic>.from(c),
+    ]..sort((a, b) => _kugouDurationDelta(a, durationSeconds)
+        .compareTo(_kugouDurationDelta(b, durationSeconds)));
     if (matched.isEmpty) return null;
 
     // When durationSeconds is known, require the Kugou candidate to be within
@@ -1028,15 +1051,14 @@ String musixmatchSubtitleToLrc(String subtitleBody) {
     final text = item['text']?.toString() ?? '';
     if (text.trim().isEmpty) continue;
     final time = item['time'];
-    final total = time is Map ? (time['total'] as num?)?.toDouble() ?? 0 : 0.0;
+    final total =
+        time is Map ? (time['total'] as num?)?.toDouble() ?? 0 : 0.0;
     final totalMs = (total * 1000).toInt();
     final minutes = totalMs ~/ 60000;
     final seconds = (totalMs ~/ 1000) % 60;
     final millis = totalMs % 1000;
-    buf.write(
-      '[${_twoDigits(minutes)}:${_twoDigits(seconds)}.'
-      '${millis.toString().padLeft(3, '0')}]$text\n',
-    );
+    buf.write('[${_twoDigits(minutes)}:${_twoDigits(seconds)}.'
+        '${millis.toString().padLeft(3, '0')}]$text\n');
   }
   return buf.toString().trim();
 }
@@ -1068,10 +1090,7 @@ bool _mxmUnauthorized(String body) {
 
 Future<String?> _mxmTokenFor(Dio dio) async {
   if (_mxmToken != null) return _mxmToken;
-  final body = await _mxmGet(
-    dio,
-    musixmatchSign('$_mxmBase/token.get?app_id=$_mxmAppId'),
-  );
+  final body = await _mxmGet(dio, musixmatchSign('$_mxmBase/token.get?app_id=$_mxmAppId'));
   if (body == null) return null;
   try {
     final token = jsonDecode(body)['message']?['body']?['user_token'];
@@ -1087,10 +1106,8 @@ Future<String?> _mxmTokenFor(Dio dio) async {
 Future<String?> _mxmSignedGet(Dio dio, String unsignedUrl) async {
   final token = await _mxmTokenFor(dio);
   if (token == null) return null;
-  final first = await _mxmGet(
-    dio,
-    musixmatchSign('$unsignedUrl&usertoken=$token'),
-  );
+  final first =
+      await _mxmGet(dio, musixmatchSign('$unsignedUrl&usertoken=$token'));
   if (first != null && !_mxmUnauthorized(first)) return first;
   _mxmToken = null;
   final fresh = await _mxmTokenFor(dio);
@@ -1138,14 +1155,14 @@ Future<LyricsResult?> fetchMusixmatch(
       final track = wrapper['track'];
       if (track is! Map<String, dynamic>) continue;
       // Never serve the wrong recording (live/remix/cover/etc.).
-      if (!lyricsSameVersion(title, track['track_name']?.toString() ?? '')) {
+      if (!lyricsSameVersion(
+          title, track['track_name']?.toString() ?? '')) {
         continue;
       }
-      final artistOk =
-          artist.trim().isEmpty ||
-          (track['artist_name']?.toString() ?? '').toLowerCase().contains(
-            artist.trim().toLowerCase(),
-          );
+      final artistOk = artist.trim().isEmpty ||
+          (track['artist_name']?.toString() ?? '')
+              .toLowerCase()
+              .contains(artist.trim().toLowerCase());
       if (!artistOk) continue;
       final score = musixmatchScore(
         trackName: track['track_name']?.toString() ?? '',
@@ -1169,9 +1186,9 @@ Future<LyricsResult?> fetchMusixmatch(
     if (subBody == null) return null;
     String? subtitle;
     try {
-      subtitle = jsonDecode(
-        subBody,
-      )['message']?['body']?['subtitle']?['subtitle_body']?.toString();
+      subtitle =
+          jsonDecode(subBody)['message']?['body']?['subtitle']?['subtitle_body']
+              ?.toString();
     } catch (_) {
       return null;
     }
@@ -1192,64 +1209,6 @@ Future<LyricsResult?> fetchMusixmatch(
       plainLyrics: lines.map((l) => l.text).join('\n'),
       source: 'Catalog (Line-Sync)',
     );
-  } catch (_) {
-    return null;
-  }
-}
-
-// -- SimpMusic (api-lyrics.simpmusic.org) --------------------------------------
-// Community database keyed on the playing video id, so the exact cut
-// that is playing is looked up instead of a same-name edit. Rich sync
-// is enhanced LRC with per-word stamps; plain LRC is the fallback.
-// Ported from native `SimpMusicLyricsApi`.
-
-/// Returns raw lines plus whether they carry real word timing (true
-/// only for the rich-sync path — plain LRC gains display syllables
-/// later, which must never count). The race wraps them with the
-/// `Video-Match` source label and plausibility gate.
-Future<({List<LyricLine> lines, bool wordSynced})?> fetchSimpMusic(
-  Dio dio, {
-  String? videoId,
-  int? durationSeconds,
-}) async {
-  if (videoId == null || videoId.trim().isEmpty) return null;
-  try {
-    final res = await dio.get<Map<String, dynamic>>(
-      'https://api-lyrics.simpmusic.org/v1/${videoId.trim()}',
-      options: Options(headers: {'Accept': 'application/json'}),
-    );
-    final data = res.data;
-    if (data == null || data['success'] != true) return null;
-    final tracks = data['data'];
-    if (tracks is! List) return null;
-    final seconds = durationSeconds != null && durationSeconds > 0
-        ? durationSeconds
-        : 0;
-    Map<String, dynamic>? pick;
-    var pickDelta = 1 << 30;
-    for (final item in tracks) {
-      final track = item is Map<String, dynamic>
-          ? item
-          : Map<String, dynamic>.from(item as Map);
-      final trackSecs = (track['duration'] as num?)?.toInt() ?? 0;
-      if (seconds > 0 && (trackSecs - seconds).abs() > 10) continue;
-      final delta = (trackSecs - seconds).abs();
-      if (delta < pickDelta) {
-        pickDelta = delta;
-        pick = track;
-      }
-    }
-    if (pick == null) return null;
-    final rich = pick['richSyncLyrics']?.toString() ?? '';
-    if (rich.trim().isNotEmpty) {
-      final lines = parseEnhancedLrc(rich);
-      if (lines.isNotEmpty) return (lines: lines, wordSynced: true);
-    }
-    final synced = pick['syncedLyrics']?.toString() ?? '';
-    if (synced.trim().isEmpty) return null;
-    final lines = parseLrc(synced);
-    if (lines.isEmpty) return null;
-    return (lines: lines, wordSynced: false);
   } catch (_) {
     return null;
   }
@@ -1327,7 +1286,8 @@ Future<LyricsResult?> fetchBiniLyrics(
         queryParameters: qp,
         options: Options(
           headers: {
-            'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+            'User-Agent':
+                'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
             'Accept': 'application/json',
           },
         ),
@@ -1382,9 +1342,8 @@ Future<LyricsResult?> fetchBiniLyrics(
     final cleanA = lyricsForSearchArtist(artistName);
     final reqA = lyricsForSearchArtist(artist);
     if (lyricsArtistsMatchStrict(cleanA, reqA)) score += 2;
-    final dur = hit['duration'] is num
-        ? (hit['duration'] as num).toInt()
-        : null;
+    final dur =
+        hit['duration'] is num ? (hit['duration'] as num).toInt() : null;
     if (durationSeconds != null &&
         durationSeconds > 0 &&
         dur != null &&
@@ -1413,7 +1372,8 @@ Future<LyricsResult?> fetchBiniLyrics(
       options: Options(
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+          'User-Agent':
+              'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
           'Accept': 'application/xml, text/xml, */*',
         },
       ),
@@ -1463,13 +1423,11 @@ Future<LyricsResult?> fetchLyricsPlus(
 
     void flush() {
       if (buf.isNotEmpty) {
-        words.add(
-          LyricSyllable(
-            timeMs: start,
-            durationMs: end > start ? end - start : 0,
-            text: buf.toString(),
-          ),
-        );
+        words.add(LyricSyllable(
+          timeMs: start,
+          durationMs: end > start ? end - start : 0,
+          text: buf.toString(),
+        ));
       }
       buf.clear();
     }
@@ -1517,7 +1475,8 @@ Future<LyricsResult?> fetchLyricsPlus(
         options: Options(
           responseType: ResponseType.json,
           headers: {
-            'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+            'User-Agent':
+                'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
             'Accept': 'application/json',
           },
         ),
@@ -1557,23 +1516,19 @@ Future<LyricsResult?> fetchLyricsPlus(
             )) {
               continue;
             }
-            lines.add(
-              LyricLine(
-                timeMs: math.min(time, words.first.timeMs),
-                durationMs: duration > 0 ? duration : 0,
-                text: joinedWords,
-                syllables: words,
-              ),
-            );
+            lines.add(LyricLine(
+              timeMs: math.min(time, words.first.timeMs),
+              durationMs: duration > 0 ? duration : 0,
+              text: joinedWords,
+              syllables: words,
+            ));
           } else {
             if (rawItemText.isNotEmpty) {
-              lines.add(
-                LyricLine(
-                  timeMs: time,
-                  durationMs: duration > 0 ? duration : 0,
-                  text: rawItemText,
-                ),
-              );
+              lines.add(LyricLine(
+                timeMs: time,
+                durationMs: duration > 0 ? duration : 0,
+                text: rawItemText,
+              ));
             }
           }
         }
@@ -1620,7 +1575,8 @@ Future<LyricsResult?> fetchUnisonLyrics(
       options: Options(
         responseType: ResponseType.json,
         headers: {
-          'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+          'User-Agent':
+              'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
           'Accept': 'application/json',
         },
       ),
@@ -1641,13 +1597,13 @@ Future<LyricsResult?> fetchUnisonLyrics(
       } else {
         lines = parseLrc(lyricsText);
       }
-      if (lines.isNotEmpty && lyricsPlausibleDuration(lines, durationSeconds)) {
+      if (lines.isNotEmpty &&
+          lyricsPlausibleDuration(lines, durationSeconds)) {
         final bool wordSynced;
         if (format == 'ttml') {
           wordSynced = lines.any((l) => l.hasSyllables);
         } else {
-          wordSynced =
-              syncType == 'word' ||
+          wordSynced = syncType == 'word' ||
               syncType == 'syllable' ||
               parseEnhancedLrc(lyricsText).isNotEmpty;
         }
@@ -1692,7 +1648,8 @@ Future<LyricsResult?> fetchMegalobizLyrics(
       options: Options(
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+          'User-Agent':
+              'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
           'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
         },
       ),
@@ -1709,7 +1666,8 @@ Future<LyricsResult?> fetchMegalobizLyrics(
       options: Options(
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+          'User-Agent':
+              'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
         },
       ),
     );
@@ -1732,7 +1690,8 @@ Future<LyricsResult?> fetchMegalobizLyrics(
         .replaceAll('&apos;', "'")
         .replaceAll('&#39;', "'");
     final lines = parseLrc(unescaped);
-    if (lines.isNotEmpty && lyricsPlausibleDuration(lines, durationSeconds)) {
+    if (lines.isNotEmpty &&
+        lyricsPlausibleDuration(lines, durationSeconds)) {
       return LyricsResult(
         lines: lines,
         isSynced: true,
@@ -1762,7 +1721,8 @@ Future<LyricsResult?> fetchGeniusLyrics(
       options: Options(
         responseType: ResponseType.json,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
           'Accept': 'application/json',
         },
       ),
@@ -1794,7 +1754,8 @@ Future<LyricsResult?> fetchGeniusLyrics(
       options: Options(
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
         },
       ),
     );
@@ -1809,10 +1770,8 @@ Future<LyricsResult?> fetchGeniusLyrics(
     final sb = StringBuffer();
     for (final m in matches) {
       var chunk = m.group(1) ?? '';
-      chunk = chunk.replaceAll(
-        RegExp(r'<br\s*/?>', caseSensitive: false),
-        '\n',
-      );
+      chunk =
+          chunk.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
       chunk = chunk.replaceAll(RegExp(r'<[^>]+>'), '');
       chunk = chunk
           .replaceAll('&amp;', '&')
@@ -1844,8 +1803,8 @@ Future<LyricsResult?> fetchGeniusLyrics(
   return null;
 }
 
-// -- LastWave (third-party lyrics API) ---------------------------------------
-Future<LyricsResult?> fetchLastWaveLyrics(
+// -- KatMusic (lyrics-api.boidu.dev/katmusic) ----------------------------------
+Future<LyricsResult?> fetchKatMusicLyrics(
   Dio dio, {
   required String title,
   required String artist,
@@ -1869,7 +1828,8 @@ Future<LyricsResult?> fetchLastWaveLyrics(
       options: Options(
         responseType: ResponseType.plain,
         headers: {
-          'User-Agent': 'KatMusic-Desktop/1.0 (https://github.com/Arct-Development/KatMusic)',
+          'User-Agent':
+              'KatMusic/1.0 (https://github.com/Arct-Development/KatMusic)',
           'Accept': 'application/json, text/plain',
         },
       ),
@@ -1887,7 +1847,8 @@ Future<LyricsResult?> fetchLastWaveLyrics(
         isSynced: true,
         isWordSynced: wordSynced,
         plainLyrics: lines.map((l) => l.text).join('\n'),
-        source: wordSynced ? 'LastWave (Word-Sync)' : 'LastWave (Line-Sync)',
+        source:
+            wordSynced ? 'KatMusic (Word-Sync)' : 'KatMusic (Line-Sync)',
       );
     }
   } catch (_) {}

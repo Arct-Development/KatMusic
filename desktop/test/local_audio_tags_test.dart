@@ -18,12 +18,7 @@ Uint8List _id3Frame(String id, String text) {
     [3],
     utf8.encode(text),
   ]);
-  return _cat([
-    ascii.encode(id),
-    _synchsafe(body.length),
-    [0, 0],
-    body,
-  ]);
+  return _cat([ascii.encode(id), _synchsafe(body.length), [0, 0], body]);
 }
 
 Uint8List _id3(List<Uint8List> frames) {
@@ -40,19 +35,17 @@ Uint8List _box(List<int> type, List<int> payload) =>
     _cat([_u32(8 + payload.length), type, payload]);
 
 Uint8List _mp4Text(List<int> type, String text) => _box(type, [
-  ..._box(ascii.encode('data'), [0, 0, 0, 1, 0, 0, 0, 0, ...utf8.encode(text)]),
-]);
+      ..._box(ascii.encode('data'), [0, 0, 0, 1, 0, 0, 0, 0, ...utf8.encode(text)]),
+    ]);
 
 void main() {
   test('reads title, artist, album, and year from ID3v2.4', () {
-    final tags = LocalAudioTags.fromHead(
-      _id3([
-        _id3Frame('TIT2', 'Song'),
-        _id3Frame('TPE1', 'Singer'),
-        _id3Frame('TALB', 'Album'),
-        _id3Frame('TDRC', '2019-05-03'),
-      ]),
-    );
+    final tags = LocalAudioTags.fromHead(_id3([
+      _id3Frame('TIT2', 'Song'),
+      _id3Frame('TPE1', 'Singer'),
+      _id3Frame('TALB', 'Album'),
+      _id3Frame('TDRC', '2019-05-03'),
+    ]));
     expect(tags.title, 'Song');
     expect(tags.artist, 'Singer');
     expect(tags.album, 'Album');
@@ -66,7 +59,10 @@ void main() {
       ..._mp4Text([0xA9, 0x64, 0x61, 0x79], '2011-07-01'),
     ]);
     final meta = _box(ascii.encode('meta'), [0, 0, 0, 0, ...ilst]);
-    final moov = _box(ascii.encode('moov'), _box(ascii.encode('udta'), meta));
+    final moov = _box(
+      ascii.encode('moov'),
+      _box(ascii.encode('udta'), meta),
+    );
     final tags = LocalAudioTags.fromHead(moov);
     expect(tags.title, 'नज़र से');
     expect(tags.album, 'Album');

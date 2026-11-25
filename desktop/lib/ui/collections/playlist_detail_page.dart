@@ -13,34 +13,36 @@ import '../../features/library/playlist_file.dart';
 import '../../features/library/playlists.dart';
 import '../../core/storage/prefs.dart';
 import '../../features/player/playback_service.dart';
-import '../components/buttons.dart'
-    show KatTooltip, KatGhostButton, KatIconButton, KatPrimaryButton;
+import '../components/buttons.dart' show LWTooltip, WaveGhostButton, WaveIconButton, WavePrimaryButton;
 import '../components/desktop_table.dart';
 import '../components/hero.dart';
 import '../components/menus.dart';
 import '../components/select.dart';
 import '../components/states.dart';
 import 'playlist_dialogs.dart'
-    show showWaveDeletePlaylist, showWaveRenamePlaylist;
+    show
+        showWaveDeletePlaylist,
+        showWaveRenamePlaylist;
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Playlist detail: artwork hero + filter + indexed track table.
 ///
 /// Play/Shuffle are prioritized; Pin/Rename/Delete live in overflow.
 /// Multi-select is supported via Shift+click range (checkbox column
 /// appears when selection is active).
-class KatPlaylistDetailPage extends ConsumerStatefulWidget {
+class WavePlaylistDetailPage extends ConsumerStatefulWidget {
   final int id;
-  const KatPlaylistDetailPage({super.key, required this.id});
+  const WavePlaylistDetailPage({super.key, required this.id});
 
   @override
-  ConsumerState<KatPlaylistDetailPage> createState() =>
-      _KatPlaylistDetailPageState();
+  ConsumerState<WavePlaylistDetailPage> createState() =>
+      _WavePlaylistDetailPageState();
 }
 
-class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
+class _WavePlaylistDetailPageState
+    extends ConsumerState<WavePlaylistDetailPage> {
   final _filter = TextEditingController();
   String _q = '';
   late String _sort;
@@ -80,13 +82,17 @@ class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
           videoId: t.videoId.isEmpty ? null : t.videoId,
         ),
     ];
-    final safe = playlist.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    final safe = playlist.title
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .trim();
     final base = safe.isEmpty ? 'playlist' : safe;
     await FilePicker.saveFile(
       dialogTitle: csv ? 'Export CSV' : 'Export M3U',
       fileName: '$base.${csv ? 'csv' : 'm3u'}',
       bytes: utf8.encode(
-        csv ? exportPlaylistCsv(rows) : exportPlaylistM3u(playlist.title, rows),
+        csv
+            ? exportPlaylistCsv(rows)
+            : exportPlaylistM3u(playlist.title, rows),
       ),
       type: FileType.custom,
       allowedExtensions: [csv ? 'csv' : 'm3u'],
@@ -108,10 +114,11 @@ class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
   @override
   Widget build(BuildContext context) {
     final playlists = ref.watch(playlistRepositoryProvider);
-    final playlist = playlists.where((p) => p.id == widget.id).firstOrNull;
+    final playlist =
+        playlists.where((p) => p.id == widget.id).firstOrNull;
     if (playlist == null) {
-      return KatEmpty(
-        icon: KatIcons.playlists,
+      return WaveEmpty(
+        icon: WaveIcons.playlists,
         title: 'Playlist not found',
         subtitle: 'It may have been deleted.',
         actionLabel: 'Back to playlists',
@@ -120,8 +127,9 @@ class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
     }
     var tracks = playlist.tracks
         .where(
-          (t) =>
-              '${t.name} ${t.artist}'.toLowerCase().contains(_q.toLowerCase()),
+          (t) => '${t.name} ${t.artist}'
+              .toLowerCase()
+              .contains(_q.toLowerCase()),
         )
         .toList();
     if (_sort == 'added') {
@@ -132,13 +140,10 @@ class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
         return b.addedAtMillis.compareTo(a.addedAtMillis);
       });
     } else if (_sort == 'title') {
-      tracks.sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
+      tracks.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     } else if (_sort == 'artist') {
       tracks.sort(
-        (a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()),
-      );
+          (a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
     }
     // Reverses whichever sort is active (custom order, date, title, artist).
     if (!_asc) tracks = tracks.reversed.toList();
@@ -171,248 +176,272 @@ class _KatPlaylistDetailPageState extends ConsumerState<KatPlaylistDetailPage> {
       }
     }
     final downloadKeys = {
-      for (final t in playlist.tracks) DownloadManager.keyOf(t.name, t.artist),
+      for (final t in playlist.tracks)
+        DownloadManager.keyOf(t.name, t.artist),
     };
-    final downloading = ref
-        .watch(downloadManagerProvider)
-        .any(
-          (entry) =>
-              downloadKeys.contains(entry.key) &&
-              (entry.status == DownloadStatus.downloading ||
-                  entry.status == DownloadStatus.queued),
-        );
+    final downloading = ref.watch(downloadManagerProvider).any((entry) =>
+        downloadKeys.contains(entry.key) &&
+        (entry.status == DownloadStatus.downloading ||
+            entry.status == DownloadStatus.queued));
 
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: KatDensity.contentMax,
-                ),
-                child: KatEntrance(
-                  rise: 10,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      KatCollectionHero(
-                        flightKind: 'playlist',
-                        flightId: '${playlist.id}',
-                        overline:
-                            'Playlist${playlist.isPinned ? ' · Pinned' : ''}',
-                        title: playlist.title,
-                        meta:
-                            '${playlist.tracks.length} tracks${_q.isNotEmpty ? ' · ${tracks.length} match' : ''}',
-                        artworkUrl: cover,
-                        fallbackIcon: KatIcons.playlists,
-                        primaryActions: [
-                          if (tracks.isNotEmpty) ...[
-                            KatPrimaryButton(
-                              label: 'Play all',
-                              icon: FluentIcons.play,
-                              onPressed: () => playGenerated(
-                                ref,
-                                context,
-                                asGenerated().first,
-                                sourceLabel: playlist.title,
-                                queueAll: asGenerated(),
-                              ),
-                            ),
-                            KatGhostButton(
-                              label: 'Shuffle',
-                              icon: KatIcons.shuffle,
-                              onPressed: () {
-                                // Shuffle BEFORE picking first.
-                                final shuffled = asGenerated()..shuffle();
-                                playGenerated(
-                                  ref,
-                                  context,
-                                  shuffled.first,
-                                  sourceLabel: playlist.title,
-                                  queueAll: shuffled,
-                                );
-                              },
-                            ),
-                            KatGhostButton(
-                              label: downloading ? 'Cancel' : 'Download',
-                              icon: downloading
-                                  ? FluentIcons.cancel
-                                  : FluentIcons.download,
-                              onPressed: downloading
-                                  ? () {
-                                      final manager = ref.read(
-                                        downloadManagerProvider.notifier,
-                                      );
-                                      for (final key in downloadKeys) {
-                                        manager.cancelDownload(key);
-                                      }
-                                    }
-                                  : () {
-                                      final manager = ref.read(
-                                        downloadManagerProvider.notifier,
-                                      );
-                                      for (final t in asGenerated()) {
-                                        if (t.playbackUrl.isNotEmpty) continue;
-                                        manager.downloadTrack(
-                                          title: t.name,
-                                          artist: t.artist,
-                                          album: t.album,
-                                          artworkUrl: t.artworkUrl,
-                                        );
-                                      }
-                                    },
-                            ),
-                          ],
-                        ],
-                        overflowItems: [
-                          KatMenuAction(
-                            leading: const Icon(FluentIcons.photo, size: 13),
-                            label: 'Change cover',
-                            onPressed: () => _changeCover(playlist),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding:
+                const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: WaveDensity.contentMax,
+              ),
+              child: WaveEntrance(
+                rise: 10,
+                child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  WaveCollectionHero(
+                    flightKind: 'playlist',
+                    flightId: '${playlist.id}',
+                    overline:
+                        'Playlist${playlist.isPinned ? ' · Pinned' : ''}',
+                    title: playlist.title,
+                    meta:
+                        '${playlist.tracks.length} tracks${_q.isNotEmpty ? ' · ${tracks.length} match' : ''}',
+                    artworkUrl: cover,
+                    fallbackIcon:
+                        WaveIcons.playlists,
+                    primaryActions: [
+                      if (tracks.isNotEmpty) ...[
+                        WavePrimaryButton(
+                          label: 'Play all',
+                          icon: FluentIcons.play,
+                          onPressed: () => playGenerated(
+                            ref,
+                            context,
+                            asGenerated().first,
+                            sourceLabel: playlist.title,
+                            queueAll: asGenerated(),
                           ),
-                          KatMenuAction(
-                            leading: const Icon(FluentIcons.page, size: 13),
-                            label: 'Export CSV',
-                            onPressed: () => _export(playlist, csv: true),
-                          ),
-                          KatMenuAction(
-                            leading: const Icon(FluentIcons.page, size: 13),
-                            label: 'Export M3U',
-                            onPressed: () => _export(playlist, csv: false),
-                          ),
-                          KatMenuAction(
-                            leading: const Icon(FluentIcons.pin, size: 13),
-                            label: playlist.isPinned ? 'Unpin' : 'Pin',
-                            onPressed: () => ref
-                                .read(playlistRepositoryProvider.notifier)
-                                .setPinned(playlist.id, !playlist.isPinned),
-                          ),
-                          KatMenuAction(
-                            leading: const Icon(FluentIcons.edit, size: 13),
-                            label: 'Rename',
-                            onPressed: () =>
-                                showWaveRenamePlaylist(context, ref, playlist),
-                          ),
-                          if (!playlist.isLikedSongs)
-                            KatMenuAction(
-                              leading: const Icon(FluentIcons.delete, size: 13),
-                              label: 'Delete',
-                              onPressed: () => showWaveDeletePlaylist(
-                                context,
-                                ref,
-                                playlist,
-                              ),
-                            ),
-                        ],
+                        ),
+                        WaveGhostButton(
+                          label: 'Shuffle',
+                          icon: WaveIcons.shuffle,
+                          onPressed: () {
+                            // Shuffle BEFORE picking first.
+                            final shuffled =
+                                asGenerated()..shuffle();
+                            playGenerated(
+                              ref,
+                              context,
+                              shuffled.first,
+                              sourceLabel: playlist.title,
+                              queueAll: shuffled,
+                            );
+                          },
+                        ),
+                        WaveGhostButton(
+                          label: downloading ? 'Cancel' : 'Download',
+                          icon: downloading
+                              ? FluentIcons.cancel
+                              : FluentIcons.download,
+                          onPressed: downloading
+                              ? () {
+                                  final manager = ref.read(
+                                      downloadManagerProvider.notifier);
+                                  for (final key in downloadKeys) {
+                                    manager.cancelDownload(key);
+                                  }
+                                }
+                              : () {
+                                  final manager = ref.read(
+                                      downloadManagerProvider.notifier);
+                                  for (final t in asGenerated()) {
+                                    if (t.playbackUrl.isNotEmpty) continue;
+                                    manager.downloadTrack(
+                                      title: t.name,
+                                      artist: t.artist,
+                                      album: t.album,
+                                      artworkUrl: t.artworkUrl,
+                                      videoId: t.videoId,
+                                    );
+                                  }
+                                },
+                        ),
+                      ],
+                    ],
+                    overflowItems: [
+                      WaveMenuAction(
+                        leading: const Icon(FluentIcons.photo, size: 13),
+                        label: 'Change cover',
+                        onPressed: () => _changeCover(playlist),
                       ),
-                      const SizedBox(height: 12),
-                      KatFilterBar(
-                        controller: _filter,
-                        onChanged: (v) => setState(() => _q = v),
-                        hint: 'Filter in playlist…',
-                        countLabel: '${tracks.length} tracks',
-                        sortSlot: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            KatTooltip(
-                              message: 'Sort (also sortable via table headers)',
-                              child: KatSelect<String>(
-                                value: _sort,
-                                options: const [
-                                  KatSelectOption(
-                                    value: 'default',
-                                    label: 'Default order',
-                                  ),
-                                  KatSelectOption(
-                                    value: 'added',
-                                    label: 'Date added',
-                                  ),
-                                  KatSelectOption(
-                                    value: 'title',
-                                    label: 'Title A–Z',
-                                  ),
-                                  KatSelectOption(
-                                    value: 'artist',
-                                    label: 'Artist A–Z',
-                                  ),
-                                ],
-                                onChanged: (v) => _setSort(v, _asc),
-                              ),
+                      WaveMenuAction(
+                        leading: const Icon(FluentIcons.page, size: 13),
+                        label: 'Export CSV',
+                        onPressed: () => _export(playlist, csv: true),
+                      ),
+                      WaveMenuAction(
+                        leading: const Icon(FluentIcons.page, size: 13),
+                        label: 'Export M3U',
+                        onPressed: () => _export(playlist, csv: false),
+                      ),
+                      WaveMenuAction(
+                        leading: const Icon(
+                          FluentIcons.pin,
+                          size: 13,
+                        ),
+                        label: playlist.isPinned
+                            ? 'Unpin'
+                            : 'Pin',
+                        onPressed: () => ref
+                            .read(
+                              playlistRepositoryProvider
+                                  .notifier,
+                            )
+                            .setPinned(
+                              playlist.id,
+                              !playlist.isPinned,
                             ),
-                            const SizedBox(width: 4),
-                            KatIconButton(
-                              tooltip: _asc ? 'Reverse order' : 'Normal order',
-                              selected: !_asc,
-                              icon: Icon(
-                                _asc ? KatIcons.sortUp : KatIcons.sortDown,
-                                size: 14,
-                              ),
-                              onPressed: () => _setSort(_sort, !_asc),
-                            ),
-                          ],
+                      ),
+                      WaveMenuAction(
+                        leading: const Icon(
+                          FluentIcons.edit,
+                          size: 13,
+                        ),
+                        label: 'Rename',
+                        onPressed: () =>
+                            showWaveRenamePlaylist(
+                          context,
+                          ref,
+                          playlist,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      if (!playlist.isLikedSongs)
+                        WaveMenuAction(
+                          leading: const Icon(
+                            FluentIcons.delete,
+                            size: 13,
+                          ),
+                          label: 'Delete',
+                          onPressed: () =>
+                              showWaveDeletePlaylist(
+                            context,
+                            ref,
+                            playlist,
+                          ),
+                        ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  WaveFilterBar(
+                    controller: _filter,
+                    onChanged: (v) =>
+                        setState(() => _q = v),
+                    hint: 'Filter in playlist…',
+                    countLabel:
+                        '${tracks.length} tracks',
+                    sortSlot: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        LWTooltip(
+                          message: 'Sort (also sortable via table headers)',
+                          child: WaveSelect<String>(
+                            value: _sort,
+                            options: const [
+                              WaveSelectOption(
+                                  value: 'default', label: 'Default order'),
+                              WaveSelectOption(
+                                  value: 'added', label: 'Date added'),
+                              WaveSelectOption(
+                                  value: 'title', label: 'Title A–Z'),
+                              WaveSelectOption(
+                                  value: 'artist', label: 'Artist A–Z'),
+                            ],
+                            onChanged: (v) => _setSort(v, _asc),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        WaveIconButton(
+                          tooltip: _asc ? 'Reverse order' : 'Normal order',
+                          selected: !_asc,
+                          icon: Icon(
+                            _asc ? WaveIcons.sortUp : WaveIcons.sortDown,
+                            size: 14,
+                          ),
+                          onPressed: () => _setSort(_sort, !_asc),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 ),
               ),
             ),
           ),
-          if (tracks.isEmpty)
-            const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: KatIcons.playlists,
-                title: 'Empty playlist',
-                subtitle: 'Add tracks from any menu.',
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: KatDesktopTable<GeneratedTrack>(
-                items: asGenerated(),
-                keyOf: (t) => t.key,
-                titleOf: (t) => t.name,
-                subtitleOf: (t) => t.artist,
-                albumOf: (_) => '',
-                artworkOf: (t) => t.artworkUrl,
-                playableOf: playableFromGenerated,
-                durationOf: (t) => t.durationSeconds > 0
-                    ? formatDuration(Duration(seconds: t.durationSeconds))
-                    : '',
-                durationSortOf: (t) => t.durationSeconds,
-                titleSortOf: (t) => t.name.toLowerCase(),
-                artistSortOf: (t) => t.artist.toLowerCase(),
-                isCurrent: (t) => playingKey == t.key,
-                isPlaying: (t) {
-                  final playing = ref.watch(
-                    playbackServiceProvider.select((p) => p.isPlaying),
-                  );
-                  return playingKey == t.key && playing;
-                },
-                showArtistColumn: true,
-                sliver: true,
-                selectable: true,
-                removeLabel: 'Remove from playlist',
-                onRemove: (i) => ref
-                    .read(playlistRepositoryProvider.notifier)
-                    .removeTrack(playlist.id, asGenerated()[i].key),
-                onPlay: (i) => playGenerated(
-                  ref,
-                  context,
-                  asGenerated()[i],
-                  sourceLabel: playlist.title,
-                  queueAll: asGenerated(),
-                  startIndex: i,
-                ),
+        ),
+        if (tracks.isEmpty)
+          const SliverToBoxAdapter(
+            child: WaveEmpty(
+              icon: WaveIcons.playlists,
+              title: 'Empty playlist',
+              subtitle: 'Add tracks from any menu.',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: WaveDesktopTable<GeneratedTrack>(
+              items: asGenerated(),
+              keyOf: (t) => t.key,
+              titleOf: (t) => t.name,
+              subtitleOf: (t) => t.artist,
+              albumOf: (_) => '',
+              artworkOf: (t) => t.artworkUrl,
+              playableOf: playableFromGenerated,
+              durationOf: (t) => t.durationSeconds > 0
+                  ? formatDuration(
+                      Duration(seconds: t.durationSeconds))
+                  : '',
+              durationSortOf: (t) => t.durationSeconds,
+              titleSortOf: (t) => t.name.toLowerCase(),
+              artistSortOf: (t) => t.artist.toLowerCase(),
+              isCurrent: (t) => playingKey == t.key,
+              isPlaying: (t) {
+                final playing = ref.watch(
+                  playbackServiceProvider.select((p) => p.isPlaying),
+                );
+                return playingKey == t.key && playing;
+              },
+              showArtistColumn: true,
+              sliver: true,
+              selectable: true,
+              removeLabel: 'Remove from playlist',
+              onRemove: (i) => ref
+                  .read(playlistRepositoryProvider.notifier)
+                  .removeTrack(
+                      playlist.id, asGenerated()[i].key),
+              onPlay: (i) => playGenerated(
+                ref,
+                context,
+                asGenerated()[i],
+                sourceLabel: playlist.title,
+                queueAll: asGenerated(),
+                startIndex: i,
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 24),
+        ),
+          const WaveDockSpacer(),
         ],
       ),
     );
   }
 }
+
+
+

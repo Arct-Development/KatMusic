@@ -26,19 +26,20 @@ class PcmFormat {
       channels == other.channels;
 
   factory PcmFormat.fromJson(Map<dynamic, dynamic> json) => PcmFormat(
-    sampleRateHz: (json['sampleRateHz'] as num?)?.toInt() ?? 0,
-    bitDepth: (json['bitDepth'] as num?)?.toInt() ?? 0,
-    channels: (json['channels'] as num?)?.toInt() ?? 2,
-  );
+        sampleRateHz: (json['sampleRateHz'] as num?)?.toInt() ?? 0,
+        bitDepth: (json['bitDepth'] as num?)?.toInt() ?? 0,
+        channels: (json['channels'] as num?)?.toInt() ?? 2,
+      );
 
   Map<String, Object> toJson() => {
-    'sampleRateHz': sampleRateHz,
-    'bitDepth': bitDepth,
-    'channels': channels,
-  };
+        'sampleRateHz': sampleRateHz,
+        'bitDepth': bitDepth,
+        'channels': channels,
+      };
 
   @override
-  bool operator ==(Object other) => other is PcmFormat && matches(other);
+  bool operator ==(Object other) =>
+      other is PcmFormat && matches(other);
 
   @override
   int get hashCode => Object.hash(sampleRateHz, bitDepth, channels);

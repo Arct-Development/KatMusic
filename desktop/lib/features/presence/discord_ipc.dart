@@ -38,9 +38,7 @@ abstract class DiscordIpc {
       if (Platform.isWindows) {
         for (var i = 0; i < _maxPipe; i++) {
           final ipc = _WindowsIpc.tryPipe(
-            '\\\\.\\pipe\\discord-ipc-$i',
-            clientId,
-          );
+              '\\\\.\\pipe\\discord-ipc-$i', clientId);
           if (ipc != null) return ipc;
         }
         return null;
@@ -167,10 +165,8 @@ class _WindowsIpc extends DiscordIpc {
     }
     final ipc = _WindowsIpc._(handle);
     try {
-      if (!ipc._writeFrame(DiscordIpc._opHandshake, {
-        'v': 1,
-        'client_id': clientId,
-      })) {
+      if (!ipc._writeFrame(
+          DiscordIpc._opHandshake, {'v': 1, 'client_id': clientId})) {
         ipc.close();
         return null;
       }
@@ -189,7 +185,10 @@ class _WindowsIpc extends DiscordIpc {
     try {
       final ok = _writeFrame(DiscordIpc._opFrame, {
         'cmd': 'SET_ACTIVITY',
-        'args': {'pid': pid, 'activity': activity},
+        'args': {
+          'pid': pid,
+          'activity': activity,
+        },
         'nonce': '${DateTime.now().microsecondsSinceEpoch}',
       });
       _drain(300);
@@ -205,7 +204,10 @@ class _WindowsIpc extends DiscordIpc {
     try {
       final ok = _writeFrame(DiscordIpc._opFrame, {
         'cmd': 'SET_ACTIVITY',
-        'args': {'pid': pid, 'activity': null},
+        'args': {
+          'pid': pid,
+          'activity': null,
+        },
         'nonce': '${DateTime.now().microsecondsSinceEpoch}',
       });
       _drain(300);
@@ -255,8 +257,10 @@ class _WindowsIpc extends DiscordIpc {
   Map<String, Object?>? _readFrame({required int budgetMs}) {
     final header = _readExact(_headerSize, budgetMs);
     if (header == null) return null;
-    final len =
-        header[4] | (header[5] << 8) | (header[6] << 16) | (header[7] << 24);
+    final len = header[4] |
+        (header[5] << 8) |
+        (header[6] << 16) |
+        (header[7] << 24);
     if (len < 0 || len > 1024 * 1024) return null;
     final body = _readExact(len, budgetMs);
     if (body == null) return null;
@@ -344,18 +348,14 @@ class _UnixIpc extends DiscordIpc {
   /// single-subscription streams, so one listener feeds a buffer that
   /// every read takes from. (A fresh listen per read throws.)
   void _attach() {
-    _sub ??= _socket.listen(
-      (chunk) {
-        _buf.add(chunk);
-        for (final w in _waiters.toList()) {
-          if (!w.isCompleted) w.complete();
-        }
-        _waiters.clear();
-      },
-      onError: (_) => _finish(),
-      onDone: () => _finish(),
-      cancelOnError: true,
-    );
+    _sub ??= _socket.listen((chunk) {
+      _buf.add(chunk);
+      for (final w in _waiters.toList()) {
+        if (!w.isCompleted) w.complete();
+      }
+      _waiters.clear();
+    }, onError: (_) => _finish(), onDone: () => _finish(),
+        cancelOnError: true);
   }
 
   void _finish() {
@@ -379,15 +379,14 @@ class _UnixIpc extends DiscordIpc {
     }
     final ipc = _UnixIpc._(socket);
     try {
-      await ipc._writeFrame(DiscordIpc._opHandshake, {
-        'v': 1,
-        'client_id': clientId,
-      });
+      await ipc._writeFrame(
+          DiscordIpc._opHandshake, {'v': 1, 'client_id': clientId});
       // Discord's IPC latency varies wildly (observed 0.4s–1.8s,
       // occasional never; reconnect storms make it worse). 5s catches
       // slow answers; the service's 15s retry throttle is the real
       // recovery for hung attempts, re-trying while music plays.
-      final reply = await ipc._readFrame(budget: const Duration(seconds: 5));
+      final reply = await ipc._readFrame(
+          budget: const Duration(seconds: 5));
       if (reply != null && reply['evt'] == 'READY') return ipc;
       ipc.close();
     } catch (_) {
@@ -400,13 +399,14 @@ class _UnixIpc extends DiscordIpc {
   bool setActivity(Map<String, Object?> activity) {
     if (_closed) return false;
     try {
-      _socket.add(
-        DiscordIpc.encodeFrame(DiscordIpc._opFrame, {
-          'cmd': 'SET_ACTIVITY',
-          'args': {'pid': pid, 'activity': activity},
-          'nonce': '${DateTime.now().microsecondsSinceEpoch}',
-        }),
-      );
+      _socket.add(DiscordIpc.encodeFrame(DiscordIpc._opFrame, {
+        'cmd': 'SET_ACTIVITY',
+        'args': {
+          'pid': pid,
+          'activity': activity,
+        },
+        'nonce': '${DateTime.now().microsecondsSinceEpoch}',
+      }));
       return true;
     } catch (_) {
       return false;
@@ -417,13 +417,14 @@ class _UnixIpc extends DiscordIpc {
   bool clearActivity() {
     if (_closed) return false;
     try {
-      _socket.add(
-        DiscordIpc.encodeFrame(DiscordIpc._opFrame, {
-          'cmd': 'SET_ACTIVITY',
-          'args': {'pid': pid, 'activity': null},
-          'nonce': '${DateTime.now().microsecondsSinceEpoch}',
-        }),
-      );
+      _socket.add(DiscordIpc.encodeFrame(DiscordIpc._opFrame, {
+        'cmd': 'SET_ACTIVITY',
+        'args': {
+          'pid': pid,
+          'activity': null,
+        },
+        'nonce': '${DateTime.now().microsecondsSinceEpoch}',
+      }));
       return true;
     } catch (_) {
       return false;
@@ -444,13 +445,15 @@ class _UnixIpc extends DiscordIpc {
     } catch (_) {}
   }
 
-  Future<void> _writeFrame(int opcode, Map<String, Object?> payload) async {
+  Future<void> _writeFrame(
+      int opcode, Map<String, Object?> payload) async {
     _socket.add(DiscordIpc.encodeFrame(opcode, payload));
     await _socket.flush().timeout(const Duration(seconds: 2));
   }
 
   /// Reads one frame within [budget], or null on timeout/garbage.
-  Future<Map<String, Object?>?> _readFrame({required Duration budget}) async {
+  Future<Map<String, Object?>?> _readFrame(
+      {required Duration budget}) async {
     final header = await _readExact(8, budget);
     if (header == null) return null;
     final view = ByteData.sublistView(header);

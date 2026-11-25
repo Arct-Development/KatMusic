@@ -72,10 +72,7 @@ class ListeningStatsData {
   final List<StatArtist> topArtists;
   final List<StatTrack> topTracks;
   final List<StatAlbum> topAlbums;
-  final List<
-    ({String title, String artist, int timestampMillis, String artworkUrl})
-  >
-  recentPlays;
+  final List<({String title, String artist, int timestampMillis, String artworkUrl})> recentPlays;
   final Map<int, int> hourlyDistribution;
   final List<({String date, int count})> dailyActivity;
   final bool isLastFmConnected;
@@ -111,9 +108,7 @@ class ListeningStatsData {
   });
 }
 
-final statsPeriodProvider = StateProvider<StatsPeriod>(
-  (ref) => StatsPeriod.week,
-);
+final statsPeriodProvider = StateProvider<StatsPeriod>((ref) => StatsPeriod.week);
 
 final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
   final period = ref.watch(statsPeriodProvider);
@@ -123,9 +118,8 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
 
   int? sinceMillis;
   if (period.days != null) {
-    sinceMillis = DateTime.now()
-        .subtract(Duration(days: period.days!))
-        .millisecondsSinceEpoch;
+    sinceMillis =
+        DateTime.now().subtract(Duration(days: period.days!)).millisecondsSinceEpoch;
   }
 
   // 1. Fetch Local SQLite Stats
@@ -134,14 +128,12 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
   final localUniqueArtists = (local['uniqueArtists'] as int?) ?? 0;
   final localUniqueTracks = (local['uniqueTracks'] as int?) ?? 0;
   final localHourly = (local['hourly'] as Map<int, int>?) ?? {};
-  final localDaily =
-      (local['daily'] as List<({String date, int count})>?) ?? [];
+  final localDaily = (local['daily'] as List<({String date, int count})>?) ?? [];
   final rawLocalTopArtists =
       (local['topArtists'] as List<({String name, int count})>?) ?? [];
   final rawLocalTopTracks =
-      (local['topTracks']
-          as List<({String title, String artist, int count})>?) ??
-      [];
+      (local['topTracks'] as List<({String title, String artist, int count})>?) ??
+          [];
 
   final localRecent = db.loadRecentPlays(limit: 50).map((p) {
     final peek = OfficialArtworkService.instance.peekTrack(
@@ -257,11 +249,12 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
       lastFmTopTracks = results[1] as List<HomeTrack>;
       lastFmTopArtists =
           results[2] as List<({String name, int playCount, String artworkUrl})>;
-      lastFmTopAlbums =
-          results[3]
-              as List<
-                ({String name, String artist, int playCount, String artworkUrl})
-              >;
+      lastFmTopAlbums = results[3] as List<({
+        String name,
+        String artist,
+        int playCount,
+        String artworkUrl
+      })>;
       lastFmPeriodPlayCount = await periodPlayCountFuture;
     } catch (_) {}
   }
@@ -274,16 +267,13 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
         title: t.name,
         artist: t.artist,
       );
-      mergedTopTracks.add(
-        StatTrack(
-          name: t.name,
-          artist: t.artist,
-          artworkUrl:
-              (t.artworkUrl.isNotEmpty ? t.artworkUrl : peek?.artworkUrl) ?? '',
-          playCount: t.playCount,
-          timestampMillis: t.timestampMillis,
-        ),
-      );
+      mergedTopTracks.add(StatTrack(
+        name: t.name,
+        artist: t.artist,
+        artworkUrl: (t.artworkUrl.isNotEmpty ? t.artworkUrl : peek?.artworkUrl) ?? '',
+        playCount: t.playCount,
+        timestampMillis: t.timestampMillis,
+      ));
     }
   } else {
     for (final t in rawLocalTopTracks) {
@@ -291,14 +281,12 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
         title: t.title,
         artist: t.artist,
       );
-      mergedTopTracks.add(
-        StatTrack(
-          name: t.title,
-          artist: t.artist,
-          artworkUrl: peek?.artworkUrl ?? '',
-          playCount: t.count,
-        ),
-      );
+      mergedTopTracks.add(StatTrack(
+        name: t.title,
+        artist: t.artist,
+        artworkUrl: peek?.artworkUrl ?? '',
+        playCount: t.count,
+      ));
     }
   }
 
@@ -343,23 +331,20 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
         album: a.name,
         artist: a.artist,
       );
-      mergedTopAlbums.add(
-        StatAlbum(
-          name: a.name,
-          artist: a.artist,
-          artworkUrl:
-              (a.artworkUrl.isNotEmpty ? a.artworkUrl : peek?.artworkUrl) ?? '',
-          playCount: a.playCount,
-        ),
-      );
+      mergedTopAlbums.add(StatAlbum(
+        name: a.name,
+        artist: a.artist,
+        artworkUrl: (a.artworkUrl.isNotEmpty ? a.artworkUrl : peek?.artworkUrl) ?? '',
+        playCount: a.playCount,
+      ));
     }
   }
 
   // Estimate total listening minutes (~3.5 minutes per play on average)
-  final effectivePlays = isLastFm
+    final effectivePlays = isLastFm
       ? (period.days == null
-            ? lastFmScrobbles
-            : lastFmPeriodPlayCount ?? localTotalPlays)
+        ? lastFmScrobbles
+        : lastFmPeriodPlayCount ?? localTotalPlays)
       : localTotalPlays;
   // Estimate total listening minutes (~3.5 minutes per play on average).
   final totalMinutes = (effectivePlays * 3.5).round();
@@ -368,12 +353,8 @@ final listeningStatsProvider = FutureProvider<ListeningStatsData>((ref) async {
     period: period,
     totalPlays: effectivePlays,
     totalMinutesListened: totalMinutes,
-    uniqueArtists: localUniqueArtists > 0
-        ? localUniqueArtists
-        : artistCountMap.length,
-    uniqueTracks: localUniqueTracks > 0
-        ? localUniqueTracks
-        : mergedTopTracks.length,
+    uniqueArtists: localUniqueArtists > 0 ? localUniqueArtists : artistCountMap.length,
+    uniqueTracks: localUniqueTracks > 0 ? localUniqueTracks : mergedTopTracks.length,
     currentStreakDays: streak,
     peakListeningHour: peakHour,
     peakListeningLabel: formatHour(peakHour),

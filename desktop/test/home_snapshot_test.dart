@@ -6,29 +6,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/core/storage/app_database.dart';
 import 'package:katmusic_desktop/features/feed/feed_repository.dart';
 import 'package:katmusic_desktop/features/home/home_snapshot.dart';
-import 'package:katmusic_desktop/features/home/home_providers.dart';
-import 'package:katmusic_desktop/features/lastfm/home_repository.dart';
 import 'package:katmusic_desktop/features/innertube/innertube_api.dart';
 import 'package:katmusic_desktop/features/search/shared_providers.dart';
 
 FeedData _feed(String tag) => FeedData(
-  quickPicks: [
-    GeneratedTrack(
-      name: 'Song $tag',
-      artist: 'Artist $tag',
-      album: 'Album',
-      artworkUrl: 'https://img/$tag.jpg',
-      videoId: 'vid$tag',
-      listeners: '1.2M',
-      match: '0.9',
-      durationSeconds: 201,
-    ),
-  ],
-  charts: [GeneratedTrack(name: 'Chart $tag', artist: 'C')],
-  tasteTags: ['pop', tag],
-  becauseSeed: 'Seed $tag',
-  tasteAffinities: {'artist $tag': 3.5},
-);
+      quickPicks: [
+        GeneratedTrack(
+          name: 'Song $tag',
+          artist: 'Artist $tag',
+          album: 'Album',
+          artworkUrl: 'https://img/$tag.jpg',
+          videoId: 'vid$tag',
+          listeners: '1.2M',
+          match: '0.9',
+          durationSeconds: 201,
+        ),
+      ],
+      charts: [GeneratedTrack(name: 'Chart $tag', artist: 'C')],
+      tasteTags: ['pop', tag],
+      becauseSeed: 'Seed $tag',
+      tasteAffinities: {'artist $tag': 3.5},
+    );
 
 void main() {
   group('codecs', () {
@@ -49,7 +47,9 @@ void main() {
         const YtHomeShelf(
           title: 'Listen again',
           subtitle: 'Your history',
-          tracks: [YouTubeMusicTrack(videoId: 'v1', title: 'T', artist: 'A')],
+          tracks: [
+            YouTubeMusicTrack(videoId: 'v1', title: 'T', artist: 'A'),
+          ],
           trackCards: [
             YouTubeMusicTrack(
               videoId: 'v2',
@@ -95,9 +95,8 @@ void main() {
           artworkUrl: 'https://img/a.jpg',
         ),
       ];
-      final back = entitiesSnapshotCodec.decode(
-        entitiesSnapshotCodec.encode(albums),
-      )!;
+      final back = entitiesSnapshotCodec
+          .decode(entitiesSnapshotCodec.encode(albums))!;
       expect(back.single.name, 'Album');
       expect(back.single.browseId, 'MPRE1');
       expect(entitiesSnapshotCodec.isEmpty(const []), isTrue);
@@ -108,74 +107,32 @@ void main() {
         seed: GeneratedTrack(name: 'Seed', artist: 'A', videoId: 's1'),
         tracks: [GeneratedTrack(name: 'T1', artist: 'A', videoId: 'v1')],
       );
-      final back = personalMixSnapshotCodec.decode(
-        personalMixSnapshotCodec.encode(mix),
-      )!;
+      final back = personalMixSnapshotCodec
+          .decode(personalMixSnapshotCodec.encode(mix))!;
       expect(back.seed.videoId, 's1');
       expect(back.tracks.single.name, 'T1');
       expect(personalMixSnapshotCodec.isEmpty(noPersonalMix), isTrue);
       expect(personalMixSnapshotCodec.isEmpty(mix), isFalse);
     });
 
-    test('friends activity round-trips, timestamp included', () {
-      final list = [
-        FriendActivity(
-          friend: 'amy',
-          avatarUrl: 'https://img/amy.jpg',
-          track: const HomeTrack(
-            name: 'Song',
-            artist: 'Band',
-            artworkUrl: 'https://img/s.jpg',
-            timestampMillis: 1730000000000,
-            playCount: 3,
-          ),
-        ),
-      ];
-      final back = friendsActivityCodec
-          .decode(friendsActivityCodec.encode(list))!
-          .single;
-      expect(back.friend, 'amy');
-      expect(back.track.timestampMillis, 1730000000000);
-      expect(back.track.playCount, 3);
+    test('keys: albums public vs per-channel, mix needs an account', () {
+      expect(
+        homeNewAlbumsSnapshotKey(
+            connected: false, profileEmail: '', activePageId: ''),
+        'home_albums_v1|public',
+      );
+      expect(
+        homeNewAlbumsSnapshotKey(
+            connected: true, profileEmail: 'A.c', activePageId: '1'),
+        isNot(homeNewAlbumsSnapshotKey(
+            connected: true, profileEmail: 'a.c', activePageId: '2')),
+      );
+      expect(
+        homePersonalMixSnapshotKey(
+            connected: false, profileEmail: '', activePageId: ''),
+        isNull,
+      );
     });
-
-    test(
-      'keys: albums public vs per-channel, mix and friends need an account',
-      () {
-        expect(
-          homeNewAlbumsSnapshotKey(
-            connected: false,
-            profileEmail: '',
-            activePageId: '',
-          ),
-          'home_albums_v1|public',
-        );
-        expect(
-          homeNewAlbumsSnapshotKey(
-            connected: true,
-            profileEmail: 'A.c',
-            activePageId: '1',
-          ),
-          isNot(
-            homeNewAlbumsSnapshotKey(
-              connected: true,
-              profileEmail: 'a.c',
-              activePageId: '2',
-            ),
-          ),
-        );
-        expect(
-          homePersonalMixSnapshotKey(
-            connected: false,
-            profileEmail: '',
-            activePageId: '',
-          ),
-          isNull,
-        );
-        expect(homeFriendsSnapshotKey(''), isNull);
-        expect(homeFriendsSnapshotKey('Bob'), homeFriendsSnapshotKey('bob'));
-      },
-    );
   });
 
   group('snapshot keys', () {
@@ -185,25 +142,14 @@ void main() {
       expect(homeFeedSnapshotKey('bob'), isNot(homeFeedSnapshotKey('amy')));
       expect(
         homeShelvesSnapshotKey(
-          connected: false,
-          profileEmail: 'a@b.c',
-          activePageId: '',
-        ),
+            connected: false, profileEmail: 'a@b.c', activePageId: ''),
         isNull,
       );
       expect(
         homeShelvesSnapshotKey(
-          connected: true,
-          profileEmail: 'a@b.c',
-          activePageId: '1',
-        ),
-        isNot(
-          homeShelvesSnapshotKey(
-            connected: true,
-            profileEmail: 'a@b.c',
-            activePageId: '2',
-          ),
-        ),
+            connected: true, profileEmail: 'a@b.c', activePageId: '1'),
+        isNot(homeShelvesSnapshotKey(
+            connected: true, profileEmail: 'a@b.c', activePageId: '2')),
       );
     });
   });
@@ -217,43 +163,37 @@ void main() {
       now = DateTime(2026, 11, 4, 12);
     });
 
-    ProviderContainer container() =>
-        ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
+    ProviderContainer container() => ProviderContainer(
+          overrides: [databaseProvider.overrideWithValue(db)],
+        );
 
     FutureProvider<FeedData> provider(
       Future<FeedData> Function() fetch, {
       String? key = 'k',
-    }) => FutureProvider<FeedData>(
-      (ref) => swrLoad<FeedData>(
-        ref,
-        key: key,
-        codec: feedSnapshotCodec,
-        fetch: fetch,
-        clock: () => now,
-      ),
-    );
+    }) =>
+        FutureProvider<FeedData>((ref) => swrLoad<FeedData>(
+              ref,
+              key: key,
+              codec: feedSnapshotCodec,
+              fetch: fetch,
+              clock: () => now,
+            ));
 
     String songOf(ProviderContainer c, FutureProvider<FeedData> p) =>
         c.read(p).requireValue.quickPicks.single.name;
 
-    test(
-      'cold start with no snapshot waits for the fetch and stores it',
-      () async {
-        final p = provider(() async => _feed('1'));
-        final c = container();
-        addTearDown(c.dispose);
-        expect((await c.read(p.future)).quickPicks.single.name, 'Song 1');
-        expect(db.cacheGet('k'), isNotNull);
-      },
-    );
+    test('cold start with no snapshot waits for the fetch and stores it',
+        () async {
+      final p = provider(() async => _feed('1'));
+      final c = container();
+      addTearDown(c.dispose);
+      expect((await c.read(p.future)).quickPicks.single.name, 'Song 1');
+      expect(db.cacheGet('k'), isNotNull);
+    });
 
-    test('snapshot paints at once, fresh data replaces it in place', () async {
-      db.cachePut(
-        'k',
-        'home',
-        feedSnapshotCodec.encode(_feed('old')),
-        now: now,
-      );
+    test('snapshot paints at once, fresh data replaces it in place',
+        () async {
+      db.cachePut('k', 'home', feedSnapshotCodec.encode(_feed('old')), now: now);
       final gate = Completer<FeedData>();
       final p = provider(() => gate.future);
       final c = container();
@@ -269,11 +209,7 @@ void main() {
       expect(songOf(c, p), 'Song new');
       // ...and the next launch starts from the fresh one.
       expect(
-        feedSnapshotCodec
-            .decode(db.cacheGet('k')!.value)!
-            .quickPicks
-            .single
-            .name,
+        feedSnapshotCodec.decode(db.cacheGet('k')!.value)!.quickPicks.single.name,
         'Song new',
       );
     });
@@ -283,12 +219,7 @@ void main() {
         () async => throw Exception('offline'),
         () async => const FeedData(),
       ]) {
-        db.cachePut(
-          'k',
-          'home',
-          feedSnapshotCodec.encode(_feed('old')),
-          now: now,
-        );
+        db.cachePut('k', 'home', feedSnapshotCodec.encode(_feed('old')), now: now);
         final c = container();
         final p = provider(fetch);
         c.listen(p, (_, _) {});
@@ -297,11 +228,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         expect(songOf(c, p), 'Song old');
         expect(
-          feedSnapshotCodec
-              .decode(db.cacheGet('k')!.value)!
-              .quickPicks
-              .single
-              .name,
+          feedSnapshotCodec.decode(db.cacheGet('k')!.value)!.quickPicks.single.name,
           'Song old',
           reason: 'an empty refresh must not overwrite the good snapshot',
         );
@@ -309,29 +236,22 @@ void main() {
       }
     });
 
-    test(
-      'an explicit refresh in the same session fetches, not the snapshot',
-      () async {
-        db.cachePut(
-          'k',
-          'home',
-          feedSnapshotCodec.encode(_feed('old')),
-          now: now,
-        );
-        var calls = 0;
-        final p = provider(() async => _feed('f${++calls}'));
-        final c = container();
-        addTearDown(c.dispose);
-        c.listen(p, (_, _) {});
-        await c.read(p.future); // snapshot + background refresh
-        await Future<void>.delayed(Duration.zero);
-        await Future<void>.delayed(Duration.zero);
-        expect(songOf(c, p), 'Song f1');
+    test('an explicit refresh in the same session fetches, not the snapshot',
+        () async {
+      db.cachePut('k', 'home', feedSnapshotCodec.encode(_feed('old')), now: now);
+      var calls = 0;
+      final p = provider(() async => _feed('f${++calls}'));
+      final c = container();
+      addTearDown(c.dispose);
+      c.listen(p, (_, _) {});
+      await c.read(p.future); // snapshot + background refresh
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(songOf(c, p), 'Song f1');
 
-        c.invalidate(p); // e.g. the refresh button
-        expect((await c.read(p.future)).quickPicks.single.name, 'Song f2');
-      },
-    );
+      c.invalidate(p); // e.g. the refresh button
+      expect((await c.read(p.future)).quickPicks.single.name, 'Song f2');
+    });
 
     test('a snapshot older than a week is not shown', () async {
       db.cachePut(
@@ -347,12 +267,7 @@ void main() {
     });
 
     test('another account never sees this snapshot', () async {
-      db.cachePut(
-        'bob',
-        'home',
-        feedSnapshotCodec.encode(_feed('bobs')),
-        now: now,
-      );
+      db.cachePut('bob', 'home', feedSnapshotCodec.encode(_feed('bobs')), now: now);
       final p = provider(() async => _feed('amys'), key: 'amy');
       final c = container();
       addTearDown(c.dispose);

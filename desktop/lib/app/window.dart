@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Color;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -24,14 +25,15 @@ Future<void> setupWindow() async {
     // libmpv's thread is still calling into Dart (startup crash).
     await windowManager.setPreventClose(true);
     const options = WindowOptions(
-      size: Size(1360, 860),
-      minimumSize: Size(1024, 640),
-      center: true,
-      title: 'KatMusic',
+      // No size/center: the runner opens maximized (win32_window.cpp)
+      // and owns the restore size. Small enough for half / quarter snaps
+      // on a 1080p screen at 150%.
+      minimumSize: Size(600, 330),
+      title: 'KatMusic By Arct Developments',
       titleBarStyle: TitleBarStyle.hidden,
-      // Neutral graphite — the Kat token, so first frame never flashes
+      // Neutral graphite — the Wave token, so first frame never flashes
       // a different base in either theme.
-      backgroundColor: KatColors.background,
+      backgroundColor: WaveColors.background,
     );
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
@@ -47,7 +49,10 @@ Future<void> _setupAcrylic() async {
     await Window.initialize();
     // Mica incorporates wallpaper + theme: the native observatory
     // base. Tinted dark; light pearl theme switches at runtime.
-    await Window.setEffect(effect: WindowEffect.mica, dark: true);
+    await Window.setEffect(
+      effect: WindowEffect.mica,
+      dark: true,
+    );
   } catch (_) {
     // Opaque fallback is the designed default — remain readable.
   }
@@ -66,39 +71,40 @@ Future<void> applyWindowMaterial({
   Color? background,
 }) async {
   try {
-    await Window.setEffect(effect: WindowEffect.mica, dark: !isLight);
+    await Window.setEffect(
+      effect: WindowEffect.mica,
+      dark: !isLight,
+    );
     await windowManager.setBackgroundColor(
       background ??
           (isLight
-              ? KatColors.lightBackground
-              : (amoled ? KatColors.amoledBackground : KatColors.background)),
+              ? WaveColors.lightBackground
+              : (amoled
+                  ? WaveColors.amoledBackground
+                  : WaveColors.background)),
     );
   } catch (_) {}
 }
 
 Future<void> _setupTray() async {
   try {
-    String iconPath = Platform.isWindows
-        ? 'assets/icons/tray_icon.ico'
-        : 'assets/icons/tray_icon.png';
+    String iconPath = Platform.isWindows 
+      ? 'assets/icons/tray_icon.ico' 
+      : 'assets/icons/tray_icon.png';
 
     await trayManager.setIcon(iconPath);
     if (!Platform.isLinux) {
       await trayManager.setToolTip('KatMusic');
     }
-    await trayManager.setContextMenu(
-      Menu(
-        items: [
-          MenuItem(key: 'show', label: 'Show KatMusic'),
-          MenuItem.separator(),
-          MenuItem(key: 'toggle', label: 'Play / Pause  (Ctrl+Alt+P)'),
-          MenuItem(key: 'next', label: 'Next  (Ctrl+Alt+N)'),
-          MenuItem(key: 'prev', label: 'Previous  (Ctrl+Alt+B)'),
-          MenuItem.separator(),
-          MenuItem(key: 'quit', label: 'Quit'),
-        ],
-      ),
-    );
+    await trayManager.setContextMenu(Menu(items: [
+      MenuItem(key: 'show', label: 'Show KatMusic'),
+      MenuItem.separator(),
+      MenuItem(key: 'toggle', label: 'Play / Pause  (Ctrl+Alt+P)'),
+      MenuItem(key: 'next', label: 'Next  (Ctrl+Alt+N)'),
+      MenuItem(key: 'prev', label: 'Previous  (Ctrl+Alt+B)'),
+      MenuItem.separator(),
+      MenuItem(key: 'quit', label: 'Quit'),
+    ]));
   } catch (_) {}
 }
 
@@ -117,7 +123,7 @@ Future<void> _setupHotkeys() async {
   // Global transport: Ctrl+Alt+P play/pause, Ctrl+Alt+N next,
   // Ctrl+Alt+B previous. Handlers are wired in the shell via
   // hotKeyManager.keyDownHandler forwarding to PlaybackService —
-  // see KatShell initState. Registration here stays best-effort so
+  // see WaveShell initState. Registration here stays best-effort so
   // a missing backend never blocks startup.
   // Wayland has no global-hotkey backend: skip registration so the
   // native plugin never logs `Binding '<Primary><Alt>…' failed!`.

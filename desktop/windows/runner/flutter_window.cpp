@@ -5,6 +5,9 @@
 
 #include <flutter/standard_method_codec.h>
 
+#include <commctrl.h>
+#include <windowsx.h>
+
 #include <propkey.h>
 #include <propvarutil.h>
 #include <shobjidl.h>
@@ -40,6 +43,52 @@ void SetWindowAppUserModelId(HWND hwnd) {
     ::PropVariantClear(&pv);
   }
   store->Release();
+}
+
+bool IsBotGuardWindow(HWND hwnd) {
+  if (hwnd == nullptr || !::IsWindow(hwnd)) return false;
+  DWORD pid = 0;
+  ::GetWindowThreadProcessId(hwnd, &pid);
+  if (pid != ::GetCurrentProcessId()) return false;
+  wchar_t title[128]{};
+  int len = ::GetWindowTextW(hwnd, title, 128);
+  if (len <= 0) return false;
+  return wcscmp(title, L"KatMusic BotGuard") == 0 ||
+         wcscmp(title, L"KatMusic BotGuard Ephemeral") == 0;
+}
+
+void HideBotGuardHwnd(HWND bg) {
+  ::ShowWindow(bg, SW_HIDE);
+  LONG_PTR ex = ::GetWindowLongPtrW(bg, GWL_EXSTYLE);
+  ex = (ex & ~WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+  ::SetWindowLongPtrW(bg, GWL_EXSTYLE, ex);
+  ::SetWindowPos(bg, nullptr, -32000, -32000, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE |
+                     SWP_FRAMECHANGED | SWP_HIDEWINDOW);
+}
+
+bool HideAllBotGuardWindows() {
+  bool found = false;
+  ::EnumWindows(
+      [](HWND hwnd, LPARAM lparam) -> BOOL {
+        if (IsBotGuardWindow(hwnd)) {
+          HideBotGuardHwnd(hwnd);
+          *reinterpret_cast<bool*>(lparam) = true;
+        }
+        return TRUE;
+      },
+      reinterpret_cast<LPARAM>(&found));
+  return found;
+}
+
+void CALLBACK BotGuardWinEventProc(HWINEVENTHOOK /*hook*/, DWORD event,
+                                   HWND hwnd, LONG id_object, LONG id_child,
+                                   DWORD /*thread*/, DWORD /*time*/) {
+  if (id_object != OBJID_WINDOW || id_child != CHILDID_SELF) return;
+  if (event != EVENT_OBJECT_CREATE && event != EVENT_OBJECT_SHOW) return;
+  if (IsBotGuardWindow(hwnd)) {
+    HideBotGuardHwnd(hwnd);
+  }
 }
 
 }  // namespace
@@ -81,7 +130,53 @@ bool FlutterWindow::OnCreate() {
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(), "katmusic/deeplink",
           &flutter::StandardMethodCodec::GetInstance());
+  botguard_event_hook_ = ::SetWinEventHook(
+      EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, nullptr, &BotGuardWinEventProc,
+      ::GetCurrentProcessId(), 0, WINEVENT_OUTOFCONTEXT);
+  webview_guard_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "katmusic/yt_webview",
+          &flutter::StandardMethodCodec::GetInstance());
+  webview_guard_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+             result) {
+        if (call.method_name() == "hideBotGuard") {
+          result->Success(flutter::EncodableValue(HideAllBotGuardWindows()));
+        } else {
+          result->NotImplemented();
+        }
+      });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  caption_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "katmusic/caption",
+          &flutter::StandardMethodCodec::GetInstance());
+  caption_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        const auto* args = std::get_if<flutter::EncodableList>(call.arguments());
+        if (call.method_name() == "setMaxButton" && args && args->size() == 4) {
+          auto at = [&](size_t i) {
+            const auto& v = (*args)[i];
+            if (const auto* d = std::get_if<double>(&v)) return static_cast<LONG>(*d);
+            if (const auto* n = std::get_if<int32_t>(&v)) return static_cast<LONG>(*n);
+            return 0L;
+          };
+          max_button_ = RECT{at(0), at(1), at(2), at(3)};
+          if (::IsRectEmpty(&max_button_)) SetMaxHover(false);
+          result->Success();
+        } else {
+          result->NotImplemented();
+        }
+      });
+  // The Flutter view is a child window: it must pass the hit test over the
+  // button up to this window, or the shell never sees HTMAXBUTTON.
+  ::SetWindowSubclass(flutter_controller_->view()->GetNativeWindow(),
+                      &FlutterWindow::ViewProc, 1,
+                      reinterpret_cast<DWORD_PTR>(this));
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -101,10 +196,19 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   destroying_ = true;
+  if (botguard_event_hook_ != nullptr) {
+    ::UnhookWinEvent(botguard_event_hook_);
+    botguard_event_hook_ = nullptr;
+  }
   smtc_channel_.reset();
   deeplink_channel_.reset();
+  webview_guard_channel_.reset();
+  caption_channel_.reset();
+  max_button_ = RECT{0, 0, 0, 0};
   wasapi_channel_.reset();
   if (flutter_controller_) {
+    ::RemoveWindowSubclass(flutter_controller_->view()->GetNativeWindow(),
+                           &FlutterWindow::ViewProc, 1);
     flutter_controller_ = nullptr;
   }
 
@@ -115,6 +219,45 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Media flyout / media-key press marshalled from SMTC's thread-pool
+  // callback; forwarded to Dart here, on the platform thread.
+  if (message == katmusic::SmtcChannel::kButtonMessage) {
+    if (smtc_channel_ && !destroying_) smtc_channel_->OnButtonMessage(wparam);
+    return 0;
+  }
+
+  // Snap Layouts: ahead of the plugins, which answer WM_NCHITTEST for the
+  // frameless resize borders.
+  if (!destroying_) {
+    switch (message) {
+      case WM_NCHITTEST:
+        if (InMaxButton(lparam)) return HTMAXBUTTON;
+        break;
+      case WM_NCMOUSEMOVE:
+        SetMaxHover(wparam == HTMAXBUTTON);
+        if (wparam == HTMAXBUTTON) {
+          TRACKMOUSEEVENT track{sizeof(track), TME_LEAVE | TME_NONCLIENT,
+                                hwnd, 0};
+          ::TrackMouseEvent(&track);
+          return 0;
+        }
+        break;
+      case WM_NCMOUSELEAVE:
+        SetMaxHover(false);
+        break;
+      case WM_NCLBUTTONDOWN:
+      case WM_NCLBUTTONDBLCLK:
+        if (wparam == HTMAXBUTTON) return 0;
+        break;
+      case WM_NCLBUTTONUP:
+        if (wparam == HTMAXBUTTON) {
+          ::ShowWindow(hwnd, ::IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+          return 0;
+        }
+        break;
+    }
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   // Never forward once destroy has begun: DestroyWindow() re-enters here
   // on the same thread while flutter_controller_ is being torn down.
@@ -154,4 +297,28 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
+}
+
+bool FlutterWindow::InMaxButton(LPARAM screen_point) const {
+  if (::IsRectEmpty(&max_button_) || !flutter_controller_) return false;
+  POINT pt{GET_X_LPARAM(screen_point), GET_Y_LPARAM(screen_point)};
+  ::ScreenToClient(flutter_controller_->view()->GetNativeWindow(), &pt);
+  return ::PtInRect(&max_button_, pt) != FALSE;
+}
+
+void FlutterWindow::SetMaxHover(bool hover) {
+  if (hover == max_hover_ || !caption_channel_) return;
+  max_hover_ = hover;
+  caption_channel_->InvokeMethod(
+      "hover", std::make_unique<flutter::EncodableValue>(hover));
+}
+
+LRESULT CALLBACK FlutterWindow::ViewProc(HWND hwnd, UINT message,
+                                         WPARAM wparam, LPARAM lparam,
+                                         UINT_PTR, DWORD_PTR self) {
+  if (message == WM_NCHITTEST &&
+      reinterpret_cast<FlutterWindow*>(self)->InMaxButton(lparam)) {
+    return HTTRANSPARENT;
+  }
+  return ::DefSubclassProc(hwnd, message, wparam, lparam);
 }

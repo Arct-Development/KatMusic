@@ -7,12 +7,14 @@ import 'package:katmusic_desktop/features/audio_output/pcm_format.dart';
 import 'package:katmusic_desktop/features/equalizer/headphone_profiles.dart';
 import 'package:katmusic_desktop/features/player/audio_graph.dart';
 import 'package:katmusic_desktop/features/player/loudness.dart';
-import 'package:katmusic_desktop/features/player/timed_mix.dart';
 
 void main() {
   test('data saver is a persisted quality with a short label', () {
     expect(Prefs.allowedQualities, contains(AudioQualityTiers.dataSaver));
-    expect(AudioQualityTiers.label(AudioQualityTiers.dataSaver), 'Data saver');
+    expect(
+      AudioQualityTiers.label(AudioQualityTiers.dataSaver),
+      'Data saver',
+    );
   });
 
   test('loudness uses tags when present and does not invent a scan', () {
@@ -24,7 +26,10 @@ void main() {
       LoudnessMath.tagGainDb(mode: 'album', trackGainDb: -6, albumGainDb: -3),
       -3,
     );
-    expect(LoudnessMath.tagGainDb(mode: 'album', trackGainDb: -6), -6);
+    expect(
+      LoudnessMath.tagGainDb(mode: 'album', trackGainDb: -6),
+      -6,
+    );
     expect(LoudnessMath.tagGainDb(mode: 'track'), isNull);
     expect(LoudnessMath.parseDb('-7.5 dB'), -7.5);
     expect(LoudnessMath.preampDb, 4);
@@ -53,15 +58,6 @@ void main() {
     expect(merged, contains('f=31'));
     expect(merged, contains('f=100'));
     expect(merged.startsWith('format=floatp,lavfi=['), isTrue);
-    final swept = afWithSweep(merged, 'lowpass=f=1000:poles=1');
-    expect(swept, contains('f=31'));
-    expect(swept, contains('lowpass=f=1000'));
-  });
-
-  test('timed mix sweep moves and is not a beat grid', () {
-    expect(TimedMixSweep.outgoing(0), contains('lowpass'));
-    expect(TimedMixSweep.incoming(1), contains('highpass'));
-    expect(TimedMixSweep.hz(16000, 180, 1).round(), 180);
   });
 
   test('loudness, automix, and pitch block bit-perfect', () {

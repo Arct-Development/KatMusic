@@ -54,15 +54,16 @@ class AudioOutputState {
     OutputPathStatus? path,
     PcmFormat? lastOpenedFormat,
     bool? probing,
-  }) => AudioOutputState(
-    devices: devices ?? this.devices,
-    selectedId: selectedId ?? this.selectedId,
-    exclusiveRequested: exclusiveRequested ?? this.exclusiveRequested,
-    bitPerfectRequested: bitPerfectRequested ?? this.bitPerfectRequested,
-    path: path ?? this.path,
-    lastOpenedFormat: lastOpenedFormat ?? this.lastOpenedFormat,
-    probing: probing ?? this.probing,
-  );
+  }) =>
+      AudioOutputState(
+        devices: devices ?? this.devices,
+        selectedId: selectedId ?? this.selectedId,
+        exclusiveRequested: exclusiveRequested ?? this.exclusiveRequested,
+        bitPerfectRequested: bitPerfectRequested ?? this.bitPerfectRequested,
+        path: path ?? this.path,
+        lastOpenedFormat: lastOpenedFormat ?? this.lastOpenedFormat,
+        probing: probing ?? this.probing,
+      );
 }
 
 /// Owns WASAPI device selection, exclusive-mode mpv properties, hardware
@@ -91,9 +92,9 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
   double _preMuteVolume = 1.0;
 
   AudioOutputController(this._ref, {WasapiEngine? engine})
-    : _engine = engine ?? const WasapiEngine(),
-      _negotiator = const FormatNegotiator(),
-      super(const AudioOutputState()) {
+      : _engine = engine ?? const WasapiEngine(),
+        _negotiator = const FormatNegotiator(),
+        super(const AudioOutputState()) {
     final prefs = _ref.read(prefsProvider);
     state = state.copyWith(
       selectedId: prefs.audioDeviceId,
@@ -122,9 +123,7 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
   }
 
   Future<void> onPlaybackChanged(
-    PlayerSnapshot? prev,
-    PlayerSnapshot next,
-  ) async {
+      PlayerSnapshot? prev, PlayerSnapshot next) async {
     await _onPlayback(prev, next);
   }
 
@@ -175,8 +174,7 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
   /// while any of those are active.
   Future<void> syncExclusiveGate() async {
     final playback = _ref.read(playbackServiceProvider.notifier);
-    final want =
-        state.exclusiveRequested && !playback.processingBlocksExclusive;
+    final want = state.exclusiveRequested && !playback.processingBlocksExclusive;
     if (playback.exclusiveApplied == want) {
       _rebuildPath();
       return;
@@ -199,20 +197,40 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
             device: device,
             exclusiveRequested: exclusive,
           );
+    // When using System Default in shared mode, leave mpv on `auto` instead
+    // of pinning the current default endpoint's concrete WASAPI GUID. Pinning
+    // a GUID breaks mpv's hotplug reload whenever headphones are unplugged,
+    // Bluetooth switches, or Windows wakes from sleep (`Failed to find device
+    // -> no sound`). Pin a specific GUID only when the user explicitly chose
+    // a device or when Exclusive Mode requires opening that exact endpoint.
+    final wantAuto = state.selectedId.isEmpty && !exclusive;
     await playback.configureWasapi(
       exclusive: exclusive,
-      mpvDevice: device?.mpvDeviceName ?? 'auto',
+      mpvDevice: wantAuto ? 'auto' : (device?.mpvDeviceName ?? 'auto'),
       // Only pin the software volume when the DAC really has a hardware
       // volume to take over. Without one the slider must keep working
       // (software gain), otherwise exclusive mode left volume dead.
       lockSoftwareVolume: hw,
       outputFormat: exclusive ? decision?.output : null,
     );
+    final vol = _ref.read(playbackServiceProvider).volume;
     if (hw) {
-      final vol = _ref.read(playbackServiceProvider).volume;
-      await _engine.setHardwareVolume(device!.id, vol);
-      wasapiLog('Hardware Volume: TRUE');
+      bool ok = await _engine.setHardwareVolume(device!.id, vol);
+      if (!ok) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        ok = await _engine.setHardwareVolume(device.id, vol);
+      }
+      if (ok) {
+        await playback.setVolume(vol, software: false);
+        wasapiLog('Hardware Volume: TRUE');
+      } else {
+        wasapiLog('Hardware volume write failed — falling back to software volume');
+        await playback.unlockSoftwareVolume();
+        await playback.setVolume(vol, software: true);
+      }
     } else {
+      await playback.unlockSoftwareVolume();
+      await playback.setVolume(vol, software: true);
       wasapiLog('Hardware Volume: FALSE');
     }
   }
@@ -265,33 +283,31 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
     _pendingHotplugEvents.add((reason: reason, id: id));
     _hotplugDebounce?.cancel();
     _hotplugDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final events = List<({String reason, String id})>.from(
-        _pendingHotplugEvents,
-      );
+      final events =
+          List<({String reason, String id})>.from(_pendingHotplugEvents);
       _pendingHotplugEvents.clear();
       final selected = state.selectedId;
       await refreshDevices();
-      final wasRemoved = events.any(
-        (e) => e.reason == 'removed' && selected.isNotEmpty && selected == e.id,
-      );
-      final shouldApply = events.any(
-        (e) =>
-            e.reason == 'added' ||
-            e.reason == 'default' ||
-            e.reason == 'state' ||
-            e.reason == 'property',
-      );
-      if (shouldApply || wasRemoved) {
-        await applyToPlayer();
-      }
+      final wasRemoved = events.any((e) =>
+          e.reason == 'removed' && (selected.isEmpty || selected == e.id));
       if (wasRemoved) {
         await _ref.read(playbackServiceProvider.notifier).pause();
         state = state.copyWith(
           path: state.path.copyWith(
             reason: BitPerfectReason.deviceUnavailable,
-            error: 'DAC disconnected',
+            error: selected.isNotEmpty
+                ? 'DAC disconnected'
+                : 'Audio device disconnected',
           ),
         );
+      }
+      final shouldApply = events.any((e) =>
+          e.reason == 'added' ||
+          e.reason == 'default' ||
+          e.reason == 'state' ||
+          e.reason == 'property');
+      if (shouldApply || wasRemoved) {
+        await applyToPlayer();
       }
     });
   }
@@ -373,7 +389,8 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
   }
 
   void _rebuildPath({PlayerSnapshot? snapshot}) {
-    final PlayerSnapshot snap = snapshot ?? _ref.read(playbackServiceProvider);
+    final PlayerSnapshot snap =
+        snapshot ?? _ref.read(playbackServiceProvider);
     final device = state.selected;
     final source = _sourceOf(snap.stream);
     final live = snap.outputFormat;
@@ -414,8 +431,7 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
     final hw = exclusive && (device?.hardwareVolume ?? false);
     final softwareVol = !hw && snap.volume < 0.999;
     final blocked = playback.processingBlocksExclusive;
-    final exclusiveActive =
-        exclusive &&
+    final exclusiveActive = exclusive &&
         !blocked &&
         playback.exclusiveApplied &&
         playback.wasapiError == null &&
@@ -427,11 +443,9 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
     final loudnessOn = prefs.loudnessMode != 'off';
     final autoMix = prefs.autoMixEnabled;
     final reason = _negotiator.evaluate(
-      decision:
-          decision ??
+      decision: decision ??
           FormatDecision(
-            source:
-                source ?? const PcmFormat(sampleRateHz: 44100, bitDepth: 16),
+            source: source ?? const PcmFormat(sampleRateHz: 44100, bitDepth: 16),
             output: live ?? source,
             nativeMatch: false,
             resampling: true,
@@ -508,18 +522,18 @@ class AudioOutputController extends StateNotifier<AudioOutputState> {
 
 final audioOutputProvider =
     StateNotifierProvider<AudioOutputController, AudioOutputState>((ref) {
-      final controller = AudioOutputController(ref);
-      final playback = ref.read(playbackServiceProvider.notifier);
-      playback.onProcessingChanged = () {
-        unawaited(controller.syncExclusiveGate());
-      };
-      ref.onDispose(() {
-        if (playback.onProcessingChanged != null) {
-          playback.onProcessingChanged = null;
-        }
-      });
-      ref.listen<PlayerSnapshot>(playbackServiceProvider, (prev, next) {
-        unawaited(controller.onPlaybackChanged(prev, next));
-      });
-      return controller;
-    });
+  final controller = AudioOutputController(ref);
+  final playback = ref.read(playbackServiceProvider.notifier);
+  playback.onProcessingChanged = () {
+    unawaited(controller.syncExclusiveGate());
+  };
+  ref.onDispose(() {
+    if (playback.onProcessingChanged != null) {
+      playback.onProcessingChanged = null;
+    }
+  });
+  ref.listen<PlayerSnapshot>(playbackServiceProvider, (prev, next) {
+    unawaited(controller.onPlaybackChanged(prev, next));
+  });
+  return controller;
+});

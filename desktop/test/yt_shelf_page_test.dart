@@ -14,19 +14,19 @@ import 'package:katmusic_desktop/ui/components/ambient.dart';
 /// A shelf longer than any home rail: the page is the only surface that is
 /// supposed to show all of it.
 YtHomeShelf _listenAgain() => YtHomeShelf(
-  title: 'Listen again',
-  trackCards: [
-    for (var i = 0; i < 12; i++)
-      YouTubeMusicTrack(
-        videoId: 'v$i',
-        title: 'Song $i',
-        artist: 'Artist $i',
-        // An official CDN URL: KatArtwork skips the iTunes upgrade for
-        // these, so the test never leaves a network timer behind.
-        artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/x$i.jpg',
-      ),
-  ],
-);
+      title: 'Listen again',
+      trackCards: [
+        for (var i = 0; i < 12; i++)
+          YouTubeMusicTrack(
+            videoId: 'v$i',
+            title: 'Song $i',
+            artist: 'Artist $i',
+            // An official CDN URL: WaveArtwork skips the iTunes upgrade for
+            // these, so the test never leaves a network timer behind.
+            artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/x$i.jpg',
+          ),
+      ],
+    );
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -53,7 +53,7 @@ Future<void> _pump(
       ],
       child: FluentApp(
         themeMode: ThemeMode.dark,
-        home: KatYtShelfPage(title: title),
+        home: WaveYtShelfPage(title: title),
       ),
     ),
   );

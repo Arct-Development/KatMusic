@@ -12,11 +12,8 @@ class _FakeTube extends Fake implements InnerTubeMusicApi {
   ];
 
   @override
-  Future<List<YouTubeMusicTrack>> searchSongs(
-    String query, {
-    int limit = 30,
-    bool prefetchStreams = false,
-  }) async {
+  Future<List<YouTubeMusicTrack>> searchSongs(String query,
+      {int limit = 30, bool prefetchStreams = false}) async {
     calls++;
     if (fail) throw Exception('offline');
     return result;
@@ -35,23 +32,16 @@ void main() {
   setUp(() {
     tube = _FakeTube();
     now = DateTime(2026, 11, 4, 12);
-    repo = SearchRepository(
-      _FakeApi(),
-      tube,
-      _FakeDb(),
-      () => '',
-      clock: () => now,
-    );
+    repo = SearchRepository(_FakeApi(), tube, _FakeDb(), () => '',
+        clock: () => now);
   });
 
-  test(
-    'a repeat query is served from the memo, case and spacing aside',
-    () async {
-      await repo.search(SearchTab.tracks, 'Hello');
-      await repo.search(SearchTab.tracks, '  hello ');
-      expect(tube.calls, 1);
-    },
-  );
+  test('a repeat query is served from the memo, case and spacing aside',
+      () async {
+    await repo.search(SearchTab.tracks, 'Hello');
+    await repo.search(SearchTab.tracks, '  hello ');
+    expect(tube.calls, 1);
+  });
 
   test('different tabs and queries do not share an entry', () async {
     await repo.search(SearchTab.tracks, 'a');

@@ -1,3 +1,4 @@
+// Network-dependent: excluded by `--exclude-tags golden,live` in CI.
 @Tags(['live'])
 library;
 
@@ -18,93 +19,95 @@ void main() {
   late InnerTubeMusicApi tube;
 
   setUpAll(() async {
-    tube = InnerTubeMusicApi(DioFactory.create(), SecureStore());
+    tube = InnerTubeMusicApi(
+        DioFactory.create(), SecureStore());
     await tube.loadPersistedConnection();
   });
 
   test('search returns songs', () async {
     final results = await tube.searchSongs(
-      'Bohemian Rhapsody Queen',
-      limit: 10,
-    );
+        'Bohemian Rhapsody Queen',
+        limit: 10);
     expect(results, isNotEmpty);
     expect(results.first.videoId, isNotEmpty);
     expect(results.first.title, isNotEmpty);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('search artists/albums/playlists', () async {
-    final artists = await tube.searchArtists('Queen', limit: 5);
+    final artists =
+        await tube.searchArtists('Queen', limit: 5);
     expect(artists, isNotEmpty);
-    expect(artists.first.browseId.startsWith('UC'), isTrue);
-    final albums = await tube.searchAlbums(
-      'A Night At The Opera Queen',
-      limit: 5,
-    );
+    expect(
+        artists.first.browseId.startsWith('UC'), isTrue);
+    final albums =
+        await tube.searchAlbums('A Night At The Opera Queen',
+            limit: 5);
     expect(albums, isNotEmpty);
-    final playlists = await tube.searchPlaylists('lofi hip hop', limit: 5);
+    final playlists =
+        await tube.searchPlaylists('lofi hip hop', limit: 5);
     expect(playlists, isNotEmpty);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('match + resolve + probe: Bohemian Rhapsody', () async {
-    final match = await tube.findBestMatchOrNull('Bohemian Rhapsody', 'Queen');
+    final match = await tube.findBestMatchOrNull(
+        'Bohemian Rhapsody', 'Queen');
     expect(match, isNotNull);
-    final stream = await tube.resolveAudioStream(match!.videoId);
+    final stream =
+        await tube.resolveAudioStream(match!.videoId);
     expect(stream, isNotNull);
     expect(stream!.url.startsWith('https://'), isTrue);
     expect(
-      stream.mimeType.startsWith('audio/') ||
-          stream.mimeType.startsWith('video/') ||
-          stream.mimeType.contains('mpegurl'),
-      isTrue,
-    );
+        stream.mimeType.startsWith('audio/') ||
+            stream.mimeType.startsWith('video/') ||
+            stream.mimeType.contains('mpegurl'),
+        isTrue);
     expect(stream.bitrateKbps, greaterThan(0));
     // ignore: avoid_print
-    print(
-      'RESOLVED bohemian itag-mime=${stream.audioCodec} '
-      'kbps=${stream.bitrateKbps} badge=${stream.qualityBadge}',
-    );
+    print('RESOLVED bohemian itag-mime=${stream.audioCodec} '
+        'kbps=${stream.bitrateKbps} badge=${stream.qualityBadge}');
   }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('match + resolve + probe: Hey Jude', () async {
-    final match = await tube.findBestMatchOrNull('Hey Jude', 'The Beatles');
+    final match = await tube.findBestMatchOrNull(
+        'Hey Jude', 'The Beatles');
     expect(match, isNotNull);
-    final stream = await tube.resolveAudioStream(match!.videoId);
+    final stream =
+        await tube.resolveAudioStream(match!.videoId);
     expect(stream, isNotNull);
     expect(
-      stream!.mimeType.startsWith('audio/') ||
-          stream.mimeType.startsWith('video/') ||
-          stream.mimeType.contains('mpegurl'),
-      isTrue,
-    );
+        stream!.mimeType.startsWith('audio/') ||
+            stream.mimeType.startsWith('video/') ||
+            stream.mimeType.contains('mpegurl'),
+        isTrue);
     // ignore: avoid_print
-    print(
-      'RESOLVED heyjude kbps=${stream.bitrateKbps} '
-      'mime=${stream.mimeType}',
-    );
+    print('RESOLVED heyjude kbps=${stream.bitrateKbps} '
+        'mime=${stream.mimeType}');
   }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('match + resolve + probe: Hello (Adele)', () async {
-    final match = await tube.findBestMatchOrNull('Hello', 'Adele');
+    final match = await tube.findBestMatchOrNull(
+        'Hello', 'Adele');
     expect(match, isNotNull);
-    final stream = await tube.resolveAudioStream(match!.videoId);
+    final stream =
+        await tube.resolveAudioStream(match!.videoId);
     expect(stream, isNotNull);
     expect(
-      stream!.mimeType.startsWith('audio/') ||
-          stream.mimeType.startsWith('video/') ||
-          stream.mimeType.contains('mpegurl'),
-      isTrue,
-    );
+        stream!.mimeType.startsWith('audio/') ||
+            stream.mimeType.startsWith('video/') ||
+            stream.mimeType.contains('mpegurl'),
+        isTrue);
     // ignore: avoid_print
-    print(
-      'RESOLVED hello kbps=${stream.bitrateKbps} '
-      'mime=${stream.mimeType}',
-    );
+    print('RESOLVED hello kbps=${stream.bitrateKbps} '
+        'mime=${stream.mimeType}');
   }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('related songs for a seed', () async {
-    final match = await tube.findBestMatchOrNull('Bohemian Rhapsody', 'Queen');
+    final match = await tube.findBestMatchOrNull(
+        'Bohemian Rhapsody', 'Queen');
     expect(match, isNotNull);
-    final related = await tube.fetchRelatedSongs(match!.videoId, limit: 10);
+    final related = await tube.fetchRelatedSongs(
+        match!.videoId,
+        limit: 10);
     expect(related, isNotEmpty);
   }, timeout: const Timeout(Duration(minutes: 2)));
 
@@ -128,11 +131,9 @@ void main() {
     }
     // Fingerprints only - no titles, urls or credentials.
     // ignore: avoid_print
-    print(
-      'HOME shelves=${shelves.length} '
-      'cards=${shelves.where((s) => s.isCardShelf).length} '
-      'songs=${shelves.where((s) => s.isTrackShelf).length} '
-      'kinds=${shelves.expand((s) => s.entities).map((e) => e.kind).toSet()}',
-    );
+    print('HOME shelves=${shelves.length} '
+        'cards=${shelves.where((s) => s.isCardShelf).length} '
+        'songs=${shelves.where((s) => s.isTrackShelf).length} '
+        'kinds=${shelves.expand((s) => s.entities).map((e) => e.kind).toSet()}');
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

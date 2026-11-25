@@ -32,7 +32,11 @@ enum MixStyle {
 }
 
 class MixPlan {
-  const MixPlan({required this.style, required this.overlap, this.reason = ''});
+  const MixPlan({
+    required this.style,
+    required this.overlap,
+    this.reason = '',
+  });
 
   final MixStyle style;
   final Duration overlap;
@@ -80,34 +84,23 @@ class MixPlanner {
   }) {
     if (_sameAlbum(outgoing, incoming)) {
       return const MixPlan(
-        style: MixStyle.gapless,
-        overlap: Duration.zero,
-        reason: 'album',
-      );
+          style: MixStyle.gapless, overlap: Duration.zero, reason: 'album');
     }
     if (_isSpokenOrLive(outgoing) || _isSpokenOrLive(incoming)) {
       return const MixPlan(
-        style: MixStyle.gapless,
-        overlap: Duration.zero,
-        reason: 'live',
-      );
+          style: MixStyle.gapless, overlap: Duration.zero, reason: 'live');
     }
 
     var overlapMs = requested.inMilliseconds;
     for (final d in [outgoing.duration, incoming.duration]) {
       if (d > Duration.zero) {
-        overlapMs = math.min(
-          overlapMs,
-          (d.inMilliseconds * maxShareOfTrack).round(),
-        );
+        overlapMs =
+            math.min(overlapMs, (d.inMilliseconds * maxShareOfTrack).round());
       }
     }
     if (overlapMs < minOverlap.inMilliseconds) {
       return const MixPlan(
-        style: MixStyle.gapless,
-        overlap: Duration.zero,
-        reason: 'short',
-      );
+          style: MixStyle.gapless, overlap: Duration.zero, reason: 'short');
     }
     // Whole seconds keep the log readable and the schedule stable.
     final overlap = Duration(seconds: (overlapMs / 1000).floor());
@@ -134,22 +127,6 @@ class MixPlanner {
     return (math.cos(angle), math.sin(angle));
   }
 
-  /// DJ-style gains for a beat-matched mix: the incoming track comes up
-  /// over the first 60% while the outgoing one stays at full level for the
-  /// first 40%, then lets go. Locked beats make the brief overlap at full
-  /// level sound like one groove instead of a clash.
-  static (double, double) djGains(double progress) {
-    final p = progress.clamp(0.0, 1.0);
-    double smooth(double x) {
-      final t = x.clamp(0.0, 1.0);
-      return t * t * (3 - 2 * t);
-    }
-
-    final inG = math.sin(smooth(p / 0.6) * math.pi / 2);
-    final outG = math.cos(smooth((p - 0.4) / 0.6) * math.pi / 2);
-    return (outG, inG);
-  }
-
   static bool _sameAlbum(MixTrackInfo a, MixTrackInfo b) {
     final x = _norm(a.album);
     final y = _norm(b.album);
@@ -159,11 +136,7 @@ class MixPlanner {
     if (x != y) return false;
     final ar = _norm(a.artist);
     final br = _norm(b.artist);
-    return ar.isEmpty ||
-        br.isEmpty ||
-        ar == br ||
-        ar.contains(br) ||
-        br.contains(ar);
+    return ar.isEmpty || br.isEmpty || ar == br || ar.contains(br) || br.contains(ar);
   }
 
   static bool _isSpokenOrLive(MixTrackInfo t) {

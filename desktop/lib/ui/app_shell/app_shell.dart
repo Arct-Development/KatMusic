@@ -22,9 +22,8 @@ import '../components/infobar_host.dart';
 import '../navigation/destinations.dart';
 import '../navigation/route_origin.dart';
 import '../navigation/side_rail.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../player_dock/player_dock.dart';
-import '../canvas/canvas_panel.dart';
 import '../now_playing/immersive.dart';
 import '../queue/queue_panel.dart';
 import '../theme/tokens.dart';
@@ -33,7 +32,8 @@ import '../../core/storage/prefs.dart';
 import '../../features/updates/update_service.dart';
 import 'command_palette.dart';
 import 'title_bar.dart';
-import 'kat_hotkeys.dart';
+import 'wave_hotkeys.dart';
+import '../../features/settings/ui_scale.dart';
 
 /// Rebuilt desktop shell — THIS IS A MUSIC PLAYER.
 ///
@@ -48,16 +48,16 @@ import 'kat_hotkeys.dart';
 /// └─────────────────────────────────────────────┘
 /// ```
 /// No permanent right panel. Queue slides over content when requested.
-class KatShell extends ConsumerStatefulWidget {
+class WaveShell extends ConsumerStatefulWidget {
   final String location;
   final Widget child;
-  const KatShell({super.key, required this.location, required this.child});
+  const WaveShell({super.key, required this.location, required this.child});
 
   @override
-  ConsumerState<KatShell> createState() => _KatShellState();
+  ConsumerState<WaveShell> createState() => _WaveShellState();
 }
 
-class _KatShellState extends ConsumerState<KatShell> {
+class _WaveShellState extends ConsumerState<WaveShell> {
   // Boot collapsed: the overlay rail covers content when open, so it
   // starts shut (toggle via hamburger, auto-collapses on outside tap).
   bool _railExpanded = false;
@@ -67,8 +67,6 @@ class _KatShellState extends ConsumerState<KatShell> {
   // the slide-out is painted instead of vanishing on the first frame.
   bool _queueSettled = true;
   bool _equalizerSettled = true;
-  // Canvas: docked on the RIGHT edge, pushes the page; queue/EQ overlay it.
-  bool _canvasOpen = false;
   bool _miniOpen = false;
 
   /// F11 pressed away from Now Playing: go fullscreen once the route
@@ -130,12 +128,12 @@ class _KatShellState extends ConsumerState<KatShell> {
       _miniOpen = true;
       _queueOpen = false;
       _equalizerOpen = false;
-      _canvasOpen = false;
     });
 
     try {
-      await windowManager.setMinimumSize(const Size(300, 64));
-      const miniSize = Size(380, 78);
+      final bounds = miniPlayerBounds(ref.read(prefsProvider).miniPlayerStyle);
+      final miniSize = bounds.size;
+      await windowManager.setMinimumSize(bounds.min);
       await windowManager.setSize(miniSize);
       if (_lastMiniPos != null) {
         await windowManager.setPosition(_lastMiniPos!);
@@ -215,11 +213,9 @@ class _KatShellState extends ConsumerState<KatShell> {
   bool _dockLyricsActive = false;
   bool _dockQueueActive = false;
   bool _dockEqualizerActive = false;
-  bool _dockCanvasActive = false;
   bool _dockCompact = false;
 
   void _closeQueue() => setState(() => _queueOpen = false);
-  void _closeCanvas() => setState(() => _canvasOpen = false);
   void _closeEqualizer() => setState(() => _equalizerOpen = false);
 
   /// Cached dock: same instance across navigations (glyphs + cover art
@@ -229,31 +225,26 @@ class _KatShellState extends ConsumerState<KatShell> {
     required bool lyricsActive,
     required bool queueActive,
     required bool equalizerActive,
-    required bool canvasActive,
     bool compact = false,
   }) {
     if (_dockCache == null ||
         _dockLyricsActive != lyricsActive ||
         _dockQueueActive != queueActive ||
         _dockEqualizerActive != equalizerActive ||
-        _dockCanvasActive != canvasActive ||
         _dockCompact != compact) {
       _dockLyricsActive = lyricsActive;
       _dockQueueActive = queueActive;
       _dockEqualizerActive = equalizerActive;
-      _dockCanvasActive = canvasActive;
       _dockCompact = compact;
       // The dock is structural: reserves 80px on every view, including
       // Now Playing — its in-page transport was removed so this dock is
       // the single control surface.
-      _dockCache = KatPlayerDock(
+      _dockCache = WavePlayerDock(
         compact: compact,
         onExpand: _expandNowPlaying,
         lyricsActive: lyricsActive,
         queueActive: queueActive,
         equalizerActive: equalizerActive,
-        canvasActive: canvasActive,
-        onToggleCanvas: () => setState(() => _canvasOpen = !_canvasOpen),
         onToggleMini: _toggleMiniPlayer,
         // Lyrics live on Now Playing (focus mode is its top-bar toggle).
         onToggleLyrics: _openNowPlaying,
@@ -279,7 +270,7 @@ class _KatShellState extends ConsumerState<KatShell> {
         _titleCanForward != canGoForward) {
       _titleCanBack = canGoBack;
       _titleCanForward = canGoForward;
-      _titleBarCache = KatTitleBar(
+      _titleBarCache = WaveTitleBar(
         searchController: _searchController,
         searchFocus: _searchFocus,
         onSearchSubmit: _submitSearch,
@@ -295,6 +286,7 @@ class _KatShellState extends ConsumerState<KatShell> {
     return _titleBarCache!;
   }
 
+
   @override
   void initState() {
     super.initState();
@@ -305,7 +297,7 @@ class _KatShellState extends ConsumerState<KatShell> {
     _wireHotkeys();
     // Truly global in-app shortcuts: HardwareKeyboard fires before focus
     // dispatch, so Space/arrows can't be eaten by the focused button or
-    // list (see kat_hotkeys.dart).
+    // list (see wave_hotkeys.dart).
     HardwareKeyboard.instance.addHandler(_onGlobalKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkUpdatesOnLaunch();
@@ -327,8 +319,8 @@ class _KatShellState extends ConsumerState<KatShell> {
     if (!mounted) return false;
     return handleWaveHotkey(
       event,
-      KatHotkeyActions(
-        isTyping: () => katIsTypingFocused(_searchFocus),
+      WaveHotkeyActions(
+        isTyping: () => waveIsTypingFocused(_searchFocus),
         hasTrack: () => ref.read(playbackServiceProvider).current != null,
         togglePlay: () {
           if (mounted) ref.read(playbackServiceProvider.notifier).toggle();
@@ -355,6 +347,15 @@ class _KatShellState extends ConsumerState<KatShell> {
         goForward: () {
           if (mounted) _goForward();
         },
+        zoomIn: () {
+          if (mounted) ref.read(uiScaleProvider.notifier).zoomIn();
+        },
+        zoomOut: () {
+          if (mounted) ref.read(uiScaleProvider.notifier).zoomOut();
+        },
+        resetZoom: () {
+          if (mounted) ref.read(uiScaleProvider.notifier).reset();
+        },
         handleEscape: () {
           if (!mounted) return false;
           return _handleEscape();
@@ -379,9 +380,6 @@ class _KatShellState extends ConsumerState<KatShell> {
       return true;
     } else if (_queueOpen) {
       setState(() => _queueOpen = false);
-      return true;
-    } else if (_canvasOpen) {
-      setState(() => _canvasOpen = false);
       return true;
     } else if (_miniOpen) {
       _exitMiniPlayer();
@@ -486,7 +484,7 @@ class _KatShellState extends ConsumerState<KatShell> {
   }
 
   @override
-  void didUpdateWidget(KatShell oldWidget) {
+  void didUpdateWidget(WaveShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location == widget.location) return;
     _syncSearchField(widget.location);
@@ -534,18 +532,25 @@ class _KatShellState extends ConsumerState<KatShell> {
     if (clean == '/liked' || clean.startsWith('/liked/')) return 3;
     if (clean == '/albums' ||
         clean.startsWith('/albums/') ||
-        clean.startsWith('/album/'))
+        clean.startsWith('/album/')) {
       return 4;
+    }
     if (clean == '/artists' ||
         clean.startsWith('/artists/') ||
-        clean.startsWith('/artist/'))
+        clean.startsWith('/artist/')) {
       return 5;
+    }
     if (clean == '/playlists' ||
         clean.startsWith('/playlists/') ||
-        clean.startsWith('/ytplaylist/'))
+        clean.startsWith('/ytplaylist/')) {
       return 6;
+    }
     if (clean == '/podcasts' || clean.startsWith('/podcasts/')) return 7;
-    if (clean == '/downloads' || clean.startsWith('/downloads/')) return 8;
+    if (clean == '/library' ||
+        clean.startsWith('/library/') ||
+        clean == '/downloads') {
+      return 8;
+    }
     return null;
   }
 
@@ -559,7 +564,12 @@ class _KatShellState extends ConsumerState<KatShell> {
       return;
     }
     final branchIndex = _branchForPath(path);
-    if (branchIndex != null && widget.child is StatefulNavigationShell) {
+    // goBranch lands on the tab's root, so detail paths (/album/<id>,
+    // /artist/<name>) must go by path or they open the 30-item list.
+    final isTabRoot = Uri.parse(path).pathSegments.length <= 1;
+    if (branchIndex != null &&
+        isTabRoot &&
+        widget.child is StatefulNavigationShell) {
       final shell = widget.child as StatefulNavigationShell;
       // Defensive: only goBranch if index is in bounds
       if (branchIndex >= 0 && branchIndex < shell.route.branches.length) {
@@ -582,7 +592,7 @@ class _KatShellState extends ConsumerState<KatShell> {
   }
 
   /// Opens Now Playing *on top* of the current page, so the page the user was
-  /// on is still underneath when it crossfades closed over it (see katOpen).
+  /// on is still underneath when it crossfades closed over it (see waveOpen).
   /// Dock expand button: opens Now Playing; pressed again while already
   /// there it goes edge-to-edge (see [nowPlayingImmersiveProvider]).
   void _expandNowPlaying() {
@@ -615,7 +625,7 @@ class _KatShellState extends ConsumerState<KatShell> {
       _miniOpen = false;
       _queueOpen = false;
     });
-    katOpen(context, '/now');
+    waveOpen(context, '/now');
   }
 
   void _goBack() {
@@ -732,19 +742,17 @@ class _KatShellState extends ConsumerState<KatShell> {
       }
       if (say != null) {
         SemanticsService.sendAnnouncement(
-          View.of(context),
-          say,
-          TextDirection.ltr,
-        );
+            View.of(context), say, TextDirection.ltr);
       }
     });
-    final active = katActivePath(widget.location);
+    final active = waveActivePath(widget.location);
     // Responsive: rail collapses at canonical compact breakpoint (900),
     // never a permanent right panel.
     final collapsed = width < 900 ? true : !_railExpanded;
-    final routePath = katRoutePath(widget.location);
+    final routePath = waveRoutePath(widget.location);
     final isNowPlaying = routePath.startsWith('/now');
-    final immersive = ref.watch(nowPlayingImmersiveProvider) && isNowPlaying;
+    final immersive =
+        ref.watch(nowPlayingImmersiveProvider) && isNowPlaying;
     // Immersive only lives on Now Playing: leaving the route resets it.
     if (!isNowPlaying && ref.read(nowPlayingImmersiveProvider)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -757,7 +765,8 @@ class _KatShellState extends ConsumerState<KatShell> {
     final pendingAt = _pendingImmersiveAt;
     if (pendingAt != null && isNowPlaying) {
       _pendingImmersiveAt = null;
-      if (DateTime.now().difference(pendingAt) < const Duration(seconds: 3)) {
+      if (DateTime.now().difference(pendingAt) <
+          const Duration(seconds: 3)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             ref.read(nowPlayingImmersiveProvider.notifier).state = true;
@@ -770,7 +779,6 @@ class _KatShellState extends ConsumerState<KatShell> {
         setState(() {
           _queueOpen = false;
           _equalizerOpen = false;
-          _canvasOpen = false;
           _railExpanded = false;
         });
       }
@@ -785,11 +793,17 @@ class _KatShellState extends ConsumerState<KatShell> {
     // HardwareKeyboard handler reads these fields).
     _lastCollapsed = collapsed;
     _lastIsNowPlaying = isNowPlaying;
+    // Glassmorphism: the dock floats over the page so content scrolls on
+    // under the frosted glass. Pages get its height as bottom padding
+    // (WaveDockSpacer / MediaQuery) to keep their last row reachable.
+    // Now Playing lays its own stage out around the dock, so it keeps it.
+    final floatDock = waveGlassOn(context) && !immersive && !isNowPlaying;
+    const floatDockH = WaveDensity.dock + 1;
 
     if (_miniOpen) {
       return Mica(
-        backgroundColor: katBackground(context),
-        child: KatMiniPlayer(
+        backgroundColor: waveBackground(context),
+        child: WaveMiniPlayer(
           onClose: () => _exitMiniPlayer(),
           onExpand: () => _exitMiniPlayer(expand: true),
         ),
@@ -800,13 +814,13 @@ class _KatShellState extends ConsumerState<KatShell> {
     // purpose. Those only fire via focus-bubbling, so focused buttons and
     // lists ate Space/arrows before the shell saw them. All app-wide keys
     // live in the HardwareKeyboard handler (see initState/_onGlobalKey +
-    // kat_hotkeys.dart), which runs before focus dispatch and works from
+    // wave_hotkeys.dart), which runs before focus dispatch and works from
     // anywhere. Enter is deliberately left to focused controls.
     return Mica(
-      backgroundColor: katBackground(context),
+      backgroundColor: waveBackground(context),
       // Single pointer observer for the whole chrome. Route
       // transitions anchor at wherever the user last released the
-      // pointer (see KatRouteOrigin): one Listener here beats a global
+      // pointer (see WaveRouteOrigin): one Listener here beats a global
       // key per card, translucent keeps it out of the hit-test verdict,
       // and pointer-up is dispatched before the gesture arena resolves
       // the tap, so the anchor is always in place for the navigation it
@@ -823,8 +837,7 @@ class _KatShellState extends ConsumerState<KatShell> {
             return KeyEventResult.ignored;
           }
           final k = event.logicalKey;
-          final vertical =
-              k == LogicalKeyboardKey.arrowUp ||
+          final vertical = k == LogicalKeyboardKey.arrowUp ||
               k == LogicalKeyboardKey.arrowDown;
           if (k != LogicalKeyboardKey.arrowLeft &&
               k != LogicalKeyboardKey.arrowRight &&
@@ -832,272 +845,293 @@ class _KatShellState extends ConsumerState<KatShell> {
             return KeyEventResult.ignored;
           }
           // Up/Down are volume only outside nav scopes (menus, tables).
-          if (vertical && katNavScopeOwnsUpDown()) {
+          if (vertical && waveNavScopeOwnsUpDown()) {
             return KeyEventResult.ignored;
           }
           final hk = HardwareKeyboard.instance;
           if (hk.isControlPressed || hk.isAltPressed || hk.isMetaPressed) {
             return KeyEventResult.ignored;
           }
-          if (katIsTypingFocused(_searchFocus) ||
+          if (waveIsTypingFocused(_searchFocus) ||
               ref.read(playbackServiceProvider).current == null) {
             return KeyEventResult.ignored;
           }
           return KeyEventResult.handled;
         },
         child: Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerUp: (event) => KatRouteOrigin.record(event.position),
-          onPointerDown: (event) {
-            if (event.kind != PointerDeviceKind.mouse) return;
-            if (event.buttons & kBackMouseButton != 0) {
-              _goBack();
-            } else if (event.buttons & kForwardMouseButton != 0) {
-              _goForward();
-            }
-          },
-          child: Column(
-            children: [
-              if (!immersive) ...[
-                _titleBarFor(_backStack.isNotEmpty, _forwardStack.isNotEmpty),
-                const KatInfoBarHost(),
-              ],
-              // Overlay rail: the content below keeps full width and the
-              // rail floats above its left edge (60 collapsed, 200
-              // expanded). Toggling used to reflow the whole window, so
-              // every animation frame re-laid-out every page + panel.
-              // Now constraints stay constant during the animation and
-              // only the tiny rail subtree lays out per tick.
-              Expanded(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: DropTarget(
-                        onDragEntered: (_) =>
-                            setState(() => _draggingFiles = true),
-                        onDragExited: (_) =>
-                            setState(() => _draggingFiles = false),
-                        onDragDone: (details) {
-                          setState(() => _draggingFiles = false);
-                          _dropFiles(details.files.map((f) => f.path).toList());
-                        },
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final qw = (constraints.maxWidth * 0.9)
-                                .clamp(280.0, 360.0)
-                                .toDouble();
-                            final ew = (constraints.maxWidth * 0.52)
-                                .clamp(440.0, 560.0)
-                                .toDouble();
+        behavior: HitTestBehavior.translucent,
+        onPointerUp: (event) => WaveRouteOrigin.record(event.position),
+        onPointerDown: (event) {
+          if (event.kind != PointerDeviceKind.mouse) return;
+          if (event.buttons & kBackMouseButton != 0) {
+            _goBack();
+          } else if (event.buttons & kForwardMouseButton != 0) {
+            _goForward();
+          }
+        },
+        child: Column(
+          children: [
+            if (!immersive) ...[
+              _titleBarFor(_backStack.isNotEmpty, _forwardStack.isNotEmpty),
+              const WaveInfoBarHost(),
+            ],
+            // Overlay rail: the content below keeps full width and the
+            // rail floats above its left edge (60 collapsed, 200
+            // expanded). Toggling used to reflow the whole window, so
+            // every animation frame re-laid-out every page + panel.
+            // Now constraints stay constant during the animation and
+            // only the tiny rail subtree lays out per tick.
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: DropTarget(
+                      onDragEntered: (_) =>
+                          setState(() => _draggingFiles = true),
+                      onDragExited: (_) =>
+                          setState(() => _draggingFiles = false),
+                      onDragDone: (details) {
+                        setState(() => _draggingFiles = false);
+                        _dropFiles(details.files.map((f) => f.path).toList());
+                      },
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final qw = (constraints.maxWidth * 0.9)
+                              .clamp(280.0, 360.0)
+                              .toDouble();
+                          final ew = (constraints.maxWidth * 0.52)
+                              .clamp(440.0, 560.0)
+                              .toDouble();
 
-                            final railW = immersive
-                                ? 0.0
-                                : (collapsed
-                                      ? KatDensity.railCollapsed
-                                      : KatDensity.railExpanded);
-                            // Exact 9:16 from the content height; the page
-                            // keeps its minimum width.
-                            final cw = canvasPanelWidth(
-                              height: constraints.maxHeight,
-                              available: constraints.maxWidth - railW,
-                            );
+                          final railW = immersive
+                              ? 0.0
+                              : (collapsed
+                                  ? WaveDensity.railCollapsed
+                                  : WaveDensity.railExpanded);
 
-                            return Stack(
-                              children: [
-                                // Page reserves the collapsed rail
-                                // strip; the rail floats above it.
-                                // Side panels (queue / equalizer) dock
-                                // beside the page instead of covering it,
-                                // so the page re-lays out to the space
-                                // left and stays fully usable.
-                                AnimatedPositioned(
-                                  duration: katMotion(
-                                    context,
-                                    KatMotion.normal,
-                                  ),
-                                  curve: Curves.easeOutCubic,
-                                  // The expanded rail is the collapsed
-                                  // rail grown wider: the page makes room
-                                  // for it and it stays until toggled off.
+                          return Stack(
+                            children: [
+                              Positioned(
+                                left: railW,
+                                top: 0,
+                                bottom: 0,
+                                right: 0,
+                                child: _SlideToInset(
                                   left: railW,
-                                  top: 0,
-                                  bottom: 0,
-                                  // Queue / equalizer overlay the page (they
-                                  // do not push it); only Canvas docks.
-                                  right: _canvasOpen ? cw : 0,
-                                  child: widget.child,
-                                ),
-                                // Canvas — docks on the right edge and pushes
-                                // the page. Queue / equalizer are painted
-                                // after it, so they overlay it.
-                                AnimatedPositioned(
-                                  duration: katMotion(
-                                    context,
-                                    KatMotion.normal,
-                                  ),
-                                  curve: Curves.easeOutCubic,
-                                  top: 0,
-                                  bottom: 0,
-                                  right: _canvasOpen ? 0 : -(cw + 12),
-                                  width: cw,
-                                  child: ExcludeFocus(
-                                    excluding: !_canvasOpen,
-                                    child: IgnorePointer(
-                                      ignoring: !_canvasOpen,
-                                      child: Offstage(
-                                        offstage: !_canvasOpen,
-                                        child: KatCanvasPanel(
-                                          open: _canvasOpen,
-                                          onClose: _closeCanvas,
-                                        ),
-                                      ),
-                                    ),
+                                  child: RepaintBoundary(
+                                    child: floatDock
+                                        ? MediaQuery(
+                                            data: MediaQuery.of(context)
+                                                .copyWith(
+                                              padding: MediaQuery.paddingOf(
+                                                      context)
+                                                  .copyWith(bottom: floatDockH),
+                                            ),
+                                            child: widget.child,
+                                          )
+                                        : widget.child,
                                   ),
                                 ),
-                                // Rail: one solid strip, 60px collapsed /
-                                // 200px expanded.
-                                if (!immersive)
-                                  Positioned(
-                                    left: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    child: KatSideRail(
-                                      expanded: !collapsed,
-                                      active: active,
-                                      onGo: _go,
-                                    ),
-                                  ),
-                                if (_draggingFiles)
-                                  Positioned.fill(
-                                    child: Container(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                      child: const Center(
-                                        child: Text(
-                                          'Drop audio files to play',
-                                          style: KatType.sectionTitle,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                // Contextual queue — slides smoothly from right.
-                                AnimatedPositioned(
-                                  duration: katMotion(
-                                    context,
-                                    KatMotion.normal,
-                                  ),
-                                  curve: Curves.easeOutCubic,
+                              ),
+                              // Rail: one solid strip, 60px collapsed /
+                              // 200px expanded.
+                              if (!immersive)
+                                Positioned(
+                                  left: 0,
                                   top: 0,
-                                  bottom: 0,
-                                  right: _queueOpen ? 0 : -(qw + 12),
-                                  onEnd: () {
-                                    if (_queueSettled == _queueOpen) {
-                                      setState(
-                                        () => _queueSettled = !_queueOpen,
-                                      );
-                                    }
-                                  },
-                                  width: qw,
-                                  child: ExcludeFocus(
-                                    excluding: !_queueOpen,
-                                    child: IgnorePointer(
-                                      ignoring: !_queueOpen,
-                                      // Offstage when slid shut: the 8-row
-                                      // list (images, menus, tooltips)
-                                      // skips paint/raster entirely, so
-                                      // every page navigation no longer
-                                      // rasterizes a hidden panel.
-                                      // Layout still runs (cheap box
-                                      // math); scroll offset is kept.
-                                      child: Offstage(
-                                        offstage: !_queueOpen && _queueSettled,
+                                  bottom: floatDock ? floatDockH : 0,
+                                  child: WaveSideRail(
+                                    expanded: !collapsed,
+                                    active: active,
+                                    onGo: _go,
+                                  ),
+                                ),
+                              if (_draggingFiles)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black.withValues(alpha: 0.4),
+                                    child: const Center(
+                                      child: Text(
+                                        'Drop audio files to play',
+                                        style: WaveType.sectionTitle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Contextual queue — slides smoothly from right.
+                              AnimatedPositioned(
+                                duration: waveMotion(
+                                  context,
+                                  WaveMotion.normal,
+                                ),
+                                curve: Curves.easeOutCubic,
+                                top: 0,
+                                bottom: floatDock ? floatDockH : 0,
+                                right: _queueOpen ? 0 : -(qw + 12),
+                                onEnd: () {
+                                  if (_queueSettled == _queueOpen) {
+                                    setState(
+                                        () => _queueSettled = !_queueOpen);
+                                  }
+                                },
+                                width: qw,
+                                child: ExcludeFocus(
+                                  excluding: !_queueOpen,
+                                  child: IgnorePointer(
+                                    ignoring: !_queueOpen,
+                                    // Offstage when slid shut: the 8-row
+                                    // list (images, menus, tooltips)
+                                    // skips paint/raster entirely, so
+                                    // every page navigation no longer
+                                    // rasterizes a hidden panel.
+                                    // Layout still runs (cheap box
+                                    // math); scroll offset is kept.
+                                    child: Offstage(
+                                      offstage: !_queueOpen && _queueSettled,
+                                      child: RepaintBoundary(
                                         child: _queuePanelCache ??=
-                                            KatQueuePanel(onClose: _closeQueue),
+                                            WaveQueuePanel(
+                                                onClose: _closeQueue),
                                       ),
                                     ),
                                   ),
                                 ),
-                                // Contextual Equalizer & Studio Master Clarity drawer — slides smoothly from right.
-                                AnimatedPositioned(
-                                  duration: katMotion(
-                                    context,
-                                    KatMotion.normal,
-                                  ),
-                                  curve: Curves.easeOutCubic,
-                                  top: 0,
-                                  bottom: 0,
-                                  right: _equalizerOpen ? 0 : -(ew + 12),
-                                  onEnd: () {
-                                    if (_equalizerSettled == _equalizerOpen) {
-                                      setState(
-                                        () =>
-                                            _equalizerSettled = !_equalizerOpen,
-                                      );
-                                    }
-                                  },
-                                  width: ew,
-                                  child: ExcludeFocus(
-                                    excluding: !_equalizerOpen,
-                                    child: IgnorePointer(
-                                      ignoring: !_equalizerOpen,
-                                      child: Offstage(
-                                        offstage:
-                                            !_equalizerOpen &&
-                                            _equalizerSettled,
+                              ),
+                              // Contextual Equalizer & Studio Master Clarity drawer — slides smoothly from right.
+                              AnimatedPositioned(
+                                duration: waveMotion(
+                                  context,
+                                  WaveMotion.normal,
+                                ),
+                                curve: Curves.easeOutCubic,
+                                top: 0,
+                                bottom: floatDock ? floatDockH : 0,
+                                right: _equalizerOpen ? 0 : -(ew + 12),
+                                onEnd: () {
+                                  if (_equalizerSettled == _equalizerOpen) {
+                                    setState(() =>
+                                        _equalizerSettled = !_equalizerOpen);
+                                  }
+                                },
+                                width: ew,
+                                child: ExcludeFocus(
+                                  excluding: !_equalizerOpen,
+                                  child: IgnorePointer(
+                                    ignoring: !_equalizerOpen,
+                                    child: Offstage(
+                                      offstage: !_equalizerOpen && _equalizerSettled,
+                                      child: RepaintBoundary(
                                         child: _equalizerPanelCache ??=
-                                            KatEqualizerPanel(
+                                            WaveEqualizerPanel(
                                               onClose: _closeEqualizer,
                                             ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                // Immersive: the dock floats over the stage
-                                // and fades with the page's other controls
-                                // (it is not in the Column below then).
-                                // Painted last so the queue / equalizer
-                                // panels never cover its toggles.
-                                if (immersive)
-                                  AnimatedPositioned(
-                                    duration: katMotion(
-                                      context,
-                                      KatMotion.normal,
-                                    ),
-                                    curve: Curves.easeOutCubic,
-                                    left: 0,
-                                    right: _canvasOpen ? cw : 0,
-                                    bottom: 0,
-                                    child: KatImmersiveDockOverlay(
-                                      child: _dockFor(
-                                        lyricsActive: isNowPlaying,
-                                        queueActive: _queueOpen,
-                                        equalizerActive: _equalizerOpen,
-                                        canvasActive: _canvasOpen,
-                                        compact: true,
-                                      ),
+                              ),
+                              // Immersive: the dock floats over the stage
+                              // and fades with the page's other controls
+                              // (it is not in the Column below then).
+                              // Painted last so the queue / equalizer
+                              // panels never cover its toggles.
+                              if (immersive)
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: WaveImmersiveDockOverlay(
+                                    child: _dockFor(
+                                      lyricsActive: isNowPlaying,
+                                      queueActive: _queueOpen,
+                                      equalizerActive: _equalizerOpen,
+                                      compact: true,
                                     ),
                                   ),
-                              ],
-                            );
-                          },
-                        ),
+                                ),
+                              // Glassmorphism: the dock over the page,
+                              // content scrolling on under the glass.
+                              if (floatDock)
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: _dockFor(
+                                    lyricsActive: isNowPlaying,
+                                    queueActive: _queueOpen,
+                                    equalizerActive: _equalizerOpen,
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    if (!immersive)
-                      _dockFor(
-                        lyricsActive: isNowPlaying,
-                        queueActive: _queueOpen,
-                        equalizerActive: _equalizerOpen,
-                        canvasActive: _canvasOpen,
-                      ),
-                  ],
-                ),
+                  ),
+                  if (!immersive && !floatDock)
+                    _dockFor(
+                      lyricsActive: isNowPlaying,
+                      queueActive: _queueOpen,
+                      equalizerActive: _equalizerOpen,
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
         ),
       ),
     );
   }
+}
+
+/// Lays [child] out at its final [left] inset at once and slides it there
+/// with a paint-only translation, so a rail toggle costs one page layout
+/// instead of one per animation frame. The offset tracks the rail's own
+/// width animation (same duration and curve), so the page edge stays glued
+/// to the rail. Overflow during the slide is covered by the rail / panels
+/// painted above, or falls outside the window.
+class _SlideToInset extends StatefulWidget {
+  final double left;
+  final Widget child;
+  const _SlideToInset({required this.left, required this.child});
+
+  @override
+  State<_SlideToInset> createState() => _SlideToInsetState();
+}
+
+class _SlideToInsetState extends State<_SlideToInset>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, value: 1);
+  double _from = 0;
+
+  double get _offset => _from * (1 - WaveMotion.standard.transform(_c.value));
+
+  @override
+  void didUpdateWidget(covariant _SlideToInset old) {
+    super.didUpdateWidget(old);
+    if (old.left == widget.left) return;
+    // Start from wherever the page is painted now, so a re-toggle
+    // mid-flight continues without a jump.
+    _from = _offset + (old.left - widget.left);
+    _c.duration = waveMotion(context, WaveMotion.normal);
+    _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  // Always a Transform (identity at rest) so the page subtree is never
+  // reparented when an animation starts or ends.
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _c,
+        child: widget.child,
+        builder: (context, child) =>
+            Transform.translate(offset: Offset(_offset, 0), child: child),
+      );
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import 'animated_artwork_service.dart';
 import '../diagnostics/trace_crumb.dart';
+import '../platform/allocator_tuning.dart';
 
 /// App-scoped muted motion-art player.
 ///
@@ -27,7 +29,37 @@ import '../diagnostics/trace_crumb.dart';
 /// path. Off by default everywhere; see the note at its use.
 const bool _artworkHardwarePresent = bool.fromEnvironment('LW_ARTWORK_HW');
 
+/// `--dart-define=LW_ARTWORK_SW_DECODE=1` forces CPU decode on Windows.
+const bool _forceSoftwareDecode =
+    bool.fromEnvironment('LW_ARTWORK_SW_DECODE');
+
+/// Decoder for motion art. Windows uses D3D11VA in *copy-back* mode: the
+/// GPU decodes, frames come back to system memory, and presentation stays
+/// on the software pixel-buffer path above (no D3D11 texture interop, so
+/// the fail-fast that path caused cannot return). Elsewhere stays `no`
+/// (VA-API dmabuf interop yields zero frames on Linux+Mesa).
+String get _artworkHwdec =>
+    Platform.isWindows && !_forceSoftwareDecode ? 'd3d11va-copy' : 'no';
+
+/// Output edge for the unified motion-art / Canvas texture: 1080×1080 sits
+/// strictly within media_kit_video's SW_RENDERING_MAX_HEIGHT (1080) while
+/// preserving full 1:1 native 1080px horizontal resolution on 1080×1920
+/// Spotify Canvases (cropped via panscan=1.0 instead of shrinking to 608px
+/// and re-stretching 2× in Full Bleed) and 1080×1080 Apple/Tidal covers.
+const int _artworkOutputPx = 1080;
+
 class AnimatedArtworkSession extends ChangeNotifier {
+  /// Fixed texture size. Square for cover clips; the canvas panel passes
+  /// 9:16 — a square texture baked pillarbox bars into tall clips that
+  /// BoxFit.cover could not remove.
+  AnimatedArtworkSession({
+    this.outputWidth = _artworkOutputPx,
+    this.outputHeight = _artworkOutputPx,
+  });
+
+  final int outputWidth;
+  final int outputHeight;
+
   Player? _player;
   VideoController? _controller;
   bool _controllerReady = false;
@@ -55,6 +87,10 @@ class AnimatedArtworkSession extends ChangeNotifier {
   // pauses, detach pauses, and track-change reloads never resume through
   // it. Merely unfocused (side-by-side) never sets it.
   bool _pausedForBackground = false;
+  // True while audio playback is paused: freezes Canvas on the current crisp
+  // frame so mpv stops decoding & uploading textures while music is paused.
+  bool _pausedForPlayback = false;
+  bool get _shouldPause => _pausedForBackground || _pausedForPlayback;
   // Serializes native ops (open/stop/dispose): each waits for the previous.
   Future<void> _tail = Future.value();
 
@@ -131,12 +167,13 @@ class AnimatedArtworkSession extends ChangeNotifier {
     if (!backgrounded) {
       if (!_pausedForBackground) return;
       _pausedForBackground = false;
+      if (_pausedForPlayback) return;
       unawaited(
         _serialized(() async {
           try {
             // Detached tiles stay paused: detach's own timer owns them,
             // and resuming a dead surface would flash black on return.
-            if (_refs > 0 && _player != null) {
+            if (_refs > 0 && _player != null && !_shouldPause) {
               await _ensureLoopProperties(_player!);
               if (_player!.state.completed) {
                 await _player!.seek(Duration.zero);
@@ -154,6 +191,39 @@ class AnimatedArtworkSession extends ChangeNotifier {
       _serialized(() async {
         try {
           await _player?.pause();
+        } catch (_) {}
+      }),
+    );
+  }
+
+  /// Syncs Canvas decoding with audio playback play/pause. Freezes on the
+  /// current decoded frame while paused so CPU/GPU decode drops to zero.
+  void setPlaybackPaused(bool paused) {
+    if (_disposed || _pausedForPlayback == paused) return;
+    _pausedForPlayback = paused;
+    if (paused) {
+      // Wait for first frame if a new clip is still opening; mark() pauses it.
+      if (!_ready || _player == null) return;
+      unawaited(
+        _serialized(() async {
+          try {
+            if (_pausedForPlayback) await _player?.pause();
+          } catch (_) {}
+        }),
+      );
+      return;
+    }
+    if (_pausedForBackground || _refs == 0 || _player == null) return;
+    unawaited(
+      _serialized(() async {
+        try {
+          if (_refs > 0 && _player != null && !_shouldPause) {
+            await _ensureLoopProperties(_player!);
+            if (_player!.state.completed) {
+              await _player!.seek(Duration.zero);
+            }
+            await _player!.play();
+          }
         } catch (_) {}
       }),
     );
@@ -181,7 +251,7 @@ class AnimatedArtworkSession extends ChangeNotifier {
             if (_player!.state.completed) {
               await _player!.seek(Duration.zero);
             }
-            if (!_pausedForBackground) {
+            if (!_shouldPause) {
               await _player!.play();
             } else {
               await _player!.pause();
@@ -236,13 +306,13 @@ class AnimatedArtworkSession extends ChangeNotifier {
         unawaited(CanvasDiskCache.instance.warm(url));
       }
 
-      TraceCrumb.write('art open ${cachedFile != null ? 'disk' : 'net'}');
+      TraceCrumb.write(
+          'art open ${cachedFile != null ? 'disk' : 'net'}');
       await player.open(
         Media(
           playTarget,
-          httpHeaders: cachedFile == null
-              ? headersForAnimatedArtworkUrl(url)
-              : null,
+          httpHeaders:
+              cachedFile == null ? headersForAnimatedArtworkUrl(url) : null,
         ),
         play: true,
       );
@@ -282,6 +352,7 @@ class AnimatedArtworkSession extends ChangeNotifier {
           _serialized(() async {
             try {
               await _player?.pause();
+              trimProcessMemory();
             } catch (_) {}
           }),
         );
@@ -325,14 +396,22 @@ class AnimatedArtworkSession extends ChangeNotifier {
       _cancelReadyWatchers();
       _ready = true;
       TraceCrumb.write(
-        'art first-frame ${player.state.width}x${player.state.height}',
-      );
+          'art first-frame ${player.state.width}x${player.state.height}');
       if (kDebugMode) {
         debugPrint(
           '[motion] ready ${player.state.width}x${player.state.height} $_openedUrl',
         );
       }
       if (_visible) _notify();
+      if (_shouldPause) {
+        unawaited(
+          _serialized(() async {
+            try {
+              if (_shouldPause) await _player?.pause();
+            } catch (_) {}
+          }),
+        );
+      }
     }
 
     void scheduleMark(Duration settleDelay) {
@@ -416,10 +495,9 @@ class AnimatedArtworkSession extends ChangeNotifier {
       configuration: const PlayerConfiguration(
         muted: true,
         title: 'KatMusic Artwork',
-        // 16 MiB holds an entire Apple fMP4, Tidal 1280x1280 MP4, or
-        // Community Canvas loop in the demuxer back-buffer so `loop-file=inf`
-        // seeks back to 0 purely in memory without re-downloading.
-        bufferSize: 16 * 1024 * 1024,
+        // 4 MiB easily holds multiple loops of Apple fMP4, Tidal 1280x1280 MP4,
+        // or Community Canvas loops (~500KB-2MB) while avoiding 16-32 MiB RSS bloat.
+        bufferSize: 4 * 1024 * 1024,
       ),
     );
     TraceCrumb.write('art controller-create');
@@ -430,8 +508,8 @@ class AnimatedArtworkSession extends ChangeNotifier {
         // Fixed output size avoids a texture realloc via SetSize on
         // the first frames (the surface later snaps to stream-native
         // on video params, so this is first-frame stability only).
-        width: 384,
-        height: 384,
+        width: outputWidth,
+        height: outputHeight,
         // CPU presentation on Linux: media_kit's H/W path renders in
         // an isolated EGL context shared with Flutter's ("H/W
         // rendering with isolated EGL context" in the log), and the
@@ -451,11 +529,11 @@ class AnimatedArtworkSession extends ChangeNotifier {
         // the D3D11 interop entirely. `--dart-define=LW_ARTWORK_HW=1`
         // restores the H/W path for comparison.
         enableHardwareAcceleration: _artworkHardwarePresent,
-        // Software decode only: media_kit defaults hwdec=auto, which on
-        // Linux+Mesa tries VA-API dmabuf interop with vo=libmpv and
-        // yields zero frames (still never fades; Windows D3D11-copy is
-        // unaffected). These clips are trivial for CPU.
-        hwdec: 'no',
+        // Not `auto`: on Linux+Mesa that tries VA-API dmabuf interop with
+        // vo=libmpv and yields zero frames. Windows decodes on the GPU in
+        // copy-back mode (see [_artworkHwdec]); 1280px clips in software
+        // cost a measurable slice of a core for the whole session.
+        hwdec: _artworkHwdec,
       ),
     );
     _bindLoopWatchdogs(player);
@@ -486,7 +564,7 @@ class AnimatedArtworkSession extends ChangeNotifier {
     // `loop-file=inf` (e.g. non-byterange HLS playlists), immediately seek
     // back to 0 and resume so the canvas animation never stops.
     _completedSub = player.stream.completed.listen((completed) {
-      if (!completed || _disposed || _refs == 0 || _pausedForBackground) return;
+      if (!completed || _disposed || _refs == 0 || _shouldPause) return;
       final gen = _generation;
       final activeUrl = _openedUrl;
       unawaited(
@@ -494,7 +572,7 @@ class AnimatedArtworkSession extends ChangeNotifier {
           if (_disposed ||
               gen != _generation ||
               _refs == 0 ||
-              _pausedForBackground) {
+              _shouldPause) {
             return;
           }
           final p = _player;
@@ -506,9 +584,8 @@ class AnimatedArtworkSession extends ChangeNotifier {
           } catch (_) {
             if (activeUrl.isNotEmpty) {
               try {
-                final cachedFile = CanvasDiskCache.instance.peekFilePath(
-                  activeUrl,
-                );
+                final cachedFile =
+                    CanvasDiskCache.instance.peekFilePath(activeUrl);
                 final playTarget = cachedFile ?? activeUrl;
                 await p.open(
                   Media(
@@ -534,7 +611,9 @@ class AnimatedArtworkSession extends ChangeNotifier {
       final alt = _fallbackUrl;
       if (alt.isEmpty || alt == _openedUrl) return;
       final gen = _generation;
-      unawaited(_serialized(() => _openLocked(alt, gen)));
+      unawaited(
+        _serialized(() => _openLocked(alt, gen)),
+      );
     });
   }
 
@@ -567,13 +646,64 @@ class AnimatedArtworkSession extends ChangeNotifier {
         await dyn.setProperty('aid', 'no');
       } catch (_) {}
       try {
+        await dyn.setProperty('osc', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('osd-level', '0');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('sub-auto', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('sid', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('load-scripts', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('ytdl', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('vd-lavc-threads', '1');
+      } catch (_) {}
+      try {
         await dyn.setProperty('cache', 'yes');
       } catch (_) {}
       try {
-        await dyn.setProperty('demuxer-max-bytes', '${16 * 1024 * 1024}');
+        await dyn.setProperty('demuxer-max-bytes', '2MiB');
       } catch (_) {}
       try {
-        await dyn.setProperty('demuxer-max-back-bytes', '${16 * 1024 * 1024}');
+        await dyn.setProperty('demuxer-max-back-bytes', '0');
+      } catch (_) {}
+      try {
+        // Cap decode presentation rate to 24fps (native Spotify Canvas cadence)
+        // to cut SW scaling & pixel-buffer upload overhead by 20% with zero
+        // visual motion loss. Avoid `vf=scale=...:flags=fast_bilinear` ahead
+        // of mpv's SW renderer so BT.709/sRGB levels stay intact.
+        await dyn.setProperty('vf', 'fps=24');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('video-output-levels', 'full');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('target-prim', 'bt.709');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('target-trc', 'srgb');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('tone-mapping', 'hable');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('sws-fast', 'no');
+      } catch (_) {}
+      try {
+        await dyn.setProperty('sws-scaler', 'bilinear');
+      } catch (_) {}
+      try {
+        // Crop to the texture's aspect instead of letterboxing, so a clip
+        // that is not exactly the texture shape still fills it edge to edge.
+        await dyn.setProperty('panscan', '1.0');
       } catch (_) {}
       try {
         await dyn.setProperty('loop-file', 'inf');
@@ -629,13 +759,9 @@ final animatedArtworkSessionProvider =
       return AnimatedArtworkSession();
     });
 
-/// Second, independent motion player for the Canvas side panel.
+/// Unified motion-art and Canvas player (1080×1080, single mpv instance).
 ///
-/// The Now Playing cover owns [animatedArtworkSessionProvider]; sharing one
-/// texture between a square cover clip and a 9:16 canvas clip would make
-/// them fight over the same `loadfile`. Same crash-hardening contract: one
-/// player + one texture for the whole run, created lazily on first open.
-final canvasPanelSessionProvider =
-    ChangeNotifierProvider<AnimatedArtworkSession>((ref) {
-      return AnimatedArtworkSession();
-    });
+/// Aliasing [canvasPanelSessionProvider] to [animatedArtworkSessionProvider]
+/// avoids keeping a second permanent mpv player + 8.3 MB pixel buffer +
+/// D3D11VA decode pool resident in RAM/VRAM.
+final canvasPanelSessionProvider = animatedArtworkSessionProvider;

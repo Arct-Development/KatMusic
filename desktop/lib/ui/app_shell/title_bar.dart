@@ -10,26 +10,29 @@ import 'package:window_manager/window_manager.dart';
 import '../../app/track_actions.dart' show playGenerated;
 import '../../features/feed/feed_repository.dart' show GeneratedTrack;
 import '../../features/lastfm/auth_repository.dart';
-import '../../features/lastfm/home_repository.dart';
+import '../../features/lastfm/profile_providers.dart';
 import '../../features/search/search_repository.dart';
 import '../components/artwork.dart';
 import '../../app/accessibility.dart';
-import '../components/buttons.dart' show KatTooltip, KatA11yButton;
+import '../components/buttons.dart' show LWTooltip, WaveA11yButton;
 import '../components/inputs.dart';
 import '../components/menus.dart'
-    show KatMenuAction, KatMenuButton, KatMenuSeparator;
-import '../navigation/kat_nav.dart';
+    show
+        WaveMenuAction,
+        WaveMenuButton,
+        WaveMenuSeparator;
+import '../navigation/wave_nav.dart';
 import '../search/search_page.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Compact 44px title / nav / search bar.
 ///
 /// Left: back · forward
 /// Centre-left: compact search (not a giant toolbar)
 /// Right: profile · app menu · window controls
-class KatTitleBar extends ConsumerWidget {
+class WaveTitleBar extends ConsumerWidget {
   final TextEditingController searchController;
   final FocusNode searchFocus;
   final ValueChanged<String> onSearchSubmit;
@@ -40,7 +43,7 @@ class KatTitleBar extends ConsumerWidget {
   final bool canGoForward;
   final VoidCallback? onBack;
   final VoidCallback? onForward;
-  const KatTitleBar({
+  const WaveTitleBar({
     super.key,
     required this.searchController,
     required this.searchFocus,
@@ -56,20 +59,26 @@ class KatTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = katIsDark(context);
-    final auth = ref.watch(authRepositoryProvider);
-    return KatLiquidGlass(
-      base: dark
-          ? katBackground(context).withValues(alpha: 0.72)
-          : katBackground(context).withValues(alpha: 0.82),
-      border: Border(bottom: BorderSide(color: katDivider(context))),
+    final dark = waveIsDark(context);
+    return WaveHaze(
+      level: LwHazeLevel.l1,
+      enableBlur: false,
+      base: waveGlassOn(context)
+          ? const Color(0x00000000)
+          : (dark
+              ? waveBackground(context).withValues(alpha: 0.85)
+              : waveBackground(context).withValues(alpha: 0.9)),
+      border: waveGlassOn(context)
+          ? null
+          : Border(bottom: BorderSide(color: waveDivider(context))),
       child: SizedBox(
-        height: KatDensity.titleBar,
+        height: WaveDensity.titleBar,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final maxW = constraints.maxWidth;
             final compact = maxW < 700;
-            final searchMax = (maxW * 0.28).clamp(140.0, 300.0).toDouble();
+            final searchMax =
+                (maxW * 0.28).clamp(140.0, 300.0).toDouble();
             return Row(
               children: [
                 // macOS keeps the native traffic lights over the
@@ -79,23 +88,23 @@ class KatTitleBar extends ConsumerWidget {
                 SizedBox(width: Platform.isMacOS ? 84 : 6),
                 _BarBtn(
                   tooltip: 'Toggle navigation',
-                  icon: KatIcons.panelLeft,
+                  icon: WaveIcons.panelLeft,
                   onTap: onToggleRail,
                 ),
                 _BarBtn(
                   tooltip: 'Back',
-                  icon: KatIcons.back,
+                  icon: WaveIcons.back,
                   onTap: canGoBack ? onBack : null,
                 ),
                 _BarBtn(
                   tooltip: 'Forward',
-                  icon: KatIcons.forward,
+                  icon: WaveIcons.forward,
                   onTap: canGoForward ? onForward : null,
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: searchMax,
-                  child: _KatSearchBox(
+                  child: _WaveSearchBox(
                     controller: searchController,
                     focus: searchFocus,
                     onSubmit: onSearchSubmit,
@@ -107,7 +116,7 @@ class KatTitleBar extends ConsumerWidget {
                 if (!compact)
                   _BarBtn(
                     tooltip: 'Commands (Ctrl+K)',
-                    icon: KatIcons.command,
+                    icon: WaveIcons.command,
                     onTap: onPalette,
                   ),
                 Expanded(
@@ -132,60 +141,7 @@ class KatTitleBar extends ConsumerWidget {
                   ),
                 ),
                 // Profile / account — tiny, no giant buttons.
-                KatA11yButton(
-                  label: auth.status == AuthStatus.signedIn
-                      ? 'Profile, ${auth.username}'
-                      : 'Connect Last.fm',
-                  onTap: () {
-                    ref.read(viewingProfileProvider.notifier).clear();
-                    context.go(
-                      auth.status == AuthStatus.signedIn
-                          ? '/profile'
-                          : '/welcome',
-                    );
-                  },
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        // Your avatar always means your profile: drop any
-                        // stale friend view, otherwise /profile would show
-                        // whoever you last checked out.
-                        ref.read(viewingProfileProvider.notifier).clear();
-                        context.go(
-                          auth.status == AuthStatus.signedIn
-                              ? '/profile'
-                              : '/welcome',
-                        );
-                      },
-                      child: KatTooltip(
-                        message: auth.status == AuthStatus.signedIn
-                            ? auth.username
-                            : 'Connect Last.fm',
-                        child: Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: dark
-                                ? katSurfaceRaised(context)
-                                : katSurfaceOverlay(context),
-                            border: Border.all(color: katDivider(context)),
-                          ),
-                          child: Center(
-                            child: Text(
-                              auth.status == AuthStatus.signedIn &&
-                                      auth.username.isNotEmpty
-                                  ? auth.username[0].toUpperCase()
-                                  : '?',
-                              style: KatType.label.copyWith(fontSize: 11),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                const _ProfileBtn(),
                 const SizedBox(width: 6),
                 _AppMenu(),
                 const SizedBox(width: 6),
@@ -223,13 +179,13 @@ class _Hit {
 /// Most results the dropdown ever shows; "See all results" is extra.
 const _maxHits = 4;
 
-class _KatSearchBox extends ConsumerStatefulWidget {
+class _WaveSearchBox extends ConsumerStatefulWidget {
   final TextEditingController controller;
   final FocusNode focus;
   final ValueChanged<String> onSubmit;
   final ValueChanged<String> onGo;
   final VoidCallback onPalette;
-  const _KatSearchBox({
+  const _WaveSearchBox({
     required this.controller,
     required this.focus,
     required this.onSubmit,
@@ -237,10 +193,10 @@ class _KatSearchBox extends ConsumerStatefulWidget {
     required this.onPalette,
   });
   @override
-  ConsumerState<_KatSearchBox> createState() => _KatSearchBoxState();
+  ConsumerState<_WaveSearchBox> createState() => _WaveSearchBoxState();
 }
 
-class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
+class _WaveSearchBoxState extends ConsumerState<_WaveSearchBox> {
   final _portal = OverlayPortalController();
   final _link = LayerLink();
   final _panelKey = GlobalKey();
@@ -295,7 +251,7 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
           _Hit(
             label: h,
             sub: 'Recent',
-            icon: KatIcons.history,
+            icon: WaveIcons.history,
             onSelect: () {
               widget.controller.text = h;
               widget.onSubmit(h);
@@ -305,51 +261,48 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
     }
     final hits = <_Hit>[];
     if (_liveQ.isNotEmpty) {
-      final songs =
-          ref.watch(katSearchSongsProvider(_liveQ)).valueOrNull ??
+      final songs = ref.watch(waveSearchSongsProvider(_liveQ)).valueOrNull ??
           const <SearchResultItem>[];
       final albums =
-          ref.watch(katSearchAlbumsProvider(_liveQ)).valueOrNull ??
-          const <SearchResultItem>[];
+          ref.watch(waveSearchAlbumsProvider(_liveQ)).valueOrNull ??
+              const <SearchResultItem>[];
       final artists =
-          ref.watch(katSearchArtistsProvider(_liveQ)).valueOrNull ??
-          const <SearchResultItem>[];
+          ref.watch(waveSearchArtistsProvider(_liveQ)).valueOrNull ??
+              const <SearchResultItem>[];
       _Hit song(SearchResultItem s) => _Hit(
-        label: s.name,
-        sub: s.artist.isNotEmpty ? 'Song • ${s.artist}' : 'Song',
-        icon: KatIcons.music,
-        art: s.artworkUrl,
-        onSelect: () => playGenerated(
-          ref,
-          context,
-          GeneratedTrack(
-            name: s.name,
-            artist: s.artist,
-            album: s.subtitle,
-            artworkUrl: s.artworkUrl,
-            videoId: s.videoId,
-          ),
-          sourceLabel: 'Search',
-        ),
-      );
+            label: s.name,
+            sub: s.artist.isNotEmpty ? 'Song • ${s.artist}' : 'Song',
+            icon: WaveIcons.music,
+            art: s.artworkUrl,
+            onSelect: () => playGenerated(
+              ref,
+              context,
+              GeneratedTrack(
+                name: s.name,
+                artist: s.artist,
+                album: s.subtitle,
+                artworkUrl: s.artworkUrl,
+                videoId: s.videoId,
+              ),
+              sourceLabel: 'Search',
+            ),
+          );
       final picked = <_Hit>[
         for (final s in songs.take(2)) song(s),
         for (final a in albums.take(1))
           _Hit(
             label: a.name,
             sub: a.artist.isNotEmpty ? 'Album • ${a.artist}' : 'Album',
-            icon: KatIcons.albums,
+            icon: WaveIcons.albums,
             art: a.artworkUrl,
             onSelect: () {
               if (a.entityId.isEmpty) return;
-              widget.onGo(
-                katAlbumLocation(
-                  browseId: a.entityId,
-                  title: a.name,
-                  artist: a.artist,
-                  artworkUrl: a.artworkUrl,
-                ),
-              );
+              widget.onGo(waveAlbumLocation(
+                browseId: a.entityId,
+                title: a.name,
+                artist: a.artist,
+                artworkUrl: a.artworkUrl,
+              ));
             },
           ),
         for (final a in artists.take(1))
@@ -370,14 +323,12 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
       }
       hits.addAll(picked.take(_maxHits));
     }
-    hits.add(
-      _Hit(
-        label: 'See all results for “$typed”',
-        sub: 'Open the full Search page',
-        icon: KatIcons.search,
-        onSelect: () => widget.onSubmit(typed),
-      ),
-    );
+    hits.add(_Hit(
+      label: 'See all results for “$typed”',
+      sub: 'Open the full Search page',
+      icon: WaveIcons.search,
+      onSelect: () => widget.onSubmit(typed),
+    ));
     return hits;
   }
 
@@ -462,11 +413,11 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
   bool _insidePanel(Offset globalPosition) {
     final box = _panelKey.currentContext?.findRenderObject();
     if (box is! RenderBox || !box.attached) return false;
-    return (box.localToGlobal(Offset.zero) & box.size).contains(globalPosition);
+    return (box.localToGlobal(Offset.zero) & box.size)
+        .contains(globalPosition);
   }
 
   Widget _panel(BuildContext overlayContext) {
-    final dark = katIsDark(overlayContext);
     final hits = _shown;
     if (hits.isEmpty) return const SizedBox.shrink();
     final box = context.findRenderObject();
@@ -481,80 +432,78 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
         alignment: Alignment.topLeft,
         child: SizedBox(
           width: width < 320 ? 320 : width,
-          child: _PanelIn(
-            child: KatLiquidGlass(
-              borderRadius: BorderRadius.circular(12),
-              base: dark
-                  ? katSurfaceRaised(overlayContext).withValues(alpha: 0.85)
-                  : katSurfaceOverlay(overlayContext).withValues(alpha: 0.88),
-              border: Border.all(
-                color: (dark ? Colors.white : Colors.black).withValues(
-                  alpha: dark ? 0.12 : 0.08,
+          child: _PanelIn(child: Container(
+            key: _panelKey,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              // Raised is the opaque floating layer; overlay is a 6% film
+              // under glass, which made results unreadable.
+              color: waveSurfaceRaised(overlayContext),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: waveDivider(overlayContext)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              child: Container(
-                key: _panelKey,
-                padding: const EdgeInsets.all(4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < hits.length; i++)
-                    ListTile.selectable(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: KatRadius.controlsRadius,
-                      ),
-                      selected: i == _selected,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      selectionMode: ListTileSelectionMode.single,
-                      leading: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: hits[i].art.isNotEmpty
-                            ? (hits[i].circleArt
-                                  ? KatArtwork.circle(
-                                      url: hits[i].art,
-                                      size: 28,
-                                      label: hits[i].label,
-                                    )
-                                  : KatArtwork(
-                                      url: hits[i].art,
-                                      size: 28,
-                                      radius: KatRadius.artwork,
-                                      label: hits[i].label,
-                                    ))
-                            : Icon(hits[i].icon, size: 15),
-                      ),
-                      title: Text(
-                        hits[i].label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        hits[i].sub,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onPressed: () => _activate(hits[i]),
-                    ),
-                ],
-              ),
+              ],
             ),
-          ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < hits.length; i++)
+                  ListTile.selectable(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: WaveRadius.controlsRadius,
+                    ),
+                    selected: i == _selected,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    selectionMode: ListTileSelectionMode.single,
+                    leading: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: hits[i].art.isNotEmpty
+                          ? (hits[i].circleArt
+                              ? WaveArtwork.circle(
+                                  url: hits[i].art,
+                                  size: 28,
+                                  label: hits[i].label,
+                                )
+                              : WaveArtwork(
+                                  url: hits[i].art,
+                                  size: 28,
+                                  radius: WaveRadius.artwork,
+                                  label: hits[i].label,
+                                ))
+                          : Icon(hits[i].icon, size: 15),
+                    ),
+                    title: Text(
+                      hits[i].label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      hits[i].sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => _activate(hits[i]),
+                  ),
+              ],
+            ),
+          ),)
         ),
-      ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final tertiary = dark
-        ? KatColors.textTertiary
-        : KatColors.lightTextTertiary;
+    final dark = waveIsDark(context);
+    final tertiary =
+        dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary;
     _shown = _hits();
     _announceSuggestions();
     return CompositedTransformTarget(
@@ -562,7 +511,7 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
       child: OverlayPortal(
         controller: _portal,
         overlayChildBuilder: _panel,
-        child: KatTooltip(
+        child: LWTooltip(
           message: 'Search (Ctrl+F)',
           child: SizedBox(
             width: double.infinity,
@@ -576,59 +525,56 @@ class _KatSearchBoxState extends ConsumerState<_KatSearchBox> {
                 hint: 'Type to see suggestions, Enter to search',
                 textField: true,
                 child: TextBox(
-                  decoration: katInputDecoration(radius: 8),
-                  controller: widget.controller,
-                  focusNode: widget.focus,
-                  placeholder: 'Search',
-                  style: KatType.body.copyWith(fontSize: 13),
-                  cursorHeight: 14,
-                  onTapOutside: (e) {
-                    if (_insidePanel(e.position)) return;
-                    if (widget.focus.hasFocus) widget.focus.unfocus();
-                  },
-                  prefix: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Icon(KatIcons.search, size: 15, color: tertiary),
-                  ),
-                  suffix: widget.controller.text.isNotEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: IconButton(
-                              icon: const Icon(
-                                FluentIcons.chrome_close,
-                                size: 10,
-                                semanticLabel: 'Clear search',
-                              ),
-                              onPressed: () {
-                                widget.controller.clear();
-                                _onChanged('');
-                                widget.focus.requestFocus();
-                              },
-                            ),
-                          ),
-                        )
-                      : widget.focus.hasFocus
-                      ? null
-                      : Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: IgnorePointer(
-                            child: Text(
-                              'Ctrl F',
-                              semanticsLabel: 'Shortcut Control F',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: 0.2,
-                                color: tertiary.withValues(alpha: 0.7),
-                              ),
-                            ),
+                decoration: waveInputDecoration(radius: 8),
+                controller: widget.controller,
+                focusNode: widget.focus,
+                placeholder: 'Search',
+                style: WaveType.body.copyWith(fontSize: 13),
+                cursorHeight: 14,
+                onTapOutside: (e) {
+                  if (_insidePanel(e.position)) return;
+                  if (widget.focus.hasFocus) widget.focus.unfocus();
+                },
+                prefix: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(WaveIcons.search, size: 15, color: tertiary),
+                ),
+                suffix: widget.controller.text.isNotEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.chrome_close,
+                                size: 10, semanticLabel: 'Clear search'),
+                            onPressed: () {
+                              widget.controller.clear();
+                              _onChanged('');
+                              widget.focus.requestFocus();
+                            },
                           ),
                         ),
-                  onChanged: _onChanged,
-                  onSubmitted: _submit,
-                ),
+                      )
+                    : widget.focus.hasFocus
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: IgnorePointer(
+                              child: Text(
+                                'Ctrl F',
+                                semanticsLabel: 'Shortcut Control F',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.2,
+                                  color: tertiary.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ),
+                          ),
+                onChanged: _onChanged,
+                onSubmitted: _submit,
+              ),
               ),
             ),
           ),
@@ -651,10 +597,7 @@ class _PanelIn extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, t, child) => Opacity(
         opacity: t,
-        child: Transform.translate(
-          offset: Offset(0, (1 - t) * -4),
-          child: child,
-        ),
+        child: Transform.translate(offset: Offset(0, (1 - t) * -4), child: child),
       ),
       child: child,
     );
@@ -666,8 +609,10 @@ class _BarBtn extends StatefulWidget {
   final IconData? icon;
   final Widget? iconWidget;
   final VoidCallback? onTap;
-  const _BarBtn({required this.tooltip, this.icon, this.iconWidget, this.onTap})
-    : assert(icon != null || iconWidget != null, 'Provide icon or iconWidget');
+  const _BarBtn(
+      {required this.tooltip, this.icon, this.iconWidget, this.onTap})
+      : assert(icon != null || iconWidget != null,
+            'Provide icon or iconWidget');
   @override
   State<_BarBtn> createState() => _BarBtnState();
 }
@@ -677,59 +622,65 @@ class _BarBtnState extends State<_BarBtn> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    return KatA11yButton(
+    final dark = waveIsDark(context);
+    return WaveA11yButton(
       label: widget.tooltip,
       onTap: widget.onTap,
-      child: KatTooltip(
-        message: widget.tooltip,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() {
-            _hover = false;
-            _pressed = false;
-          }),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTapCancel: () => setState(() => _pressed = false),
-            child: AnimatedContainer(
-              duration: katMotion(context, KatMotion.fast),
-              width: KatDensity.hitArea,
-              height: KatDensity.hitArea,
-              decoration: BoxDecoration(
-                color: _pressed
-                    ? katPressedWash(context)
-                    : _hover
-                    ? katHoverWash(context)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(KatRadius.controls),
-              ),
-              child: Builder(
-                builder: (context) {
-                  final fg = widget.onTap == null
-                      ? (dark
-                                ? KatColors.textTertiary
-                                : KatColors.lightTextTertiary)
-                            .withValues(alpha: 0.4)
-                      : (dark
-                            ? KatColors.textSecondary
-                            : KatColors.lightTextSecondary);
-                  if (widget.iconWidget != null) {
-                    return IconTheme(
-                      data: IconThemeData(color: fg, size: 15),
-                      child: Center(child: widget.iconWidget!),
-                    );
-                  }
-                  return Icon(widget.icon, size: 15, color: fg);
-                },
-              ),
+      child: LWTooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() {
+          _hover = false;
+          _pressed = false;
+        }),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: waveMotion(context, WaveMotion.fast),
+            width: WaveDensity.hitArea,
+            height: WaveDensity.hitArea,
+            decoration: BoxDecoration(
+              color: _pressed
+                  ? wavePressedWash(context)
+                  : _hover
+                      ? waveHoverWash(context)
+                      : Colors.transparent,
+              borderRadius:
+                  BorderRadius.circular(WaveRadius.controls),
+            ),
+            child: Builder(
+              builder: (context) {
+                final fg = widget.onTap == null
+                    ? (dark
+                            ? WaveColors.textTertiary
+                            : WaveColors.lightTextTertiary)
+                        .withValues(alpha: 0.4)
+                    : (dark
+                        ? WaveColors.textSecondary
+                        : WaveColors.lightTextSecondary);
+                if (widget.iconWidget != null) {
+                  return IconTheme(
+                    data: IconThemeData(color: fg, size: 15),
+                    child: Center(child: widget.iconWidget!),
+                  );
+                }
+                return Icon(
+                  widget.icon,
+                  size: 15,
+                  color: fg,
+                );
+              },
             ),
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -738,35 +689,33 @@ class _AppMenu extends StatelessWidget {
   const _AppMenu();
   @override
   Widget build(BuildContext context) {
-    return KatMenuButton(
+    return WaveMenuButton(
       placement: FlyoutPlacementMode.bottomRight,
       entries: [
-        KatMenuAction(
-          leading: const Icon(KatIcons.search, size: 15),
+        WaveMenuAction(
+          leading: const Icon(WaveIcons.search, size: 15),
           label: 'Search',
           hint: 'Ctrl+K',
           onPressed: () => context.go('/search'),
         ),
-        const KatMenuSeparator(),
-        KatMenuAction(
-          leading: const Icon(KatIcons.history, size: 15),
+        const WaveMenuSeparator(),
+        WaveMenuAction(
+          leading: const Icon(WaveIcons.history, size: 15),
           label: 'History',
           onPressed: () => context.go('/history'),
         ),
-        KatMenuAction(
-          leading: const Icon(KatIcons.mixes, size: 15),
-          label: 'Mix Lab',
-          onPressed: () => context.go('/mixes'),
-        ),
-        const KatMenuSeparator(),
-        KatMenuAction(
-          leading: const Icon(KatIcons.settings, size: 15),
+        const WaveMenuSeparator(),
+        WaveMenuAction(
+          leading: const Icon(WaveIcons.settings, size: 15),
           label: 'Settings',
           onPressed: () => context.go('/settings'),
         ),
       ],
-      buttonBuilder: (context, onOpen) =>
-          _BarBtn(tooltip: 'Menu', icon: KatIcons.more, onTap: onOpen),
+      buttonBuilder: (context, onOpen) => _BarBtn(
+        tooltip: 'Menu',
+        icon: WaveIcons.more,
+        onTap: onOpen,
+      ),
     );
   }
 }
@@ -792,6 +741,7 @@ class _WindowButtons extends StatelessWidget {
         _WinBtn(
           tooltip: 'Maximize',
           icon: FluentIcons.checkbox,
+          snapLayouts: true,
           onTap: () async {
             try {
               if (await windowManager.isMaximized()) {
@@ -818,47 +768,215 @@ class _WinBtn extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
   final bool danger;
+
+  /// Windows 11 Snap Layouts: the window answers this button's area as
+  /// the native maximize button (see windows/runner/flutter_window.cpp),
+  /// which then handles hover and clicks there instead of Flutter.
+  final bool snapLayouts;
   const _WinBtn({
     required this.tooltip,
     required this.icon,
     required this.onTap,
     this.danger = false,
+    this.snapLayouts = false,
   });
   @override
   State<_WinBtn> createState() => _WinBtnState();
 }
 
-class _WinBtnState extends State<_WinBtn> {
+class _WinBtnState extends State<_WinBtn> with WidgetsBindingObserver {
+  static const _caption = MethodChannel('katmusic/caption');
   bool _hover = false;
+  final _box = GlobalKey();
+  Rect? _sent;
+
+  bool get _snap => widget.snapLayouts && Platform.isWindows;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_snap) return;
+    WidgetsBinding.instance.addObserver(this);
+    _caption.setMethodCallHandler((call) async {
+      if (call.method == 'hover' && mounted) {
+        setState(() => _hover = call.arguments == true);
+      }
+    });
+  }
+
+  @override
+  void didChangeMetrics() => _scheduleReport();
+
+  void _scheduleReport() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => _report());
+
+  /// Sends the button's rect in view pixels when it moved.
+  void _report() {
+    if (!mounted) return;
+    final box = _box.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) return;
+    final dpr = View.of(context).devicePixelRatio;
+    final r = (box.localToGlobal(Offset.zero) & box.size);
+    final px = Rect.fromLTRB(r.left * dpr, r.top * dpr, r.right * dpr,
+        r.bottom * dpr);
+    if (px == _sent) return;
+    _sent = px;
+    _caption
+        .invokeMethod('setMaxButton', [px.left, px.top, px.right, px.bottom])
+        .catchError((_) => null);
+  }
+
+  @override
+  void dispose() {
+    if (_snap) {
+      WidgetsBinding.instance.removeObserver(this);
+      _caption.setMethodCallHandler(null);
+      // Title bar gone (mini player, immersive): no phantom button.
+      _caption.invokeMethod('setMaxButton', [0, 0, 0, 0])
+          .catchError((_) => null);
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    return KatA11yButton(
+    if (_snap) _scheduleReport();
+    final dark = waveIsDark(context);
+    return WaveA11yButton(
       label: widget.tooltip,
       onTap: widget.onTap,
-      child: KatTooltip(
-        message: widget.tooltip,
+      child: LWTooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            key: _box,
+            duration: waveMotion(context, WaveMotion.fast),
+            width: 44,
+            height: WaveDensity.titleBar,
+            color: _hover
+                ? (widget.danger
+                    ? WaveColors.danger
+                    : waveHoverWash(context))
+                : Colors.transparent,
+            child: Icon(
+              widget.icon,
+              size: 12,
+              color: _hover && widget.danger
+                  ? Colors.white
+                  : (dark
+                      ? WaveColors.textSecondary
+                      : WaveColors.lightTextSecondary),
+            ),
+          ),
+        ),
+      ),
+    ),
+    );
+  }
+}
+
+class _ProfileBtn extends ConsumerStatefulWidget {
+  const _ProfileBtn();
+
+  @override
+  ConsumerState<_ProfileBtn> createState() => _ProfileBtnState();
+}
+
+class _ProfileBtnState extends ConsumerState<_ProfileBtn> {
+  bool _hover = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = waveIsDark(context);
+    final auth = ref.watch(authRepositoryProvider);
+    final avatarUrl = ref.watch(userAvatarUrlProvider);
+    final isSignedIn = auth.status == AuthStatus.signedIn;
+    final username = auth.username;
+
+    final tooltip = isSignedIn ? username : 'Connect Last.fm';
+    final a11yLabel = isSignedIn ? 'Profile, $username' : 'Connect Last.fm';
+
+    Widget avatar;
+    if (avatarUrl.isNotEmpty) {
+      avatar = Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: waveDivider(context)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: WaveArtwork.circle(
+          url: avatarUrl,
+          size: 26,
+          label: username,
+          title: username,
+          artist: username,
+          upgrade: false,
+        ),
+      );
+    } else {
+      avatar = Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: dark
+              ? waveSurfaceRaised(context)
+              : waveSurfaceOverlay(context),
+          border: Border.all(color: waveDivider(context)),
+        ),
+        child: Center(
+          child: Text(
+            isSignedIn && username.isNotEmpty
+                ? username[0].toUpperCase()
+                : '?',
+            style: WaveType.label.copyWith(fontSize: 11),
+          ),
+        ),
+      );
+    }
+
+    return WaveA11yButton(
+      label: a11yLabel,
+      onTap: () => context.go(isSignedIn ? '/profile' : '/settings'),
+      child: LWTooltip(
+        message: tooltip,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() => _hover = false),
+          onExit: (_) => setState(() {
+            _hover = false;
+            _pressed = false;
+          }),
           child: GestureDetector(
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: katMotion(context, KatMotion.fast),
-              width: 44,
-              height: KatDensity.titleBar,
-              color: _hover
-                  ? (widget.danger ? KatColors.danger : katHoverWash(context))
-                  : Colors.transparent,
-              child: Icon(
-                widget.icon,
-                size: 12,
-                color: _hover && widget.danger
-                    ? Colors.white
-                    : (dark
-                          ? KatColors.textSecondary
-                          : KatColors.lightTextSecondary),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => context.go(isSignedIn ? '/profile' : '/settings'),
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapUp: (_) => setState(() => _pressed = false),
+            onTapCancel: () => setState(() => _pressed = false),
+            child: AnimatedScale(
+              scale: _pressed ? 0.92 : (_hover ? 1.05 : 1.0),
+              duration: waveMotion(context, WaveMotion.fast),
+              curve: Curves.easeOutCubic,
+              child: AnimatedContainer(
+                duration: waveMotion(context, WaveMotion.fast),
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _pressed
+                      ? wavePressedWash(context)
+                      : _hover
+                          ? waveHoverWash(context)
+                          : Colors.transparent,
+                ),
+                child: avatar,
               ),
             ),
           ),

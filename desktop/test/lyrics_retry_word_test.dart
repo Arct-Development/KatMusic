@@ -7,15 +7,15 @@ import 'package:katmusic_desktop/features/lyrics/lyrics_repository.dart';
 /// Bug 2: LRCLIB word-stamped (enhanced) LRC is served as line-sync.
 
 LyricsResult _line(String source) => LyricsResult(
-  lines: const [
-    LyricLine(timeMs: 1000, durationMs: 3000, text: 'Hello world'),
-    LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
-  ],
-  isSynced: true,
-  isWordSynced: false,
-  plainLyrics: 'Hello world\nSecond line',
-  source: source,
-);
+      lines: const [
+        LyricLine(timeMs: 1000, durationMs: 3000, text: 'Hello world'),
+        LyricLine(timeMs: 5000, durationMs: 3000, text: 'Second line'),
+      ],
+      isSynced: true,
+      isWordSynced: false,
+      plainLyrics: 'Hello world\nSecond line',
+      source: source,
+    );
 
 class _FlakyRepo extends LyricsRepository {
   final Future<LyricsResult?> Function() next;
@@ -29,7 +29,8 @@ class _FlakyRepo extends LyricsRepository {
     String album = '',
     int? durationSeconds,
     String? videoId,
-  }) => next();
+  }) =>
+      next();
 }
 
 class _LrclibOnlyRepo extends LyricsRepository {
@@ -65,28 +66,22 @@ Dio _lrclibStubDio(String synced) {
       onRequest: (options, handler) {
         final url = options.uri.toString();
         if (url.contains('itunes.apple.com')) {
-          handler.resolve(
-            Response(
+          handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
-              data: '{"resultCount":0,"results":[]}',
-            ),
-          );
+              data: '{"resultCount":0,"results":[]}'));
           return;
         }
         if (url.contains('lrclib.net/api/get')) {
-          handler.reject(
-            DioException(
+          handler.reject(DioException(
               requestOptions: options,
               type: DioExceptionType.badResponse,
-              response: Response(requestOptions: options, statusCode: 404),
-            ),
-          );
+              response: Response(
+                  requestOptions: options, statusCode: 404)));
           return;
         }
         if (url.contains('lrclib.net/api/search')) {
-          handler.resolve(
-            Response(
+          handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
               data: [
@@ -99,14 +94,11 @@ Dio _lrclibStubDio(String synced) {
                   'plainLyrics': 'Hello world\nSecond line',
                   'syncedLyrics': synced,
                 },
-              ],
-            ),
-          );
+              ]));
           return;
         }
-        handler.reject(
-          DioException(requestOptions: options, type: DioExceptionType.unknown),
-        );
+        handler.reject(DioException(
+            requestOptions: options, type: DioExceptionType.unknown));
       },
     ),
   );
@@ -129,9 +121,9 @@ void main() {
   });
 
   test('LRCLIB enhanced LRC reports word-sync', () async {
-    final repo = _LrclibOnlyRepo(
-      _lrclibStubDio('[00:01.00]<00:01.00>Hi <00:01.20>there\n[00:05.00]Yo\n'),
-    );
+    final repo = _LrclibOnlyRepo(_lrclibStubDio(
+      '[00:01.00]<00:01.00>Hi <00:01.20>there\n[00:05.00]Yo\n',
+    ));
     final result = await repo.getLyrics(
       title: 'Shape of You',
       artist: 'Ed Sheeran',
@@ -143,11 +135,9 @@ void main() {
   });
 
   test('LRCLIB plain LRC stays line-sync', () async {
-    final repo = _LrclibOnlyRepo(
-      _lrclibStubDio(
-        '[00:01.00]Hello world\n[00:05.00]Second line\n[00:09.00]Third\n',
-      ),
-    );
+    final repo = _LrclibOnlyRepo(_lrclibStubDio(
+      '[00:01.00]Hello world\n[00:05.00]Second line\n[00:09.00]Third\n',
+    ));
     final result = await repo.getLyrics(
       title: 'Shape of You',
       artist: 'Ed Sheeran',

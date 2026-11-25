@@ -60,14 +60,10 @@ void main() {
     await app.main(const <String>[]);
     FlutterError.onError = testErrorHandler;
 
-    await _waitFor(
-      tester,
-      find.byType(KatShell),
-      reason:
-          'App did not reach the main shell. Sign in or continue as '
-          'guest once in this profile, then rerun.',
-    );
-    final shellContext = tester.element(find.byType(KatShell));
+    await _waitFor(tester, find.byType(WaveShell),
+        reason: 'App did not reach the main shell. Sign in or continue as '
+            'guest once in this profile, then rerun.');
+    final shellContext = tester.element(find.byType(WaveShell));
     final router = GoRouter.of(shellContext);
     final container = ProviderScope.containerOf(shellContext);
     final player = container.read(playbackServiceProvider.notifier);
@@ -75,21 +71,19 @@ void main() {
     // ---- start playback -------------------------------------------------
     if (_videoId.isNotEmpty) {
       if (_title.isEmpty || _artist.isEmpty) {
-        fail(
-          'PERF_VIDEO_ID needs PERF_TITLE and PERF_ARTIST too: lyrics are '
-          'matched by title and artist.',
-        );
+        fail('PERF_VIDEO_ID needs PERF_TITLE and PERF_ARTIST too: lyrics are '
+            'matched by title and artist.');
       }
-      await player.play(
-        const PlayableTrack(title: _title, artist: _artist, videoId: _videoId),
-      );
+      await player.play(const PlayableTrack(
+        title: _title,
+        artist: _artist,
+        videoId: _videoId,
+      ));
     } else if (container.read(playbackServiceProvider).current != null) {
       await player.playResume();
     } else {
-      fail(
-        'Nothing to play: pass --dart-define=PERF_VIDEO_ID=<id> or '
-        'start a track once so the session restores it.',
-      );
+      fail('Nothing to play: pass --dart-define=PERF_VIDEO_ID=<id> or '
+          'start a track once so the session restores it.');
     }
     await _hold(tester, const Duration(seconds: 8)); // stream open + lyrics
 
@@ -126,16 +120,10 @@ void main() {
     }, reportKey: _sortByTitle ? 'scroll_fling_sorted' : 'scroll_fling');
     await binding.watchPerformance(() async {
       await tester.timedDrag(
-        list,
-        const Offset(0, -1600),
-        const Duration(seconds: 6),
-      );
+          list, const Offset(0, -1600), const Duration(seconds: 6));
       await _hold(tester, const Duration(milliseconds: 500));
       await tester.timedDrag(
-        list,
-        const Offset(0, 1600),
-        const Duration(seconds: 6),
-      );
+          list, const Offset(0, 1600), const Duration(seconds: 6));
       await _hold(tester, const Duration(milliseconds: 500));
     }, reportKey: _sortByTitle ? 'scroll_slow_sorted' : 'scroll_slow');
 
@@ -195,12 +183,15 @@ Future<void> _waitFor(
 /// The tallest on-screen vertical scrollable: the page list, not a shelf or
 /// a menu. Offstage branches are excluded by the default finder.
 Finder _mainVerticalScrollable(WidgetTester tester) {
-  final candidates = find.byType(Scrollable).hitTestable().evaluate().where((
-    e,
-  ) {
-    final w = e.widget as Scrollable;
-    return axisDirectionToAxis(w.axisDirection) == Axis.vertical;
-  }).toList();
+  final candidates = find
+      .byType(Scrollable)
+      .hitTestable()
+      .evaluate()
+      .where((e) {
+        final w = e.widget as Scrollable;
+        return axisDirectionToAxis(w.axisDirection) == Axis.vertical;
+      })
+      .toList();
   expect(candidates, isNotEmpty, reason: 'No vertical list on screen.');
   double heightOf(Element e) {
     final box = e.renderObject;

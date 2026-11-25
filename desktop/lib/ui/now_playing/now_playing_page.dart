@@ -10,23 +10,31 @@ import 'package:go_router/go_router.dart';
 import '../../app/window_lifecycle.dart';
 import '../../core/artwork/animated_artwork_service.dart';
 import 'immersive.dart';
+import 'now_playing_full_bleed_view.dart';
+import 'now_playing_minimal_view.dart';
+import 'now_playing_overflow_menu.dart';
+import 'now_playing_style.dart';
 import '../../core/artwork/animated_artwork_session.dart';
+import '../../core/artwork/artwork_cache.dart';
 import '../../core/artwork/artwork_resolver.dart';
+import '../../core/artwork/official_artwork_service.dart';
 import '../../core/audio/stream_models.dart';
 import '../../features/lyrics/karaoke_lyrics_view.dart';
 import '../../features/player/playback_service.dart';
 import '../../features/podcasts/podcast_repository.dart';
+import '../../features/spotify/spotify_api.dart' show canvasEnabledProvider;
 import '../components/ambient.dart';
 import '../components/animated_artwork_video.dart';
 import '../components/artist_line.dart';
 import '../components/artwork.dart';
 import '../components/image_aspect.dart';
-import '../components/buttons.dart' show KatTooltip;
+import '../components/buttons.dart' show LWTooltip;
 import '../components/states.dart';
+import '../lyrics/lyrics_panel.dart' show waveLyricsProvider;
 import '../theme/fluent_theme.dart';
 import '../theme/haze.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Centerpiece Fullscreen Player — Apple Music Split View & Cinematic Centering.
 ///
@@ -38,14 +46,14 @@ import '../theme/kat_icons.dart';
 ///   when lyrics are toggled off.
 /// - Top Actions: Lyrics toggle, Visualizer toggle, Close button.
 /// - Inactivity Auto-Hide: Fades controls and hides cursor after 3.5s of idle mouse.
-class KatNowPlayingPage extends ConsumerStatefulWidget {
-  const KatNowPlayingPage({super.key});
+class WaveNowPlayingPage extends ConsumerStatefulWidget {
+  const WaveNowPlayingPage({super.key});
 
   @override
-  ConsumerState<KatNowPlayingPage> createState() => _KatNowPlayingPageState();
+  ConsumerState<WaveNowPlayingPage> createState() => _WaveNowPlayingPageState();
 }
 
-class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
+class _WaveNowPlayingPageState extends ConsumerState<WaveNowPlayingPage> {
   bool _lyricsVisible = true;
   // Focus mode: lyrics only, artwork column collapsed, lyrics centered.
   bool _focusMode = false;
@@ -53,18 +61,22 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
   Timer? _idleTimer;
   DateTime _lastHoverAt = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastArmAt = DateTime.fromMillisecondsSinceEpoch(0);
+  Offset? _lastPointerPos;
   String _preloadedKey = '';
   // Separate arming key for the motion-art lookup: it is gated on the
   // visualizer toggle (the only thing that renders a clip), so flipping
   // the toggle on must re-arm for the current track.
   String _prefetchedMotionKey = '';
-  // Captured up front: `ref` is not safe to read while the element unmounts.
+  // Captured eagerly in initState: lazy `late final` or `ref` inside
+  // `dispose()` runs after the element starts tearing down.
   late final StateController<bool> _idleMirror;
+  late final StateController<bool> _menuOpenMirror;
 
   @override
   void initState() {
     super.initState();
     _idleMirror = ref.read(nowPlayingControlsIdleProvider.notifier);
+    _menuOpenMirror = ref.read(nowPlayingMenuOpenProvider.notifier);
     _resetIdleTimer();
   }
 
@@ -74,16 +86,36 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     // Not while the tree is finalizing: a hidden-dock state must not
     // outlive the page.
     final mirror = _idleMirror;
+    final menuMirror = _menuOpenMirror;
     Future.microtask(() {
-      // The provider scope can be torn down with the page (tests, app exit);
-      // setting a disposed controller would throw out of the microtask.
       if (mirror.mounted) mirror.state = false;
+      if (menuMirror.mounted) menuMirror.state = false;
     });
     super.dispose();
   }
 
+  void _onPointerActivity(PointerEvent event) {
+    final prev = _lastPointerPos;
+    if (prev != null && (event.position - prev).distanceSquared < 4.0) {
+      return;
+    }
+    _lastPointerPos = event.position;
+    _resetIdleTimer();
+  }
+
+  int get _autoHideMs => ref.read(nowPlayingAutoHideSecondsProvider) * 1000;
+
   void _resetIdleTimer() {
     _lastHoverAt = DateTime.now();
+    final timeoutMs = _autoHideMs;
+    if (timeoutMs <= 0) {
+      _idleTimer?.cancel();
+      if (_controlsIdle) {
+        setState(() => _controlsIdle = false);
+        _idleMirror.state = false;
+      }
+      return;
+    }
     if (_controlsIdle) {
       setState(() => _controlsIdle = false);
       _idleMirror.state = false;
@@ -92,8 +124,8 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     }
     // Throttle per-pixel hover re-arms while visible: high-DPI mice poll
     // ~1000Hz and each event cancelled/armed a Timer. The timeout below
-    // self-corrects against _lastHoverAt, so hide still lands exactly
-    // 3.5s after the last movement. Showing from hidden stays instant.
+    // self-corrects against _lastHoverAt, so hide still lands cleanly
+    // after the configured timeout. Showing from hidden stays instant.
     final now = DateTime.now();
     if (now.difference(_lastArmAt).inMilliseconds < 200 &&
         (_idleTimer?.isActive ?? false)) {
@@ -105,17 +137,31 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
   void _armIdleTimer() {
     _lastArmAt = DateTime.now();
     _idleTimer?.cancel();
-    _idleTimer = Timer(const Duration(milliseconds: 3500), _onIdleTimeout);
+    final timeoutMs = _autoHideMs;
+    if (timeoutMs <= 0) return;
+    _idleTimer = Timer(Duration(milliseconds: timeoutMs), _onIdleTimeout);
   }
 
   void _onIdleTimeout() {
     if (!mounted) return;
+    final timeoutMs = _autoHideMs;
+    if (timeoutMs <= 0) {
+      if (_controlsIdle) {
+        setState(() => _controlsIdle = false);
+        _idleMirror.state = false;
+      }
+      return;
+    }
+    // Keep controls & cursor visible while the overflow menu is open.
+    if (ref.read(nowPlayingMenuOpenProvider)) {
+      return;
+    }
     // A throttled hover may have landed after the last arm: re-arm for
     // the remainder instead of hiding early.
     final elapsed = DateTime.now().difference(_lastHoverAt).inMilliseconds;
-    if (elapsed < 3500) {
+    if (elapsed < timeoutMs) {
       _idleTimer = Timer(
-        Duration(milliseconds: 3500 - elapsed),
+        Duration(milliseconds: timeoutMs - elapsed),
         _onIdleTimeout,
       );
       return;
@@ -138,9 +184,10 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     // Must live here: `_buildPage` runs inside a Builder on the Apple stage,
     // where `ref.listen` is not allowed.
     ref.listen<int>(nowPlayingActivityProvider, (_, _) => _resetIdleTimer());
+    ref.listen<int>(nowPlayingAutoHideSecondsProvider, (_, _) => _resetIdleTimer());
     final apple = ref.watch(ambientStyleProvider) == AmbientStyle.apple;
     if (!apple) return _buildPage(context);
-    final accent = katAccent(context);
+    final accent = waveAccent(context);
     if (_stageTheme == null || _stageAccent != accent) {
       _stageAccent = accent;
       _stageTheme = buildWaveFluentTheme(accent: accent, isLight: false);
@@ -155,17 +202,20 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     final current = ref.watch(playbackServiceProvider.select((s) => s.current));
 
     final visualizerEnabled = ref.watch(visualizerEnabledProvider);
+    final canvasEnabled = ref.watch(canvasEnabledProvider);
+    final isImmersive = ref.watch(nowPlayingImmersiveProvider);
+    final nowPlayingStyle = ref.watch(nowPlayingStyleProvider);
 
     if (current == null) {
       // Same stage as the playing page, for the same reason: this route must
       // not depend on whatever happens to be behind it.
       return ColoredBox(
-        color: katBackground(context),
+        color: waveBackground(context),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: KatEmpty(
-              icon: KatIcons.music,
+            child: WaveEmpty(
+              icon: WaveIcons.music,
               title: 'Nothing playing',
               subtitle: 'Pick something from Home, Discover or Search and it will take centre stage here.',
               actionLabel: 'Browse music',
@@ -185,14 +235,27 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
         if (i + 1 < q.length) q[i + 1],
         if (i + 2 < q.length) q[i + 2],
       ];
-      final warm = [
-        current.artworkUrl,
-        ...upcoming.map((t) => t.artworkUrl),
-      ].where((u) => u.isNotEmpty).toList();
+      // Warm + pin exactly what the hero will request: the official cover
+      // when it is already known (the hero leads with it), at the hero's
+      // fixed decode extent — same URL, same ladder step, same cache key.
+      final official = OfficialArtworkService.instance;
+      String heroUrl(PlayableTrack t) =>
+          official
+              .peekDisplayTrack(title: t.title, artist: t.artist)
+              ?.artworkUrl ??
+          t.artworkUrl;
+      final warm = [current, ...upcoming]
+          .map(heroUrl)
+          .where((u) => u.isNotEmpty)
+          .toList();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (warm.isNotEmpty) {
-          ArtworkResolver.preload(context, warm, targetPx: 640);
+          final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+          final px = kHeroArtworkExtent * dpr;
+          ArtworkResolver.preload(context, warm, targetPx: px);
+          // Survives closing the page: reopening paints from memory.
+          ArtworkResolver.pinOnly(warm, targetPx: px);
         }
       });
     }
@@ -203,7 +266,7 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
     // and nothing looks it up when the toggle is off. Re-arms on the toggle
     // so flipping it on warms the current track instead of waiting for the
     // first fade.
-    if (visualizerEnabled && current.queueKey != _prefetchedMotionKey) {
+    if (visualizerEnabled && canvasEnabled && current.queueKey != _prefetchedMotionKey) {
       _prefetchedMotionKey = current.queueKey;
       final snap = ref.read(playbackServiceProvider);
       final q = snap.queue;
@@ -229,6 +292,23 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
       }
     }
 
+    final lyricsAsync = ref.watch(waveLyricsProvider(current));
+    final lyricsMissing = lyricsAsync.when(
+      loading: () => false,
+      error: (_, _) => true,
+      data: (r) => r.isEmpty || r.isInstrumental,
+    );
+    final effectiveLyricsVisible = _lyricsVisible && !lyricsMissing;
+    final effectiveFocusMode = _focusMode && !lyricsMissing;
+
+    void toggleLyrics() {
+      _resetIdleTimer();
+      setState(() {
+        _lyricsVisible = !_lyricsVisible;
+        if (!_lyricsVisible) _focusMode = false;
+      });
+    }
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -243,12 +323,16 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
           }
         },
       },
-      child: MouseRegion(
-        cursor: _controlsIdle
-            ? SystemMouseCursors.none
-            : SystemMouseCursors.basic,
-        onHover: (_) => _resetIdleTimer(),
-        child: Stack(
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerHover: _onPointerActivity,
+        onPointerMove: _onPointerActivity,
+        onPointerDown: (_) => _resetIdleTimer(),
+        child: MouseRegion(
+          cursor: _controlsIdle
+              ? SystemMouseCursors.none
+              : SystemMouseCursors.basic,
+          child: Stack(
           children: [
             // The stage belongs to the page. Without a background of its own
             // the black was borrowed from whatever sat behind the route, so
@@ -256,118 +340,133 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
             // fade with it — and then the backdrop vanished the instant the
             // route did. Painting it here keeps the whole screen, backdrop
             // included, inside the page's own transition.
-            Positioned.fill(child: ColoredBox(color: katBackground(context))),
+            Positioned.fill(child: ColoredBox(color: waveBackground(context))),
 
-            // Background Visualizer
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: _NowAmbient(artworkUrl: current.artworkUrl),
+            if (nowPlayingStyle == NowPlayingStyle.fullBleed)
+              Positioned.fill(
+                child: NowPlayingFullBleedView(track: current),
+              )
+            else if (nowPlayingStyle == NowPlayingStyle.minimal)
+              Positioned.fill(
+                child: NowPlayingMinimalView(
+                  track: current,
+                  lyricsVisible: _lyricsVisible,
+                  onToggleLyrics: toggleLyrics,
+                  onClose: () {
+                    if (ref.read(nowPlayingImmersiveProvider)) {
+                      ref.read(nowPlayingImmersiveProvider.notifier).state =
+                          false;
+                      return;
+                    }
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/home');
+                    }
+                  },
+                ),
+              )
+            else ...[
+              // Background Visualizer
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: _NowAmbient(artworkUrl: current.artworkUrl),
+                ),
               ),
-            ),
 
-            // Main Layout Content
-            AnimatedPositioned(
-              duration: katMotion(context, KatMotion.normal),
-              curve: Curves.easeOutCubic,
-              left: 0,
-              top: 0,
-              bottom: 0,
-              right: 0,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 860;
+              // Main Layout Content
+              AnimatedPositioned(
+                duration: waveMotion(context, WaveMotion.normal),
+                curve: Curves.easeOutCubic,
+                left: 0,
+                top: 0,
+                bottom: 0,
+                right: 0,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth > 860;
 
-                  // The body spans the whole page and the top action bar floats
-                  // over it, so the lyrics toolbar can sit on the same row as the
-                  // top bar instead of costing the lyrics a row of their own.
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: isWide
-                            ? _DesktopDualPane(
-                                topInset: _kTopBarHeight,
-                                track: current,
-                                lyricsVisible: _lyricsVisible,
-                                focusMode: _focusMode,
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.only(
-                                  top: _kTopBarHeight,
+                    // The body spans the whole page and the top action bar floats
+                    // over it, so the lyrics toolbar can sit on the same row as the
+                    // top bar instead of costing the lyrics a row of their own.
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: isWide
+                              ? _DesktopDualPane(
+                                  topInset: _kTopBarHeight,
+                                  track: current,
+                                  lyricsVisible: effectiveLyricsVisible,
+                                  focusMode: effectiveFocusMode,
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: _kTopBarHeight,
+                                  ),
+                                  child: _NarrowCenteredPane(
+                                    track: current,
+                                    lyricsVisible: effectiveLyricsVisible,
+                                  ),
                                 ),
-                                child: _NarrowCenteredPane(
+                        ),
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: // Top Actions Bar (Fadeable on idle)
+                          AnimatedOpacity(
+                            duration: waveMotion(
+                              context,
+                              const Duration(milliseconds: 350),
+                            ),
+                            opacity: _controlsIdle ? 0.0 : 1.0,
+                            child: ExcludeFocus(
+                              excluding: _controlsIdle,
+                              child: IgnorePointer(
+                                ignoring: _controlsIdle,
+                                child: _TopActionsBar(
                                   track: current,
                                   lyricsVisible: _lyricsVisible,
+                                  focusMode: _focusMode,
+                                  showBackButton: isImmersive,
+                                  onInteraction: _resetIdleTimer,
+                                  onToggleLyrics: toggleLyrics,
+                                  onToggleFocus: () {
+                                    _resetIdleTimer();
+                                    setState(() {
+                                      _focusMode = !_focusMode;
+                                      if (_focusMode) _lyricsVisible = true;
+                                    });
+                                  },
+                                  onClose: () {
+                                    // Edge-to-edge mode: the cross leaves it.
+                                    if (ref.read(nowPlayingImmersiveProvider)) {
+                                      ref
+                                          .read(
+                                            nowPlayingImmersiveProvider.notifier,
+                                          )
+                                          .state = false;
+                                      return;
+                                    }
+                                    if (context.canPop()) {
+                                      context.pop();
+                                    } else {
+                                      context.go('/home');
+                                    }
+                                  },
                                 ),
-                              ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: // Top Actions Bar (Fadeable on idle)
-                        AnimatedOpacity(
-                          duration: katMotion(
-                            context,
-                            const Duration(milliseconds: 350),
-                          ),
-                          opacity: _controlsIdle ? 0.0 : 1.0,
-                          child: ExcludeFocus(
-                            excluding: _controlsIdle,
-                            child: IgnorePointer(
-                              ignoring: _controlsIdle,
-                              child: _TopActionsBar(
-                                lyricsVisible: _lyricsVisible,
-                                focusMode: _focusMode,
-                                visualizerEnabled: visualizerEnabled,
-                                onToggleLyrics: () {
-                                  _resetIdleTimer();
-                                  setState(() {
-                                    _lyricsVisible = !_lyricsVisible;
-                                    if (!_lyricsVisible) _focusMode = false;
-                                  });
-                                },
-                                onToggleFocus: () {
-                                  _resetIdleTimer();
-                                  setState(() {
-                                    _focusMode = !_focusMode;
-                                    if (_focusMode) _lyricsVisible = true;
-                                  });
-                                },
-                                onToggleVisualizer: () {
-                                  _resetIdleTimer();
-                                  ref
-                                      .read(visualizerEnabledProvider.notifier)
-                                      .toggle();
-                                },
-                                onClose: () {
-                                  // Edge-to-edge mode: the cross leaves it.
-                                  if (ref.read(nowPlayingImmersiveProvider)) {
-                                    ref
-                                            .read(
-                                              nowPlayingImmersiveProvider
-                                                  .notifier,
-                                            )
-                                            .state =
-                                        false;
-                                    return;
-                                  }
-                                  if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go('/home');
-                                  }
-                                },
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ],
+        ),
         ),
       ),
     );
@@ -377,86 +476,60 @@ class _KatNowPlayingPageState extends ConsumerState<KatNowPlayingPage> {
 /// Height of the top action bar (also the lyrics toolbar's row).
 const double _kTopBarHeight = 54;
 
+/// Logical edge the Now Playing hero cover is requested + decoded at. The
+/// on-screen size animates (340–480 desktop, ≤360 narrow); requesting at
+/// the largest keeps one cache key for the whole page.
+const double kHeroArtworkExtent = 480;
+
 class _TopActionsBar extends StatelessWidget {
+  final PlayableTrack track;
   final bool lyricsVisible;
   final bool focusMode;
-  final bool visualizerEnabled;
+  final bool showBackButton;
   final VoidCallback onToggleLyrics;
   final VoidCallback onToggleFocus;
-  final VoidCallback onToggleVisualizer;
   final VoidCallback onClose;
+  final VoidCallback? onInteraction;
 
   const _TopActionsBar({
+    required this.track,
     required this.lyricsVisible,
     required this.focusMode,
-    required this.visualizerEnabled,
+    this.showBackButton = false,
     required this.onToggleLyrics,
     required this.onToggleFocus,
-    required this.onToggleVisualizer,
     required this.onClose,
+    this.onInteraction,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: _kTopBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      alignment: Alignment.topCenter,
       child: Row(
         children: [
-          KatGlass(
-            blur: false,
-            borderRadius: KatRadius.menuRadius,
-            child: KatTooltip(
-              message: 'Back',
-              child: _FsIconButton(
-                icon: FluentIcons.chevron_left,
-                onTap: onClose,
+          if (showBackButton)
+            WaveGlass(
+              blur: false,
+              borderRadius: WaveRadius.menuRadius,
+              child: LWTooltip(
+                message: 'Back',
+                child: _FsIconButton(
+                  icon: FluentIcons.chevron_left,
+                  onTap: onClose,
+                ),
               ),
             ),
-          ),
           const Spacer(),
-          KatGlass(
-            blur: false,
-            borderRadius: KatRadius.menuRadius,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: Row(
-              spacing: 5,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                KatTooltip(
-                  message: lyricsVisible ? 'Hide lyrics' : 'Show lyrics',
-                  child: _FsIconButton(
-                    icon: KatIcons.lyrics,
-                    active: lyricsVisible,
-                    onTap: onToggleLyrics,
-                  ),
-                ),
-                KatTooltip(
-                  message: focusMode ? 'Exit focus mode' : 'Focus on lyrics',
-                  child: _FsIconButton(
-                    icon: focusMode
-                        ? FluentIcons.mini_contract
-                        : KatIcons.expand,
-                    active: focusMode,
-                    onTap: onToggleFocus,
-                  ),
-                ),
-                KatTooltip(
-                  message: visualizerEnabled
-                      ? 'Disable visualizer'
-                      : 'Enable visualizer',
-                  child: _FsIconButton(
-                    icon: KatIcons.visualizer,
-                    active: visualizerEnabled,
-                    onTap: onToggleVisualizer,
-                  ),
-                ),
-                KatTooltip(
-                  message: 'Close (Esc)',
-                  child: _FsIconButton(icon: KatIcons.close, onTap: onClose),
-                ),
-              ],
-            ),
+          NowPlayingTopActions(
+            track: track,
+            lyricsVisible: lyricsVisible,
+            onToggleLyrics: onToggleLyrics,
+            focusMode: focusMode,
+            onToggleFocus: onToggleFocus,
+            onInteraction: onInteraction,
           ),
         ],
       ),
@@ -466,12 +539,10 @@ class _TopActionsBar extends StatelessWidget {
 
 class _FsIconButton extends StatefulWidget {
   final IconData icon;
-  final bool active;
   final VoidCallback onTap;
 
   const _FsIconButton({
     required this.icon,
-    this.active = false,
     required this.onTap,
   });
 
@@ -484,12 +555,9 @@ class _FsIconButtonState extends State<_FsIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
-    final color = widget.active
-        ? accent
-        : (dark ? KatColors.textPrimary : KatColors.lightTextPrimary)
-              .withValues(alpha: _hover ? 1.0 : 0.92);
+    final dark = waveIsDark(context);
+    final color = (dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary)
+        .withValues(alpha: _hover ? 1.0 : 0.92);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -499,21 +567,14 @@ class _FsIconButtonState extends State<_FsIconButton> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
-          duration: katMotion(context, KatMotion.fast),
-          width: 36,
-          height: 36,
+          duration: waveMotion(context, WaveMotion.fast),
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
-            color: widget.active
-                ? accent.withValues(alpha: 0.15)
-                : _hover
+            color: _hover
                 ? (dark ? Colors.white : Colors.black).withValues(alpha: 0.10)
                 : Colors.transparent,
-            borderRadius: KatRadius.controlsRadius,
-            border: Border.all(
-              color: widget.active
-                  ? accent.withValues(alpha: 0.35)
-                  : Colors.transparent,
-            ),
+            borderRadius: WaveRadius.controlsRadius,
           ),
           child: Center(child: Icon(widget.icon, size: 16, color: color)),
         ),
@@ -662,7 +723,7 @@ class _DesktopDualPane extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.only(top: topInset),
                     child: AnimatedContainer(
-                      duration: katMotion(
+                      duration: waveMotion(
                         context,
                         const Duration(milliseconds: 500),
                       ),
@@ -732,7 +793,7 @@ class _DesktopDualPane extends StatelessWidget {
 
                   // Gap
                   AnimatedContainer(
-                    duration: katMotion(
+                    duration: waveMotion(
                       context,
                       const Duration(milliseconds: 500),
                     ),
@@ -742,7 +803,7 @@ class _DesktopDualPane extends StatelessWidget {
 
                   // Right Column (Apple Music Karaoke Lyrics Pane)
                   AnimatedContainer(
-                    duration: katMotion(
+                    duration: waveMotion(
                       context,
                       const Duration(milliseconds: 500),
                     ),
@@ -751,7 +812,7 @@ class _DesktopDualPane extends StatelessWidget {
                     height: fullHeight,
                     child: ClipRect(
                       child: AnimatedOpacity(
-                        duration: katMotion(
+                        duration: waveMotion(
                           context,
                           const Duration(milliseconds: 350),
                         ),
@@ -769,10 +830,10 @@ class _DesktopDualPane extends StatelessWidget {
                                 child: _VisibleTicker(
                                   enabled: lyricsVisible,
                                   child: RepaintBoundary(
-                                    child: KatKaraokeLyricsView(
+                                    child: WaveKaraokeLyricsView(
                                       track: track,
                                       compact: false,
-                                      showHeaderControls: true,
+                                      showHeaderControls: false,
                                       fontSize: 36.0,
                                       isActive: lyricsVisible,
                                       toolbarRightInset: toolbarInset,
@@ -852,10 +913,10 @@ class _NarrowCenteredPane extends StatelessWidget {
       child: _VisibleTicker(
         enabled: lyricsVisible,
         child: RepaintBoundary(
-          child: KatKaraokeLyricsView(
+          child: WaveKaraokeLyricsView(
             track: track,
             compact: true,
-            showHeaderControls: true,
+            showHeaderControls: false,
             isActive: lyricsVisible,
           ),
         ),
@@ -934,7 +995,6 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
     final ref = this.ref;
     final track = widget.track;
     final size = widget.size;
-    final dark = katIsDark(context);
     // Podcasts keep their native shape: 16:9 art stays 16:9, square art
     // falls through to the normal 1:1 cover below.
     if (track.artworkUrl.isNotEmpty && _podcast(track)) {
@@ -955,28 +1015,18 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
       final w = size;
       final h = size * 9 / 16;
       return Center(
-        child: Container(
+        child: SizedBox(
           width: w,
           height: h,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.62 : 0.34),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.38 : 0.18),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: CachedNetworkImage(
               imageUrl: track.artworkUrl,
+              cacheManager: ArtworkCache.instance,
+              memCacheWidth: ArtworkCache.bucket(
+                kHeroArtworkExtent *
+                    (MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0),
+              ),
               fit: BoxFit.cover,
               width: w,
               height: h,
@@ -986,8 +1036,10 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
         ),
       );
     }
-    // Visualizer toggle owns ALL page motion: aura + motion-art clip.
-    final visualizerOn = ref.watch(visualizerEnabledProvider);
+    // Visualizer toggle + Playback Canvas toggle own motion-art playback.
+    final visualizerOn =
+        ref.watch(visualizerEnabledProvider) &&
+        ref.watch(canvasEnabledProvider);
     final motion = ref.watch(
       animatedArtworkProvider(
         AnimatedArtworkQuery(
@@ -1025,40 +1077,22 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
     // build's output, so no extra frame is scheduled.
     if (!motionReady) _sleeveGone = false;
     final showSleeve = !motionReady || !_sleeveGone;
-    KatArtwork stillCover() => KatArtwork(
+    WaveArtwork stillCover() => WaveArtwork(
       url: track.artworkUrl,
       videoId: track.videoId,
       size: size,
+      // Fixed request size: [size] follows the animating column, and a
+      // per-frame size used to mean a per-frame URL/decode.
+      decodeExtent: kHeroArtworkExtent,
       radius: 12,
       label: track.title,
       title: track.title,
       artist: track.artist,
     );
 
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        // Kept shallow on purpose: large blurs over a full-window ambient
-        // stage retain big GPU surfaces on Windows ANGLE.
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.62 : 0.34),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.38 : 0.18),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      // Boundary sits INSIDE the shadows: the live video repaints
-      // per frame in its own layer while the blurs rasterize once.
-      // Plain antiAlias (not ...WithSaveLayer): the offscreen target
-      // switch every video frame cost milliseconds on weak raster.
       child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -1084,7 +1118,7 @@ class _HeroArtworkCardState extends ConsumerState<_HeroArtworkCard> {
                       // 0ms snap back to opaque when switching tracks so a
                       // mid-fade track change never exposes a black frame.
                       duration: motionReady
-                          ? katMotion(
+                          ? waveMotion(
                               context,
                               const Duration(milliseconds: 480),
                             )
@@ -1122,7 +1156,7 @@ class _TrackSwap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: katMotion(context, KatMotion.normal),
+      duration: waveMotion(context, WaveMotion.normal),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) => FadeTransition(
@@ -1187,6 +1221,9 @@ class _TrackMetadataSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dark = waveIsDark(context);
+    final ink = dark ? Colors.white : Colors.black;
+    final shadows = dark ? _metadataShadow : null;
     final stream = ref.watch(playbackServiceProvider.select((s) => s.stream));
     final quality = stream == null ? null : _streamQualityParts(stream);
 
@@ -1194,12 +1231,12 @@ class _TrackMetadataSection extends ConsumerWidget {
         track.album.isNotEmpty &&
         track.album.toLowerCase().trim() != track.title.toLowerCase().trim();
 
-    final artistStyle = KatType.meta.copyWith(
+    final artistStyle = WaveType.meta.copyWith(
       fontSize: 14,
       height: 1.45,
       fontWeight: FontWeight.w500,
       letterSpacing: 0.1,
-      shadows: _metadataShadow,
+      shadows: shadows,
     );
 
     return Column(
@@ -1213,35 +1250,35 @@ class _TrackMetadataSection extends ConsumerWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: alignCenter ? TextAlign.center : TextAlign.start,
-          style: KatType.pageTitle.copyWith(
+          style: WaveType.pageTitle.copyWith(
             fontSize: 25,
             height: 1.12,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
-            color: Colors.white,
-            shadows: _metadataShadow,
+            color: ink,
+            shadows: shadows,
           ),
         ),
         const SizedBox(height: 5),
-        KatArtistLine(
+        WaveArtistLine(
           artist: track.artist,
           textAlign: alignCenter ? TextAlign.center : TextAlign.start,
           style: artistStyle.copyWith(
-            color: Colors.white.withValues(alpha: 0.86),
+            color: ink.withValues(alpha: 0.86),
           ),
           extraTrailingSpans: [
             if (showDistinctAlbum) ...[
               TextSpan(
                 text: '  ·  ',
                 style: artistStyle.copyWith(
-                  color: Colors.white.withValues(alpha: 0.30),
+                  color: ink.withValues(alpha: 0.30),
                   fontWeight: FontWeight.w400,
                 ),
               ),
               TextSpan(
                 text: track.album,
                 style: artistStyle.copyWith(
-                  color: Colors.white.withValues(alpha: 0.56),
+                  color: ink.withValues(alpha: 0.56),
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -1266,6 +1303,9 @@ class _QualitySpecLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = waveIsDark(context);
+    final ink = dark ? Colors.white : Colors.black;
+    final shadows = dark ? _metadataShadow : null;
     return Align(
       alignment: centered ? Alignment.center : Alignment.centerLeft,
       child: Row(
@@ -1273,40 +1313,40 @@ class _QualitySpecLine extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            KatIcons.equalizer,
+            WaveIcons.equalizer,
             size: 11,
-            color: katAccent(context).withValues(alpha: 0.62),
+            color: waveAccent(context).withValues(alpha: dark ? 0.62 : 0.80),
           ),
           const SizedBox(width: 6),
           Text(
             quality.tier,
-            style: KatType.overline.copyWith(
+            style: WaveType.overline.copyWith(
               fontSize: 9.5,
               letterSpacing: 1.05,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.94),
-              shadows: _metadataShadow,
+              color: ink.withValues(alpha: 0.94),
+              shadows: shadows,
             ),
           ),
           if (quality.detail.isNotEmpty) ...[
             const SizedBox(width: 7),
             Text(
               '·',
-              style: KatType.label.copyWith(
+              style: WaveType.label.copyWith(
                 fontSize: 10.5,
-                color: Colors.white.withValues(alpha: 0.32),
-                shadows: _metadataShadow,
+                color: ink.withValues(alpha: 0.32),
+                shadows: shadows,
               ),
             ),
             const SizedBox(width: 7),
             Text(
               quality.detail,
-              style: KatType.label.copyWith(
+              style: WaveType.label.copyWith(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.1,
-                color: Colors.white.withValues(alpha: 0.68),
-                shadows: _metadataShadow,
+                color: ink.withValues(alpha: 0.68),
+                shadows: shadows,
               ),
             ),
           ],
@@ -1330,6 +1370,9 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = waveIsDark(context);
+    final ink = dark ? Colors.white : Colors.black;
+    final shadows = dark ? _metadataShadow : null;
     final queue = ref.watch(playbackServiceProvider.select((s) => s.queue));
     final index = ref.watch(
       playbackServiceProvider.select((s) => s.currentIndex),
@@ -1339,10 +1382,10 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
     if (!hasNext) return const SizedBox.shrink();
 
     final nextTrack = queue[index + 1];
-    final nextStyle = KatType.meta.copyWith(
+    final nextStyle = WaveType.meta.copyWith(
       fontSize: 11.5,
-      color: Colors.white.withValues(alpha: 0.62),
-      shadows: _metadataShadow,
+      color: ink.withValues(alpha: 0.62),
+      shadows: shadows,
     );
 
     final nextLabel = Text.rich(
@@ -1350,17 +1393,17 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
         children: [
           TextSpan(
             text: nextTrack.title,
-            style: KatType.trackTitle.copyWith(
+            style: WaveType.trackTitle.copyWith(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.92),
-              shadows: _metadataShadow,
+              color: ink.withValues(alpha: 0.92),
+              shadows: shadows,
             ),
           ),
           TextSpan(
             text: '  ·  ',
             style: nextStyle.copyWith(
-              color: Colors.white.withValues(alpha: 0.30),
+              color: ink.withValues(alpha: 0.30),
             ),
           ),
           TextSpan(text: nextTrack.artist, style: nextStyle),
@@ -1375,12 +1418,12 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
       children: [
         Text(
           'UP NEXT',
-          style: KatType.overline.copyWith(
+          style: WaveType.overline.copyWith(
             fontSize: 8.5,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w700,
-            color: katAccent(context).withValues(alpha: 0.82),
-            shadows: _metadataShadow,
+            color: waveAccent(context).withValues(alpha: dark ? 0.82 : 0.92),
+            shadows: shadows,
           ),
         ),
         const SizedBox(width: 10),
@@ -1393,15 +1436,15 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
           Expanded(child: nextLabel),
         const SizedBox(width: 8),
         AnimatedSlide(
-          duration: KatMotion.fast,
-          curve: KatMotion.standard,
+          duration: WaveMotion.fast,
+          curve: WaveMotion.standard,
           offset: _hovered ? const Offset(0.18, 0) : Offset.zero,
           child: Icon(
             FluentIcons.chevron_right,
             size: 11,
             color: _hovered
-                ? katAccent(context)
-                : Colors.white.withValues(alpha: 0.42),
+                ? waveAccent(context)
+                : ink.withValues(alpha: 0.42),
           ),
         ),
       ],
@@ -1417,7 +1460,7 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
           Container(
             width: 28,
             height: 1,
-            color: Colors.white.withValues(alpha: 0.16),
+            color: ink.withValues(alpha: 0.16),
           ),
           const SizedBox(height: 4),
           MouseRegion(
@@ -1429,11 +1472,11 @@ class _UpNextRowState extends ConsumerState<_UpNextRow> {
               onTap: () => ref.read(playbackServiceProvider.notifier).next(),
               child: AnimatedContainer(
                 key: const ValueKey('now-playing-up-next'),
-                duration: KatMotion.fast,
-                curve: KatMotion.standard,
+                duration: WaveMotion.fast,
+                curve: WaveMotion.standard,
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: _hovered ? 0.06 : 0.0),
+                  color: ink.withValues(alpha: _hovered ? 0.06 : 0.0),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: content,
@@ -1465,11 +1508,15 @@ class _NowAmbient extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (artworkUrl.isEmpty) return const SizedBox.shrink();
-    return KatAmbientMesh(
-      artworkUrl: artworkUrl,
-      isFullBleed: true,
-      cinematic: true,
-      apple: ref.watch(ambientStyleProvider) == AmbientStyle.apple,
+    final visible = ref.watch(windowVisibleProvider);
+    return TickerMode(
+      enabled: visible,
+      child: WaveAmbientMesh(
+        artworkUrl: artworkUrl,
+        isFullBleed: true,
+        cinematic: true,
+        apple: ref.watch(ambientStyleProvider) == AmbientStyle.apple,
+      ),
     );
   }
 }

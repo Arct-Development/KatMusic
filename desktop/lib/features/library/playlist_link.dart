@@ -1,8 +1,8 @@
-/// External playlist link support: detect the provider behind a pasted
+﻿/// External playlist link support: detect the provider behind a pasted
 /// string and pull out its playlist id. Public links only - no account,
 /// no API keys, no OAuth anywhere in this feature.
 ///
-/// Ported from KatMusic-Native `data/playlist/ExternalPlaylistModels.kt`.
+/// Ported from KatMusic `data/playlist/ExternalPlaylistModels.kt`.
 /// YouTube shapes mirror `InnertubeApi.extractPlaylistId` semantics
 /// (`list=` param, `playlist/` path, else trimmed raw).
 library;
@@ -23,12 +23,10 @@ enum PlaylistLinkSource {
 }
 
 final _spotifyIdRegex = RegExp(
-  r'spotify\.com/(?:[a-z]{2,4}(?:-[a-z]{2})?/)?playlist/([A-Za-z0-9]+)',
-);
+    r'spotify\.com/(?:[a-z]{2,4}(?:-[a-z]{2})?/)?playlist/([A-Za-z0-9]+)');
 final _spotifyUriRegex = RegExp(r'spotify:playlist:([A-Za-z0-9]+)');
 final _appleIdRegex = RegExp(
-  r'music\.apple\.com/[a-z]{2}(?:-[a-z]{2})?/playlist/(?:[^/]+/)?(pl\.[A-Za-z0-9]+)',
-);
+    r'music\.apple\.com/[a-z]{2}(?:-[a-z]{2})?/playlist/(?:[^/]+/)?(pl\.[A-Za-z0-9]+)');
 
 /// Best-effort provider detection from a pasted string.
 PlaylistLinkSource? detectPlaylistLink(String raw) {
@@ -122,17 +120,13 @@ const _spotifyPlaylistUri = 'spotify:playlist:';
 
 /// Spotify embed parser: `__NEXT_DATA__` JSON in, rows out. Pure, never
 /// throws - unreadable input yields empty rows.
-PlaylistLinkPage parseSpotifyEmbed(
-  String html, [
-  String fallbackTitle = 'Spotify Playlist',
-]) {
+PlaylistLinkPage parseSpotifyEmbed(String html,
+    [String fallbackTitle = 'Spotify Playlist']) {
   try {
     final payload = _nextDataRegex.firstMatch(html)?.group(1);
     if (payload == null || payload.trim().isEmpty) {
       return PlaylistLinkPage(
-        source: PlaylistLinkSource.spotify,
-        title: fallbackTitle,
-      );
+          source: PlaylistLinkSource.spotify, title: fallbackTitle);
     }
     final root = jsonDecode(_unescapeEmbedHtml(payload));
     String? title;
@@ -154,14 +148,11 @@ PlaylistLinkPage parseSpotifyEmbed(
             } else if (uri.startsWith(_spotifyTrackUri)) {
               final trackTitle = _cleanSpotify(name);
               if (trackTitle.isNotEmpty && seenUris.add(uri)) {
-                rows.add(
-                  PlaylistLinkRow(
-                    title: trackTitle,
-                    artist: _cleanSpotify(
-                      current['subtitle']?.toString() ?? '',
-                    ),
-                  ),
-                );
+                rows.add(PlaylistLinkRow(
+                  title: trackTitle,
+                  artist: _cleanSpotify(
+                      current['subtitle']?.toString() ?? ''),
+                ));
               }
             }
           }
@@ -181,14 +172,13 @@ PlaylistLinkPage parseSpotifyEmbed(
     );
   } catch (_) {
     return PlaylistLinkPage(
-      source: PlaylistLinkSource.spotify,
-      title: fallbackTitle,
-    );
+        source: PlaylistLinkSource.spotify, title: fallbackTitle);
   }
 }
 
 /// Collapses non-breaking spaces (Spotify pads artist lists with them).
-String _cleanSpotify(String raw) => raw.replaceAll('\u00a0', ' ').trim();
+String _cleanSpotify(String raw) =>
+    raw.replaceAll('\u00a0', ' ').trim();
 
 /// The embed JSON is HTML-escaped inside the script tag (`&amp;` last).
 String _unescapeEmbedHtml(String value) => value
@@ -218,7 +208,8 @@ final _titleTagRegex = RegExp(
   dotAll: true,
   caseSensitive: false,
 );
-final _bidiRegex = RegExp('[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]');
+final _bidiRegex = RegExp(
+    '[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]');
 final _appleSuffixRegex = RegExp(
   '\\s*[-\u2013\u2014]\\s*(?:Playlist\\s*[-\u2013\u2014]\\s*)?Apple\\s*Music\\s*\$',
   caseSensitive: false,
@@ -264,11 +255,12 @@ List<PlaylistLinkRow> _parseAppleServerRows(String html) {
     if (element is Map) {
       final title = element['title'];
       final artist = element['artistName'];
-      if (title is String && artist is String && title.trim().isNotEmpty) {
-        final row = PlaylistLinkRow(title: title.trim(), artist: artist.trim());
-        if (seen.add(
-          '${row.title.toLowerCase()}|${row.artist.toLowerCase()}',
-        )) {
+      if (title is String &&
+          artist is String &&
+          title.trim().isNotEmpty) {
+        final row = PlaylistLinkRow(
+            title: title.trim(), artist: artist.trim());
+        if (seen.add('${row.title.toLowerCase()}|${row.artist.toLowerCase()}')) {
           rows.add(row);
         }
       }
@@ -314,7 +306,8 @@ String _parseAppleTitle(String html) {
   if (schemaContent != null) {
     try {
       final name = _findName(jsonDecode(schemaContent));
-      final cleaned = name != null ? _cleanAppleTitle(name) : '';
+      final cleaned =
+          name != null ? _cleanAppleTitle(name) : '';
       if (cleaned.isNotEmpty) return cleaned;
     } catch (_) {}
   }
@@ -401,18 +394,21 @@ const _fetchTimeout = Duration(seconds: 20);
 /// Downloads a public Spotify playlist page and parses its track list.
 /// `spotify.link` short URLs are followed to their canonical playlist
 /// (Dio follows the HTTP redirect; the id is re-read from the final URI).
-Future<PlaylistLinkPage> fetchSpotifyPlaylist(Dio dio, String urlOrId) async {
+Future<PlaylistLinkPage> fetchSpotifyPlaylist(
+    Dio dio, String urlOrId) async {
   if (_isMixId(urlOrId)) {
     throw FormatException(
-      'Mixes and radio cannot be imported. Paste a playlist link instead.',
-    );
+        'Mixes and radio cannot be imported. Paste a playlist link instead.');
   }
-  var id = extractPlaylistId(urlOrId, PlaylistLinkSource.spotify);
-  if (id == null && urlOrId.trim().toLowerCase().contains('spotify.link')) {
+  var id =
+      extractPlaylistId(urlOrId, PlaylistLinkSource.spotify);
+  if (id == null &&
+      urlOrId.trim().toLowerCase().contains('spotify.link')) {
     id = await _expandShortLink(dio, urlOrId.trim());
   }
   if (id == null || id.isEmpty) {
-    throw FormatException('That does not look like a Spotify playlist link.');
+    throw FormatException(
+        'That does not look like a Spotify playlist link.');
   }
   try {
     final res = await dio
@@ -420,25 +416,25 @@ Future<PlaylistLinkPage> fetchSpotifyPlaylist(Dio dio, String urlOrId) async {
           '$_spotifyEmbedBase$id',
           options: Options(
             responseType: ResponseType.plain,
-            headers: {'User-Agent': _desktopWindowsUa, 'Accept': 'text/html'},
+            headers: {
+              'User-Agent': _desktopWindowsUa,
+              'Accept': 'text/html',
+            },
           ),
         )
         .timeout(_fetchTimeout);
     final body = res.data ?? '';
     if (res.statusCode != 200 || body.trim().isEmpty) {
       throw StateError(
-        'Spotify playlist page returned HTTP ${res.statusCode}.',
-      );
+          'Spotify playlist page returned HTTP ${res.statusCode}.');
     }
     return parseSpotifyEmbed(body);
   } on DioException {
     throw StateError(
-      'Could not load that Spotify playlist. Check the link is public and try again.',
-    );
+        'Could not load that Spotify playlist. Check the link is public and try again.');
   } on TimeoutException {
     throw StateError(
-      'Could not load that Spotify playlist. Check the link is public and try again.',
-    );
+        'Could not load that Spotify playlist. Check the link is public and try again.');
   }
 }
 
@@ -459,7 +455,8 @@ Future<String?> _expandShortLink(Dio dio, String raw) async {
           ),
         )
         .timeout(_fetchTimeout);
-    return extractPlaylistId('${res.realUri}', PlaylistLinkSource.spotify);
+    return extractPlaylistId(
+        '${res.realUri}', PlaylistLinkSource.spotify);
   } catch (_) {
     return null;
   }
@@ -467,26 +464,28 @@ Future<String?> _expandShortLink(Dio dio, String raw) async {
 
 /// Mix/radio ids are never browsable playlists (explicit guard so a
 /// regex change elsewhere cannot silently start importing mixes).
-bool _isMixId(String raw) => raw.trim().toUpperCase().startsWith('RD');
+bool _isMixId(String raw) =>
+    raw.trim().toUpperCase().startsWith('RD');
 
 /// Downloads a public Apple Music playlist page and parses it.
 /// Accepts a full URL, a scheme-less host path, an id-bearing path, or
 /// a bare `pl.<id>` (fetched from the `us` storefront by id redirect).
-Future<PlaylistLinkPage> fetchApplePlaylist(Dio dio, String urlOrId) async {
+Future<PlaylistLinkPage> fetchApplePlaylist(
+    Dio dio, String urlOrId) async {
   if (_isMixId(urlOrId)) {
     throw FormatException(
-      'Mixes and radio cannot be imported. Paste a playlist link instead.',
-    );
+        'Mixes and radio cannot be imported. Paste a playlist link instead.');
   }
   final input = urlOrId.trim();
-  final isUrl =
-      input.toLowerCase().startsWith('http://') ||
+  final isUrl = input.toLowerCase().startsWith('http://') ||
       input.toLowerCase().startsWith('https://');
   final raw = !isUrl && input.toLowerCase().contains('music.apple.com')
       ? 'https://$input'
       : input;
-  final id = extractPlaylistId(raw, PlaylistLinkSource.appleMusic);
-  final bareId = input.toLowerCase().startsWith('pl.') ? input : null;
+  final id =
+      extractPlaylistId(raw, PlaylistLinkSource.appleMusic);
+  final bareId =
+      input.toLowerCase().startsWith('pl.') ? input : null;
   final String target;
   if (isUrl) {
     target = input;
@@ -496,8 +495,7 @@ Future<PlaylistLinkPage> fetchApplePlaylist(Dio dio, String urlOrId) async {
     target = '$_appleFallbackBase$bareId';
   } else {
     throw FormatException(
-      'That does not look like an Apple Music playlist link.',
-    );
+        'That does not look like an Apple Music playlist link.');
   }
   String? body;
   try {
@@ -508,7 +506,8 @@ Future<PlaylistLinkPage> fetchApplePlaylist(Dio dio, String urlOrId) async {
             responseType: ResponseType.plain,
             headers: {
               'User-Agent': _desktopMacUa,
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept':
+                  'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
               'Accept-Language': 'en-US,en;q=0.9',
             },
           ),
@@ -524,8 +523,10 @@ Future<PlaylistLinkPage> fetchApplePlaylist(Dio dio, String urlOrId) async {
   }
   if (body == null || body.trim().isEmpty) {
     throw StateError(
-      'Could not load that Apple Music playlist. Check the link and try again.',
-    );
+        'Could not load that Apple Music playlist. Check the link and try again.');
   }
   return parseApplePage(body);
 }
+
+
+

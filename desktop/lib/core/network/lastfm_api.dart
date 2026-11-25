@@ -6,7 +6,7 @@ import 'rate_guard.dart';
 
 /// Thin Last.fm `2.0/` client.
 ///
-/// Mirrors KatMusic-native `data/network/LastFmApiService.kt`:
+/// Mirrors KatMusic `data/network/LastFmApiService.kt`:
 /// unsigned reads via GET, signed writes via form POST, all calls
 /// multiplexed through the `method` parameter on
 /// `https://ws.audioscrobbler.com/`.
@@ -17,7 +17,7 @@ class LastFmApiService {
   final LastFmRateGuard _rateGuard;
 
   LastFmApiService(this._dio, this._rateGuard, {DateTime Function()? clock})
-    : _now = clock ?? DateTime.now;
+      : _now = clock ?? DateTime.now;
 
   final DateTime Function() _now;
 
@@ -38,11 +38,11 @@ class LastFmApiService {
     'user.gettopalbums': Duration(minutes: 2),
     'user.gettoptags': Duration(minutes: 2),
     'user.getinfo': Duration(minutes: 2),
-    'user.getfriends': Duration(minutes: 2),
   };
   static const int _memoCap = 200;
 
-  final _memo = <String, ({DateTime at, Future<Map<String, dynamic>> value})>{};
+  final _memo =
+      <String, ({DateTime at, Future<Map<String, dynamic>> value})>{};
 
   /// Unsigned read, replayed from memory for the methods in [_ttl]. Shares
   /// an in-flight request, and never keeps a failure or an API error body.
@@ -52,10 +52,8 @@ class LastFmApiService {
     final entries = query.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     final key = entries
-        .map(
-          (e) =>
-              '${e.key}=${e.key == 'method' ? e.value.toLowerCase() : e.value}',
-        )
+        .map((e) =>
+            '${e.key}=${e.key == 'method' ? e.value.toLowerCase() : e.value}')
         .join('&');
     final hit = _memo.remove(key);
     if (hit != null && _now().difference(hit.at) < ttl) {
@@ -65,16 +63,13 @@ class LastFmApiService {
     final future = _fetch(query);
     _memo[key] = (at: _now(), value: future);
     if (_memo.length > _memoCap) _memo.remove(_memo.keys.first);
-    future.then(
-      (json) {
-        if (json.containsKey('error') && identical(_memo[key]?.value, future)) {
-          _memo.remove(key);
-        }
-      },
-      onError: (Object _) {
-        if (identical(_memo[key]?.value, future)) _memo.remove(key);
-      },
-    );
+    future.then((json) {
+      if (json.containsKey('error') && identical(_memo[key]?.value, future)) {
+        _memo.remove(key);
+      }
+    }, onError: (Object _) {
+      if (identical(_memo[key]?.value, future)) _memo.remove(key);
+    });
     return future;
   }
 

@@ -32,14 +32,14 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Podcasts', style: KatType.sectionTitle),
+        Text('Podcasts', style: WaveType.sectionTitle),
         const SizedBox(height: 6),
         Row(
           children: [
             Expanded(
               child: Text(
                 'Show YouTube Music podcasts on Home, Search, and the Podcasts page. Turning this off keeps saved resume positions.',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
               ),
             ),
             const SizedBox(width: 12),
@@ -50,14 +50,14 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
           ],
         ),
         const SizedBox(height: 22),
-        Text('YouTube Music sync', style: KatType.sectionTitle),
+        Text('YouTube Music sync', style: WaveType.sectionTitle),
         const SizedBox(height: 6),
         Row(
           children: [
             Expanded(
               child: Text(
                 'Keep Liked Songs and your playlists the same here and on YouTube Music. Changes here go up within seconds; changes on YouTube arrive within about a minute. Local songs are never uploaded, and new playlists are created as private.',
-                style: KatType.meta.copyWith(color: katTextSecondary(context)),
+                style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
               ),
             ),
             const SizedBox(width: 12),
@@ -76,7 +76,7 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            KatGhostButton(
+            WaveGhostButton(
               label: sync.running ? 'Syncing…' : 'Sync now',
               icon: FluentIcons.sync,
               onPressed: sync.running || !prefs.syncYtLibrary
@@ -84,7 +84,7 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
                   : () => ref.read(ytLibrarySyncProvider).kick(),
             ),
             if (sync.heldRemovals > 0)
-              KatGhostButton(
+              WaveGhostButton(
                 label: 'Remove ${sync.heldRemovals} songs',
                 icon: FluentIcons.delete,
                 onPressed: () =>
@@ -96,21 +96,21 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
           const SizedBox(height: 8),
           Text(
             sync.message,
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
           ),
         ],
         const SizedBox(height: 22),
-        Text('Hidden from recommendations', style: KatType.sectionTitle),
+        Text('Hidden from recommendations', style: WaveType.sectionTitle),
         const SizedBox(height: 6),
         Text(
           'Restore a track to let Mix Lab and Home suggest it again.',
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
         ),
         const SizedBox(height: 8),
         if (exclusions.isEmpty)
           Text(
             'No tracks are hidden.',
-            style: KatType.meta.copyWith(color: katTextTertiary(context)),
+            style: WaveType.meta.copyWith(color: waveTextTertiary(context)),
           )
         else
           for (final item in exclusions)
@@ -126,21 +126,21 @@ class _LibrarySettingsState extends ConsumerState<LibrarySettings> {
                           item.name.isEmpty ? item.key : item.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: KatType.trackTitle,
+                          style: WaveType.trackTitle,
                         ),
                         if (item.artist.isNotEmpty)
                           Text(
                             item.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: KatType.meta.copyWith(
-                              color: katTextSecondary(context),
+                            style: WaveType.meta.copyWith(
+                              color: waveTextSecondary(context),
                             ),
                           ),
                       ],
                     ),
                   ),
-                  KatGhostButton(
+                  WaveGhostButton(
                     label: 'Restore',
                     onPressed: () => _restore(item.key),
                   ),

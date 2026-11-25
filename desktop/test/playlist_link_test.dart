@@ -23,7 +23,8 @@ void main() {
 
   test('detects Apple and YouTube shapes, rejects garbage', () {
     expect(
-      detectPlaylistLink('https://music.apple.com/us/playlist/slug/pl.abc123'),
+      detectPlaylistLink(
+          'https://music.apple.com/us/playlist/slug/pl.abc123'),
       PlaylistLinkSource.appleMusic,
     );
     expect(
@@ -44,35 +45,30 @@ void main() {
 
   test('extracts provider ids', () {
     expect(
-      extractPlaylistId(
-        'https://open.spotify.com/playlist/ABC123?si=x',
-        PlaylistLinkSource.spotify,
-      ),
+      extractPlaylistId('https://open.spotify.com/playlist/ABC123?si=x',
+          PlaylistLinkSource.spotify),
       'ABC123',
     );
     expect(
       extractPlaylistId(
-        'https://open.spotify.com/intl-de/playlist/ABC123',
-        PlaylistLinkSource.spotify,
-      ),
-      'ABC123',
-    );
-    expect(
-      extractPlaylistId('spotify:playlist:ABC123', PlaylistLinkSource.spotify),
+          'https://open.spotify.com/intl-de/playlist/ABC123',
+          PlaylistLinkSource.spotify),
       'ABC123',
     );
     expect(
       extractPlaylistId(
-        'https://music.apple.com/us/playlist/slug/pl.abc123',
-        PlaylistLinkSource.appleMusic,
-      ),
+          'spotify:playlist:ABC123', PlaylistLinkSource.spotify),
+      'ABC123',
+    );
+    expect(
+      extractPlaylistId(
+          'https://music.apple.com/us/playlist/slug/pl.abc123',
+          PlaylistLinkSource.appleMusic),
       'pl.abc123',
     );
     expect(
-      extractPlaylistId(
-        'https://music.youtube.com/playlist?list=PLxyz',
-        PlaylistLinkSource.youtube,
-      ),
+      extractPlaylistId('https://music.youtube.com/playlist?list=PLxyz',
+          PlaylistLinkSource.youtube),
       'PLxyz',
     );
     expect(

@@ -35,7 +35,9 @@ class TelegramIcon extends StatelessWidget {
         const Color(0xFF9A9A9A);
     return SizedBox.square(
       dimension: size,
-      child: CustomPaint(painter: _BrandPathPainter(_telegramPath, effective)),
+      child: CustomPaint(
+        painter: _BrandPathPainter(_telegramPath, effective),
+      ),
     );
   }
 }
@@ -54,7 +56,9 @@ class DiscordIcon extends StatelessWidget {
         const Color(0xFF9A9A9A);
     return SizedBox.square(
       dimension: size,
-      child: CustomPaint(painter: _BrandPathPainter(_discordPath, effective)),
+      child: CustomPaint(
+        painter: _BrandPathPainter(_discordPath, effective),
+      ),
     );
   }
 }
@@ -484,18 +488,8 @@ Path _parseSvgPath(String d) {
             }
             final ax = isRel ? cx + x! : x!;
             final ay = isRel ? cy + y : y;
-            _arcTo(
-              path,
-              cx,
-              cy,
-              rx0.abs(),
-              ry0.abs(),
-              phi,
-              large == 1,
-              sweep == 1,
-              ax,
-              ay,
-            );
+            _arcTo(path, cx, cy, rx0.abs(), ry0.abs(), phi, large == 1,
+                sweep == 1, ax, ay);
             cx = ax;
             cy = ay;
             moved = true;
@@ -517,18 +511,8 @@ Path _parseSvgPath(String d) {
   return path;
 }
 
-void _arcTo(
-  Path path,
-  double x1,
-  double y1,
-  double rx,
-  double ry,
-  double phiDeg,
-  bool largeArc,
-  bool sweep,
-  double x2,
-  double y2,
-) {
+void _arcTo(Path path, double x1, double y1, double rx, double ry,
+    double phiDeg, bool largeArc, bool sweep, double x2, double y2) {
   if (x1 == x2 && y1 == y2) return;
   if (rx == 0 || ry == 0) {
     path.lineTo(x2, y2);
@@ -568,12 +552,8 @@ void _arcTo(
   final cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2;
 
   double theta1 = _vecAngle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
-  double dTheta = _vecAngle(
-    (x1p - cxp) / rx,
-    (y1p - cyp) / ry,
-    (-x1p - cxp) / rx,
-    (-y1p - cyp) / ry,
-  );
+  double dTheta = _vecAngle((x1p - cxp) / rx, (y1p - cyp) / ry,
+      (-x1p - cxp) / rx, (-y1p - cyp) / ry);
   if (!sweep && dTheta > 0) dTheta -= 2 * math.pi;
   if (sweep && dTheta < 0) dTheta += 2 * math.pi;
 

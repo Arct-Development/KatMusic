@@ -3,20 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/app/accessibility.dart';
 
 Widget _page(FocusNode a, FocusNode b) => FluentApp(
-  home: Column(
-    children: [
-      Button(focusNode: a, onPressed: () {}, child: const Text('First')),
-      Button(focusNode: b, onPressed: () {}, child: const Text('Second')),
-    ],
-  ),
-);
+      home: Column(
+        children: [
+          Button(focusNode: a, onPressed: () {}, child: const Text('First')),
+          Button(focusNode: b, onPressed: () {}, child: const Text('Second')),
+        ],
+      ),
+    );
 
 void main() {
   setUp(() => AppFocusMemory.instance.start());
 
-  testWidgets('returning to the window puts focus back on the last control', (
-    tester,
-  ) async {
+  testWidgets('returning to the window puts focus back on the last control',
+      (tester) async {
     final a = FocusNode();
     final b = FocusNode();
     await tester.pumpWidget(_page(a, b));
@@ -34,9 +33,8 @@ void main() {
     expect(b.hasPrimaryFocus, isTrue);
   });
 
-  testWidgets('with no remembered control the first control takes focus', (
-    tester,
-  ) async {
+  testWidgets('with no remembered control the first control takes focus',
+      (tester) async {
     final a = FocusNode();
     final b = FocusNode();
     await tester.pumpWidget(_page(a, b));

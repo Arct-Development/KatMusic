@@ -17,32 +17,32 @@ const lyricsCacheKeyPrefix = 'lyr1|';
 const lyricsCacheMaxAge = Duration(days: 90);
 
 String encodeLyrics(LyricsResult r) => jsonEncode({
-  'v': _version,
-  'sy': r.isSynced,
-  'ws': r.isWordSynced,
-  'in': r.isInstrumental,
-  'pl': r.plainLyrics,
-  'src': r.source,
-  'ln': [
-    for (final l in r.lines)
-      {
-        't': l.timeMs,
-        'd': l.durationMs,
-        'x': l.text,
-        if (l.transliteration.isNotEmpty) 'tr': l.transliteration,
-        if (l.syllables.isNotEmpty)
-          's': [
-            for (final s in l.syllables)
-              {
-                't': s.timeMs,
-                'd': s.durationMs,
-                'x': s.text,
-                if (s.isBackground) 'b': 1,
-              },
-          ],
-      },
-  ],
-});
+      'v': _version,
+      'sy': r.isSynced,
+      'ws': r.isWordSynced,
+      'in': r.isInstrumental,
+      'pl': r.plainLyrics,
+      'src': r.source,
+      'ln': [
+        for (final l in r.lines)
+          {
+            't': l.timeMs,
+            'd': l.durationMs,
+            'x': l.text,
+            if (l.transliteration.isNotEmpty) 'tr': l.transliteration,
+            if (l.syllables.isNotEmpty)
+              's': [
+                for (final s in l.syllables)
+                  {
+                    't': s.timeMs,
+                    'd': s.durationMs,
+                    'x': s.text,
+                    if (s.isBackground) 'b': 1,
+                  },
+              ],
+          },
+      ],
+    });
 
 /// Null when the payload is unreadable, from another version, or holds no
 /// lyrics (an empty result is never worth serving from cache).

@@ -7,17 +7,17 @@ import 'equalizer_models.dart';
 /// Provider for the 10-band Equalizer and Studio Master Clarity controller.
 final equalizerProvider =
     StateNotifierProvider<EqualizerNotifier, EqualizerState>((ref) {
-      final prefs = ref.watch(prefsProvider);
-      final playback = ref.watch(playbackServiceProvider.notifier);
-      return EqualizerNotifier(prefs, playback);
-    });
+  final prefs = ref.watch(prefsProvider);
+  final playback = ref.watch(playbackServiceProvider.notifier);
+  return EqualizerNotifier(prefs, playback);
+});
 
 class EqualizerNotifier extends StateNotifier<EqualizerState> {
   final Prefs _prefs;
   final PlaybackService _playback;
 
   EqualizerNotifier(this._prefs, this._playback)
-    : super(const EqualizerState()) {
+      : super(const EqualizerState()) {
     _loadFromPrefs();
   }
 
@@ -107,7 +107,10 @@ class EqualizerNotifier extends StateNotifier<EqualizerState> {
   }
 
   Future<void> setClarityPreset(String key) async {
-    state = state.copyWith(clarityPresetKey: key, studioClarityEnabled: true);
+    state = state.copyWith(
+      clarityPresetKey: key,
+      studioClarityEnabled: true,
+    );
     await _prefs.setStudioClarityPreset(key);
     await _prefs.setStudioClarityEnabled(true);
     await _applyToPlayer();
@@ -166,8 +169,6 @@ class EqualizerNotifier extends StateNotifier<EqualizerState> {
       final intensity = (1.3 + exciterTrim * 0.15).clamp(0.6, 2.0);
       filters.add('crystalizer=i=${intensity.toStringAsFixed(2)}:c=1');
     }
-    // Safety net against inter-sample overs; does nothing below 0.98.
-    filters.add('alimiter=limit=0.98:level=0');
     return 'format=floatp,lavfi=[${filters.join(",")}]';
   }
 }

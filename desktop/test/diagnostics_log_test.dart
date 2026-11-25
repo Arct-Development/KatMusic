@@ -12,7 +12,7 @@ void main() {
   late Directory dir;
 
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('kat_diag_test');
+    dir = Directory.systemTemp.createTempSync('lw_diag_test');
   });
 
   tearDown(() {
@@ -57,19 +57,15 @@ void main() {
       // Six historical runs, dated before today so pruning sorts them out
       // first (files are ordered by name, i.e. by boot stamp).
       for (var i = 0; i < 6; i++) {
-        File(
-          '${dir.path}${Platform.pathSeparator}'
-          'session-2020010${i + 1}-120000.log',
-        ).writeAsStringSync('old run $i\n');
+        File('${dir.path}${Platform.pathSeparator}'
+                'session-2020010${i + 1}-120000.log')
+            .writeAsStringSync('old run $i\n');
       }
       DiagnosticsLog.init(dir);
 
       final files = DiagnosticsLog.sessionFiles();
       expect(files.length, DiagnosticsLog.maxFiles);
-      expect(
-        files.map((f) => f.path),
-        isNot(contains(endsWith('20200101-120000.log'))),
-      );
+      expect(files.map((f) => f.path), isNot(contains(endsWith('20200101-120000.log'))));
       // The run that just started is still the newest.
       expect(files.first.path, DiagnosticsLog.file!.path);
     });
@@ -91,8 +87,7 @@ void main() {
 
   group('LogBundle', () {
     test('redact strips urls and credentials but keeps track names', () {
-      const sample =
-          'open key=sun raha hai|anurag\n'
+      const sample = 'open key=sun raha hai|anurag\n'
           'stream url=https://rr1.googlevideo.com/videoplayback?sig=abc123\n'
           'Cookie: SID=secret-value\n'
           'resolve stage=miss album=Superstar\n';

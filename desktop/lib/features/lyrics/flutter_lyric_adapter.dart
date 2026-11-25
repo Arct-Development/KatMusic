@@ -20,6 +20,7 @@ import 'lyrics_models.dart' as lm;
 /// Converts KatMusic [lm.LyricsResult] into flutter_lyric [fl.LyricModel],
 /// inserting standalone Apple Music 3-dot instrumental lines ('•  •  •')
 /// into the lyrics flow for intros and breaks >= 4000ms.
+@Deprecated('Use desktop_lyrics_painter.dart GPU engine instead.')
 fl.LyricModel convertToFlutterLyricModel(
   lm.LyricsResult result, {
   bool showTransliteration = true,
@@ -90,8 +91,8 @@ fl.LyricModel convertToFlutterLyricModel(
     } else {
       lineDurationMs = nextStartMs != null
           ? (nextStartMs - line.timeMs >= 7000
-                ? 4000
-                : (nextStartMs - line.timeMs))
+              ? 4000
+              : (nextStartMs - line.timeMs))
           : 4000;
     }
     final lineEndMs = line.timeMs + lineDurationMs;
@@ -139,21 +140,23 @@ fl.LyricModel convertToFlutterLyricModel(
           searchOffset = matchIdx + wordText.length;
         }
 
-        words.add(fl.LyricWord(text: wordText, start: sylStart, end: sylEnd));
+        words.add(fl.LyricWord(
+          text: wordText,
+          start: sylStart,
+          end: sylEnd,
+        ));
       }
     }
 
-    lines.add(
-      fl.LyricLine(
-        start: start,
-        end: end,
-        text: line.text,
-        translation: (showTransliteration && line.transliteration.isNotEmpty)
-            ? line.transliteration
-            : null,
-        words: words.isNotEmpty ? words : null,
-      ),
-    );
+    lines.add(fl.LyricLine(
+      start: start,
+      end: end,
+      text: line.text,
+      translation: (showTransliteration && line.transliteration.isNotEmpty)
+          ? line.transliteration
+          : null,
+      words: words.isNotEmpty ? words : null,
+    ));
 
     // Inter-line gap >= 4000ms
     if (nextStartMs != null) {
@@ -176,16 +179,13 @@ LyricStyle buildAppleMusicLyricStyle(
   bool isRtl = false,
 }) {
   final baseFontSize = fontSize ?? (compact ? 28.0 : 36.0);
-  final idleFontSize = (fontSize != null
-      ? fontSize * 0.92
-      : (compact ? 25.0 : 32.0));
-  final activeColor = isDark
-      ? const Color(0xFFF6F4EF)
-      : const Color(0xFF18181B);
+  final idleFontSize =
+      (fontSize != null ? fontSize * 0.92 : (compact ? 25.0 : 32.0));
+  final activeColor =
+      isDark ? const Color(0xFFF6F4EF) : const Color(0xFF18181B);
   final idleColor = activeColor.withValues(alpha: 0.28);
-  final highlightColor = isDark
-      ? const Color(0xFFFFFFFF)
-      : const Color(0xFF000000);
+  final highlightColor =
+      isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
 
   return LyricStyle(
     textStyle: TextStyle(
@@ -204,7 +204,10 @@ LyricStyle buildAppleMusicLyricStyle(
     ),
     activeHighlightColor: highlightColor,
     activeHighlightGradient: LinearGradient(
-      colors: [highlightColor, highlightColor.withValues(alpha: 0.95)],
+      colors: [
+        highlightColor,
+        highlightColor.withValues(alpha: 0.95),
+      ],
     ),
     activeHighlightExtraFadeWidth: 20.0,
     translationStyle: TextStyle(

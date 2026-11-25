@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Fluent-native buttons with KatMusic density.
 ///
@@ -10,13 +10,13 @@ import '../theme/kat_icons.dart';
 /// - Native hover / pressed / disabled / focus via Fluent ButtonStyle.
 /// - Smooth spring / cubic micro-interactions.
 /// - Tooltips on every icon-only control.
-class KatIconButton extends StatefulWidget {
+class WaveIconButton extends StatefulWidget {
   final String tooltip;
   final Widget icon;
   final VoidCallback? onPressed;
   final bool selected;
   final bool filled;
-  const KatIconButton({
+  const WaveIconButton({
     super.key,
     required this.tooltip,
     required this.icon,
@@ -26,91 +26,99 @@ class KatIconButton extends StatefulWidget {
   });
 
   @override
-  State<KatIconButton> createState() => _KatIconButtonState();
+  State<WaveIconButton> createState() => _WaveIconButtonState();
 }
 
-class _KatIconButtonState extends State<KatIconButton> {
+class _WaveIconButtonState extends State<WaveIconButton> {
   bool _hover = false;
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final accent = katAccent(context);
-    final dark = katIsDark(context);
+    final accent = waveAccent(context);
+    final dark = waveIsDark(context);
     final disabled = widget.onPressed == null;
 
     final style = ButtonStyle(
-      padding: const WidgetStatePropertyAll(EdgeInsets.all(9)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.all(9),
+      ),
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.isDisabled) return Colors.transparent;
         if (widget.filled && widget.selected) {
           return accent.withValues(alpha: 0.22);
         }
         if (states.isPressed) {
-          return katPressedWash(context);
+          return wavePressedWash(context);
         }
         if (states.isHovered) {
-          return katHoverWash(context);
+          return waveHoverWash(context);
         }
         if (widget.selected) return accent.withValues(alpha: 0.14);
         return Colors.transparent;
       }),
       foregroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.isDisabled) {
-          return (dark ? KatColors.textTertiary : KatColors.lightTextTertiary)
+          return (dark
+                  ? WaveColors.textTertiary
+                  : WaveColors.lightTextTertiary)
               .withValues(alpha: 0.5);
         }
         if (widget.selected) return accent;
-        return dark ? KatColors.textSecondary : KatColors.lightTextSecondary;
+        return dark
+            ? WaveColors.textSecondary
+            : WaveColors.lightTextSecondary;
       }),
       shape: const WidgetStatePropertyAll(
         RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(KatRadius.controls)),
+          borderRadius:
+              BorderRadius.all(Radius.circular(WaveRadius.controls)),
         ),
       ),
     );
 
-    final button = MouseRegion(
-      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() {
-        _hover = false;
-        _pressed = false;
-      }),
-      child: Listener(
-        onPointerDown: disabled ? null : (_) => setState(() => _pressed = true),
-        onPointerUp: disabled ? null : (_) => setState(() => _pressed = false),
-        onPointerCancel: disabled
-            ? null
-            : (_) => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: disabled ? 1.0 : (_pressed ? 0.93 : (_hover ? 1.05 : 1.0)),
-          duration: katMotion(context, KatMotion.fast),
-          curve: Curves.easeOutCubic,
-          child: SizedBox(
-            width: KatDensity.hitArea,
-            height: KatDensity.hitArea,
-            child: IconButton(
-              icon: widget.icon,
-              onPressed: widget.onPressed,
-              style: style,
+    final button = SizedBox(
+      width: WaveDensity.hitArea,
+      height: WaveDensity.hitArea,
+      child: MouseRegion(
+        cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() {
+          _hover = false;
+          _pressed = false;
+        }),
+        child: Listener(
+          onPointerDown: disabled ? null : (_) => setState(() => _pressed = true),
+          onPointerUp: disabled ? null : (_) => setState(() => _pressed = false),
+          onPointerCancel: disabled ? null : (_) => setState(() => _pressed = false),
+          child: IconButton(
+            icon: AnimatedScale(
+              scale: disabled ? 1.0 : (_pressed ? 0.93 : (_hover ? 1.05 : 1.0)),
+              duration: waveMotion(context, WaveMotion.fast),
+              curve: Curves.easeOutCubic,
+              child: widget.icon,
             ),
+            onPressed: widget.onPressed,
+            style: style,
           ),
         ),
       ),
     );
 
-    return KatTooltip(message: widget.tooltip, child: button);
+    return LWTooltip(
+      message: widget.tooltip,
+      child: button,
+    );
   }
 }
 
 /// Fluent's own push buttons resolve `MouseCursor.defer`, so they paint the
-/// plain arrow — every Kat control sets the click cursor by hand, which made
+/// plain arrow — every Wave control sets the click cursor by hand, which made
 /// "hover shows the pointer" true of some buttons and not others. These three
 /// wrappers are that single rule for the plugin's buttons: use them instead of
 /// a raw `Button` / `FilledButton` / `HyperlinkButton`. A disabled control
 /// keeps the arrow, since there is nothing to click.
-class KatButton extends StatelessWidget {
+class WaveButton extends StatelessWidget {
   final Widget child;
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -118,7 +126,7 @@ class KatButton extends StatelessWidget {
   final bool autofocus;
   final FocusNode? focusNode;
 
-  const KatButton({
+  const WaveButton({
     super.key,
     required this.child,
     required this.onPressed,
@@ -130,22 +138,22 @@ class KatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-    cursor: onPressed == null
-        ? SystemMouseCursors.basic
-        : SystemMouseCursors.click,
-    child: Button(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: style,
-      autofocus: autofocus,
-      focusNode: focusNode,
-      child: child,
-    ),
-  );
+        cursor: onPressed == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        child: Button(
+          onPressed: onPressed,
+          onLongPress: onLongPress,
+          style: style,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          child: child,
+        ),
+      );
 }
 
-/// See [KatButton] — the accent-filled variant.
-class KatFilledButton extends StatelessWidget {
+/// See [WaveButton] — the accent-filled variant.
+class WaveFilledButton extends StatelessWidget {
   final Widget child;
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -153,7 +161,7 @@ class KatFilledButton extends StatelessWidget {
   final bool autofocus;
   final FocusNode? focusNode;
 
-  const KatFilledButton({
+  const WaveFilledButton({
     super.key,
     required this.child,
     required this.onPressed,
@@ -165,22 +173,22 @@ class KatFilledButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-    cursor: onPressed == null
-        ? SystemMouseCursors.basic
-        : SystemMouseCursors.click,
-    child: FilledButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: style,
-      autofocus: autofocus,
-      focusNode: focusNode,
-      child: child,
-    ),
-  );
+        cursor: onPressed == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        child: FilledButton(
+          onPressed: onPressed,
+          onLongPress: onLongPress,
+          style: style,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          child: child,
+        ),
+      );
 }
 
-/// See [KatButton] — the borderless text-link variant.
-class KatLink extends StatelessWidget {
+/// See [WaveButton] — the borderless text-link variant.
+class WaveLink extends StatelessWidget {
   final Widget child;
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -188,7 +196,7 @@ class KatLink extends StatelessWidget {
   final bool autofocus;
   final FocusNode? focusNode;
 
-  const KatLink({
+  const WaveLink({
     super.key,
     required this.child,
     required this.onPressed,
@@ -200,18 +208,18 @@ class KatLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-    cursor: onPressed == null
-        ? SystemMouseCursors.basic
-        : SystemMouseCursors.click,
-    child: HyperlinkButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: style,
-      autofocus: autofocus,
-      focusNode: focusNode,
-      child: child,
-    ),
-  );
+        cursor: onPressed == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        child: HyperlinkButton(
+          onPressed: onPressed,
+          onLongPress: onLongPress,
+          style: style,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          child: child,
+        ),
+      );
 }
 
 /// Pointer feedback for a tappable surface that has no choreography of its
@@ -225,8 +233,8 @@ class KatLink extends StatelessWidget {
 /// motion: the page grows out of a card that has already reacted under the
 /// finger. A surface with its own hover choreography (a morphing artist cover,
 /// a hero pill) should keep it rather than wrap here.
-class KatPressable extends StatefulWidget {
-  const KatPressable({
+class WavePressable extends StatefulWidget {
+  const WavePressable({
     super.key,
     required this.child,
     this.onTap,
@@ -249,15 +257,15 @@ class KatPressable extends StatefulWidget {
 
   final MouseCursor cursor;
 
-  /// Opaque by default (the [KatMediaCard] convention) so the gaps inside a
+  /// Opaque by default (the [WaveMediaCard] convention) so the gaps inside a
   /// card — between its cover and its title, say — still take the tap.
   final HitTestBehavior behavior;
 
   @override
-  State<KatPressable> createState() => _KatPressableState();
+  State<WavePressable> createState() => _WavePressableState();
 }
 
-class _KatPressableState extends State<KatPressable> {
+class _WavePressableState extends State<WavePressable> {
   bool _pressed = false;
 
   @override
@@ -266,7 +274,7 @@ class _KatPressableState extends State<KatPressable> {
     // Reduce motion: the dip is the only feedback, so keep the button
     // still rather than snapping it 3% smaller and back.
     final dip = widget.pressedScale;
-    final reduce = katReduceMotion(context);
+    final reduce = waveReduceMotion(context);
     final pressable = _pressable(context, live, dip, reduce);
     if (!live) return pressable;
     // A card is one control to a screen reader and the keyboard: one named
@@ -290,9 +298,9 @@ class _KatPressableState extends State<KatPressable> {
           child: DecoratedBox(
             position: DecorationPosition.foreground,
             decoration: BoxDecoration(
-              borderRadius: KatRadius.controlsRadius,
+              borderRadius: WaveRadius.controlsRadius,
               border: _ring
-                  ? Border.all(color: katAccent(context), width: 2)
+                  ? Border.all(color: waveAccent(context), width: 2)
                   : null,
             ),
             child: pressable,
@@ -319,8 +327,8 @@ class _KatPressableState extends State<KatPressable> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _pressed && !reduce ? dip : 1.0,
-          duration: katMotion(context, KatMotion.fast),
-          curve: KatMotion.standard,
+          duration: waveMotion(context, WaveMotion.fast),
+          curve: WaveMotion.standard,
           child: widget.child,
         ),
       ),
@@ -333,29 +341,29 @@ class _KatPressableState extends State<KatPressable> {
 /// Accent fill with a contrast glyph (`onAccentFor` — the accent can be
 /// off-white, so a hardcoded white or black glyph would vanish on it), hover
 /// 93%, pressed 82%. Home and Discover lead with the same pill.
-class KatPlayPill extends StatefulWidget {
+class WavePlayPill extends StatefulWidget {
   final VoidCallback onTap;
   final String label;
-  const KatPlayPill({super.key, required this.onTap, this.label = 'Play'});
+  const WavePlayPill({super.key, required this.onTap, this.label = 'Play'});
 
   @override
-  State<KatPlayPill> createState() => _KatPlayPillState();
+  State<WavePlayPill> createState() => _WavePlayPillState();
 }
 
-class _KatPlayPillState extends State<KatPlayPill> {
+class _WavePlayPillState extends State<WavePlayPill> {
   bool _hover = false;
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
     final onAccent = onAccentFor(accent);
     final bg = _pressed
         ? accent.withValues(alpha: 0.82)
         : _hover
-        ? accent.withValues(alpha: 0.93)
-        : accent;
+            ? accent.withValues(alpha: 0.93)
+            : accent;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -370,17 +378,19 @@ class _KatPlayPillState extends State<KatPlayPill> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _pressed ? 0.96 : 1.0,
-          duration: katMotion(context, KatMotion.fast),
+          duration: waveMotion(context, WaveMotion.fast),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: katMotion(context, KatMotion.fast),
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+            duration: waveMotion(context, WaveMotion.fast),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
+                  color: Colors.black
+                      .withValues(alpha: dark ? 0.45 : 0.18),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -389,12 +399,10 @@ class _KatPlayPillState extends State<KatPlayPill> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(KatIcons.play, size: 14, color: onAccent),
+                Icon(WaveIcons.play, size: 14, color: onAccent),
                 const SizedBox(width: 8),
-                Text(
-                  widget.label,
-                  style: KatType.label.copyWith(color: onAccent),
-                ),
+                Text(widget.label,
+                    style: WaveType.label.copyWith(color: onAccent)),
               ],
             ),
           ),
@@ -405,13 +413,13 @@ class _KatPlayPillState extends State<KatPlayPill> {
 }
 
 /// Large circular transport button (play/pause only).
-class KatPlayButton extends StatefulWidget {
+class WavePlayButton extends StatefulWidget {
   final bool playing;
   final bool buffering;
   final bool large;
   final VoidCallback? onPressed;
   final String tooltip;
-  const KatPlayButton({
+  const WavePlayButton({
     super.key,
     required this.playing,
     this.buffering = false,
@@ -421,65 +429,62 @@ class KatPlayButton extends StatefulWidget {
   });
 
   @override
-  State<KatPlayButton> createState() => _KatPlayButtonState();
+  State<WavePlayButton> createState() => _WavePlayButtonState();
 }
 
-class _KatPlayButtonState extends State<KatPlayButton> {
+class _WavePlayButtonState extends State<WavePlayButton> {
   bool _hover = false;
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final accent = katAccent(context);
-    final dark = katIsDark(context);
+    final accent = waveAccent(context);
+    final dark = waveIsDark(context);
     // Black glyph on light (off-white) accents, white on dark ones.
     final onAccent = onAccentFor(accent);
     final size = widget.large ? 48.0 : 40.0;
     final glyphSize = widget.large ? 22.0 : 19.0;
     final disabled = widget.onPressed == null;
 
-    final button = MouseRegion(
-      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() {
-        _hover = false;
-        _pressed = false;
-      }),
-      child: Listener(
-        onPointerDown: disabled ? null : (_) => setState(() => _pressed = true),
-        onPointerUp: disabled ? null : (_) => setState(() => _pressed = false),
-        onPointerCancel: disabled
-            ? null
-            : (_) => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: disabled ? 1.0 : (_pressed ? 0.92 : (_hover ? 1.06 : 1.0)),
-          duration: katMotion(context, KatMotion.fast),
-          curve: Curves.easeOutCubic,
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: FilledButton(
-              onPressed: widget.onPressed,
-              style: ButtonStyle(
-                padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                backgroundColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.isDisabled) {
-                    return (dark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.08,
-                    );
-                  }
-                  if (states.isPressed) return accent.withValues(alpha: 0.85);
-                  if (states.isHovered) return accent.withValues(alpha: 0.92);
-                  return accent;
-                }),
-                foregroundColor: WidgetStatePropertyAll(onAccent),
-                shape: const WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
-                  ),
+    final button = SizedBox(
+      width: size,
+      height: size,
+      child: MouseRegion(
+        cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() {
+          _hover = false;
+          _pressed = false;
+        }),
+        child: Listener(
+          onPointerDown: disabled ? null : (_) => setState(() => _pressed = true),
+          onPointerUp: disabled ? null : (_) => setState(() => _pressed = false),
+          onPointerCancel: disabled ? null : (_) => setState(() => _pressed = false),
+          child: FilledButton(
+            onPressed: widget.onPressed,
+            style: ButtonStyle(
+              padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.isDisabled) {
+                  return (dark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.08);
+                }
+                if (states.isPressed) return accent.withValues(alpha: 0.85);
+                if (states.isHovered) return accent.withValues(alpha: 0.92);
+                return accent;
+              }),
+              foregroundColor: WidgetStatePropertyAll(onAccent),
+              shape: const WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
                 ),
               ),
-              child: Center(
+            ),
+            child: Center(
+              child: AnimatedScale(
+                scale: disabled ? 1.0 : (_pressed ? 0.92 : (_hover ? 1.06 : 1.0)),
+                duration: waveMotion(context, WaveMotion.fast),
+                curve: Curves.easeOutCubic,
                 child: widget.buffering
                     ? SizedBox(
                         width: glyphSize,
@@ -487,27 +492,25 @@ class _KatPlayButtonState extends State<KatPlayButton> {
                         child: ProgressRing(
                           strokeWidth: 2.5,
                           activeColor: onAccent,
-                          backgroundColor: onAccent.withValues(alpha: 0.25),
+                          backgroundColor:
+                              onAccent.withValues(alpha: 0.25),
                         ),
                       )
                     : AnimatedSwitcher(
-                        duration: katMotion(
-                          context,
-                          const Duration(milliseconds: 180),
-                        ),
+                        duration: waveMotion(context, const Duration(milliseconds: 180)),
                         transitionBuilder: (child, animation) =>
                             ScaleTransition(
-                              scale: CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutBack,
-                              ),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            ),
+                          scale: CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutBack,
+                          ),
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        ),
                         child: Icon(
-                          widget.playing ? KatIcons.pause : KatIcons.play,
+                          widget.playing ? WaveIcons.pause : WaveIcons.play,
                           key: ValueKey(widget.playing),
                           size: glyphSize,
                           color: onAccent,
@@ -520,18 +523,18 @@ class _KatPlayButtonState extends State<KatPlayButton> {
       ),
     );
 
-    return KatTooltip(
+    return LWTooltip(
       message: widget.playing ? 'Pause' : 'Play',
       child: button,
     );
   }
 }
 
-class KatPrimaryButton extends StatelessWidget {
+class WavePrimaryButton extends StatelessWidget {
   final String label;
   final IconData? icon;
   final VoidCallback? onPressed;
-  const KatPrimaryButton({
+  const WavePrimaryButton({
     super.key,
     required this.label,
     this.icon,
@@ -540,24 +543,27 @@ class KatPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatFilledButton(
+    return WaveFilledButton(
       onPressed: onPressed,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 15), const SizedBox(width: 6)],
-          Text(label, style: KatType.label),
+          if (icon != null) ...[
+            Icon(icon, size: 15),
+            const SizedBox(width: 6),
+          ],
+          Text(label, style: WaveType.label),
         ],
       ),
     );
   }
 }
 
-class KatGhostButton extends StatelessWidget {
+class WaveGhostButton extends StatelessWidget {
   final String label;
   final IconData? icon;
   final VoidCallback? onPressed;
-  const KatGhostButton({
+  const WaveGhostButton({
     super.key,
     required this.label,
     this.icon,
@@ -566,13 +572,16 @@ class KatGhostButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return KatButton(
+    return WaveButton(
       onPressed: onPressed,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: 15), const SizedBox(width: 6)],
-          Text(label, style: KatType.label),
+          if (icon != null) ...[
+            Icon(icon, size: 15),
+            const SizedBox(width: 6),
+          ],
+          Text(label, style: WaveType.label),
         ],
       ),
     );
@@ -580,42 +589,47 @@ class KatGhostButton extends StatelessWidget {
 }
 
 /// Small quality / meta chip (codec, bitrate, source).
-class KatChip extends StatelessWidget {
+class WaveChip extends StatelessWidget {
   final String label;
   final bool highlight;
-  const KatChip({super.key, required this.label, this.highlight = false});
+  const WaveChip({super.key, required this.label, this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final accent = katAccent(context);
+    final dark = waveIsDark(context);
+    final accent = waveAccent(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: highlight
             ? accent.withValues(alpha: 0.16)
-            : (dark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+            : (dark ? Colors.white : Colors.black)
+                .withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: highlight
               ? accent.withValues(alpha: 0.45)
-              : (dark ? katOutlineSoft(context) : katOutline(context)),
+              : (dark
+                  ? waveOutlineSoft(context)
+                  : waveOutline(context)),
         ),
       ),
       child: Text(
         label,
-        style: KatType.overline.copyWith(
+        style: WaveType.overline.copyWith(
           fontSize: 9.5,
           color: highlight
               ? accent
-              : (dark ? KatColors.textSecondary : KatColors.lightTextSecondary),
+              : (dark
+                  ? WaveColors.textSecondary
+                  : WaveColors.lightTextSecondary),
         ),
       ),
     );
   }
 }
 
-/// Canonical tooltip wrapper: 400ms hover wait per [KatState.tooltipDelay].
+/// Canonical tooltip wrapper: 400ms hover wait per [WaveState.tooltipDelay].
 ///
 /// Use for every icon-only control instead of raw [Tooltip].
 ///
@@ -626,17 +640,26 @@ class KatChip extends StatelessWidget {
 /// Playing, and eager mounting showed up in open-frame traces. Deferral
 /// is invisible by construction — no tooltip can display before the
 /// 400ms hover dwell, while arming lands ~16ms after mount.
-class KatTooltip extends StatefulWidget {
+class LWTooltip extends StatefulWidget {
   final String message;
   final Widget child;
-  const KatTooltip({super.key, required this.message, required this.child});
+  const LWTooltip({
+    super.key,
+    required this.message,
+    required this.child,
+  });
 
   @override
-  State<KatTooltip> createState() => _LWTooltipState();
+  State<LWTooltip> createState() => _LWTooltipState();
 }
 
-class _LWTooltipState extends State<KatTooltip> {
+class _LWTooltipState extends State<LWTooltip> {
   bool _armed = false;
+
+  /// Arming changes the child's parent; the key moves the child's element
+  /// under the tooltip instead of tearing it down and rebuilding it (which
+  /// remounted every tooltipped control one frame after each page opened).
+  final GlobalKey _childKey = GlobalKey();
 
   @override
   void initState() {
@@ -648,11 +671,15 @@ class _LWTooltipState extends State<KatTooltip> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_armed) return widget.child;
+    final child = KeyedSubtree(key: _childKey, child: widget.child);
+    if (!_armed) return child;
     return Tooltip(
       message: widget.message,
-      style: const TooltipThemeData(waitDuration: KatState.tooltipDelay),
-      child: widget.child,
+      useMousePosition: false,
+      style: const TooltipThemeData(
+        waitDuration: WaveState.tooltipDelay,
+      ),
+      child: child,
     );
   }
 }
@@ -663,12 +690,12 @@ class _LWTooltipState extends State<KatTooltip> {
 /// activate action, makes the control reachable by Tab, and activates on
 /// Enter. A focus ring is painted over the child only for keyboard focus, so
 /// mouse users see nothing different.
-class KatA11yButton extends StatefulWidget {
+class WaveA11yButton extends StatefulWidget {
   final String label;
   final VoidCallback? onTap;
   final bool selected;
   final Widget child;
-  const KatA11yButton({
+  const WaveA11yButton({
     super.key,
     required this.label,
     required this.onTap,
@@ -677,10 +704,10 @@ class KatA11yButton extends StatefulWidget {
   });
 
   @override
-  State<KatA11yButton> createState() => _KatA11yButtonState();
+  State<WaveA11yButton> createState() => _WaveA11yButtonState();
 }
 
-class _KatA11yButtonState extends State<KatA11yButton> {
+class _WaveA11yButtonState extends State<WaveA11yButton> {
   bool _ring = false;
 
   @override
@@ -707,9 +734,9 @@ class _KatA11yButtonState extends State<KatA11yButton> {
         child: DecoratedBox(
           position: DecorationPosition.foreground,
           decoration: BoxDecoration(
-            borderRadius: KatRadius.controlsRadius,
+            borderRadius: WaveRadius.controlsRadius,
             border: _ring
-                ? Border.all(color: katAccent(context), width: 2)
+                ? Border.all(color: waveAccent(context), width: 2)
                 : null,
           ),
           child: widget.child,
@@ -721,12 +748,12 @@ class _KatA11yButtonState extends State<KatA11yButton> {
 
 /// Canonical progress slider: 3px track, white fill, 10px thumb visible
 /// on hover/drag only. Expands to available width.
-class KatProgressSlider extends StatelessWidget {
+class LWProgressSlider extends StatelessWidget {
   final double value;
   final String semanticLabel;
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeEnd;
-  const KatProgressSlider({
+  const LWProgressSlider({
     super.key,
     required this.value,
     this.semanticLabel = 'Seek',
@@ -741,7 +768,7 @@ class KatProgressSlider extends StatelessWidget {
       value: value,
       onChanged: onChanged,
       onChangeEnd: onChangeEnd,
-      child: _KatSliderBase(
+      child: _WaveSliderBase(
         value: value,
         onChanged: onChanged,
         onChangeEnd: onChangeEnd,
@@ -752,13 +779,13 @@ class KatProgressSlider extends StatelessWidget {
 
 /// Canonical volume slider: 3px track, configurable width (defaults to 84px),
 /// 8px knob at rest growing to 10px on hover/drag/focus.
-class KatVolumeSlider extends StatelessWidget {
+class LWVolumeSlider extends StatelessWidget {
   final double value;
   final String semanticLabel;
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeEnd;
   final double width;
-  const KatVolumeSlider({
+  const LWVolumeSlider({
     super.key,
     required this.value,
     this.semanticLabel = 'Volume',
@@ -776,7 +803,7 @@ class KatVolumeSlider extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         onChangeEnd: onChangeEnd,
-        child: _KatSliderBase(
+        child: _WaveSliderBase(
           value: value,
           onChanged: onChanged,
           onChangeEnd: onChangeEnd,
@@ -816,10 +843,8 @@ class _SliderSemantics extends StatelessWidget {
       enabled: enabled,
       label: label,
       value: '${(value * 100).round()} percent',
-      increasedValue:
-          '${((value + 0.05).clamp(0.0, 1.0) * 100).round()} percent',
-      decreasedValue:
-          '${((value - 0.05).clamp(0.0, 1.0) * 100).round()} percent',
+      increasedValue: '${((value + 0.05).clamp(0.0, 1.0) * 100).round()} percent',
+      decreasedValue: '${((value - 0.05).clamp(0.0, 1.0) * 100).round()} percent',
       onIncrease: enabled ? () => step(0.05) : null,
       onDecrease: enabled ? () => step(-0.05) : null,
       excludeSemantics: true,
@@ -828,17 +853,21 @@ class _SliderSemantics extends StatelessWidget {
   }
 }
 
-class _KatSliderBase extends StatefulWidget {
+class _WaveSliderBase extends StatefulWidget {
   final double value;
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangeEnd;
-  const _KatSliderBase({required this.value, this.onChanged, this.onChangeEnd});
+  const _WaveSliderBase({
+    required this.value,
+    this.onChanged,
+    this.onChangeEnd,
+  });
 
   @override
-  State<_KatSliderBase> createState() => _KatSliderBaseState();
+  State<_WaveSliderBase> createState() => _WaveSliderBaseState();
 }
 
-class _KatSliderBaseState extends State<_KatSliderBase> {
+class _WaveSliderBaseState extends State<_WaveSliderBase> {
   bool _hover = false;
   bool _dragging = false;
   final FocusNode _focus = FocusNode();
@@ -862,9 +891,10 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     final base = dark ? Colors.white : Colors.black;
-    final fill = dark ? KatColors.textPrimary : KatColors.lightTextPrimary;
+    final fill =
+        dark ? WaveColors.textPrimary : WaveColors.lightTextPrimary;
     final active = _hover || _dragging || _focus.hasFocus;
     // A level you cannot see is not a control: at 100% the fill is the whole
     // track, so a knob that only appeared on hover left a plain hairline
@@ -884,7 +914,8 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
           final local = box.globalToLocal(details.globalPosition);
           widget.onChanged!(_fractionFor(local.dx, box.size.width));
         },
-        onHorizontalDragStart: (_) => setState(() => _dragging = true),
+        onHorizontalDragStart: (_) =>
+            setState(() => _dragging = true),
         onHorizontalDragUpdate: (details) {
           final box = context.findRenderObject() as RenderBox?;
           if (box == null || widget.onChanged == null) return;
@@ -925,7 +956,8 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
             child: Center(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final fraction = widget.value.clamp(0.0, 1.0).toDouble();
+                  final fraction =
+                      widget.value.clamp(0.0, 1.0).toDouble();
                   final width = constraints.maxWidth;
                   final fillWidth = width * fraction;
                   final maxThumbLeft = (width - thumbSize)
@@ -944,7 +976,8 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
                           width: width,
                           decoration: BoxDecoration(
                             color: base.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(KatRadius.tiny),
+                            borderRadius: BorderRadius.circular(
+                                WaveRadius.tiny),
                           ),
                         ),
                         Container(
@@ -952,14 +985,16 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
                           width: fillWidth,
                           decoration: BoxDecoration(
                             color: fill,
-                            borderRadius: BorderRadius.circular(KatRadius.tiny),
+                            borderRadius: BorderRadius.circular(
+                                WaveRadius.tiny),
                           ),
                         ),
                         if (showThumb)
                           Positioned(
                             left: thumbLeft,
                             child: AnimatedContainer(
-                              duration: katMotion(context, KatMotion.fast),
+                              duration:
+                                  waveMotion(context, WaveMotion.fast),
                               curve: Curves.easeOutCubic,
                               width: thumbSize,
                               height: thumbSize,
@@ -982,3 +1017,4 @@ class _KatSliderBaseState extends State<_KatSliderBase> {
     return slider;
   }
 }
+

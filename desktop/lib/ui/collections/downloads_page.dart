@@ -14,23 +14,25 @@ import '../components/buttons.dart';
 import '../components/hero.dart';
 import '../components/menus.dart';
 import '../components/states.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// Downloads: Offline hero + 40px-artwork rows
 /// (art · title/artist · progress or quality chip · play · delete).
-class KatDownloadsPage extends ConsumerStatefulWidget {
-  const KatDownloadsPage({super.key});
+class WaveDownloadsPage extends ConsumerStatefulWidget {
+  /// False inside the Library, which already titles the page.
+  final bool showHero;
+  const WaveDownloadsPage({super.key, this.showHero = true});
 
   @override
-  ConsumerState<KatDownloadsPage> createState() => _KatDownloadsPageState();
+  ConsumerState<WaveDownloadsPage> createState() => _WaveDownloadsPageState();
 }
 
 enum _DownloadSort { recent, title, artist }
 
-class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
+class _WaveDownloadsPageState extends ConsumerState<WaveDownloadsPage> {
   String _query = '';
   _DownloadSort _sort = _DownloadSort.recent;
 
@@ -40,7 +42,8 @@ class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
     for (final p in playlists) {
       for (final t in p.tracks) {
         if (t.name.toLowerCase() == e.title.toLowerCase() &&
-            t.artist.toLowerCase() == e.artist.toLowerCase() &&
+            t.artist.toLowerCase() ==
+                e.artist.toLowerCase() &&
             t.artworkUrl.isNotEmpty) {
           return t.artworkUrl;
         }
@@ -55,19 +58,16 @@ class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
     final entries = <DownloadEntry>[...all];
     final q = _query.trim().toLowerCase();
     if (q.isNotEmpty) {
-      entries.removeWhere(
-        (e) =>
-            !e.title.toLowerCase().contains(q) &&
-            !e.artist.toLowerCase().contains(q),
-      );
+      entries.removeWhere((e) =>
+          !e.title.toLowerCase().contains(q) &&
+          !e.artist.toLowerCase().contains(q));
     }
     switch (_sort) {
       case _DownloadSort.recent:
         break; // manager keeps newest first
       case _DownloadSort.title:
         entries.sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
       case _DownloadSort.artist:
         entries.sort((a, b) {
           final c = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
@@ -76,8 +76,10 @@ class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
               : a.title.toLowerCase().compareTo(b.title.toLowerCase());
         });
     }
-    final done = all.where((e) => e.status == DownloadStatus.done);
-    final failed = all.where((e) => e.status == DownloadStatus.error).toList();
+    final done =
+        all.where((e) => e.status == DownloadStatus.done);
+    final failed =
+        all.where((e) => e.status == DownloadStatus.error).toList();
     // Hero cover: the most recently downloaded track that has art.
     var heroArt = '';
     for (final e in all) {
@@ -88,137 +90,145 @@ class _KatDownloadsPageState extends ConsumerState<KatDownloadsPage> {
         break;
       }
     }
-    return KatEntranceGroup(
+    return WaveEntranceGroup(
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: KatDensity.contentMax,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    KatEntrance(
-                      rise: 10,
-                      child: KatCollectionHero(
-                        overline: 'Offline',
-                        title: 'Downloads',
-                        meta:
-                            '${done.length} ${done.length == 1 ? 'track' : 'tracks'} available offline · ${all.length} total',
-                        artworkUrl: heroArt,
-                        fallbackIcon: FluentIcons.download,
-                        artworkSize: 120,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const _LocationRow(),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextBox(
-                            placeholder: 'Search downloads',
-                            prefix: const Padding(
-                              padding: EdgeInsets.only(left: 10),
-                              child: Icon(KatIcons.search, size: 14),
-                            ),
-                            onChanged: (v) => setState(() => _query = v),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        ComboBox<_DownloadSort>(
-                          value: _sort,
-                          items: const [
-                            ComboBoxItem(
-                              value: _DownloadSort.recent,
-                              child: Text('Recently downloaded'),
-                            ),
-                            ComboBoxItem(
-                              value: _DownloadSort.title,
-                              child: Text('Title A–Z'),
-                            ),
-                            ComboBoxItem(
-                              value: _DownloadSort.artist,
-                              child: Text('Artist A–Z'),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v != null) setState(() => _sort = v);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // Local InfoBar for failures — never breaks the list.
-                    if (failed.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: InfoBar(
-                          severity: InfoBarSeverity.warning,
-                          title: Text(
-                            '${failed.length} download${failed.length == 1 ? '' : 's'} failed',
-                          ),
-                          content: Text(
-                            failed.first.error ?? 'Check connection and retry.',
-                          ),
-                          action: KatButton(
-                            onPressed: () {
-                              final m = ref.read(
-                                downloadManagerProvider.notifier,
-                              );
-                              for (final f in failed) {
-                                m.downloadTrack(
-                                  title: f.title,
-                                  artist: f.artist,
-                                );
-                              }
-                            },
-                            child: const Text('Retry all'),
-                          ),
-                        ),
-                      ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding:
+                const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: WaveDensity.contentMax,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  if (widget.showHero) ...[
+                  WaveEntrance(
+                    rise: 10,
+                    child: WaveCollectionHero(
+                    overline: 'Offline',
+                    title: 'Downloads',
+                    meta:
+                        '${done.length} ${done.length == 1 ? 'track' : 'tracks'} available offline · ${all.length} total',
+                    artworkUrl: heroArt,
+                    fallbackIcon: FluentIcons.download,
+                    artworkSize: 120,
+                  ),
+                  ),
+                  const SizedBox(height: 12),
                   ],
-                ),
+                  const _LocationRow(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextBox(
+                          placeholder: 'Search downloads',
+                          prefix: const Padding(
+                            padding: EdgeInsets.only(left: 10),
+                            child: Icon(WaveIcons.search, size: 14),
+                          ),
+                          onChanged: (v) => setState(() => _query = v),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ComboBox<_DownloadSort>(
+                        value: _sort,
+                        items: const [
+                          ComboBoxItem(
+                            value: _DownloadSort.recent,
+                            child: Text('Recently downloaded'),
+                          ),
+                          ComboBoxItem(
+                            value: _DownloadSort.title,
+                            child: Text('Title A–Z'),
+                          ),
+                          ComboBoxItem(
+                            value: _DownloadSort.artist,
+                            child: Text('Artist A–Z'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) setState(() => _sort = v);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Local InfoBar for failures — never breaks the list.
+                  if (failed.isNotEmpty)
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: 12),
+                      child: InfoBar(
+                        severity: InfoBarSeverity.warning,
+                        title: Text(
+                            '${failed.length} download${failed.length == 1 ? '' : 's'} failed'),
+                        content: Text(failed.first.error ??
+                            'Check connection and retry.'),
+                        action: WaveButton(
+                          onPressed: () {
+                            final m = ref.read(
+                                downloadManagerProvider
+                                    .notifier);
+                            for (final f in failed) {
+                              m.downloadTrack(
+                                title: f.title,
+                                artist: f.artist,
+                              );
+                            }
+                          },
+                          child: const Text('Retry all'),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-          if (all.isEmpty)
-            const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: FluentIcons.download,
-                title: 'No downloads yet',
-                subtitle:
-                    'Download any track to keep it offline in full quality.',
-              ),
-            )
-          else if (entries.isEmpty)
-            const SliverToBoxAdapter(
-              child: KatEmpty(
-                icon: KatIcons.search,
-                title: 'No matches',
-                subtitle: 'No downloads match your search.',
-              ),
-            )
-          else
-            SuperSliverList.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, i) {
-                final e = entries[i];
-                final art = _artworkFor(ref, e);
-                return KatEntrance(
-                  index: i,
-                  rise: 10,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _DownloadRow(entry: e, artwork: art),
-                  ),
-                );
-              },
+        ),
+        if (all.isEmpty)
+          const SliverToBoxAdapter(
+            child: WaveEmpty(
+              icon: FluentIcons.download,
+              title: 'No downloads yet',
+              subtitle:
+                  'Download any track to keep it offline in full quality.',
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          )
+        else if (entries.isEmpty)
+          const SliverToBoxAdapter(
+            child: WaveEmpty(
+              icon: WaveIcons.search,
+              title: 'No matches',
+              subtitle: 'No downloads match your search.',
+            ),
+          )
+        else
+          SuperSliverList.builder(
+            itemCount: entries.length,
+            itemBuilder: (context, i) {
+              final e = entries[i];
+              final art = _artworkFor(ref, e);
+              return WaveEntrance(
+                index: i,
+                rise: 10,
+                child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                ),
+                child: _DownloadRow(entry: e, artwork: art),
+              ),
+              );
+            },
+          ),
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 24),
+        ),
+          const WaveDockSpacer(),
         ],
       ),
     );
@@ -265,13 +275,21 @@ class _LocationRowState extends ConsumerState<_LocationRow> {
             custom.isEmpty ? 'Saving to default location' : custom,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: KatType.meta.copyWith(color: katTextSecondary(context)),
+            style: WaveType.meta.copyWith(
+              color: waveTextSecondary(context),
+            ),
           ),
         ),
-        KatButton(onPressed: _pick, child: const Text('Change folder')),
+        WaveButton(
+          onPressed: _pick,
+          child: const Text('Change folder'),
+        ),
         if (custom.isNotEmpty) ...[
           const SizedBox(width: 8),
-          KatButton(onPressed: _reset, child: const Text('Reset')),
+          WaveButton(
+            onPressed: _reset,
+            child: const Text('Reset'),
+          ),
         ],
       ],
     );
@@ -295,9 +313,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
   void _play() {
     final e = widget.entry;
     if (e.status != DownloadStatus.done) return;
-    ref
-        .read(playbackServiceProvider.notifier)
-        .play(
+    ref.read(playbackServiceProvider.notifier).play(
           PlayableTrack(
             title: e.title,
             artist: e.artist,
@@ -316,22 +332,22 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
     final manager = ref.read(downloadManagerProvider.notifier);
     final downloading = e.status == DownloadStatus.downloading;
     final queued = e.status == DownloadStatus.queued;
-    return KatContextMenu(
+    return WaveContextMenu(
       items: () => [
         if (e.status == DownloadStatus.done)
-          KatMenuAction(
+          WaveMenuAction(
             leading: const Icon(FluentIcons.play, size: 13),
             label: 'Play offline file',
             onPressed: _play,
           ),
-        KatMenuAction(
+        WaveMenuAction(
           leading: const Icon(FluentIcons.contact, size: 13),
           label: 'Go to artist',
-          onPressed: () =>
-              katOpen(context, '/artist/${Uri.encodeComponent(e.artist)}'),
+          onPressed: () => waveOpen(
+              context, '/artist/${Uri.encodeComponent(e.artist)}'),
         ),
-        const KatMenuSeparator(),
-        KatMenuAction(
+        const WaveMenuSeparator(),
+        WaveMenuAction(
           leading: const Icon(FluentIcons.delete, size: 13),
           label: 'Delete download',
           onPressed: () => manager.delete(e.key),
@@ -346,7 +362,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
         child: GestureDetector(
           onDoubleTap: _play,
           child: AnimatedContainer(
-            duration: katMotion(context, KatMotion.fast),
+            duration: waveMotion(context, WaveMotion.fast),
             curve: Curves.easeOutCubic,
             height: 54,
             // Inset the content, not the fill: the 6px hover plate keeps its
@@ -354,27 +370,29 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
             // 8px row inset as the track rows).
             padding: const EdgeInsetsDirectional.only(start: 8),
             decoration: BoxDecoration(
-              color: _hover ? katHoverWash(context) : Colors.transparent,
-              borderRadius: BorderRadius.circular(KatRadius.tiny),
+              color: _hover ? waveHoverWash(context) : Colors.transparent,
+              borderRadius:
+                  BorderRadius.circular(WaveRadius.tiny),
             ),
             child: Row(
               children: [
                 Stack(
                   children: [
-                    KatArtwork(
-                      url: art,
-                      size: 40,
-                      radius: KatRadius.artwork,
-                      label: e.title,
-                      title: e.title,
-                      artist: e.artist,
-                    ),
+                    WaveArtwork(
+                        url: art,
+                        size: 40,
+                        radius: WaveRadius.artwork,
+                        label: e.title,
+                        title: e.title,
+                        artist: e.artist),
                     if (downloading || queued)
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.45),
-                            borderRadius: KatRadius.artworkRadius,
+                            color:
+                                Colors.black.withValues(alpha: 0.45),
+                            borderRadius:
+                                WaveRadius.artworkRadius,
                           ),
                           child: const Center(
                             child: SizedBox(
@@ -397,7 +415,7 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                         e.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: KatType.trackTitle,
+                        style: WaveType.trackTitle,
                       ),
                       if (downloading)
                         Padding(
@@ -412,28 +430,28 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                         Text(
                           e.status == DownloadStatus.error
                               ? (e.error ??
-                                    'Download failed — retry from the track menu')
+                                  'Download failed — retry from the track menu')
                               : queued
-                              ? 'Waiting…'
-                              : e.artist,
+                                  ? 'Waiting…'
+                                  : e.artist,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: KatType.meta.copyWith(
-                            color: katTextSecondary(context),
+                          style: WaveType.meta.copyWith(
+                            color: waveTextSecondary(context),
                           ),
                         ),
                     ],
                   ),
                 ),
                 if (!downloading && e.badge.isNotEmpty) ...[
-                  KatChip(label: e.badge),
+                  WaveChip(label: e.badge),
                   const SizedBox(width: 6),
                 ],
                 // Untagged fallback files stay visible (never silent).
                 if (!downloading &&
                     e.status == DownloadStatus.done &&
                     e.tagNote.startsWith('raw')) ...[
-                  const KatChip(label: 'NO TAGS', highlight: true),
+                  const WaveChip(label: 'NO TAGS', highlight: true),
                   const SizedBox(width: 6),
                 ],
                 // Status text: progress % / size / status — tabular.
@@ -442,40 +460,43 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
                     e.progress > 0
                         ? '${(e.progress * 100).round()}%'
                         : 'Starting…',
-                    style: KatType.meta.copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                      color: katTextTertiary(context),
+                    style: WaveType.meta.copyWith(
+                      fontFeatures: const [
+                        FontFeature.tabularFigures()
+                      ],
+                      color: waveTextTertiary(context),
                     ),
                   )
                 else if (e.status == DownloadStatus.error)
-                  const Icon(
-                    FluentIcons.error,
-                    size: 14,
-                    color: Color(0xFFE0506A),
-                  ),
+                  const Icon(FluentIcons.error,
+                      size: 14, color: Color(0xFFE0506A)),
                 if (e.status == DownloadStatus.done)
-                  KatIconButton(
+                  WaveIconButton(
                     tooltip: 'Play offline file',
                     icon: const Icon(FluentIcons.play, size: 14),
                     onPressed: _play,
                   ),
                 if (e.status == DownloadStatus.error)
-                  KatIconButton(
+                  WaveIconButton(
                     tooltip: 'Retry download',
-                    icon: const Icon(FluentIcons.refresh, size: 14),
-                    onPressed: () =>
-                        manager.downloadTrack(title: e.title, artist: e.artist),
+                    icon:
+                        const Icon(FluentIcons.refresh, size: 14),
+                    onPressed: () => manager.downloadTrack(
+                      title: e.title,
+                      artist: e.artist,
+                    ),
                   ),
-                if (e.status == DownloadStatus.done && e.filePath != null)
-                  KatIconButton(
+                if (e.status == DownloadStatus.done &&
+                    e.filePath != null)
+                  WaveIconButton(
                     tooltip: 'Open file location',
                     icon: const Icon(
-                      FluentIcons.open_folder_horizontal,
-                      size: 14,
-                    ),
-                    onPressed: () => _openLocation(context, e.filePath!),
+                        FluentIcons.open_folder_horizontal,
+                        size: 14),
+                    onPressed: () =>
+                        _openLocation(context, e.filePath!),
                   ),
-                KatIconButton(
+                WaveIconButton(
                   tooltip: 'Delete download',
                   icon: const Icon(FluentIcons.delete, size: 14),
                   onPressed: () => manager.delete(e.key),
@@ -488,7 +509,8 @@ class _DownloadRowState extends ConsumerState<_DownloadRow> {
     );
   }
 
-  Future<void> _openLocation(BuildContext context, String filePath) async {
+  Future<void> _openLocation(
+      BuildContext context, String filePath) async {
     // Best-effort: reveal the file in Explorer/Finder/Files.
     try {
       final uri = Uri.file(filePath);

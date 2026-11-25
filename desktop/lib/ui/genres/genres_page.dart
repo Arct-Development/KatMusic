@@ -6,20 +6,20 @@ import '../../features/feed/feed_repository.dart';
 import '../../features/feed/genre_source.dart';
 import '../components/states.dart';
 import '../theme/tokens.dart';
-import '../theme/kat_icons.dart';
+import '../theme/wave_icons.dart';
 
 /// One page of top genres. A row starts a tag mix through Mix Lab's
 /// existing generator.
-class KatGenresPage extends ConsumerStatefulWidget {
+class WaveGenresPage extends ConsumerStatefulWidget {
   /// Drawn inside Stats. The page title and the side-rail route stay off.
   final bool embedded;
-  const KatGenresPage({super.key, this.embedded = false});
+  const WaveGenresPage({super.key, this.embedded = false});
 
   @override
-  ConsumerState<KatGenresPage> createState() => _KatGenresPageState();
+  ConsumerState<WaveGenresPage> createState() => _WaveGenresPageState();
 }
 
-class _KatGenresPageState extends ConsumerState<KatGenresPage> {
+class _WaveGenresPageState extends ConsumerState<WaveGenresPage> {
   static const _periods = <(String, String)>[
     ('7day', '7 days'),
     ('1month', '30 days'),
@@ -37,9 +37,8 @@ class _KatGenresPageState extends ConsumerState<KatGenresPage> {
       _error = null;
     });
     try {
-      final tracks = await ref
-          .read(feedRepositoryProvider)
-          .generate(mode: MixMode.tag, tag: genre, total: 25);
+      final tracks =
+          await ref.read(feedRepositoryProvider).generateForTag(genre);
       if (!mounted) return;
       if (tracks.isEmpty) {
         setState(() {
@@ -69,89 +68,93 @@ class _KatGenresPageState extends ConsumerState<KatGenresPage> {
   Widget build(BuildContext context) {
     final chart = ref.watch(genreChartProvider(_period));
     final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!widget.embedded) ...[
-          Text(
-            'GENRES',
-            style: KatType.overline.copyWith(color: katAccent(context)),
-          ),
-          const SizedBox(height: 4),
-          Text('Genres', style: KatType.pageTitle.copyWith(fontSize: 24)),
-          const SizedBox(height: 4),
-        ],
-        Text(
-          'Styles from your Last.fm listening. A tap plays songs in that style, not a track named after it.',
-          style: KatType.meta.copyWith(color: katTextSecondary(context)),
-        ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final period in _periods)
-              ToggleButton(
-                checked: _period == period.$1,
-                onChanged: (_) => setState(() {
-                  _period = period.$1;
-                  _error = null;
-                }),
-                child: Text(period.$2),
-              ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!widget.embedded) ...[
+            Text('GENRES',
+                style: WaveType.overline.copyWith(
+                  color: waveAccent(context),
+                )),
+            const SizedBox(height: 4),
+            Text('Genres', style: WaveType.pageTitle.copyWith(fontSize: 24)),
+            const SizedBox(height: 4),
           ],
-        ),
-        const SizedBox(height: 8),
-        chart.when(
-          loading: () => const KatLoading(label: 'Loading genres…'),
-          error: (e, _) => KatError(
-            title: 'Could not load genres',
-            message: '$e',
-            onRetry: () => ref.invalidate(genreChartProvider(_period)),
+          Text(
+            'Styles from your Last.fm listening. A tap plays songs in that style, not a track named after it.',
+            style: WaveType.meta.copyWith(
+              color: waveTextSecondary(context),
+            ),
           ),
-          data: (data) {
-            if (data.bars.isEmpty) {
-              return KatEmpty(
-                icon: KatIcons.genres,
-                title: 'No genres yet',
-                subtitle: data.fromLastFm
-                    ? 'Last.fm tags for this period were places and labels, not music styles.'
-                    : 'Play a few songs whose names mention a style, or connect Last.fm for a tag chart.',
-              );
-            }
-            final max = data.bars.first.weight;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data.fromLastFm
-                      ? 'From your Last.fm tags'
-                      : 'From track names in your play log',
-                  style: KatType.meta.copyWith(color: katTextTertiary(context)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final period in _periods)
+                ToggleButton(
+                  checked: _period == period.$1,
+                  onChanged: (_) => setState(() {
+                    _period = period.$1;
+                    _error = null;
+                  }),
+                  child: Text(period.$2),
                 ),
-                const SizedBox(height: 12),
-                for (final bar in data.bars)
-                  _GenreRow(
-                    name: bar.name,
-                    weight: bar.weight,
-                    fraction: max <= 0 ? 0 : bar.weight / max,
-                    busy: _busy == bar.name,
-                    onTap: () => _play(bar.name),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: KatType.meta.copyWith(
-                      color: katTextSecondary(context),
+            ],
+          ),
+          const SizedBox(height: 8),
+          chart.when(
+              loading: () => const WaveLoading(label: 'Loading genres…'),
+              error: (e, _) => WaveError(
+                title: 'Could not load genres',
+                message: '$e',
+                onRetry: () => ref.invalidate(genreChartProvider(_period)),
+              ),
+              data: (data) {
+                if (data.bars.isEmpty) {
+                  return WaveEmpty(
+                    icon: WaveIcons.genres,
+                    title: 'No genres yet',
+                    subtitle: data.fromLastFm
+                        ? 'Last.fm tags for this period were places and labels, not music styles.'
+                        : 'Play a few songs whose names mention a style, or connect Last.fm for a tag chart.',
+                  );
+                }
+                final max = data.bars.first.weight;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.fromLastFm
+                          ? 'From your Last.fm tags'
+                          : 'From track names in your play log',
+                      style: WaveType.meta.copyWith(
+                        color: waveTextTertiary(context),
+                      ),
                     ),
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
-      ],
-    );
+                    const SizedBox(height: 12),
+                    for (final bar in data.bars)
+                      _GenreRow(
+                        name: bar.name,
+                        weight: bar.weight,
+                        fraction: max <= 0 ? 0 : bar.weight / max,
+                        busy: _busy == bar.name,
+                        onTap: () => _play(bar.name),
+                      ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        style: WaveType.meta.copyWith(
+                          color: waveTextSecondary(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+        ],
+      );
     if (widget.embedded) return body;
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 22, 28, 16),
@@ -184,7 +187,7 @@ class _GenreRowState extends State<_GenreRow> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = katAccent(context);
+    final accent = waveAccent(context);
     final width = widget.fraction.clamp(0.04, 1.0);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -209,7 +212,7 @@ class _GenreRowState extends State<_GenreRow> {
                     Icon(
                       FluentIcons.play,
                       size: 12,
-                      color: _hover ? accent : katTextTertiary(context),
+                      color: _hover ? accent : waveTextTertiary(context),
                     ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -217,15 +220,15 @@ class _GenreRowState extends State<_GenreRow> {
                       widget.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: KatType.body.copyWith(
+                      style: WaveType.body.copyWith(
                         color: _hover ? accent : null,
                       ),
                     ),
                   ),
                   Text(
                     '${widget.weight}',
-                    style: KatType.meta.copyWith(
-                      color: katTextTertiary(context),
+                    style: WaveType.meta.copyWith(
+                      color: waveTextTertiary(context),
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -235,7 +238,7 @@ class _GenreRowState extends State<_GenreRow> {
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: (katIsDark(context) ? Colors.white : Colors.black)
+                  color: (waveIsDark(context) ? Colors.white : Colors.black)
                       .withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(99),
                 ),

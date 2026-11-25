@@ -6,7 +6,7 @@ import '../innertube/innertube_api.dart';
 import '../lastfm/auth_repository.dart';
 import 'shared_providers.dart';
 
-enum SearchTab { tracks, artists, albums, playlists, users }
+enum SearchTab { tracks, artists, albums, playlists }
 
 class SearchResultItem {
   final String name;
@@ -64,21 +64,20 @@ bool suggestionNameMatchesQuery(String name, String query) {
   return false;
 }
 
-bool suggestionLooksLikeJunk(String title) => _suggestionJunk.hasMatch(title);
+bool suggestionLooksLikeJunk(String title) =>
+    _suggestionJunk.hasMatch(title);
 
-/// Unified search: YouTube Music for content tabs, Last.fm for users.
-/// Mirrors KatMusic-native `SearchRepository` + `SearchHistoryRepository`.
+/// Unified search: YouTube Music for content tabs.
+/// Mirrors KatMusic `SearchRepository` + `SearchHistoryRepository`.
 class SearchRepository {
-  final LastFmApiService _api;
   final InnerTubeMusicApi _tube;
   final AppDatabase _db;
-  final String Function() _apiKey;
 
   SearchRepository(
-    this._api,
+    LastFmApiService? _,
     this._tube,
     this._db,
-    this._apiKey, {
+    String Function()? apiKey, {
     DateTime Function()? clock,
   }) : _now = clock ?? DateTime.now;
 
@@ -102,15 +101,12 @@ class SearchRepository {
     final future = fetch();
     _memo[key] = (at: _now(), value: future);
     if (_memo.length > _memoCap) _memo.remove(_memo.keys.first);
-    future.then(
-      (v) {
-        final empty = v == null || (v is Iterable && v.isEmpty);
-        if (empty && identical(_memo[key]?.value, future)) _memo.remove(key);
-      },
-      onError: (Object _) {
-        if (identical(_memo[key]?.value, future)) _memo.remove(key);
-      },
-    );
+    future.then((v) {
+      final empty = v == null || (v is Iterable && v.isEmpty);
+      if (empty && identical(_memo[key]?.value, future)) _memo.remove(key);
+    }, onError: (Object _) {
+      if (identical(_memo[key]?.value, future)) _memo.remove(key);
+    });
     return future;
   }
 
@@ -139,15 +135,13 @@ class SearchRepository {
     }) {
       final key = '${tab.name}:${text.toLowerCase()}';
       if (!seen.add(key)) return;
-      out.add(
-        SearchSuggestion(
-          text: text,
-          tab: tab,
-          subtitle: subtitle,
-          artworkUrl: artworkUrl,
-          artist: artist,
-        ),
-      );
+      out.add(SearchSuggestion(
+        text: text,
+        tab: tab,
+        subtitle: subtitle,
+        artworkUrl: artworkUrl,
+        artist: artist,
+      ));
     }
 
     var artistCount = 0;
@@ -169,7 +163,8 @@ class SearchRepository {
         .where((s) => s.tab == SearchTab.artists)
         .map((s) => s.text.toLowerCase())
         .toList();
-    final requireKnownArtist = !q.contains(' ') && artistKeys.isNotEmpty;
+    final requireKnownArtist =
+        !q.contains(' ') && artistKeys.isNotEmpty;
 
     var songCount = 0;
     for (final s in songs) {
@@ -177,9 +172,8 @@ class SearchRepository {
       if (suggestionLooksLikeJunk(s.title)) continue;
       if (requireKnownArtist) {
         final a = s.artist.toLowerCase();
-        final known = artistKeys.any(
-          (n) => a == n || a.startsWith(n) || n.startsWith(a) || a.contains(n),
-        );
+        final known = artistKeys.any((n) =>
+            a == n || a.startsWith(n) || n.startsWith(a) || a.contains(n));
         if (!known) continue;
       }
       add(
@@ -198,7 +192,8 @@ class SearchRepository {
   Future<List<SearchResultItem>> search(SearchTab tab, String query) {
     final q = query.trim();
     if (q.isEmpty) return Future.value(const []);
-    return _memoized('${tab.name}|${q.toLowerCase()}', () => _search(tab, q));
+    return _memoized(
+        '${tab.name}|${q.toLowerCase()}', () => _search(tab, q));
   }
 
   Future<List<SearchResultItem>> _search(SearchTab tab, String q) async {
@@ -206,181 +201,62 @@ class SearchRepository {
       case SearchTab.tracks:
         final tracks = await _tube.searchSongs(q, limit: 60);
         return tracks
-            .map(
-              (t) => SearchResultItem(
-                name: t.title,
-                artist: t.artist,
-                artworkUrl: t.artworkUrl,
-                subtitle: t.album,
-                videoId: t.videoId,
-                entityId: t.videoId,
-                tab: tab,
-                durationSeconds: t.durationSeconds,
-              ),
-            )
+            .map((t) => SearchResultItem(
+                  name: t.title,
+                  artist: t.artist,
+                  artworkUrl: t.artworkUrl,
+                  subtitle: t.album,
+                  videoId: t.videoId,
+                  entityId: t.videoId,
+                  tab: tab,
+                  durationSeconds: t.durationSeconds,
+                ))
             .toList();
       case SearchTab.artists:
         final artists = await _tube.searchArtists(q);
         return artists
-            .map(
-              (e) => SearchResultItem(
-                name: e.name,
-                subtitle: e.subtitle,
-                artworkUrl: e.artworkUrl,
-                entityId: e.browseId,
-                tab: tab,
-              ),
-            )
+            .map((e) => SearchResultItem(
+                  name: e.name,
+                  subtitle: e.subtitle,
+                  artworkUrl: e.artworkUrl,
+                  entityId: e.browseId,
+                  tab: tab,
+                ))
             .toList();
       case SearchTab.albums:
         final albums = await _tube.searchAlbums(q);
         return albums
-            .map(
-              (e) => SearchResultItem(
-                name: e.name,
-                artist: e.artist,
-                subtitle: e.subtitle,
-                artworkUrl: e.artworkUrl,
-                entityId: e.browseId,
-                tab: tab,
-              ),
-            )
+            .map((e) => SearchResultItem(
+                  name: e.name,
+                  artist: e.artist,
+                  subtitle: e.subtitle,
+                  artworkUrl: e.artworkUrl,
+                  entityId: e.browseId,
+                  tab: tab,
+                ))
             .toList();
       case SearchTab.playlists:
-        final playlists = await _tube.searchPlaylists(q, limit: 30);
+        final playlists =
+            await _tube.searchPlaylists(q, limit: 30);
         return playlists
-            .map(
-              (e) => SearchResultItem(
-                name: e.title,
-                artist: e.author,
-                subtitle: [
-                  if (e.author.isNotEmpty) e.author,
-                  if (e.trackCountText.isNotEmpty) e.trackCountText,
-                ].join(' • '),
-                artworkUrl: e.artworkUrl,
-                entityId: e.id,
-                tab: tab,
-              ),
-            )
+            .map((e) => SearchResultItem(
+                  name: e.title,
+                  artist: e.author,
+                  subtitle: [
+                    if (e.author.isNotEmpty) e.author,
+                    if (e.trackCountText.isNotEmpty)
+                      e.trackCountText,
+                  ].join(' • '),
+                  artworkUrl: e.artworkUrl,
+                  entityId: e.id,
+                  tab: tab,
+                ))
             .toList();
-      case SearchTab.users:
-        return _searchUsers(q);
     }
   }
 
-  /// A single token of length 2+ is treated as a Last.fm username.
-  bool looksLikeLastFmUser(String query) {
-    final q = query.trim();
-    return q.length >= 2 && !RegExp(r'\s').hasMatch(q);
-  }
-
-  Future<List<SearchResultItem>> _searchUsers(String username) async {
-    if (_apiKey().isEmpty) return const [];
-    final out = <SearchResultItem>[];
-    final seen = <String>{};
-    void add(SearchResultItem item) {
-      final key = item.name.trim().toLowerCase();
-      if (key.isEmpty || !seen.add(key)) return;
-      out.add(item);
-    }
-
-    final exact = await _lookupUser(username);
-    if (exact != null) add(exact);
-    try {
-      final json = await _api.get({
-        'method': 'user.search',
-        'user': username,
-        'api_key': _apiKey(),
-        'limit': '12',
-      });
-      if (json.containsKey('error')) return out;
-      final results = _asStringMap(json['results']);
-      final matches = _asStringMap(
-        results?['userMatches'] ?? results?['usermatches'],
-      );
-      for (final user in _asMapList(matches?['user'])) {
-        final name = user['name']?.toString().trim() ?? '';
-        if (name.isEmpty) continue;
-        final real = user['realname']?.toString().trim() ?? '';
-        add(
-          SearchResultItem(
-            name: name,
-            subtitle: real.isEmpty ? 'Last.fm' : real,
-            artworkUrl: _userImage(user['image']),
-            tab: SearchTab.users,
-            entityId: name,
-          ),
-        );
-      }
-    } catch (_) {}
-    return out;
-  }
-
-  /// Exact Last.fm profile lookup (`user.getinfo`): name, real name and
-  /// avatar. Null when the user doesn't exist or the call fails.
-  Future<SearchResultItem?> lookupUser(String username) =>
-      _lookupUser(username);
-
-  Future<SearchResultItem?> _lookupUser(String username) async {
-    try {
-      final json = await _api.get({
-        'method': 'user.getinfo',
-        'user': username,
-        'api_key': _apiKey(),
-      });
-      if (json.containsKey('error')) return null;
-      final user = _asStringMap(json['user']);
-      if (user == null) return null;
-      final name = user['name']?.toString().trim() ?? '';
-      if (name.isEmpty) return null;
-      final real = user['realname']?.toString().trim() ?? '';
-      final plays = user['playcount']?.toString() ?? '';
-      return SearchResultItem(
-        name: name,
-        subtitle: real.isNotEmpty
-            ? real
-            : (plays.isEmpty ? 'Last.fm' : '$plays scrobbles'),
-        artworkUrl: _userImage(user['image']),
-        tab: SearchTab.users,
-        entityId: name,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Map<String, dynamic>? _asStringMap(Object? value) {
-    if (value is Map<String, dynamic>) return value;
-    if (value is Map) return Map<String, dynamic>.from(value);
-    return null;
-  }
-
-  List<Map<String, dynamic>> _asMapList(Object? value) {
-    if (value is List) {
-      return [for (final item in value) ?_asStringMap(item)];
-    }
-    final single = _asStringMap(value);
-    if (single == null) return const [];
-    return [single];
-  }
-
-  String _userImage(Object? images) {
-    var fallback = '';
-    for (final img in _asMapList(images)) {
-      final url = img['#text']?.toString() ?? '';
-      if (url.isEmpty ||
-          url.contains('2a96cbd8') ||
-          url.contains('default_user')) {
-        continue;
-      }
-      fallback = url;
-      final size = img['size']?.toString() ?? '';
-      if (size == 'extralarge' || size == 'large') return url;
-    }
-    return fallback;
-  }
-
-  Future<List<YouTubeMusicTrack>> songsFor(SearchResultItem item) async {
+  Future<List<YouTubeMusicTrack>> songsFor(
+      SearchResultItem item) async {
     if (item.entityId.isEmpty) return const [];
     if (item.tab == SearchTab.tracks && item.videoId.isNotEmpty) {
       final details = await _tube.fetchSongDetails(item.videoId);
@@ -422,7 +298,8 @@ class SearchRepository {
     }
     songHit ??= songs.isEmpty ? null : songs.first;
 
-    if (artistHit != null && suggestionNameMatchesQuery(artistHit.name, q)) {
+    if (artistHit != null &&
+        suggestionNameMatchesQuery(artistHit.name, q)) {
       return SearchResultItem(
         name: artistHit.name,
         artist: artistHit.name,
@@ -479,12 +356,12 @@ String _searchArtistKey(String artist) {
   }
   k = k
       .replaceAll(
-        RegExp(r'\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\b[^\)\]]*[\)\]]'),
-        '',
-      )
+          RegExp(r'\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\b[^\)\]]*[\)\]]'),
+          '')
       .trim();
   k = k
-      .replaceAll(RegExp(r'\s+(feat\.?|ft\.?|featuring|with)\s+.+$'), '')
+      .replaceAll(
+          RegExp(r'\s+(feat\.?|ft\.?|featuring|with)\s+.+$'), '')
       .trim();
   return k;
 }
@@ -534,12 +411,8 @@ List<SearchResultItem> rankSearchPlaylistsByTaste(
 
   final scored = playlists.asMap().entries.map((e) {
     final hasSignal = scoreOf(e.value) > 0;
-    return (
-      item: e.value,
-      index: e.key,
-      score: scoreOf(e.value),
-      known: hasSignal,
-    );
+    return (item: e.value, index: e.key, score: scoreOf(e.value),
+        known: hasSignal);
   }).toList();
   scored.sort((a, b) {
     // Items with any taste signal always outrank items with none;

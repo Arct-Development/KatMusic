@@ -13,17 +13,13 @@ class _Reader {
   bool _done = false;
 
   _Reader(Stream<List<int>> stream) {
-    _sub = stream.listen(
-      (chunk) {
-        _buf.add(chunk);
-        for (final w in _waiters.toList()) {
-          if (!w.isCompleted) w.complete();
-        }
-        _waiters.clear();
-      },
-      onError: (_) => _finish(),
-      onDone: _finish,
-    );
+    _sub = stream.listen((chunk) {
+      _buf.add(chunk);
+      for (final w in _waiters.toList()) {
+        if (!w.isCompleted) w.complete();
+      }
+      _waiters.clear();
+    }, onError: (_) => _finish(), onDone: _finish);
   }
 
   void _finish() {
@@ -35,7 +31,8 @@ class _Reader {
   }
 
   Future<Uint8List> read(int n) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    final deadline =
+        DateTime.now().add(const Duration(seconds: 5));
     while (_buf.length < n) {
       if (_done || DateTime.now().isAfter(deadline)) {
         return Uint8List(0);
@@ -72,7 +69,8 @@ void main() {
     final view = ByteData.sublistView(frame);
     expect(view.getInt32(0, Endian.little), 1);
     expect(view.getInt32(4, Endian.little), frame.length - 8);
-    final back = DiscordIpc.decodeFrame(frame.sublist(8));
+    final back =
+        DiscordIpc.decodeFrame(frame.sublist(8));
     expect(back?['cmd'], 'SET_ACTIVITY');
     expect((back?['args'] as Map)['pid'], 1234);
   });
@@ -86,7 +84,8 @@ void main() {
   test(
     'unix socket handshake loopback',
     () async {
-      final dir = await Directory.systemTemp.createTemp('discord_ipc_test');
+      final dir =
+          await Directory.systemTemp.createTemp('discord_ipc_test');
       try {
         final path = '${dir.path}/discord-ipc-9';
         final server = await ServerSocket.bind(
@@ -105,9 +104,8 @@ void main() {
               final body = await reader.read(len);
               final req = DiscordIpc.decodeFrame(body);
               expect(req?['client_id'], 'probe-id');
-              client.add(
-                DiscordIpc.encodeFrame(1, {'evt': 'READY', 'data': {}}),
-              );
+              client.add(DiscordIpc.encodeFrame(
+                  1, {'evt': 'READY', 'data': {}}));
             } finally {
               await reader.close();
             }
@@ -120,14 +118,15 @@ void main() {
           );
           final reader = _Reader(client);
           try {
-            client.add(
-              DiscordIpc.encodeFrame(0, {'v': 1, 'client_id': 'probe-id'}),
-            );
+            client.add(DiscordIpc.encodeFrame(
+                0, {'v': 1, 'client_id': 'probe-id'}));
             final header = await reader.read(8);
             expect(header.length, 8);
-            final len = ByteData.sublistView(header).getInt32(4, Endian.little);
+            final len = ByteData.sublistView(header)
+                .getInt32(4, Endian.little);
             final body = await reader.read(len);
-            expect(DiscordIpc.decodeFrame(body)?['evt'], 'READY');
+            expect(
+                DiscordIpc.decodeFrame(body)?['evt'], 'READY');
           } finally {
             await reader.close();
             client.destroy();

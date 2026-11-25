@@ -8,16 +8,16 @@ import 'buttons.dart';
 /// Bounded, quiet, and never indefinite: loading shows a short ring +
 /// label, empty shows icon + title + action, error shows an InfoBar +
 /// retry. No full-page skeleton that stays visible forever.
-class KatLoading extends StatelessWidget {
+class WaveLoading extends StatelessWidget {
   final String label;
-  const KatLoading({super.key, this.label = 'Loading…'});
+  const WaveLoading({super.key, this.label = 'Loading…'});
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(KatSpacing.x28),
+        padding: const EdgeInsets.all(WaveSpacing.x28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -26,13 +26,13 @@ class KatLoading extends StatelessWidget {
               height: 28,
               child: ProgressRing(strokeWidth: 3),
             ),
-            const SizedBox(height: KatSpacing.x8),
+            const SizedBox(height: WaveSpacing.x8),
             Text(
               label,
-              style: KatType.meta.copyWith(
+              style: WaveType.meta.copyWith(
                 color: dark
-                    ? KatColors.textTertiary
-                    : KatColors.lightTextTertiary,
+                    ? WaveColors.textTertiary
+                    : WaveColors.lightTextTertiary,
               ),
             ),
           ],
@@ -42,13 +42,13 @@ class KatLoading extends StatelessWidget {
   }
 }
 
-class KatEmpty extends StatelessWidget {
+class WaveEmpty extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final String? actionLabel;
   final VoidCallback? onAction;
-  const KatEmpty({
+  const WaveEmpty({
     super.key,
     required this.icon,
     required this.title,
@@ -59,14 +59,14 @@ class KatEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
+    final dark = waveIsDark(context);
     // Editorial empty: small tonal visual (64px, 8px radius — never a
     // giant centred icon in black space) + title + subtitle + action.
     // Pages keep their header visible above this so header + state read
     // as one composition, not two separate messages.
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(KatSpacing.x28),
+        padding: const EdgeInsets.all(WaveSpacing.x28),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -76,50 +76,58 @@ class KatEmpty extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(KatRadius.artwork),
+                  borderRadius:
+                      BorderRadius.circular(WaveRadius.artwork),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      (dark ? Colors.white : Colors.black).withValues(
-                        alpha: 0.08,
-                      ),
-                      (dark ? Colors.white : Colors.black).withValues(
-                        alpha: 0.03,
-                      ),
+                      (dark
+                              ? Colors.white
+                              : Colors.black)
+                          .withValues(alpha: 0.08),
+                      (dark
+                              ? Colors.white
+                              : Colors.black)
+                          .withValues(alpha: 0.03),
                     ],
                   ),
                   border: Border.all(
-                    color: dark ? katOutlineSoft(context) : katOutline(context),
+                    color: dark
+                        ? waveOutlineSoft(context)
+                        : waveOutline(context),
                   ),
                 ),
                 child: Icon(
                   icon,
                   size: 24,
                   color: dark
-                      ? KatColors.textSecondary
-                      : KatColors.lightTextSecondary,
+                      ? WaveColors.textSecondary
+                      : WaveColors.lightTextSecondary,
                 ),
               ),
-              const SizedBox(height: KatSpacing.x8),
+              const SizedBox(height: WaveSpacing.x8),
               Text(
                 title,
-                style: KatType.sectionTitle.copyWith(fontSize: 16),
+                style: WaveType.sectionTitle.copyWith(fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: KatType.meta.copyWith(
+                style: WaveType.meta.copyWith(
                   color: dark
-                      ? KatColors.textSecondary
-                      : KatColors.lightTextSecondary,
+                      ? WaveColors.textSecondary
+                      : WaveColors.lightTextSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
               if (actionLabel != null) ...[
-                const SizedBox(height: KatSpacing.x8),
-                KatFilledButton(onPressed: onAction, child: Text(actionLabel!)),
+                const SizedBox(height: WaveSpacing.x8),
+                WaveFilledButton(
+                  onPressed: onAction,
+                  child: Text(actionLabel!),
+                ),
               ],
             ],
           ),
@@ -129,11 +137,11 @@ class KatEmpty extends StatelessWidget {
   }
 }
 
-class KatError extends StatelessWidget {
+class WaveError extends StatelessWidget {
   final String title;
   final String message;
   final VoidCallback? onRetry;
-  const KatError({
+  const WaveError({
     super.key,
     required this.title,
     required this.message,
@@ -143,23 +151,26 @@ class KatError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(KatSpacing.x16),
+      padding: const EdgeInsets.all(WaveSpacing.x16),
       child: InfoBar(
         title: Text(title),
         content: Text(message),
         severity: InfoBarSeverity.error,
         action: onRetry == null
             ? null
-            : KatButton(onPressed: onRetry, child: const Text('Retry')),
+            : WaveButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
       ),
     );
   }
 }
 
 /// Canonical empty-state alias: 52px circle icon + title + subtitle +
-/// optional action. See [KatEmpty].
-class KatEmptyState extends KatEmpty {
-  const KatEmptyState({
+/// optional action. See [WaveEmpty].
+class LWEmptyState extends WaveEmpty {
+  const LWEmptyState({
     super.key,
     required super.icon,
     required super.title,
@@ -169,7 +180,7 @@ class KatEmptyState extends KatEmpty {
   });
 }
 
-/// Canonical loading-state alias. See [KatLoading].
-class KatLoadingState extends KatLoading {
-  const KatLoadingState({super.key, super.label});
+/// Canonical loading-state alias. See [WaveLoading].
+class LWLoadingState extends WaveLoading {
+  const LWLoadingState({super.key, super.label});
 }

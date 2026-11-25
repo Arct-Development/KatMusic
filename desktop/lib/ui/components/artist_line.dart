@@ -1,12 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 import '../../core/audio/artist_parser.dart';
-import '../navigation/kat_nav.dart';
+import '../navigation/wave_nav.dart';
 import '../theme/tokens.dart';
 
 /// Renders an artist credit line, breaking multiple collaborated artists
 /// into separate, distinct clickable names (e.g. "Drake • 21 Savage").
-class KatArtistLine extends StatelessWidget {
+class WaveArtistLine extends StatelessWidget {
   final String artist;
   final TextStyle? style;
   final int maxLines;
@@ -15,7 +15,7 @@ class KatArtistLine extends StatelessWidget {
   final List<InlineSpan>? extraTrailingSpans;
   final void Function(String artist)? onTapArtist;
 
-  const KatArtistLine({
+  const WaveArtistLine({
     super.key,
     required this.artist,
     this.style,
@@ -30,20 +30,20 @@ class KatArtistLine extends StatelessWidget {
     if (onTapArtist != null) {
       onTapArtist!(name);
     } else {
-      katOpen(context, '/artist/${Uri.encodeComponent(name)}');
+      waveOpen(context, '/artist/${Uri.encodeComponent(name)}');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dark = katIsDark(context);
-    final defaultStyle =
-        style ??
-        KatType.meta.copyWith(
-          color: dark ? KatColors.textSecondary : KatColors.lightTextSecondary,
+    final dark = waveIsDark(context);
+    final defaultStyle = style ??
+        WaveType.meta.copyWith(
+          color:
+              dark ? WaveColors.textSecondary : WaveColors.lightTextSecondary,
         );
     final dotStyle = defaultStyle.copyWith(
-      color: dark ? KatColors.textTertiary : KatColors.lightTextTertiary,
+      color: dark ? WaveColors.textTertiary : WaveColors.lightTextTertiary,
       fontSize: (defaultStyle.fontSize ?? 12) * 0.9,
     );
 
@@ -51,11 +51,7 @@ class KatArtistLine extends StatelessWidget {
     if (list.isEmpty) {
       if (extraTrailingSpans != null && extraTrailingSpans!.isNotEmpty) {
         return Text.rich(
-          TextSpan(
-            text: artist,
-            style: defaultStyle,
-            children: extraTrailingSpans,
-          ),
+          TextSpan(text: artist, style: defaultStyle, children: extraTrailingSpans),
           style: defaultStyle,
           maxLines: maxLines,
           overflow: overflow,
@@ -71,8 +67,7 @@ class KatArtistLine extends StatelessWidget {
       );
     }
 
-    if (list.length == 1 &&
-        (extraTrailingSpans == null || extraTrailingSpans!.isEmpty)) {
+    if (list.length == 1 && (extraTrailingSpans == null || extraTrailingSpans!.isEmpty)) {
       return MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(

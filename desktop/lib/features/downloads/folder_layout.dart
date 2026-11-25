@@ -55,14 +55,15 @@ String downloadSubpath({
   folderArtist = sanitizeDownloadSegment(folderArtist);
   if (folderArtist.isEmpty) folderArtist = 'Unknown Artist';
   final rawAlbum = album.trim();
-  final isSingle = rawAlbum.isEmpty || rawAlbum.toLowerCase() == 'singles';
+  final isSingle =
+      rawAlbum.isEmpty || rawAlbum.toLowerCase() == 'singles';
   var albumSeg = sanitizeDownloadSegment(rawAlbum);
   if (albumSeg.isEmpty) albumSeg = 'Singles';
   final yearDigits = year.replaceAll(RegExp(r'\D'), '');
-  final yearSeg = yearDigits.length >= 4 ? yearDigits.substring(0, 4) : '';
-  final yearAlbumSeg = yearSeg.length == 4 && !isSingle
-      ? '[$yearSeg] $albumSeg'
-      : albumSeg;
+  final yearSeg =
+      yearDigits.length >= 4 ? yearDigits.substring(0, 4) : '';
+  final yearAlbumSeg =
+      yearSeg.length == 4 && !isSingle ? '[$yearSeg] $albumSeg' : albumSeg;
   final List<String> segments;
   switch (structure) {
     case DownloadFolderLayout.flat:

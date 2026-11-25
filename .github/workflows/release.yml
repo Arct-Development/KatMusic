@@ -1,33 +1,121 @@
 name: Publish Selected Release
 
+# Desktop and Android version independently, so they publish independently too.
+# Pick a target, and only that platform's jobs run. Versions are read from the
+# source of truth for each platform — never typed in by hand:
+#
+#   desktop  -> desktop/pubspec.yaml        -> tag desktop-v<version>
+#   android  -> app/build.gradle.kts        -> tag <version>
+#
+# The tag prefixes keep the two streams apart (the in-app updaters and the
+# website filter on them), and they are safe to publish in any order.
 on:
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: 'Release version (must match app/build.gradle.kts)'
-        required: true
-        default: '2.6.5'
-      release_name:
-        description: 'Public release title'
-        required: true
-        default: 'KatMusic 2.6.5'
+      release_target:
+        description: 'Which platform to publish'
+        type: choice
+        options:
+          - desktop
+          - android
+          - both
+        default: desktop
       release_notes:
-        description: 'Changelog / Release Notes'
+        description: 'Changelog for this release (optional)'
         required: false
-        default: |
-          ## KatMusic 2.6.5
+        default: ''
+      release_name:
+        description: 'Release title (optional; generated when blank)'
+        required: false
+        default: ''
 
-          ### Added
-          - A new Flutter desktop application for Windows, Linux and macOS, with YouTube Music and lossless streaming, synced and word-by-word lyrics, downloads, local files, Jam rooms, Spotify Canvas, Last.fm sign-in and scrobbling, tray controls and MPRIS / SMTC media integration.
-          - A KatMusic-specific desktop interface: midnight-navy surfaces, Figtree type and Liquid Glass title bar, navigation rail and player dock, with an opaque fallback for Solid material and Reduce Transparency.
-          - Distinct Android Vinyl and Cassette decks plus rebuilt Poster, Timeline, Lyrics, Artwork and Canvas players; Classic is unchanged.
+permissions:
+  contents: read
 
-          ### Build
-          - Universal, ARM64 and Android 7–9 legacy APK packages.
-          - Windows (ZIP), Linux (tar.gz) and macOS (ZIP) desktop builds, produced with `flutter build`.
 jobs:
-  release:
-    name: Build & Publish Release
+  prepare:
+    name: Resolve target versions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      build_desktop: ${{ steps.versions.outputs.build_desktop }}
+      build_android: ${{ steps.versions.outputs.build_android }}
+      desktop_version: ${{ steps.versions.outputs.desktop_version }}
+      desktop_tag: ${{ steps.versions.outputs.desktop_tag }}
+      android_version: ${{ steps.versions.outputs.android_version }}
+      android_tag: ${{ steps.versions.outputs.android_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve versions for the selected target
+        id: versions
+        env:
+          TARGET: ${{ inputs.release_target }}
+        run: |
+          set -euo pipefail
+          DESKTOP_VERSION="$(sed -n 's/^version:[[:space:]]*\([0-9][^+[:space:]]*\).*/\1/p' desktop/pubspec.yaml | head -n1)"
+          ANDROID_VERSION="$(grep -m1 'versionName[[:space:]]*=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')"
+
+          if [ -z "$DESKTOP_VERSION" ]; then
+            echo "::error::Could not read the desktop version from desktop/pubspec.yaml"
+            exit 1
+          fi
+          if [ -z "$ANDROID_VERSION" ]; then
+            echo "::error::Could not read the Android version from app/build.gradle.kts"
+            exit 1
+          fi
+
+          # The running app reports appVersion when checking for updates, so a
+          # stale constant would make it re-offer an update it already has.
+          APP_INFO_VERSION="$(grep -m1 "appVersion = '" desktop/lib/core/app_info.dart | sed -E "s/.*'([^']+)'.*/\1/")"
+          if [ -n "$APP_INFO_VERSION" ] && [ "$APP_INFO_VERSION" != "$DESKTOP_VERSION" ]; then
+            echo "::error::desktop/lib/core/app_info.dart says $APP_INFO_VERSION but desktop/pubspec.yaml says $DESKTOP_VERSION"
+            exit 1
+          fi
+
+          case "$TARGET" in
+            desktop) BUILD_DESKTOP=true;  BUILD_ANDROID=false ;;
+            android) BUILD_DESKTOP=false; BUILD_ANDROID=true ;;
+            both)    BUILD_DESKTOP=true;  BUILD_ANDROID=true ;;
+            *)
+              echo "::error::Unknown release target '$TARGET'"
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "build_desktop=$BUILD_DESKTOP"
+            echo "build_android=$BUILD_ANDROID"
+            echo "desktop_version=$DESKTOP_VERSION"
+            echo "desktop_tag=desktop-v$DESKTOP_VERSION"
+            echo "android_version=$ANDROID_VERSION"
+            echo "android_tag=$ANDROID_VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Target:  $TARGET"
+          echo "Desktop: $DESKTOP_VERSION (tag desktop-v$DESKTOP_VERSION) [$BUILD_DESKTOP]"
+          echo "Android: $ANDROID_VERSION (tag $ANDROID_VERSION) [$BUILD_ANDROID]"
+
+      - name: Summarize what will be published
+        run: |
+          {
+            echo "### Release plan"
+            echo ""
+            echo "| Platform | Version | Tag | Will build |"
+            echo "| :--- | :--- | :--- | :--- |"
+            echo "| Desktop | ${{ steps.versions.outputs.desktop_version }} | \`${{ steps.versions.outputs.desktop_tag }}\` | ${{ steps.versions.outputs.build_desktop }} |"
+            echo "| Android | ${{ steps.versions.outputs.android_version }} | \`${{ steps.versions.outputs.android_tag }}\` | ${{ steps.versions.outputs.build_android }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    name: Build & publish Android release
+    needs: prepare
+    if: needs.prepare.outputs.build_android == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -45,16 +133,15 @@ jobs:
 
       - name: Validate release version
         env:
-          REQUESTED_TAG: ${{ inputs.tag_name }}
+          ANDROID_VERSION: ${{ needs.prepare.outputs.android_version }}
         run: |
           APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
-          REQUESTED_VERSION="${REQUESTED_TAG#v}"
-          if [ "$APP_VERSION" != "$REQUESTED_VERSION" ]; then
-            echo "::error::Requested tag $REQUESTED_TAG does not match app version $APP_VERSION"
+          if [ "$APP_VERSION" != "$ANDROID_VERSION" ]; then
+            echo "::error::Resolved Android version $ANDROID_VERSION does not match app/build.gradle.kts ($APP_VERSION)"
             exit 1
           fi
-          echo "Preparing KatMusic $APP_VERSION"
-          
+          echo "Preparing KatMusic $ANDROID_VERSION"
+
       - name: Set up JDK 17
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -79,9 +166,10 @@ jobs:
         # instead of silently shipping a debug-signed APK.
 
       - name: Stage Android 10 Final APKs
+        env:
+          TAG: ${{ needs.prepare.outputs.android_version }}
         run: |
           mkdir -p final_apk
-          TAG="${{ inputs.tag_name }}"
           # Universal release (Android 10+, R8 + ProGuard + shrinkResources)
           if [ -f "app/build/outputs/apk/release/app-release-signed.apk" ]; then
             cp app/build/outputs/apk/release/app-release-signed.apk final_apk/KatMusic-v${TAG}-universal.apk
@@ -118,8 +206,9 @@ jobs:
           BUILD_TOOLS_VERSION: "34.0.0"
 
       - name: Stage Android 7 Final APK
+        env:
+          TAG: ${{ needs.prepare.outputs.android_version }}
         run: |
-          TAG="${{ inputs.tag_name }}"
           if [ -f "app/build/outputs/apk/release/app-release-signed.apk" ]; then
             cp app/build/outputs/apk/release/app-release-signed.apk final_apk/KatMusic-v${TAG}-android7.apk
           else
@@ -136,8 +225,9 @@ jobs:
         run: ./gradlew assembleRelease -PtargetAbis=arm64-v8a --stacktrace
 
       - name: Stage ARM64 Release APK
+        env:
+          TAG: ${{ needs.prepare.outputs.android_version }}
         run: |
-          TAG="${{ inputs.tag_name }}"
           APK="app/build/outputs/apk/release/app-release.apk"
           if [ -f "app/build/outputs/apk/release/app-release-signed.apk" ]; then
             APK="app/build/outputs/apk/release/app-release-signed.apk"
@@ -188,11 +278,11 @@ jobs:
 
       - name: Prepare Release Notes & Compatibility Notice
         env:
-          TAG: ${{ inputs.tag_name }}
+          TAG: ${{ needs.prepare.outputs.android_version }}
           NOTES: ${{ inputs.release_notes }}
         run: |
           cat << 'EOF' | sed 's/^ *//' > notice.md
-          ### 📦 Download Packages & Compatibility
+          ### 📦 Android Packages & Compatibility
 
           | Package | Recommended OS | Description |
           | :--- | :--- | :--- |
@@ -200,9 +290,9 @@ jobs:
           | **`KatMusic-v__TAG__-arm64-v8a.apk`** | **Android 10+ (64-bit ARM)** | **ARM64 build.** Smaller ABI-specific package for arm64-v8a phones and tablets. |
           | **`KatMusic-v__TAG__-universal-uncompressed.apk`** (~89 MB) | **Android 10+ (Android 10 – 16+)** | **Raw Release.** Unminified debuggable variant with uncompressed native libraries. |
           | **`KatMusic-v__TAG__-android7.apk`** (~17 MB) | **Android 7.0 – 9.0 (Legacy)** | **Legacy Android 7.0+ Variant.** Built with compressed native libraries for older package managers. |
-          | `KatMusic-v__TAG__-windows-x64.zip` | Windows 10 / 11 (64-bit) | Flutter desktop build — extract and run `katmusic.exe`. |
-          | `KatMusic-v__TAG__-macos.zip` | macOS | Flutter desktop build — extract and open `KatMusic.app` (unsigned: right-click → Open on first launch). |
-          | `KatMusic-v__TAG__-linux-x64.tar.gz` | Linux (64-bit) | Flutter desktop build — extract and run `katmusic`. Needs GTK 3, libmpv and libsecret. |
+
+          > [!NOTE]
+          > Desktop packages (Windows, macOS, Linux) are published separately in the matching `desktop-v*` release, because the desktop app has its own version number.
 
           > [!WARNING]
           > **Notice for Android 7.0 – 9.0 Users (`KatMusic-v__TAG__-android7.apk`):**
@@ -222,11 +312,11 @@ jobs:
             cat notice.md > release_body.md
           fi
 
-      - name: Create GitHub Release
+      - name: Create or update the Android GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          tag_name: ${{ inputs.tag_name }}
-          name: ${{ inputs.release_name }}
+          tag_name: ${{ needs.prepare.outputs.android_tag }}
+          name: ${{ inputs.release_name || format('KatMusic {0}', needs.prepare.outputs.android_version) }}
           body_path: release_body.md
           files: |
             final_apk/*.apk
@@ -236,12 +326,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Desktop packages (Flutter) ship with the same release. They build after the
-  # release exists so each platform's asset lands on the same tag the website
-  # reads.
   desktop:
     name: Build desktop (${{ matrix.name }})
-    needs: release
+    needs: prepare
+    if: needs.prepare.outputs.build_desktop == 'true'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -299,15 +387,24 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Test
-        run: flutter test --exclude-tags golden,live
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # The QuickJS native tests need the bundled Windows DLL.
+            flutter test --exclude-tags golden,live
+          else
+            flutter test --exclude-tags golden,live,native
+          fi
 
       - name: Build
         run: ${{ matrix.build }}
 
       - name: Package
         shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.desktop_version }}
         run: |
-          OUT="dist/KatMusic-v${{ inputs.tag_name }}-${{ matrix.package }}"
+          OUT="dist/KatMusic-v${VERSION}-${{ matrix.package }}"
           mkdir -p dist stage/KatMusic
           cp -R "${{ matrix.artifact }}/." stage/KatMusic/
           if [ "${{ runner.os }}" = "Linux" ]; then
@@ -334,8 +431,9 @@ jobs:
           if-no-files-found: error
 
   attach-desktop:
-    name: Attach desktop packages to release
-    needs: desktop
+    name: Attach desktop packages to their release
+    needs: [prepare, desktop]
+    if: needs.prepare.outputs.build_desktop == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -352,9 +450,42 @@ jobs:
           sha256sum * > SHA256SUMS-desktop.txt
           cat SHA256SUMS-desktop.txt
 
-      - name: Upload to the release
+      - name: Prepare desktop release body
+        env:
+          VERSION: ${{ needs.prepare.outputs.desktop_version }}
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          cat << 'EOF' | sed 's/^ *//' > desktop_notice.md
+          ### 📦 Desktop Downloads
+
+          | Package | Platform | Description |
+          | :--- | :--- | :--- |
+          | `KatMusic-v__VERSION__-windows-x64.zip` | Windows 10 / 11 (64-bit) | Extract and run `katmusic.exe`. |
+          | `KatMusic-v__VERSION__-macos.zip` | macOS | Open `KatMusic.app` (unsigned: right-click → Open on first launch). |
+          | `KatMusic-v__VERSION__-linux-x64.tar.gz` | Linux (64-bit) | Extract and run `katmusic`. Needs GTK 3, libmpv and libsecret. |
+
+          > [!NOTE]
+          > Desktop is versioned independently from the Android app. This release only carries desktop packages; Android packages live in their own release.
+          EOF
+
+          sed -i "s/__VERSION__/${VERSION}/g" desktop_notice.md
+
+          if [ -n "$NOTES" ]; then
+            printf "%s\n\n---\n\n" "$NOTES" > release_body.md
+            cat desktop_notice.md >> release_body.md
+          else
+            cat desktop_notice.md > release_body.md
+          fi
+
+      - name: Create or update the desktop GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          tag_name: ${{ inputs.tag_name }}
+          tag_name: ${{ needs.prepare.outputs.desktop_tag }}
+          name: ${{ inputs.release_name || format('KatMusic Desktop {0}', needs.prepare.outputs.desktop_version) }}
+          body_path: release_body.md
           files: dist/*
           fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
