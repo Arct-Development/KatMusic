@@ -76,12 +76,10 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            # The QuickJS native tests need the bundled Windows DLL.
-            flutter test --exclude-tags golden,live
-          else
-            flutter test --exclude-tags golden,live,native
-          fi
+          # Native QuickJS integration tests exercise a bundled Windows DLL
+          # and live YouTube player assets. Keep them out of the cross-platform
+          # desktop build gate; run them in the dedicated native validation job.
+          flutter test --exclude-tags golden,live,native
 
       - name: Build
         run: ${{ matrix.build }}
