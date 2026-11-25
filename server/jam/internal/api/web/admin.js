@@ -30,7 +30,7 @@
   }
 
   function api(path, method, body) {
-    var init = { method: method || 'GET', credentials: 'same-origin', headers: { 'X-Requested-With': 'lwjam' } };
+    var init = { method: method || 'GET', credentials: 'same-origin', headers: { 'X-Requested-With': 'katmusic-jam' } };
     if (body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
     return fetch(path, init).then(function (r) {
       if (r.status === 401) { window.location.replace('/admin/login'); throw new Error('auth'); }
