@@ -57,7 +57,7 @@ func (h *Handler) handleEmbedSong(w http.ResponseWriter, r *http.Request) {
 func writeEmbed(w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(body))
 }
@@ -76,14 +76,14 @@ func embedShell(title, subtitle, hint, code, link string) string {
 :root{color-scheme:dark;--accent:#66b5ff;--bg:#080d18;--panel:#111b2d;--line:#263a56;--text:#f2f7ff;--muted:#9cacc2}*{box-sizing:border-box}
 body{margin:0;padding:16px;background:radial-gradient(ellipse at 50% 0%,#172d4b 0,var(--bg) 68%);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
 .card{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:24px;text-align:center;box-shadow:0 18px 55px #0007}
-.brand{font-size:22px;font-weight:800;letter-spacing:-.03em}.brand span{color:var(--accent)}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px;font-weight:800;letter-spacing:-.03em}.brand img{width:32px;height:32px;object-fit:contain;border-radius:8px}.brand span{color:var(--accent)}
 h1{font-size:20px;margin:14px 0 4px}.sub{color:var(--muted);margin:0 0 14px}
 .code{font:700 30px/1.2 ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);padding:16px;border:1px dashed var(--line);border-radius:14px;margin:14px 0}
 .hint{color:var(--muted);font-size:13px}
 a{display:inline-block;margin-top:14px;padding:11px 18px;border-radius:999px;background:#2583e8;color:#fff;text-decoration:none;font-weight:700}
 a:hover{background:#4097f4}
 </style></head><body><div class="card">
-<div class="brand">KatMusic</div>
+<div class="brand"><img src="/assets/logo.png" alt="">KatMusic</div>
 <h1>` + e(title) + `</h1><p class="sub">` + e(subtitle) + `</p>` + codeBlock + `
 <p class="hint">` + e(hint) + `</p><a href="` + e(link) + `" target="_blank" rel="noopener">Open in KatMusic</a>
 </div></body></html>`
