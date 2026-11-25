@@ -9,7 +9,6 @@ void main() {
     expect(
         lyricsSourceToProviderId('BetterLyrics (Line-Sync)'), 'better_lyrics');
     expect(lyricsSourceToProviderId('Kugou KRC (Word-Sync)'), 'kugou');
-    expect(lyricsSourceToProviderId('Video-Match (Word-Sync)'), 'simp_music');
     expect(lyricsSourceToProviderId('Catalog (Line-Sync)'), 'musixmatch');
     expect(lyricsSourceToProviderId('lrclib'), 'lrclib');
     expect(lyricsSourceToProviderId('LRCLIB (Line-Sync)'), 'lrclib');

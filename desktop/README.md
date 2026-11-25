@@ -67,8 +67,10 @@ flutter build macos --release     # build/macos/Build/Products/Release
 
 Linux packages use `linux/packaging/nfpm.yaml`; the Windows installer source is
 `windows/installer.iss`. `.github/workflows/desktop.yml` builds all three on
-pushes to `main`, pull requests and version tags; tagged builds attach the
-packages to the matching GitHub release.
+pushes to `main`, pull requests and `desktop-v*` tags. Desktop versions
+independently from Android, so a tagged desktop build publishes to its own
+`desktop-v<version>` GitHub release; `.github/workflows/release.yml` can publish
+desktop, Android or both from one dispatch.
 
 ## Architecture
 

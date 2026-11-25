@@ -1,3 +1,7 @@
+// Network-dependent: excluded by `--exclude-tags golden,live` in CI.
+@Tags(['live'])
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/core/network/dio_factory.dart';
 import 'package:katmusic_desktop/core/storage/secure_store.dart';

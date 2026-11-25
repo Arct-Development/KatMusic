@@ -1,3 +1,7 @@
+// Network-dependent: excluded by `--exclude-tags golden,live` in CI.
+@Tags(['live'])
+library;
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -66,7 +66,11 @@ void main() {
   }
   final outPath =
       '$root${Platform.pathSeparator}lib${Platform.pathSeparator}core${Platform.pathSeparator}env${Platform.pathSeparator}secrets.g.dart';
-  File(outPath).writeAsStringSync(buf.toString());
+  final outFile = File(outPath);
+  // Git does not track empty directories, so a fresh CI checkout has no
+  // lib/core/env/ even though the generated file is expected there.
+  outFile.parent.createSync(recursive: true);
+  outFile.writeAsStringSync(buf.toString());
 
   var filled = 0;
   for (final key in _keys) {

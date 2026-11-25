@@ -1,3 +1,8 @@
+// Needs the Windows quickjs_cipher.dll; excluded on Linux/macOS CI with
+// `--exclude-tags golden,live,native`.
+@Tags(['native'])
+library;
+
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';

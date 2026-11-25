@@ -10,6 +10,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/app_info.dart';
 import '../../core/network/dio_factory.dart';
 
+/// Tag prefix used for desktop-only releases. Android releases keep the bare
+/// version as their tag, so the two streams can be filtered apart.
+const String desktopReleaseTagPrefix = 'desktop-v';
+
 /// Semantic version helper for release comparison.
 @immutable
 class SemVer {
@@ -177,6 +181,9 @@ class AppUpdateInfo {
   factory AppUpdateInfo.fromGitHubJson(Map<String, dynamic> json) {
     final tagName = json['tag_name'] as String? ?? '';
     var ver = tagName;
+    if (ver.toLowerCase().startsWith(desktopReleaseTagPrefix)) {
+      ver = ver.substring(desktopReleaseTagPrefix.length);
+    }
     if (ver.startsWith('v') || ver.startsWith('V')) {
       ver = ver.substring(1);
     }
@@ -204,10 +211,34 @@ class AppUpdateInfo {
     );
   }
 
+  /// Whether this release carries any desktop package at all.
+  bool get hasDesktopAssets => assets.any((a) {
+        final name = a.name.toLowerCase();
+        return name.endsWith('.exe') ||
+            name.endsWith('.msi') ||
+            name.endsWith('.dmg') ||
+            name.endsWith('.appimage') ||
+            name.endsWith('.deb') ||
+            name.endsWith('.rpm') ||
+            name.endsWith('.tar.gz') ||
+            name.endsWith('.zip');
+      });
+
   /// Locate the most suitable binary or installer asset for the host platform.
   AppReleaseAsset? findBestAsset([AppInstallType? targetType]) {
     if (assets.isEmpty) return null;
     final type = targetType ?? detectCurrentInstallType();
+
+    // The published Linux desktop package is a portable tarball, not an
+    // AppImage/deb/rpm, so it is the last sensible fallback before guessing.
+    AppReleaseAsset linuxTarball() => assets.firstWhere(
+          (a) {
+            final name = a.name.toLowerCase();
+            return name.contains('linux') &&
+                (name.endsWith('.tar.gz') || name.endsWith('.tgz'));
+          },
+          orElse: () => assets.first,
+        );
 
     switch (type) {
       case AppInstallType.windowsInstalled:
@@ -240,7 +271,7 @@ class AppUpdateInfo {
       case AppInstallType.linuxAppImage:
         return assets.firstWhere(
           (a) => a.name.toLowerCase().endsWith('.appimage'),
-          orElse: () => assets.first,
+          orElse: linuxTarball,
         );
 
       case AppInstallType.linuxDeb:
@@ -248,7 +279,7 @@ class AppUpdateInfo {
           (a) => a.name.toLowerCase().endsWith('.deb'),
           orElse: () => assets.firstWhere(
             (a) => a.name.toLowerCase().endsWith('.appimage'),
-            orElse: () => assets.first,
+            orElse: linuxTarball,
           ),
         );
 
@@ -257,7 +288,7 @@ class AppUpdateInfo {
           (a) => a.name.toLowerCase().endsWith('.rpm'),
           orElse: () => assets.firstWhere(
             (a) => a.name.toLowerCase().endsWith('.appimage'),
-            orElse: () => assets.first,
+            orElse: linuxTarball,
           ),
         );
 
@@ -284,16 +315,22 @@ class UpdateService {
 
   static const String repoOwner = 'Arct-Development';
   static const String repoName = 'KatMusic';
-  static const String releasesLatestUrl =
-      'https://api.github.com/repos/$repoOwner/$repoName/releases/latest';
+  static const String releasesUrl =
+      'https://api.github.com/repos/$repoOwner/$repoName/releases?per_page=30';
 
   UpdateService({Dio? dio}) : _dio = dio ?? DioFactory.create();
 
-  /// Query GitHub for the latest release and determine if an update is available.
+  /// Query GitHub for the newest desktop release and determine if an update is
+  /// available.
+  ///
+  /// `/releases/latest` cannot be used: Android and desktop are versioned
+  /// independently and publish separate releases, so "latest" may belong to
+  /// the Android stream. Look through the release list and pick the highest
+  /// desktop version instead.
   Future<AppUpdateInfo?> checkForUpdate() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        releasesLatestUrl,
+      final response = await _dio.get<List<dynamic>>(
+        releasesUrl,
         options: Options(
           headers: {
             'Accept': 'application/vnd.github.v3+json',
@@ -304,14 +341,29 @@ class UpdateService {
       final data = response.data;
       if (data == null) return null;
 
-      final update = AppUpdateInfo.fromGitHubJson(data);
-      final latestSemver = SemVer.parse(update.version);
+      AppUpdateInfo? best;
+      SemVer? bestVersion;
+      for (final entry in data) {
+        if (entry is! Map<String, dynamic>) continue;
+        if (entry['draft'] == true || entry['prerelease'] == true) continue;
+
+        final candidate = AppUpdateInfo.fromGitHubJson(entry);
+        if (!candidate.tagName.toLowerCase().startsWith(desktopReleaseTagPrefix)) {
+          continue;
+        }
+        if (!candidate.hasDesktopAssets) continue;
+
+        final version = SemVer.parse(candidate.version);
+        if (bestVersion == null || version.isGreaterThan(bestVersion)) {
+          best = candidate;
+          bestVersion = version;
+        }
+      }
+
+      if (best == null || bestVersion == null) return null;
       final currentSemver = SemVer.parse(appVersion);
 
-      if (latestSemver.isGreaterThan(currentSemver)) {
-        return update;
-      }
-      return null;
+      return bestVersion.isGreaterThan(currentSemver) ? best : null;
     } catch (e) {
       debugPrint('Update check failed: $e');
       return null;

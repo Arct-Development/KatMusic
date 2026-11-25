@@ -177,5 +177,6 @@ flutter build windows --release   # or: linux, macos
 ```
 
 `.github/workflows/desktop.yml` runs the Flutter steps on Windows, Linux and
-macOS; `.github/workflows/release.yml` builds the same three packages for a
-tagged release.
+macOS. `.github/workflows/release.yml` publishes desktop, Android or both from
+one dispatch; desktop and Android version independently, so desktop packages go
+to a `desktop-v<version>` release and Android packages to `<version>`.

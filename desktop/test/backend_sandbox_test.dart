@@ -1,3 +1,8 @@
+// Phases 3-4 need the Windows quickjs_cipher.dll; excluded on Linux/macOS CI
+// with `--exclude-tags golden,live,native`.
+@Tags(['native'])
+library;
+
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

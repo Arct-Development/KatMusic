@@ -158,7 +158,7 @@
     return "android";
   }
 
-  let rel = null, current = detectPlatform(), shownTag = null;
+  let rel = null, releases = [], current = detectPlatform(), shownTag = null;
   const chosen = {};
   const plats = $("#plats");
 
@@ -174,8 +174,11 @@
     plats.append(b);
   });
 
+  // Android and desktop release independently, so each platform follows the
+  // newest release that actually contains its package.
+  const releaseFor = (p) => releases.find((r) => r.assets.some((a) => p.match(a.name))) || rel;
   const assetsFor = (p) => {
-    const list = ((rel && rel.assets) || []).filter((a) => p.match(a.name));
+    const list = ((releaseFor(p)?.assets) || []).filter((a) => p.match(a.name));
     if (p.id === "android") list.sort((a, b) => apkRank(a.name) - apkRank(b.name));
     return list;
   };
@@ -207,17 +210,27 @@
       $("#fsize").textContent = "";
       return;
     }
+    const active = releaseFor(p) || rel;
+    $$("[data-tag]").forEach((e) => (e.textContent = active.tag_name));
+    $$("[data-date]").forEach((e) => (e.textContent = e.closest(".chip") ? ` · ${fmtDate(active.published_at)}` : fmtDate(active.published_at)));
+    $("#notes").href = active.html_url;
+    const sum = active.assets.find((a) => /sha256|checksums/i.test(a.name));
+    const s = $("#sum");
+    s.hidden = !sum;
+    if (sum) s.href = sum.browser_download_url;
+    $("#err").hidden = true;
+
     sel.disabled = false;
     sel.innerHTML = "";
     if (!list.length) {
-      sel.innerHTML = `<option>Not in ${rel.tag_name}</option>`;
+      sel.innerHTML = `<option>Not published yet</option>`;
       sel.disabled = true;
-      $("#fname").textContent = `No ${p.name} package in ${rel.tag_name}`;
-      $("#fsize").textContent = "Desktop packages attach to a release after their builds finish.";
+      $("#fname").textContent = `No ${p.name} package published yet`;
+      $("#fsize").textContent = "This platform publishes its own release when its build finishes.";
       btn.textContent = "See all releases";
       btn.href = RELEASES;
       miss.hidden = false;
-      miss.textContent = `The ${p.name} build for ${rel.tag_name} is not published yet. The release page will list it as soon as the build finishes.`;
+      miss.textContent = `No ${p.name} build has been published yet. The release page will list it as soon as the build finishes.`;
       return;
     }
     miss.hidden = true;
@@ -244,14 +257,6 @@
 
   function render(r) {
     rel = r;
-    $$("[data-tag]").forEach((e) => (e.textContent = r.tag_name));
-    $$("[data-date]").forEach((e) => (e.textContent = e.closest(".chip") ? ` · ${fmtDate(r.published_at)}` : fmtDate(r.published_at)));
-    $("#notes").href = r.html_url;
-    const sum = r.assets.find((a) => /sha256|checksums/i.test(a.name));
-    const s = $("#sum");
-    s.hidden = !sum;
-    if (sum) s.href = sum.browser_download_url;
-    $("#err").hidden = true;
     paint();
     if (shownTag && shownTag !== r.tag_name) { const c = $(".dl-card"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); } // new release appeared while page was open
     shownTag = r.tag_name;
@@ -270,6 +275,8 @@
       const ok = data.filter((r) => !r.draft && r.assets.some((a) => isDownloadable(a.name)));
       const release = ok.find((r) => !r.prerelease) || ok[0];
       if (!release) throw new Error("none");
+      releases = ok.filter((r) => !r.prerelease);
+      if (!releases.length) releases = ok;
       render(release);
       // Every platform's packages count, across all releases: the asset
       // download_count is served by GitHub and already includes clicks here.

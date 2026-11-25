@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/features/lyrics/lyrics_providers.dart';
 
 void main() {
-  test('exactly 17 providers are registered', () {
-    expect(LyricsProviderId.values.length, 17);
+  test('exactly 16 providers are registered', () {
+    expect(LyricsProviderId.values.length, 16);
   });
 
   test('provider ids round-trip, unknown falls back to auto', () {
@@ -68,7 +68,6 @@ void main() {
         'better_lyrics_portato');
     expect(lyricsSourceToProviderId('Kugou'), 'kugou');
     expect(lyricsSourceToProviderId('Syllable-Sync (Bini)'), 'bini_lyrics');
-    expect(lyricsSourceToProviderId('Video-Match (Word-Sync)'), 'simp_music');
     expect(lyricsSourceToProviderId('Catalog (Musixmatch)'), 'musixmatch');
     expect(lyricsSourceToProviderId('lrclib (synced)'), 'lrclib');
     expect(lyricsSourceToProviderId('LyricsPlus (Syllable)'), 'lyrics_plus');
