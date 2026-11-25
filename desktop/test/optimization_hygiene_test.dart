@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:katmusic_desktop/core/platform/renderer_mode.dart';
 import 'package:katmusic_desktop/core/platform/windows_memory.dart';
@@ -22,17 +25,31 @@ void main() {
     });
 
     test('RendererMode toggles cleanly', () async {
-      await RendererMode.setImpellerEnabled(false);
-      final enabled = await RendererMode.isImpellerEnabled();
-      expect(enabled, isFalse);
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      final supportDir = await Directory.systemTemp.createTemp('katmusic_renderer_test_');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'getApplicationSupportDirectory') {
+          return supportDir.path;
+        }
+        return null;
+      });
 
-      await RendererMode.setImpellerEnabled(true);
-      final enabledAfter = await RendererMode.isImpellerEnabled();
-      expect(enabledAfter, isTrue);
+      try {
+        await RendererMode.setImpellerEnabled(false);
+        expect(await RendererMode.isImpellerEnabled(), isFalse);
 
-      // Clean up back to default (false / Skia)
-      await RendererMode.setImpellerEnabled(false);
-      expect(await RendererMode.isImpellerEnabled(), isFalse);
+        await RendererMode.setImpellerEnabled(true);
+        expect(await RendererMode.isImpellerEnabled(), isTrue);
+
+        // Clean up back to default (false / Skia).
+        await RendererMode.setImpellerEnabled(false);
+        expect(await RendererMode.isImpellerEnabled(), isFalse);
+      } finally {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+        await supportDir.delete(recursive: true);
+      }
     });
   });
 }
