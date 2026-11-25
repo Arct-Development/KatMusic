@@ -31,7 +31,9 @@ button, input { font: inherit; color: inherit; }
 
 /* dashboard */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(10,10,10,.92); backdrop-filter: blur(8px); z-index: 5; }
-.brand { font-weight: 600; color: var(--white); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--white); }
+.brand-logo { width: 28px; height: 28px; object-fit: contain; border-radius: 7px; flex: none; }
+.brand-login { font-size: 20px; }
 .brand span { color: var(--muted); font-weight: 400; }
 .top-right { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
 .pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); margin-right: 6px; vertical-align: 1px; }
