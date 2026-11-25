@@ -32,7 +32,8 @@ server/jam
   - `PORT` (Render sets this automatically)
   - `SUPABASE_URL` — the dedicated **Jam** Supabase project URL
   - `SUPABASE_SERVICE_ROLE_KEY` — service-role key for that Jam project (server only)
-  - `ADMIN_PASSWORD` — enables `/admin` when set
+  - `JAM_ADMIN_PASSWORD` — enables `/admin` when set
+  - `PUBLIC_BASE_URL` — public Jam origin for invite links and previews; set to `https://katmusic.onrender.com` (the built-in default)
 - Run `supabase/migrations/0001_jam_persistence.sql` in the Jam project before deploying.
 - Run **one instance**. Rooms and chat are snapshotted to Supabase every 15 seconds and on shutdown, then restored when the service wakes. Live sockets cannot be restored, so the first listener to rejoin becomes host and playback resumes paused at the saved position.
 
