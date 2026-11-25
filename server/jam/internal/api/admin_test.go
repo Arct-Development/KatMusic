@@ -40,7 +40,7 @@ func (e *adminEnv) do(method, path, body string, headers map[string]string) *htt
 	return rec
 }
 
-var xhr = map[string]string{"X-Requested-With": "lwjam", "Content-Type": "application/json"}
+var xhr = map[string]string{"X-Requested-With": "katmusic-jam", "Content-Type": "application/json"}
 
 func (e *adminEnv) login() {
 	rec := e.do("POST", "/admin/login", `{"password":"pw-123"}`, xhr)
@@ -89,7 +89,7 @@ func TestAdmin_LoginAndAccessControl(t *testing.T) {
 	if rec := e.do("POST", "/admin/api/rooms/ABCDEF/unhost", "{}", map[string]string{"Content-Type": "application/json"}); rec.Code != http.StatusForbidden {
 		t.Fatal("POST without X-Requested-With must be refused")
 	}
-	if rec := e.do("POST", "/admin/api/rooms/ABCDEF/unhost", "{}", map[string]string{"X-Requested-With": "lwjam", "Origin": "https://evil.example"}); rec.Code != http.StatusForbidden {
+	if rec := e.do("POST", "/admin/api/rooms/ABCDEF/unhost", "{}", map[string]string{"X-Requested-With": "katmusic-jam", "Origin": "https://evil.example"}); rec.Code != http.StatusForbidden {
 		t.Fatal("POST from another origin must be refused")
 	}
 
@@ -115,7 +115,7 @@ func TestAdmin_DisabledWithoutPassword(t *testing.T) {
 	mux := http.NewServeMux()
 	NewHandler(hub).RegisterRoutes(mux)
 	req := httptest.NewRequest("POST", "/admin/login", strings.NewReader(`{"password":""}`))
-	req.Header.Set("X-Requested-With", "lwjam")
+	req.Header.Set("X-Requested-With", "katmusic-jam")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusServiceUnavailable {
