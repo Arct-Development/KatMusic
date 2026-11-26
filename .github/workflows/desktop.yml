@@ -108,7 +108,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#desktop-v}"
           else
-            VERSION=$(sed -n 's/^version: \\([0-9][^+]*\\).*/\\1/p' pubspec.yaml | head -n1)
+            VERSION=$(sed -n 's/^version: \([0-9][^+]*\).*/\1/p' pubspec.yaml | head -n1)
             if [ -z "$VERSION" ]; then VERSION="0.0.0"; fi
             if [[ "$RELEASE_BUILD" != "true" ]]; then
               VERSION="${VERSION}-${GITHUB_SHA::7}"
@@ -165,7 +165,7 @@ jobs:
             RELEASE_TAG="$GITHUB_REF_NAME"
             RELEASE_VERSION="${GITHUB_REF_NAME#desktop-v}"
           else
-            RELEASE_VERSION=$(sed -n 's/^version: \\([0-9][^+]*\\).*/\\1/p' desktop/pubspec.yaml | head -n1)
+            RELEASE_VERSION=$(sed -n 's/^version: \([0-9][^+]*\).*/\1/p' desktop/pubspec.yaml | head -n1)
             RELEASE_TAG="desktop-v${RELEASE_VERSION}"
           fi
           gh release create "$RELEASE_TAG" dist/* \\
