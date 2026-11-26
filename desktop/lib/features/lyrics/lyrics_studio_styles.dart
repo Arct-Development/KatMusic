@@ -2380,8 +2380,8 @@ _SpineLayout _layoutSpine({
   return _SpineLayout(nodes, size);
 }
 
-/// Branches: a vine draws itself under the line and each word lights a node
-/// on it as the singer reaches that word.
+/// Branches: the vine and leaves are cached once per line/size. Only the
+/// growing stroke and active flower are repainted while playback advances.
 class _BranchesLine extends StatefulWidget {
   final String lineText;
   final List<StudioLyricWord> words;
@@ -2411,22 +2411,64 @@ class _BranchesLine extends StatefulWidget {
   State<_BranchesLine> createState() => _BranchesLineState();
 }
 
+class _BranchLeaf {
+  final double distance;
+  final Path path;
+
+  const _BranchLeaf(this.distance, this.path);
+}
+
 class _BranchesLineState extends State<_BranchesLine> {
-  // The spine, vine path and its metrics depend only on the line and the
-  // canvas size. Caching them keeps the 60 fps position tick from measuring
-  // every word and walking the path again on each frame.
   _SpineLayout? _layout;
+  List<Offset> _points = const [];
   Path? _vine;
   PathMetric? _metric;
+  List<_BranchLeaf> _leaves = const [];
   String _cacheKey = '';
+  int _revealed = 0;
+
+  int get _position =>
+      widget.positionListenable?.value ?? widget.positionMs;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealed = _revealedCount(widget.words, _position);
+    widget.positionListenable?.addListener(_onPositionChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BranchesLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.positionListenable != widget.positionListenable) {
+      oldWidget.positionListenable?.removeListener(_onPositionChanged);
+      widget.positionListenable?.addListener(_onPositionChanged);
+    }
+    if (oldWidget.lineText != widget.lineText ||
+        oldWidget.words != widget.words ||
+        oldWidget.fontSize != widget.fontSize ||
+        oldWidget.isRtl != widget.isRtl) {
+      _cacheKey = '';
+    }
+    _revealed = _revealedCount(widget.words, _position);
+  }
+
+  void _onPositionChanged() {
+    final next = _revealedCount(widget.words, _position);
+    if (next != _revealed && mounted) {
+      // Labels/layout only rebuild at word boundaries, not on every audio tick.
+      setState(() => _revealed = next);
+    }
+  }
 
   void _ensureGeometry(double width, double height) {
     final key =
-        '${widget.lineText}|${widget.words.length}|'
-        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
-        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
-    if (key == _cacheKey) return;
+        '\${widget.lineText}|\${widget.words.length}|'
+        '\${width.toStringAsFixed(1)}|\${height.toStringAsFixed(1)}|'
+        '\${widget.fontSize.toStringAsFixed(1)}|\${widget.isRtl}';
+    if (key == _cacheKey && _layout != null) return;
     _cacheKey = key;
+
     final layout = _layoutSpine(
       words: widget.words,
       width: width,
@@ -2438,186 +2480,259 @@ class _BranchesLineState extends State<_BranchesLine> {
       amplitude: widget.fontSize * 0.26,
       baseline: 0.66,
     );
-    final vine = _vinePath([for (final node in layout.nodes) node.point]);
-    // PathMetrics is single-pass, so take the first metric from its iterator
-    // instead of asking isEmpty and then first.
-    final metrics = vine.computeMetrics().iterator;
+    final points = [for (final node in layout.nodes) node.point];
+    final vine = _vinePath(points);
+    final iterator = vine.computeMetrics().iterator;
+    final metric = iterator.moveNext() ? iterator.current : null;
+
+    final leaves = <_BranchLeaf>[];
+    if (metric != null) {
+      final spacing = math.max(18.0, layout.size * 0.9);
+      var flip = false;
+      for (var distance = spacing * 0.55;
+          distance < metric.length;
+          distance += spacing) {
+        final tangent = metric.getTangentForOffset(distance);
+        if (tangent == null) continue;
+        final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+        final base = tangent.position + normal * (layout.size * 0.05);
+        leaves.add(
+          _BranchLeaf(
+            distance,
+            _branchLeafPath(
+              base,
+              tangent.vector,
+              normal,
+              layout.size * 0.34,
+              flip ? -1 : 1,
+            ),
+          ),
+        );
+        flip = !flip;
+      }
+    }
+
     _layout = layout;
+    _points = points;
     _vine = vine;
-    _metric = metrics.moveNext() ? metrics.current : null;
+    _metric = metric;
+    _leaves = leaves;
+  }
+
+  @override
+  void dispose() {
+    widget.positionListenable?.removeListener(_onPositionChanged);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: widget.positionListenable,
-      initial: widget.positionMs,
-      builder: (position) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final height = math.max(widget.fontSize * 2.6, 96.0);
-            _ensureGeometry(width, height);
-            final layout = _layout!;
-            final revealed = _revealedCount(widget.words, position);
-            final preview = _isPreview(widget.words, position);
-            final active = preview ? -1 : revealed - 1;
-            final activeProgress = active >= 0
-                ? _wordProgress(widget.words[active], position)
-                : 0.0;
-            var fraction = 0.0;
-            if (active >= 0) {
-              fraction = (active + activeProgress) / widget.words.length;
-            }
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _BranchesPainter(
-                        points: [for (final node in layout.nodes) node.point],
-                        vine: _vine,
-                        metric: _metric,
-                        size: layout.size,
-                        fraction: fraction.clamp(0.0, 1.0),
-                        revealed: revealed,
-                        active: active,
-                        activeProgress: activeProgress,
-                        accent: widget.accent,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final height = math.max(widget.fontSize * 2.6, 96.0);
+        _ensureGeometry(width, height);
+        final layout = _layout!;
+        final active = _revealed == 0 ? -1 : _revealed - 1;
+
+        return SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _BranchesBasePainter(
+                      points: _points,
+                      vine: _vine,
+                      size: layout.size,
+                      revealed: _revealed,
+                      accent: widget.accent,
                     ),
                   ),
-                  for (var i = 0; i < widget.words.length; i++)
-                    Positioned(
-                      left: layout.nodes[i].textLeft,
-                      top: layout.nodes[i].textTop,
-                      child: AnimatedScale(
-                        scale: i == active
-                            ? 1 + 0.06 * math.sin(activeProgress * math.pi)
-                            : 1,
-                        alignment: Alignment.bottomCenter,
-                        duration: widget.reduceMotion
-                            ? Duration.zero
-                            : const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        child: AnimatedDefaultTextStyle(
-                          duration: widget.reduceMotion
-                              ? Duration.zero
-                              : const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          style: _wordStyle(
-                            color: i == active
-                                ? widget.accent
-                                : i < revealed
-                                ? widget.primary
-                                : widget.secondary.withValues(alpha: 0.42),
-                            fontSize: layout.size,
-                            glow: i == active,
-                          ),
-                          child: Text(widget.words[i].text.toUpperCase()),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            );
-          },
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _BranchesMotionPainter(
+                    points: _points,
+                    metric: _metric,
+                    leaves: _leaves,
+                    words: widget.words,
+                    positionListenable: widget.positionListenable,
+                    initialPositionMs: widget.positionMs,
+                    size: layout.size,
+                    accent: widget.accent,
+                  ),
+                ),
+              ),
+              for (var i = 0; i < widget.words.length; i++)
+                Positioned(
+                  left: layout.nodes[i].textLeft,
+                  top: layout.nodes[i].textTop,
+                  child: AnimatedScale(
+                    scale: i == active ? 1.06 : 1,
+                    alignment: Alignment.bottomCenter,
+                    duration: widget.reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedDefaultTextStyle(
+                      duration: widget.reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      style: _wordStyle(
+                        color: i == active
+                            ? widget.accent
+                            : i < _revealed
+                            ? widget.primary
+                            : widget.secondary.withValues(alpha: 0.42),
+                        fontSize: layout.size,
+                        glow: i == active,
+                      ),
+                      child: Text(widget.words[i].text.toUpperCase()),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-/// The vine under a Branches line, one quadratic curve between star nodes.
-Path _vinePath(List<Offset> points) {
-  final path = Path();
-  if (points.isEmpty) return path;
-  path.moveTo(points.first.dx, points.first.dy);
-  if (points.length == 1) {
-    path.lineTo(points.first.dx + 0.1, points.first.dy);
-    return path;
-  }
-  for (var i = 1; i < points.length; i++) {
-    final a = points[i - 1];
-    final b = points[i];
-    final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
-    path.quadraticBezierTo(a.dx, a.dy, mid.dx, mid.dy);
-    if (i == points.length - 1) {
-      path.quadraticBezierTo(b.dx, b.dy, b.dx, b.dy);
-    }
-  }
-  return path;
+Path _branchLeafPath(
+  Offset base,
+  Offset dir,
+  Offset normal,
+  double length,
+  double side,
+) {
+  final n = normal * side;
+  final tip = base + n * (length * 0.95) + dir * (length * 0.34);
+  final c1 = base + n * (length * 0.6) + dir * (length * 0.06);
+  final c2 = base + n * (length * 0.48) + dir * (length * 0.4);
+  return Path()
+    ..moveTo(base.dx, base.dy)
+    ..quadraticBezierTo(c1.dx, c1.dy, tip.dx, tip.dy)
+    ..quadraticBezierTo(c2.dx, c2.dy, base.dx, base.dy)
+    ..close();
 }
 
-class _BranchesPainter extends CustomPainter {
+class _BranchesBasePainter extends CustomPainter {
   final List<Offset> points;
   final Path? vine;
-  final PathMetric? metric;
   final double size;
-  final double fraction;
   final int revealed;
-  final int active;
-  final double activeProgress;
   final Color accent;
 
-  const _BranchesPainter({
+  const _BranchesBasePainter({
     required this.points,
     required this.vine,
-    required this.metric,
     required this.size,
-    required this.fraction,
     required this.revealed,
-    required this.active,
-    required this.activeProgress,
     required this.accent,
   });
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    final metric = this.metric;
-    final vine = this.vine;
-    if (metric == null || vine == null) return;
-
-    canvas.drawPath(
-      vine,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..strokeCap = StrokeCap.round
-        ..color = Colors.white.withValues(alpha: 0.12),
-    );
-
-    final grown = metric.length * fraction;
-
-    // Leaf pairs sprout along the part of the vine that has grown, alternating
-    // sides, so the stem reads as a plant rather than a line.
-    final leafSpacing = math.max(18.0, size * 0.9);
-    var flip = false;
-    for (var d = leafSpacing * 0.55; d < grown; d += leafSpacing) {
-      final tangent = metric.getTangentForOffset(d);
-      if (tangent == null) continue;
-      final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
-      _leaf(
-        canvas,
-        tangent.position + normal * (size * 0.05),
-        tangent.vector,
-        normal,
-        size * 0.34,
-        flip ? -1 : 1,
-        Paint()..color = accent.withValues(alpha: 0.16),
+    final path = vine;
+    if (path != null) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..color = Colors.white.withValues(alpha: 0.12),
       );
-      flip = !flip;
+    }
+    for (var i = 0; i < points.length; i++) {
+      final point = points[i];
+      if (i < revealed) {
+        canvas.drawCircle(
+          point,
+          size * 0.20,
+          Paint()..color = accent.withValues(alpha: 0.13),
+        );
+        canvas.drawCircle(
+          point,
+          size * 0.075,
+          Paint()..color = Colors.white.withValues(alpha: 0.9),
+        );
+      } else {
+        canvas.drawCircle(
+          point,
+          size * 0.11,
+          Paint()..color = Colors.white.withValues(alpha: 0.06),
+        );
+        canvas.drawCircle(
+          point,
+          size * 0.045,
+          Paint()..color = Colors.white.withValues(alpha: 0.3),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BranchesBasePainter oldDelegate) =>
+      oldDelegate.vine != vine ||
+      oldDelegate.revealed != revealed ||
+      oldDelegate.accent != accent ||
+      oldDelegate.size != size ||
+      !identical(oldDelegate.points, points);
+}
+
+class _BranchesMotionPainter extends CustomPainter {
+  final List<Offset> points;
+  final PathMetric? metric;
+  final List<_BranchLeaf> leaves;
+  final List<StudioLyricWord> words;
+  final ValueListenable<int>? positionListenable;
+  final int initialPositionMs;
+  final double size;
+  final Color accent;
+
+  _BranchesMotionPainter({
+    required this.points,
+    required this.metric,
+    required this.leaves,
+    required this.words,
+    required this.positionListenable,
+    required this.initialPositionMs,
+    required this.size,
+    required this.accent,
+  }) : super(repaint: positionListenable);
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final pathMetric = metric;
+    if (pathMetric == null || words.isEmpty) return;
+    final position = positionListenable?.value ?? initialPositionMs;
+    final revealed = _revealedCount(words, position);
+    final active = revealed == 0 ? -1 : revealed - 1;
+    if (active < 0) return;
+
+    final activeProgress = _wordProgress(words[active], position);
+    final fraction =
+        ((active + activeProgress) / words.length).clamp(0.0, 1.0);
+    final grown = pathMetric.length * fraction;
+
+    final leafPaint = Paint()..color = accent.withValues(alpha: 0.16);
+    for (final leaf in leaves) {
+      if (leaf.distance > grown) break;
+      canvas.drawPath(leaf.path, leafPaint);
     }
 
     if (grown > 0) {
-      final lit = metric.extractPath(0, grown);
-      // A wide translucent stroke instead of a blurred one: the glow used to
-      // run a mask blur over the whole grown path on every frame.
+      final lit = pathMetric.extractPath(0, grown);
       canvas.drawPath(
         lit,
         Paint()
@@ -2634,7 +2749,7 @@ class _BranchesPainter extends CustomPainter {
           ..strokeCap = StrokeCap.round
           ..color = accent.withValues(alpha: 0.9),
       );
-      final tip = metric.getTangentForOffset(grown)?.position;
+      final tip = pathMetric.getTangentForOffset(grown)?.position;
       if (tip != null) {
         canvas.drawCircle(
           tip,
@@ -2649,104 +2764,67 @@ class _BranchesPainter extends CustomPainter {
       }
     }
 
-    for (var i = 0; i < points.length; i++) {
-      final p = points[i];
-      if (i >= revealed) {
-        canvas.drawCircle(
-          p,
-          size * 0.11,
-          Paint()..color = Colors.white.withValues(alpha: 0.06),
-        );
-        canvas.drawCircle(
-          p,
-          size * 0.045,
-          Paint()..color = Colors.white.withValues(alpha: 0.3),
-        );
-        continue;
-      }
-      final open = i == active ? activeProgress.clamp(0.0, 1.0) : 1.0;
-      canvas.drawCircle(
-        p,
-        size * (0.24 + 0.10 * open),
-        Paint()..color = accent.withValues(alpha: 0.10 + 0.10 * open),
+    final activePoint = points[active];
+    final open = activeProgress.clamp(0.0, 1.0);
+    final bloom = size * (0.24 + 0.10 * open);
+    canvas.drawCircle(
+      activePoint,
+      bloom,
+      Paint()..color = accent.withValues(alpha: 0.10 + 0.10 * open),
+    );
+    for (var k = 0; k < 5; k++) {
+      final angle = -math.pi / 2 + k * 2 * math.pi / 5 + (1 - open) * 0.9;
+      final petal = activePoint +
+          Offset(math.cos(angle), math.sin(angle)) *
+              size *
+              (0.13 + 0.12 * open);
+      canvas.save();
+      canvas.translate(petal.dx, petal.dy);
+      canvas.rotate(angle);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: size * (0.16 + 0.10 * open),
+          height: size * 0.11,
+        ),
+        Paint()..color = accent.withValues(alpha: 0.24 + 0.16 * open),
       );
-      // Five petals unfurl as the word is sung, the active bloom still opening.
-      for (var k = 0; k < 5; k++) {
-        final angle = -math.pi / 2 + k * 2 * math.pi / 5 + (1 - open) * 0.9;
-        final petal =
-            p +
-            Offset(math.cos(angle), math.sin(angle)) *
-                size *
-                (0.13 + 0.12 * open);
-        canvas.save();
-        canvas.translate(petal.dx, petal.dy);
-        canvas.rotate(angle);
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: size * (0.16 + 0.10 * open),
-            height: size * 0.11,
-          ),
-          Paint()..color = accent.withValues(alpha: 0.24 + 0.16 * open),
-        );
-        canvas.restore();
-      }
-      canvas.drawCircle(
-        p,
-        size * 0.075,
-        Paint()..color = Colors.white.withValues(alpha: 0.9),
-      );
+      canvas.restore();
     }
-  }
-
-  void _leaf(
-    Canvas canvas,
-    Offset base,
-    Offset dir,
-    Offset normal,
-    double length,
-    double side,
-    Paint paint,
-  ) {
-    final n = normal * side;
-    final tip = base + n * (length * 0.95) + dir * (length * 0.34);
-    final c1 = base + n * (length * 0.6) + dir * (length * 0.06);
-    final c2 = base + n * (length * 0.48) + dir * (length * 0.4);
-    final path = Path()
-      ..moveTo(base.dx, base.dy)
-      ..quadraticBezierTo(c1.dx, c1.dy, tip.dx, tip.dy)
-      ..quadraticBezierTo(c2.dx, c2.dy, base.dx, base.dy)
-      ..close();
-    canvas.drawPath(path, paint);
+    canvas.drawCircle(
+      activePoint,
+      size * 0.075,
+      Paint()..color = Colors.white.withValues(alpha: 0.9),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _BranchesPainter oldDelegate) =>
+  bool shouldRepaint(covariant _BranchesMotionPainter oldDelegate) =>
       oldDelegate.metric != metric ||
-      oldDelegate.vine != vine ||
-      oldDelegate.revealed != revealed ||
-      oldDelegate.fraction != fraction ||
-      oldDelegate.active != active ||
-      oldDelegate.activeProgress != activeProgress ||
+      oldDelegate.positionListenable != positionListenable ||
+      oldDelegate.initialPositionMs != initialPositionMs ||
       oldDelegate.accent != accent ||
-      !listEquals(oldDelegate.points, points);
+      oldDelegate.size != size ||
+      !identical(oldDelegate.words, words) ||
+      !identical(oldDelegate.leaves, leaves) ||
+      !identical(oldDelegate.points, points);
 }
-
-/// A real night sky: the line's words are stars at scattered, irregular
-/// positions, joined into a constellation figure, with each word labelling
-/// its own star from below.
 class _ConstellationLayout {
   final List<_SpineNode> nodes;
+  final List<Offset> points;
   final double size;
   final List<Offset> sky;
-  final List<double> segments;
+  final Path spine;
+  final PathMetric? metric;
   final double length;
 
   const _ConstellationLayout({
     required this.nodes,
+    required this.points,
     required this.size,
     required this.sky,
-    required this.segments,
+    required this.spine,
+    required this.metric,
     required this.length,
   });
 }
@@ -2763,8 +2841,6 @@ _ConstellationLayout _layoutConstellation({
   final seed = _hashText(seedText);
   final random = math.Random(seed ^ 0x2c1b3c6d);
 
-  // Labels are measured once; the random star scatter below never changes
-  // their width, so a long line is shrunk until every label fits.
   var size = fontSize * 0.46;
   var widths = List<double>.filled(n, 0);
   for (var attempt = 0; attempt < 12; attempt++) {
@@ -2790,7 +2866,6 @@ _ConstellationLayout _layoutConstellation({
   for (var i = 0; i < n; i++) {
     final index = isRtl ? n - 1 - i : i;
     var y = top + random.nextDouble() * (bottom - top);
-    // Neighbouring stars should not line up like a ruler.
     if ((y - lastY).abs() < size * 0.8) {
       y = y < lastY
           ? lastY - size * (0.9 + random.nextDouble())
@@ -2809,31 +2884,36 @@ _ConstellationLayout _layoutConstellation({
     x += widths[index] + gaps[i + 1] * gapScale;
   }
 
+  final points = [for (final node in nodes) node.point];
   final skyRandom = math.Random(seed ^ 0x1f123bb5);
   final sky = [
     for (var i = 0; i < 64; i++)
       Offset(skyRandom.nextDouble() * width, skyRandom.nextDouble() * height),
   ];
 
-  final segments = <double>[];
-  var length = 0.0;
-  for (var i = 1; i < nodes.length; i++) {
-    final distance = (nodes[i].point - nodes[i - 1].point).distance;
-    segments.add(distance);
-    length += distance;
+  final spine = Path();
+  if (points.isNotEmpty) {
+    spine.moveTo(points.first.dx, points.first.dy);
+    for (var i = 1; i < points.length; i++) {
+      spine.lineTo(points[i].dx, points[i].dy);
+    }
   }
+  final iterator = spine.computeMetrics().iterator;
+  final metric = iterator.moveNext() ? iterator.current : null;
 
   return _ConstellationLayout(
     nodes: nodes,
+    points: points,
     size: size,
     sky: sky,
-    segments: segments,
-    length: length,
+    spine: spine,
+    metric: metric,
+    length: metric?.length ?? 0,
   );
 }
 
-/// Constellation: every word is a star at its own scattered spot in the sky,
-/// connected into a figure that lights and draws itself as the line is sung.
+/// A real night sky: static star positions and connecting lines are rasterized
+/// once per line. Only the traced path and current comet/star repaint each tick.
 class _ConstellationLine extends StatefulWidget {
   final String lineText;
   final List<StudioLyricWord> words;
@@ -2864,12 +2944,47 @@ class _ConstellationLine extends StatefulWidget {
 class _ConstellationLineState extends State<_ConstellationLine> {
   _ConstellationLayout? _layout;
   String _cacheKey = '';
+  int _revealed = 0;
+
+  int get _position =>
+      widget.positionListenable?.value ?? widget.positionMs;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealed = _revealedCount(widget.words, _position);
+    widget.positionListenable?.addListener(_onPositionChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ConstellationLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.positionListenable != widget.positionListenable) {
+      oldWidget.positionListenable?.removeListener(_onPositionChanged);
+      widget.positionListenable?.addListener(_onPositionChanged);
+    }
+    if (oldWidget.lineText != widget.lineText ||
+        oldWidget.words != widget.words ||
+        oldWidget.fontSize != widget.fontSize ||
+        oldWidget.isRtl != widget.isRtl) {
+      _cacheKey = '';
+    }
+    _revealed = _revealedCount(widget.words, _position);
+  }
+
+  void _onPositionChanged() {
+    final next = _revealedCount(widget.words, _position);
+    if (next != _revealed && mounted) {
+      // Labels only rebuild at word boundaries, not for every clock sample.
+      setState(() => _revealed = next);
+    }
+  }
 
   _ConstellationLayout _ensureLayout(double width, double height) {
     final key =
-        '${widget.lineText}|${widget.words.length}|'
-        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
-        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
+        '\${widget.lineText}|\${widget.words.length}|'
+        '\${width.toStringAsFixed(1)}|\${height.toStringAsFixed(1)}|'
+        '\${widget.fontSize.toStringAsFixed(1)}|\${widget.isRtl}';
     if (key != _cacheKey || _layout == null) {
       _cacheKey = key;
       _layout = _layoutConstellation(
@@ -2885,333 +3000,281 @@ class _ConstellationLineState extends State<_ConstellationLine> {
   }
 
   @override
+  void dispose() {
+    widget.positionListenable?.removeListener(_onPositionChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: widget.positionListenable,
-      initial: widget.positionMs,
-      builder: (position) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final height = math.max(widget.fontSize * 4.0, 170.0);
-            final layout = _ensureLayout(width, height);
-            final revealed = _revealedCount(widget.words, position);
-            final preview = _isPreview(widget.words, position);
-            final active = preview ? -1 : revealed - 1;
-            final activeProgress = active >= 0
-                ? _wordProgress(widget.words[active], position)
-                : 0.0;
-            var traced = 0.0;
-            if (active >= 0) {
-              traced = (active + activeProgress) / widget.words.length;
-            }
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _ConstellationPainter(
-                        points: [for (final node in layout.nodes) node.point],
-                        size: layout.size,
-                        sky: layout.sky,
-                        segments: layout.segments,
-                        length: layout.length,
-                        traced: traced.clamp(0.0, 1.0),
-                        revealed: revealed,
-                        active: active,
-                        activeProgress: activeProgress,
-                        phase: position / 640,
-                        accent: widget.accent,
-                        ink: widget.primary,
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final height = math.max(widget.fontSize * 4.0, 170.0);
+        final layout = _ensureLayout(width, height);
+        final active = _revealed == 0 ? -1 : _revealed - 1;
+
+        return SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _ConstellationBasePainter(
+                      layout: layout,
+                      revealed: _revealed,
+                      accent: widget.accent,
                     ),
                   ),
-                  for (var i = 0; i < widget.words.length; i++)
-                    Positioned(
-                      left: layout.nodes[i].textLeft,
-                      top: layout.nodes[i].textTop,
-                      child: AnimatedScale(
-                        scale: i == active ? 1.08 : 1,
-                        alignment: Alignment.topCenter,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          style: _wordStyle(
-                            color: i == active
-                                ? widget.accent
-                                : i < revealed
-                                ? widget.primary
-                                : widget.secondary.withValues(alpha: 0.40),
-                            fontSize: layout.size,
-                            glow: i == active,
-                          ),
-                          child: Text(widget.words[i].text.toUpperCase()),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            );
-          },
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ConstellationMotionPainter(
+                    layout: layout,
+                    words: widget.words,
+                    positionListenable: widget.positionListenable,
+                    initialPositionMs: widget.positionMs,
+                    accent: widget.accent,
+                  ),
+                ),
+              ),
+              for (var i = 0; i < widget.words.length; i++)
+                Positioned(
+                  left: layout.nodes[i].textLeft,
+                  top: layout.nodes[i].textTop,
+                  child: AnimatedScale(
+                    scale: i == active ? 1.08 : 1,
+                    alignment: Alignment.topCenter,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      style: _wordStyle(
+                        color: i == active
+                            ? widget.accent
+                            : i < _revealed
+                            ? widget.primary
+                            : widget.secondary.withValues(alpha: 0.40),
+                        fontSize: layout.size,
+                        glow: i == active,
+                      ),
+                      child: Text(widget.words[i].text.toUpperCase()),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _ConstellationPainter extends CustomPainter {
-  final List<Offset> points;
-  final double size;
-  final List<Offset> sky;
-  final List<double> segments;
-  final double length;
-  final double traced;
+class _ConstellationBasePainter extends CustomPainter {
+  final _ConstellationLayout layout;
   final int revealed;
-  final int active;
-  final double activeProgress;
-  final double phase;
   final Color accent;
-  final Color ink;
 
-  const _ConstellationPainter({
-    required this.points,
-    required this.size,
-    required this.sky,
-    required this.segments,
-    required this.length,
-    required this.traced,
+  const _ConstellationBasePainter({
+    required this.layout,
     required this.revealed,
-    required this.active,
-    required this.activeProgress,
-    required this.phase,
     required this.accent,
-    required this.ink,
   });
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    _paintSky(canvas);
-
-    final lit = traced * length;
-    var run = 0.0;
-    for (var i = 1; i < points.length; i++) {
-      final segment = segments[i - 1];
-      final coverage = segment <= 0
-          ? (lit >= run ? 1.0 : 0.0)
-          : ((lit - run) / segment).clamp(0.0, 1.0);
-      run += segment;
-      if (coverage <= 0) {
-        _dashedLine(
-          canvas,
-          points[i - 1],
-          points[i],
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1
-            ..color = Colors.white.withValues(alpha: 0.09),
+    // Fixed star field: no per-frame trigonometry, random values or twinkles.
+    for (var i = 0; i < layout.sky.length; i++) {
+      final star = layout.sky[i];
+      final big = i % 9 == 0;
+      canvas.drawCircle(
+        star,
+        big ? 1.7 : 0.75,
+        Paint()
+          ..color = Colors.white.withValues(
+            alpha: big ? 0.12 : 0.07 + ((i * 37) % 9) / 180,
+          ),
+      );
+      if (big) {
+        final cross = Paint()
+          ..strokeWidth = 0.7
+          ..color = Colors.white.withValues(alpha: 0.13);
+        canvas.drawLine(
+          Offset(star.dx - 3.5, star.dy),
+          Offset(star.dx + 3.5, star.dy),
+          cross,
         );
-        continue;
-      }
-      final end = Offset.lerp(points[i - 1], points[i], coverage)!;
-      // Wide translucent stroke in place of a mask blur: cheaper per frame.
-      canvas.drawLine(
-        points[i - 1],
-        end,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 7
-          ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.07 + 0.05 * coverage),
-      );
-      canvas.drawLine(
-        points[i - 1],
-        end,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6
-          ..strokeCap = StrokeCap.round
-          ..color = Color.lerp(
-            ink,
-            accent,
-            coverage,
-          )!.withValues(alpha: 0.35 + 0.45 * coverage),
-      );
-    }
-
-    // A comet head runs along the traced path, trailing the singer's word.
-    final head = _pointAt(traced);
-    if (head != null && traced > 0 && traced < 1) {
-      for (var k = 5; k >= 1; k--) {
-        final back = _pointAt((traced - k * 0.014).clamp(0.0, 1.0));
-        if (back == null) continue;
-        canvas.drawCircle(
-          back,
-          size * (0.055 - k * 0.007),
-          Paint()..color = accent.withValues(alpha: 0.30 - k * 0.045),
+        canvas.drawLine(
+          Offset(star.dx, star.dy - 3.5),
+          Offset(star.dx, star.dy + 3.5),
+          cross,
         );
       }
-      canvas.drawCircle(
-        head,
-        size * 0.34,
-        Paint()..color = accent.withValues(alpha: 0.16),
-      );
-      canvas.drawCircle(
-        head,
-        size * 0.12,
-        Paint()..color = Colors.white.withValues(alpha: 0.95),
-      );
     }
 
-    for (var i = 0; i < points.length; i++) {
-      final p = points[i];
-      if (i >= revealed) {
+    final guide = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.09);
+    canvas.drawPath(layout.spine, guide);
+
+    for (var i = 0; i < layout.points.length; i++) {
+      final point = layout.points[i];
+      if (i < revealed) {
         canvas.drawCircle(
-          p,
-          size * 0.07,
+          point,
+          layout.size * 0.42,
+          Paint()..color = accent.withValues(alpha: 0.12),
+        );
+        canvas.drawCircle(
+          point,
+          layout.size * 0.12,
+          Paint()..color = Colors.white.withValues(alpha: 0.92),
+        );
+      } else {
+        canvas.drawCircle(
+          point,
+          layout.size * 0.07,
           Paint()..color = Colors.white.withValues(alpha: 0.32),
         );
         canvas.drawCircle(
-          p,
-          size * 0.18,
+          point,
+          layout.size * 0.18,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 0.8
             ..color = Colors.white.withValues(alpha: 0.10),
         );
-        continue;
       }
-      final isActive = i == active;
-      final open = isActive ? activeProgress.clamp(0.0, 1.0) : 1.0;
-      final flare = size * (0.55 + 0.32 * open);
-      canvas.drawCircle(
-        p,
-        flare * 0.62,
-        Paint()
-          ..color = accent.withValues(
-            alpha: (isActive ? 0.26 : 0.12) * (0.6 + 0.4 * open),
-          ),
-      );
-      if (isActive) {
-        final lens = Paint()
-          ..strokeWidth = 1
-          ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.35 + 0.3 * open);
-        canvas.drawLine(
-          Offset(p.dx - flare * 1.5, p.dy),
-          Offset(p.dx + flare * 1.5, p.dy),
-          lens,
-        );
-        canvas.drawLine(
-          Offset(p.dx, p.dy - flare * 0.7),
-          Offset(p.dx, p.dy + flare * 0.7),
-          lens,
-        );
-        canvas.drawCircle(
-          p,
-          flare * 0.9,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.9
-            ..color = accent.withValues(alpha: 0.35 * (1 - open) + 0.15),
-        );
-      }
-      _sparkle(
-        canvas,
-        p,
-        size * (isActive ? 0.36 : 0.24),
-        Paint()..color = isActive ? Colors.white : accent,
-      );
-    }
-  }
-
-  /// The faint background sky. Star positions are pre-scattered by the
-  /// layout, so only the twinkle changes from frame to frame.
-  void _paintSky(Canvas canvas) {
-    final paint = Paint();
-    for (var i = 0; i < sky.length; i++) {
-      final twinkle = 0.5 + 0.5 * math.sin(phase + i * 1.73);
-      final big = i % 9 == 0;
-      final base = 0.03 + ((i * 37) % 9) / 100;
-      paint.color = Colors.white.withValues(alpha: base + twinkle * 0.10);
-      canvas.drawCircle(
-        sky[i],
-        (big ? 1.2 : 0.55) + ((i * 13) % 5) * 0.18,
-        paint,
-      );
-      if (big) {
-        final arm = 3.2 + twinkle * 2.2;
-        final cross = Paint()
-          ..strokeWidth = 0.7
-          ..color = Colors.white.withValues(alpha: 0.10 + twinkle * 0.12);
-        canvas.drawLine(
-          Offset(sky[i].dx - arm, sky[i].dy),
-          Offset(sky[i].dx + arm, sky[i].dy),
-          cross,
-        );
-        canvas.drawLine(
-          Offset(sky[i].dx, sky[i].dy - arm),
-          Offset(sky[i].dx, sky[i].dy + arm),
-          cross,
-        );
-      }
-    }
-  }
-
-  /// Point at [t] (0..1) along the constellation figure.
-  Offset? _pointAt(double t) {
-    if (points.isEmpty) return null;
-    if (points.length == 1 || length <= 0) return points.first;
-    var target = t.clamp(0.0, 1.0) * length;
-    for (var i = 0; i < segments.length; i++) {
-      if (target <= segments[i]) {
-        final f = segments[i] == 0 ? 0.0 : target / segments[i];
-        return Offset.lerp(points[i], points[i + 1], f);
-      }
-      target -= segments[i];
-    }
-    return points.last;
-  }
-
-  void _sparkle(Canvas canvas, Offset p, double r, Paint paint) {
-    final path = Path()
-      ..moveTo(p.dx, p.dy - r)
-      ..quadraticBezierTo(p.dx + r * 0.16, p.dy - r * 0.16, p.dx + r, p.dy)
-      ..quadraticBezierTo(p.dx + r * 0.16, p.dy + r * 0.16, p.dx, p.dy + r)
-      ..quadraticBezierTo(p.dx - r * 0.16, p.dy + r * 0.16, p.dx - r, p.dy)
-      ..quadraticBezierTo(p.dx - r * 0.16, p.dy - r * 0.16, p.dx, p.dy - r)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  void _dashedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
-    const dash = 5.0;
-    const gap = 4.0;
-    final delta = b - a;
-    final distance = delta.distance;
-    if (distance == 0) return;
-    final step = delta / distance;
-    var start = 0.0;
-    while (start < distance) {
-      final end = math.min(start + dash, distance);
-      canvas.drawLine(a + step * start, a + step * end, paint);
-      start = end + gap;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ConstellationPainter oldDelegate) =>
+  bool shouldRepaint(covariant _ConstellationBasePainter oldDelegate) =>
       oldDelegate.revealed != revealed ||
-      oldDelegate.traced != traced ||
-      oldDelegate.active != active ||
-      oldDelegate.activeProgress != activeProgress ||
-      oldDelegate.phase != phase ||
       oldDelegate.accent != accent ||
-      !listEquals(oldDelegate.points, points);
+      !identical(oldDelegate.layout, layout);
 }
+
+class _ConstellationMotionPainter extends CustomPainter {
+  final _ConstellationLayout layout;
+  final List<StudioLyricWord> words;
+  final ValueListenable<int>? positionListenable;
+  final int initialPositionMs;
+  final Color accent;
+
+  _ConstellationMotionPainter({
+    required this.layout,
+    required this.words,
+    required this.positionListenable,
+    required this.initialPositionMs,
+    required this.accent,
+  }) : super(repaint: positionListenable);
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final metric = layout.metric;
+    if (metric == null || layout.length <= 0 || words.isEmpty) return;
+
+    final position = positionListenable?.value ?? initialPositionMs;
+    final revealed = _revealedCount(words, position);
+    if (revealed <= 0) return;
+    final active = revealed - 1;
+    final progress = _wordProgress(words[active], position).clamp(0.0, 1.0);
+    final traced = ((active + progress) / words.length).clamp(0.0, 1.0);
+    final grown = traced * metric.length;
+
+    if (grown > 0) {
+      final trace = metric.extractPath(0, grown);
+      canvas.drawPath(
+        trace,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 7
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.10),
+      );
+      canvas.drawPath(
+        trace,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.74),
+      );
+    }
+
+    if (grown > 0 && traced < 1) {
+      for (var k = 5; k >= 1; k--) {
+        final distance =
+            (grown - metric.length * k * 0.014).clamp(0.0, metric.length);
+        final point = metric.getTangentForOffset(distance)?.position;
+        if (point == null) continue;
+        canvas.drawCircle(
+          point,
+          layout.size * (0.055 - k * 0.007),
+          Paint()..color = accent.withValues(alpha: 0.30 - k * 0.045),
+        );
+      }
+      final head = metric.getTangentForOffset(grown)?.position;
+      if (head != null) {
+        canvas.drawCircle(
+          head,
+          layout.size * 0.34,
+          Paint()..color = accent.withValues(alpha: 0.16),
+        );
+        canvas.drawCircle(
+          head,
+          layout.size * 0.12,
+          Paint()..color = Colors.white.withValues(alpha: 0.95),
+        );
+      }
+    }
+
+    final point = layout.points[active];
+    final flare = layout.size * (0.55 + 0.32 * progress);
+    canvas.drawCircle(
+      point,
+      flare * 0.62,
+      Paint()..color = accent.withValues(alpha: 0.18 + 0.08 * progress),
+    );
+    final lens = Paint()
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round
+      ..color = accent.withValues(alpha: 0.35 + 0.3 * progress);
+    canvas.drawLine(
+      Offset(point.dx - flare * 1.5, point.dy),
+      Offset(point.dx + flare * 1.5, point.dy),
+      lens,
+    );
+    canvas.drawLine(
+      Offset(point.dx, point.dy - flare * 0.7),
+      Offset(point.dx, point.dy + flare * 0.7),
+      lens,
+    );
+    canvas.drawCircle(
+      point,
+      flare * 0.9,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..color = accent.withValues(alpha: 0.35 * (1 - progress) + 0.15),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConstellationMotionPainter oldDelegate) =>
+      oldDelegate.positionListenable != positionListenable ||
+      oldDelegate.initialPositionMs != initialPositionMs ||
+      oldDelegate.accent != accent ||
+      !identical(oldDelegate.layout, layout) ||
+      !identical(oldDelegate.words, words);
+}
+
