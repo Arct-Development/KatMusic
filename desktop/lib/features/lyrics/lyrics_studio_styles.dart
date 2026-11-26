@@ -2414,8 +2414,9 @@ class _BranchesLine extends StatefulWidget {
 class _BranchLeaf {
   final double distance;
   final Path path;
+  final Path vein;
 
-  const _BranchLeaf(this.distance, this.path);
+  const _BranchLeaf(this.distance, this.path, this.vein);
 }
 
 class _BranchesLineState extends State<_BranchesLine> {
@@ -2500,6 +2501,13 @@ class _BranchesLineState extends State<_BranchesLine> {
           _BranchLeaf(
             distance,
             _branchLeafPath(
+              base,
+              tangent.vector,
+              normal,
+              layout.size * 0.34,
+              flip ? -1 : 1,
+            ),
+            _branchLeafVeinPath(
               base,
               tangent.vector,
               normal,
@@ -2647,6 +2655,68 @@ Path _branchLeafPath(
     ..close();
 }
 
+Path _branchLeafVeinPath(
+  Offset base,
+  Offset dir,
+  Offset normal,
+  double length,
+  double side,
+) {
+  final tip = base + normal * (length * 0.95 * side) + dir * (length * 0.34);
+  final control =
+      base + normal * (length * 0.45 * side) + dir * (length * 0.12);
+  return Path()
+    ..moveTo(base.dx, base.dy)
+    ..quadraticBezierTo(control.dx, control.dy, tip.dx, tip.dy);
+}
+
+void _paintBranchFlower(
+  Canvas canvas,
+  Offset center,
+  double size,
+  Color accent, {
+  double openness = 1,
+  double alpha = 1,
+}) {
+  final open = openness.clamp(0.0, 1.0);
+  final petalPaint = Paint()
+    ..color = accent.withValues(alpha: (0.25 + 0.20 * open) * alpha);
+  final outline = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = math.max(0.7, size * 0.018)
+    ..color = Colors.white.withValues(alpha: 0.22 * alpha);
+
+  for (var k = 0; k < 5; k++) {
+    final angle = -math.pi / 2 + k * 2 * math.pi / 5 + (1 - open) * 0.42;
+    final distance = size * (0.10 + 0.13 * open);
+    final petal = center + Offset(math.cos(angle), math.sin(angle)) * distance;
+    canvas.save();
+    canvas.translate(petal.dx, petal.dy);
+    canvas.rotate(angle);
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: size * (0.18 + 0.06 * open),
+      height: size * 0.12,
+    );
+    canvas.drawOval(rect, petalPaint);
+    canvas.drawOval(rect, outline);
+    canvas.restore();
+  }
+  canvas.drawCircle(
+    center,
+    size * 0.075,
+    Paint()..color = Colors.white.withValues(alpha: 0.96 * alpha),
+  );
+  canvas.drawCircle(
+    center,
+    size * 0.15,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.8, size * 0.018)
+      ..color = accent.withValues(alpha: 0.48 * alpha),
+  );
+}
+
 class _BranchesBasePainter extends CustomPainter {
   final List<Offset> points;
   final Path? vine;
@@ -2685,24 +2755,37 @@ class _BranchesBasePainter extends CustomPainter {
         ? 0.0
         : (math.max(0, revealed - 1) / wordCount).clamp(0.0, 1.0);
     final completedLength = metricLength * completedFraction;
-    final leafPaint = Paint()..color = accent.withValues(alpha: 0.16);
+    final leafPaint = Paint()..color = accent.withValues(alpha: 0.22);
+    final veinPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.75
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.20);
     for (final leaf in leaves) {
       if (leaf.distance > completedLength) break;
       canvas.drawPath(leaf.path, leafPaint);
+      canvas.drawPath(leaf.vein, veinPaint);
     }
 
     for (var i = 0; i < points.length; i++) {
       final point = points[i];
-      if (i < revealed) {
+      if (i < revealed - 1) {
         canvas.drawCircle(
           point,
-          size * 0.20,
-          Paint()..color = accent.withValues(alpha: 0.13),
+          size * 0.40,
+          Paint()..color = accent.withValues(alpha: 0.09),
+        );
+        _paintBranchFlower(canvas, point, size, accent, alpha: 0.9);
+      } else if (i == revealed - 1) {
+        canvas.drawCircle(
+          point,
+          size * 0.22,
+          Paint()..color = accent.withValues(alpha: 0.16),
         );
         canvas.drawCircle(
           point,
           size * 0.075,
-          Paint()..color = Colors.white.withValues(alpha: 0.9),
+          Paint()..color = Colors.white.withValues(alpha: 0.92),
         );
       } else {
         canvas.drawCircle(
@@ -2805,29 +2888,13 @@ class _BranchesMotionPainter extends CustomPainter {
       bloom,
       Paint()..color = accent.withValues(alpha: 0.10 + 0.10 * open),
     );
-    for (var k = 0; k < 5; k++) {
-      final angle = -math.pi / 2 + k * 2 * math.pi / 5 + (1 - open) * 0.9;
-      final petal = activePoint +
-          Offset(math.cos(angle), math.sin(angle)) *
-              size *
-              (0.13 + 0.12 * open);
-      canvas.save();
-      canvas.translate(petal.dx, petal.dy);
-      canvas.rotate(angle);
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: size * (0.16 + 0.10 * open),
-          height: size * 0.11,
-        ),
-        Paint()..color = accent.withValues(alpha: 0.24 + 0.16 * open),
-      );
-      canvas.restore();
-    }
-    canvas.drawCircle(
+    _paintBranchFlower(
+      canvas,
       activePoint,
-      size * 0.075,
-      Paint()..color = Colors.white.withValues(alpha: 0.9),
+      size * 1.18,
+      accent,
+      openness: open,
+      alpha: 1,
     );
   }
 
