@@ -151,6 +151,9 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   bool _following = true;
   late final Ticker _ticker;
   final ValueNotifier<int> _interpolatedPositionMs = ValueNotifier<int>(0);
+  // High-frequency clock consumed only by Branches and Constellation.
+  // Other lyrics widgets stay on the normal playback update cadence.
+  final ValueNotifier<int> _designPositionMs = ValueNotifier<int>(0);
   final ValueNotifier<int> _activeLineIndex = ValueNotifier<int>(-1);
   final ValueNotifier<bool> _studioIsPlaying = ValueNotifier<bool>(false);
   final ValueNotifier<double> _studioPlaybackSpeed = ValueNotifier<double>(1.0);
@@ -204,6 +207,10 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     super.initState();
     _isSelectingNotifier.addListener(_onSelectingChanged);
     _ticker = createTicker(_onTick);
+    final initialPosition =
+        ref.read(playbackServiceProvider).position.inMilliseconds;
+    _interpolatedPositionMs.value = initialPosition;
+    _designPositionMs.value = initialPosition;
     // Subscribe without rebuilding: each emission only re-syncs the
     // interpolation clock (same math the in-build block used to run).
     _posSub = ref.listenManual(
@@ -246,6 +253,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   }
 
   int _lastTickMs = 0;
+  int _lastSharedPositionTickMs = 0;
 
   int _getCurrentPositionMs() {
     if (_ticker.isActive) {
@@ -529,6 +537,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     _speedSub?.close();
     _ticker.dispose();
     _interpolatedPositionMs.dispose();
+    _designPositionMs.dispose();
     _activeLineIndex.dispose();
     _studioIsPlaying.dispose();
     _studioPlaybackSpeed.dispose();
@@ -551,7 +560,20 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
 
       final elapsed = now.difference(_lastSyncTime).inMilliseconds;
       final currentMs = _lastAudioMs + (elapsed * _speed).round() - _offsetMs;
-      _interpolatedPositionMs.value = currentMs;
+      final selectedStyle = ref.read(prefsProvider).lyricsAnimation;
+      final designClockOnly =
+          selectedStyle == 'design_branches' ||
+          selectedStyle == 'design_constellation';
+      if (designClockOnly) {
+        _designPositionMs.value = currentMs;
+        // Avoid making the rest of the lyrics page rebuild/repaint at 60Hz.
+        if (nowMs - _lastSharedPositionTickMs >= 100) {
+          _lastSharedPositionTickMs = nowMs;
+          _interpolatedPositionMs.value = currentMs;
+        }
+      } else {
+        _interpolatedPositionMs.value = currentMs;
+      }
 
       if (_currentResult != null && _currentResult!.lines.isNotEmpty) {
         final lineIndex = activeLyricLineIndex(
@@ -592,6 +614,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
       _lastSyncTime = now;
       final effectiveMs = audioMs - _offsetMs;
       _interpolatedPositionMs.value = effectiveMs;
+      _designPositionMs.value = effectiveMs;
       if (_currentResult != null && _currentResult!.lines.isNotEmpty) {
         final lines = _currentResult!.lines;
         final lineIndex = activeLyricLineIndex(lines, effectiveMs);
@@ -618,6 +641,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
         _lastSyncTime = now;
         final effectiveMs = audioMs - _offsetMs;
         _interpolatedPositionMs.value = effectiveMs;
+        _designPositionMs.value = effectiveMs;
         if (_currentResult != null && _currentResult!.lines.isNotEmpty) {
           final lineIndex = activeLyricLineIndex(
             _currentResult!.lines,
@@ -1428,12 +1452,18 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
               isBackground: word.syllables.every((s) => s.isBackground),
             ),
       ]..removeWhere((word) => word.text.isEmpty);
+      final designStyle =
+          widget.animationStyle == 'design_branches' ||
+          widget.animationStyle == 'design_constellation';
       content = buildStudioLyricsLine(
         style: widget.animationStyle,
         lineText: widget.line.text,
         words: studioWords,
-        positionMs: widget.positionListenable?.value ?? widget.positionMs,
-        positionListenable: widget.positionListenable,
+        positionMs: designStyle
+            ? _designPositionMs.value
+            : (widget.positionListenable?.value ?? widget.positionMs),
+        positionListenable:
+            designStyle ? _designPositionMs : widget.positionListenable,
         accent: accent,
         primary: activeTextColor,
         secondary: activeTextColor.withValues(alpha: 0.55),
