@@ -138,17 +138,8 @@ const settingsSearchEntries = <SettingsSearchEntry>[
         'lyrics animation style liquid glass aurora bloom pulse hyper pop neon '
         'circuit silk tide broken signal stage lean quiet fade karaoke studio '
         'auto skyline stack runway sweep warp flip letters paper collage steady '
-        'flow lyric tree drift wall fisheye icons icon spark branches spider web '
-        'constellation message thread orbit rainfall typewriter',
-  ),
-  SettingsSearchEntry(
-    id: 'lyrics.studio_glow',
-    section: 'lyrics',
-    title: 'Studio edge glow',
-    subtitle: 'Album colours wrapped around the full-screen Studio stage',
-    keywords:
-        'studio fullscreen edge glow lumn ambient light album colour color '
-        'music sync pulse breath thickness intensity border vignette',
+        'flow lyric tree drift wall fisheye icons icon spark branches '
+        'constellation',
   ),
   SettingsSearchEntry(
     id: 'lyrics.timing',

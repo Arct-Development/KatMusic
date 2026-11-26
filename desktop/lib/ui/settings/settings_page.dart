@@ -1900,50 +1900,6 @@ class _Lyrics extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         _Group(
-          id: 'lyrics.studio_glow',
-          title: 'Studio edge glow',
-          subtitle:
-              'Album colours wrapped around the full-screen Studio stage',
-          child: Column(
-            children: [
-              _BehaviourSelectRow(
-                title: 'Animation',
-                subtitle: switch (prefs.studioGlowMode) {
-                  'off' => 'No edge glow',
-                  'breath' => 'A slow idle breath of album light',
-                  'steady' => 'A still band of album colour',
-                  _ => 'Pulses with each sung word',
-                },
-                value: prefs.studioGlowMode,
-                options: [
-                  for (final mode in Prefs.studioGlowModes)
-                    WaveSelectOption(value: mode.$1, label: mode.$2),
-                ],
-                onChanged: (v) => onUpdate((p) => p.setStudioGlowMode(v)),
-              ),
-              _GlowSlider(
-                label: 'Thickness',
-                value: prefs.studioGlowThickness,
-                min: 0.10,
-                max: 0.50,
-                display: (v) => '${(v * 100).round()}% of the short edge',
-                onChanged: (v) =>
-                    onUpdate((p) => p.setStudioGlowThickness(v)),
-              ),
-              _GlowSlider(
-                label: 'Glow',
-                value: prefs.studioGlowIntensity,
-                min: 0.15,
-                max: 1.0,
-                display: (v) => '${(v * 100).round()}%',
-                onChanged: (v) =>
-                    onUpdate((p) => p.setStudioGlowIntensity(v)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        _Group(
           id: 'lyrics.timing',
           title: 'Timing',
           subtitle: 'Synced lyrics providers',
@@ -4515,14 +4471,11 @@ class _LyricsAnimationPickerState extends ConsumerState<_LyricsAnimationPicker> 
     'aesthetic_fisheye': 'A convex word stack focused on the nearest word',
     'aesthetic_fisheye_visual':
       'Fisheye word stack with an icon on the sung word',
-    'aesthetic_visual': 'One large word at a time with a matching icon',
+    'aesthetic_visual':
+      'One large word at a time inside a ring of matching icons',
     'design_branches': 'A vine draws itself and every word lights a node',
-    'design_web': 'Each line spun into a spider web, a strand per word',
-    'design_constellation': 'Each line traced as a constellation, star by star',
-    'design_native_thread': 'The song as a message thread, one bubble per line',
-    'design_orbit': 'Words circle a glowing hub, lit as the arc sweeps past',
-    'design_rain': 'Words fall into place word by word, with a soft splash',
-    'design_typewriter': 'The line types itself out with a blinking cursor',
+    'design_constellation':
+      'Words scattered as stars in a real night-sky constellation',
   };
 
   @override

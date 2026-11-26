@@ -267,12 +267,7 @@ class Prefs {
     'aesthetic_fisheye_visual': 'Fisheye Icons',
     'aesthetic_visual': 'Icon Spark',
     'design_branches': 'Branches',
-    'design_web': 'Spider Web',
     'design_constellation': 'Constellation',
-    'design_native_thread': 'Message Thread',
-    'design_orbit': 'Orbit',
-    'design_rain': 'Rainfall',
-    'design_typewriter': 'Typewriter',
   };
 
   /// Animation families in picker order. Every id in
@@ -319,49 +314,10 @@ class Prefs {
     ),
     LyricsAnimationFamily(
       'Signature Designs',
-      'Illustrated lines: vines, webs, constellations and messages',
-      [
-        'design_branches',
-        'design_web',
-        'design_constellation',
-        'design_native_thread',
-        'design_orbit',
-        'design_rain',
-        'design_typewriter',
-      ],
+      'Illustrated lines: a growing vine and a real night-sky constellation',
+      ['design_branches', 'design_constellation'],
     ),
   ];
-
-  /// Album-lit glow around the full-screen Studio stage.
-  static const studioGlowModes = <(String, String)>[
-    ('off', 'Off'),
-    ('pulse', 'Music Sync'),
-    ('breath', 'Idle breathing'),
-    ('steady', 'Steady'),
-  ];
-
-  String get studioGlowMode {
-    final value = _sp.getString('lw_studio_glow_mode') ?? 'pulse';
-    return studioGlowModes.any((mode) => mode.$1 == value) ? value : 'pulse';
-  }
-
-  Future<void> setStudioGlowMode(String value) => _sp.setString(
-        'lw_studio_glow_mode',
-        studioGlowModes.any((mode) => mode.$1 == value) ? value : 'pulse',
-      );
-
-  /// Edge band size as a fraction of the shorter screen side.
-  double get studioGlowThickness =>
-      (_sp.getDouble('lw_studio_glow_thickness') ?? 0.28).clamp(0.1, 0.5);
-
-  Future<void> setStudioGlowThickness(double value) =>
-      _sp.setDouble('lw_studio_glow_thickness', value.clamp(0.1, 0.5));
-
-  double get studioGlowIntensity =>
-      (_sp.getDouble('lw_studio_glow_intensity') ?? 0.55).clamp(0.15, 1.0);
-
-  Future<void> setStudioGlowIntensity(double value) =>
-      _sp.setDouble('lw_studio_glow_intensity', value.clamp(0.15, 1.0));
 
   static LyricsAnimationFamily lyricsAnimationFamilyOf(String id) =>
       lyricsAnimationFamilies.firstWhere(
