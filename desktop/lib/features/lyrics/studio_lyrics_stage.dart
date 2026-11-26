@@ -132,7 +132,9 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                     child: WaveAmbientMesh(
                       artworkUrl: liveTrack.artworkUrl,
                       isFullBleed: true,
-                      cinematic: true,
+                      // Keep the cover palette, but avoid the continuously
+                      // composited full-window cinematic aura in Studio.
+                      cinematic: false,
                       apple: true,
                     ),
                   ),
@@ -454,7 +456,8 @@ class _StageDrift extends StatelessWidget {
           offset: Offset(math.sin(t / 7.3) * 5, math.cos(t / 9.1) * 4),
           child: Transform.rotate(
             angle: math.sin(t / 11.7) * 0.004,
-            child: child,
+            // Cache the lyric subtree while only its slow stage transform moves.
+            child: RepaintBoundary(child: child),
           ),
         );
       },
