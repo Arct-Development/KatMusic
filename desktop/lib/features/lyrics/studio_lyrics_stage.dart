@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../../core/storage/prefs.dart';
 import '../../ui/components/ambient.dart';
 import '../../ui/theme/wave_icons.dart';
 import '../settings/accent.dart' show accentFromPalette;
+import '../player/playback_service.dart';
 import 'lyrics_models.dart';
 import 'lyrics_studio_styles.dart';
 
@@ -54,7 +56,92 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
   ConsumerState<StudioLyricsStage> createState() => _StudioLyricsStageState();
 }
 
-class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage> {
+class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _positionTicker;
+  late final ProviderSubscription<(bool, double)> _playbackClockSubscription;
+  final ValueNotifier<int> _smoothStylePositionMs = ValueNotifier<int>(0);
+  int _positionAnchorMs = 0;
+  DateTime _positionAnchorTime = DateTime.now();
+  double _playbackSpeed = 1.0;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _positionAnchorMs = widget.positionListenable.value;
+    _smoothStylePositionMs.value = _positionAnchorMs;
+    widget.positionListenable.addListener(_syncPositionAnchor);
+
+    final playback = ref.read(playbackServiceProvider);
+    _isPlaying = playback.isPlaying;
+    _playbackSpeed = playback.speed > 0 ? playback.speed : 1.0;
+
+    _positionTicker = createTicker(_tickSmoothPosition);
+    _playbackClockSubscription = ref.listenManual(
+      playbackServiceProvider.select((s) => (s.isPlaying, s.speed)),
+      (_, next) {
+        final now = DateTime.now();
+        // Preserve the interpolated point when speed changes.
+        if (_isPlaying) {
+          final elapsedUs =
+              now.difference(_positionAnchorTime).inMicroseconds;
+          _positionAnchorMs +=
+              (elapsedUs * _playbackSpeed / 1000000).round();
+        } else {
+          _positionAnchorMs = widget.positionListenable.value;
+        }
+        _positionAnchorTime = now;
+        _isPlaying = next.$1;
+        _playbackSpeed = next.$2 > 0 ? next.$2 : 1.0;
+        if (_isPlaying) {
+          if (!_positionTicker.isActive) _positionTicker.start();
+        } else {
+          _positionTicker.stop();
+          _smoothStylePositionMs.value = widget.positionListenable.value;
+          _positionAnchorMs = _smoothStylePositionMs.value;
+          _positionAnchorTime = now;
+        }
+      },
+    );
+    if (_isPlaying) _positionTicker.start();
+  }
+
+  @override
+  void didUpdateWidget(covariant StudioLyricsStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.positionListenable != widget.positionListenable) {
+      oldWidget.positionListenable.removeListener(_syncPositionAnchor);
+      widget.positionListenable.addListener(_syncPositionAnchor);
+      _syncPositionAnchor();
+    }
+  }
+
+  void _syncPositionAnchor() {
+    _positionAnchorMs = widget.positionListenable.value;
+    _positionAnchorTime = DateTime.now();
+    _smoothStylePositionMs.value = _positionAnchorMs;
+  }
+
+  void _tickSmoothPosition(Duration _) {
+    if (!_isPlaying) return;
+    final elapsedUs =
+        DateTime.now().difference(_positionAnchorTime).inMicroseconds;
+    final next = _positionAnchorMs +
+        (elapsedUs * _playbackSpeed / 1000000).round();
+    if (_smoothStylePositionMs.value != next) {
+      _smoothStylePositionMs.value = next;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.positionListenable.removeListener(_syncPositionAnchor);
+    _playbackClockSubscription.close();
+    _positionTicker.dispose();
+    _smoothStylePositionMs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +246,11 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage> {
                               loading: false,
                               activeIndex: activeIndex,
                               style: style,
-                              positionListenable: widget.positionListenable,
+                              positionListenable:
+                                  style == 'design_branches' ||
+                                      style == 'design_constellation'
+                                  ? _smoothStylePositionMs
+                                  : widget.positionListenable,
                               accent: paletteColors,
                               primary: primary,
                               secondary: secondary,
