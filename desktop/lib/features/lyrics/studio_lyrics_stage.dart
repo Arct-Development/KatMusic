@@ -11,7 +11,6 @@ import '../../core/storage/prefs.dart';
 import '../../ui/components/ambient.dart';
 import '../../ui/theme/wave_icons.dart';
 import '../settings/accent.dart' show accentFromPalette;
-import '../player/playback_service.dart';
 import 'lyrics_models.dart';
 import 'lyrics_studio_styles.dart';
 
@@ -38,6 +37,8 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
   final ValueListenable<StudioStageFeed?>? feed;
   final ValueListenable<int> positionListenable;
   final ValueListenable<int> activeLineListenable;
+  final ValueListenable<bool>? isPlayingListenable;
+  final ValueListenable<double>? playbackSpeedListenable;
   final String initialStyle;
   final bool showBackdrop;
 
@@ -48,6 +49,8 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
     this.feed,
     required this.positionListenable,
     required this.activeLineListenable,
+    this.isPlayingListenable,
+    this.playbackSpeedListenable,
     required this.initialStyle,
     this.showBackdrop = true,
   });
@@ -59,7 +62,6 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
 class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
     with SingleTickerProviderStateMixin {
   late final Ticker _positionTicker;
-  late final ProviderSubscription<(bool, double)> _playbackClockSubscription;
   final ValueNotifier<int> _smoothStylePositionMs = ValueNotifier<int>(0);
   int _positionAnchorMs = 0;
   DateTime _positionAnchorTime = DateTime.now();
@@ -73,37 +75,12 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
     _smoothStylePositionMs.value = _positionAnchorMs;
     widget.positionListenable.addListener(_syncPositionAnchor);
 
-    final playback = ref.read(playbackServiceProvider);
-    _isPlaying = playback.isPlaying;
-    _playbackSpeed = playback.speed > 0 ? playback.speed : 1.0;
+    _isPlaying = widget.isPlayingListenable?.value ?? false;
+    _playbackSpeed = widget.playbackSpeedListenable?.value ?? 1.0;
+    widget.isPlayingListenable?.addListener(_syncPlaybackState);
+    widget.playbackSpeedListenable?.addListener(_syncPlaybackState);
 
     _positionTicker = createTicker(_tickSmoothPosition);
-    _playbackClockSubscription = ref.listenManual(
-      playbackServiceProvider.select((s) => (s.isPlaying, s.speed)),
-      (_, next) {
-        final now = DateTime.now();
-        // Preserve the interpolated point when speed changes.
-        if (_isPlaying) {
-          final elapsedUs =
-              now.difference(_positionAnchorTime).inMicroseconds;
-          _positionAnchorMs +=
-              (elapsedUs * _playbackSpeed / 1000).round();
-        } else {
-          _positionAnchorMs = widget.positionListenable.value;
-        }
-        _positionAnchorTime = now;
-        _isPlaying = next.$1;
-        _playbackSpeed = next.$2 > 0 ? next.$2 : 1.0;
-        if (_isPlaying) {
-          if (!_positionTicker.isActive) _positionTicker.start();
-        } else {
-          _positionTicker.stop();
-          _smoothStylePositionMs.value = widget.positionListenable.value;
-          _positionAnchorMs = _smoothStylePositionMs.value;
-          _positionAnchorTime = now;
-        }
-      },
-    );
     if (_isPlaying) _positionTicker.start();
   }
 
@@ -114,6 +91,39 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
       oldWidget.positionListenable.removeListener(_syncPositionAnchor);
       widget.positionListenable.addListener(_syncPositionAnchor);
       _syncPositionAnchor();
+    }
+    if (oldWidget.isPlayingListenable != widget.isPlayingListenable) {
+      oldWidget.isPlayingListenable?.removeListener(_syncPlaybackState);
+      widget.isPlayingListenable?.addListener(_syncPlaybackState);
+      _syncPlaybackState();
+    }
+    if (oldWidget.playbackSpeedListenable != widget.playbackSpeedListenable) {
+      oldWidget.playbackSpeedListenable?.removeListener(_syncPlaybackState);
+      widget.playbackSpeedListenable?.addListener(_syncPlaybackState);
+      _syncPlaybackState();
+    }
+  }
+
+  void _syncPlaybackState() {
+    final now = DateTime.now();
+    if (_isPlaying) {
+      final elapsedUs =
+          now.difference(_positionAnchorTime).inMicroseconds;
+      _positionAnchorMs += (elapsedUs * _playbackSpeed / 1000).round();
+    } else {
+      _positionAnchorMs = widget.positionListenable.value;
+    }
+    _positionAnchorTime = now;
+    _isPlaying = widget.isPlayingListenable?.value ?? false;
+    final speed = widget.playbackSpeedListenable?.value ?? 1.0;
+    _playbackSpeed = speed > 0 ? speed : 1.0;
+    if (_isPlaying) {
+      if (!_positionTicker.isActive) _positionTicker.start();
+    } else {
+      _positionTicker.stop();
+      _smoothStylePositionMs.value = widget.positionListenable.value;
+      _positionAnchorMs = _smoothStylePositionMs.value;
+      _positionAnchorTime = now;
     }
   }
 
@@ -137,7 +147,8 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
   @override
   void dispose() {
     widget.positionListenable.removeListener(_syncPositionAnchor);
-    _playbackClockSubscription.close();
+    widget.isPlayingListenable?.removeListener(_syncPlaybackState);
+    widget.playbackSpeedListenable?.removeListener(_syncPlaybackState);
     _positionTicker.dispose();
     _smoothStylePositionMs.dispose();
     super.dispose();
