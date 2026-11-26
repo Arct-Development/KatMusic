@@ -2549,6 +2549,9 @@ class _BranchesLineState extends State<_BranchesLine> {
                     painter: _BranchesBasePainter(
                       points: _points,
                       vine: _vine,
+                      leaves: _leaves,
+                      metricLength: _metric?.length ?? 0,
+                      wordCount: widget.words.length,
                       size: layout.size,
                       revealed: _revealed,
                       accent: widget.accent,
@@ -2561,7 +2564,6 @@ class _BranchesLineState extends State<_BranchesLine> {
                   painter: _BranchesMotionPainter(
                     points: _points,
                     metric: _metric,
-                    leaves: _leaves,
                     words: widget.words,
                     positionListenable: widget.positionListenable,
                     initialPositionMs: widget.positionMs,
@@ -2648,6 +2650,9 @@ Path _branchLeafPath(
 class _BranchesBasePainter extends CustomPainter {
   final List<Offset> points;
   final Path? vine;
+  final List<_BranchLeaf> leaves;
+  final double metricLength;
+  final int wordCount;
   final double size;
   final int revealed;
   final Color accent;
@@ -2655,6 +2660,9 @@ class _BranchesBasePainter extends CustomPainter {
   const _BranchesBasePainter({
     required this.points,
     required this.vine,
+    required this.leaves,
+    required this.metricLength,
+    required this.wordCount,
     required this.size,
     required this.revealed,
     required this.accent,
@@ -2673,6 +2681,16 @@ class _BranchesBasePainter extends CustomPainter {
           ..color = Colors.white.withValues(alpha: 0.12),
       );
     }
+    final completedFraction = wordCount <= 0
+        ? 0.0
+        : (math.max(0, revealed - 1) / wordCount).clamp(0.0, 1.0);
+    final completedLength = metricLength * completedFraction;
+    final leafPaint = Paint()..color = accent.withValues(alpha: 0.16);
+    for (final leaf in leaves) {
+      if (leaf.distance > completedLength) break;
+      canvas.drawPath(leaf.path, leafPaint);
+    }
+
     for (var i = 0; i < points.length; i++) {
       final point = points[i];
       if (i < revealed) {
@@ -2704,6 +2722,9 @@ class _BranchesBasePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BranchesBasePainter oldDelegate) =>
       oldDelegate.vine != vine ||
+      !identical(oldDelegate.leaves, leaves) ||
+      oldDelegate.metricLength != metricLength ||
+      oldDelegate.wordCount != wordCount ||
       oldDelegate.revealed != revealed ||
       oldDelegate.accent != accent ||
       oldDelegate.size != size ||
@@ -2713,7 +2734,6 @@ class _BranchesBasePainter extends CustomPainter {
 class _BranchesMotionPainter extends CustomPainter {
   final List<Offset> points;
   final PathMetric? metric;
-  final List<_BranchLeaf> leaves;
   final List<StudioLyricWord> words;
   final ValueListenable<int>? positionListenable;
   final int initialPositionMs;
@@ -2723,7 +2743,6 @@ class _BranchesMotionPainter extends CustomPainter {
   _BranchesMotionPainter({
     required this.points,
     required this.metric,
-    required this.leaves,
     required this.words,
     required this.positionListenable,
     required this.initialPositionMs,
@@ -2744,12 +2763,6 @@ class _BranchesMotionPainter extends CustomPainter {
     final fraction =
         ((active + activeProgress) / words.length).clamp(0.0, 1.0);
     final grown = pathMetric.length * fraction;
-
-    final leafPaint = Paint()..color = accent.withValues(alpha: 0.16);
-    for (final leaf in leaves) {
-      if (leaf.distance > grown) break;
-      canvas.drawPath(leaf.path, leafPaint);
-    }
 
     if (grown > 0) {
       final lit = pathMetric.extractPath(0, grown);
@@ -2826,7 +2839,6 @@ class _BranchesMotionPainter extends CustomPainter {
       oldDelegate.accent != accent ||
       oldDelegate.size != size ||
       !identical(oldDelegate.words, words) ||
-      !identical(oldDelegate.leaves, leaves) ||
       !identical(oldDelegate.points, points);
 }
 class _ConstellationLayout {
