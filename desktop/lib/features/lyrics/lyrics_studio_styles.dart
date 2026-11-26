@@ -2463,9 +2463,9 @@ class _BranchesLineState extends State<_BranchesLine> {
 
   void _ensureGeometry(double width, double height) {
     final key =
-        '\${widget.lineText}|\${widget.words.length}|'
-        '\${width.toStringAsFixed(1)}|\${height.toStringAsFixed(1)}|'
-        '\${widget.fontSize.toStringAsFixed(1)}|\${widget.isRtl}';
+        '${widget.lineText}|${widget.words.length}|'
+        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
+        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
     if (key == _cacheKey && _layout != null) return;
     _cacheKey = key;
 
@@ -2605,6 +2605,26 @@ class _BranchesLineState extends State<_BranchesLine> {
       },
     );
   }
+}
+
+Path _vinePath(List<Offset> points) {
+  final path = Path();
+  if (points.isEmpty) return path;
+  path.moveTo(points.first.dx, points.first.dy);
+  if (points.length == 1) {
+    path.lineTo(points.first.dx + 0.1, points.first.dy);
+    return path;
+  }
+  for (var i = 1; i < points.length; i++) {
+    final a = points[i - 1];
+    final b = points[i];
+    final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    path.quadraticBezierTo(a.dx, a.dy, mid.dx, mid.dy);
+    if (i == points.length - 1) {
+      path.quadraticBezierTo(b.dx, b.dy, b.dx, b.dy);
+    }
+  }
+  return path;
 }
 
 Path _branchLeafPath(
@@ -2982,9 +3002,9 @@ class _ConstellationLineState extends State<_ConstellationLine> {
 
   _ConstellationLayout _ensureLayout(double width, double height) {
     final key =
-        '\${widget.lineText}|\${widget.words.length}|'
-        '\${width.toStringAsFixed(1)}|\${height.toStringAsFixed(1)}|'
-        '\${widget.fontSize.toStringAsFixed(1)}|\${widget.isRtl}';
+        '${widget.lineText}|${widget.words.length}|'
+        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
+        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
     if (key != _cacheKey || _layout == null) {
       _cacheKey = key;
       _layout = _layoutConstellation(
