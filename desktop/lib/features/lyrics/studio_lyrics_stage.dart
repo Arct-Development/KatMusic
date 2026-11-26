@@ -87,7 +87,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
           final elapsedUs =
               now.difference(_positionAnchorTime).inMicroseconds;
           _positionAnchorMs +=
-              (elapsedUs * _playbackSpeed / 1000000).round();
+              (elapsedUs * _playbackSpeed / 1000).round();
         } else {
           _positionAnchorMs = widget.positionListenable.value;
         }
@@ -128,7 +128,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
     final elapsedUs =
         DateTime.now().difference(_positionAnchorTime).inMicroseconds;
     final next = _positionAnchorMs +
-        (elapsedUs * _playbackSpeed / 1000000).round();
+        (elapsedUs * _playbackSpeed / 1000).round();
     if (_smoothStylePositionMs.value != next) {
       _smoothStylePositionMs.value = next;
     }
