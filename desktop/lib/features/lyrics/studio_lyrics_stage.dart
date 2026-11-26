@@ -98,9 +98,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
         : widget.initialStyle;
 
     final palette =
-        ref
-            .watch(artworkPaletteProvider(liveTrack.artworkUrl))
-            .valueOrNull ??
+        ref.watch(artworkPaletteProvider(liveTrack.artworkUrl)).valueOrNull ??
         ArtworkPalette.fallback;
     final accent = accentFromPalette(palette) ?? palette.vibrant;
     final primary = Color.lerp(const Color(0xFFF6F4EF), palette.cream, 0.22)!;
@@ -291,16 +289,17 @@ double _vocalPulse(List<LyricLine> lines, int positionMs) {
   final syllables = line.syllables;
   if (syllables.isEmpty) {
     final duration = math.max(600, line.durationMs);
-    final progress =
-        ((positionMs - line.timeMs) / duration).clamp(0.0, 1.0);
+    final progress = ((positionMs - line.timeMs) / duration).clamp(0.0, 1.0);
     return math.sin(math.pi * progress) * 0.8;
   }
   for (final syllable in syllables) {
     final duration = math.max(120, syllable.durationMs);
     if (positionMs >= syllable.timeMs &&
         positionMs <= syllable.timeMs + duration) {
-      final progress =
-          ((positionMs - syllable.timeMs) / duration).clamp(0.0, 1.0);
+      final progress = ((positionMs - syllable.timeMs) / duration).clamp(
+        0.0,
+        1.0,
+      );
       return math.sin(math.pi * progress);
     }
   }
@@ -326,21 +325,17 @@ class _EdgeGlowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final band = math.min(size.width, size.height) *
-        thickness *
-        (0.9 + 0.35 * pulse);
-    final alpha = ((0.18 + 0.6 * intensity) * (0.55 + 0.45 * pulse))
-        .clamp(0.0, 0.85);
+    final band =
+        math.min(size.width, size.height) * thickness * (0.9 + 0.35 * pulse);
+    final alpha = ((0.18 + 0.6 * intensity) * (0.55 + 0.45 * pulse)).clamp(
+      0.0,
+      0.85,
+    );
     final warm = top.withValues(alpha: alpha);
     final cool = bottom.withValues(alpha: alpha * 0.85);
     final sway = math.sin(drift * 0.35) * 0.12;
 
-    void paintBand(
-      Rect rect,
-      Alignment begin,
-      Alignment end,
-      Color color,
-    ) {
+    void paintBand(Rect rect, Alignment begin, Alignment end, Color color) {
       canvas.drawRect(
         rect,
         Paint()
@@ -389,7 +384,10 @@ class _EdgeGlowPainter extends CustomPainter {
         rect,
         Paint()
           ..shader = RadialGradient(
-            colors: [color.withValues(alpha: alpha * 0.55), Colors.transparent],
+            colors: [
+              color.withValues(alpha: alpha * 0.55),
+              Colors.transparent,
+            ],
             stops: const [0, 1],
           ).createShader(rect),
       );
@@ -641,24 +639,18 @@ class _NativeThreadView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lines = result.lines;
-    final start = math.max(0, activeIndex - 2);
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final current = activeIndex.clamp(0, lines.length - 1);
     return LayoutBuilder(
       builder: (context, constraints) {
         final fontSize = math.min(
           34.0,
           math.max(18.0, constraints.maxWidth * 0.028),
         );
+        // Every line is a message: the newest sits at the bottom, older lines
+        // stack above it, and the next line shows a typing bubble underneath.
         final bubbles = <Widget>[
-          for (var i = start; i <= activeIndex; i++)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: _threadBubble(
-                line: lines[i],
-                isCurrent: i == activeIndex,
-                fontSize: i == activeIndex ? fontSize : fontSize * 0.86,
-              ),
-            ),
-          if (activeIndex + 1 < lines.length)
+          if (current + 1 < lines.length)
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 760),
               child: buildNativeThreadBubble(
@@ -673,15 +665,22 @@ class _NativeThreadView extends StatelessWidget {
                 typing: true,
               ),
             ),
+          for (var i = current; i >= 0 && i > current - 80; i--)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: _threadBubble(
+                line: lines[i],
+                isCurrent: i == current,
+                fontSize: i == current ? fontSize : fontSize * 0.86,
+              ),
+            ),
         ];
         return Align(
-          alignment: Alignment.centerLeft,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: bubbles,
-            ),
+          alignment: Alignment.bottomLeft,
+          child: ListView(
+            reverse: true,
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+            children: bubbles,
           ),
         );
       },
