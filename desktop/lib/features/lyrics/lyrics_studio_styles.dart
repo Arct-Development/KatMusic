@@ -16,6 +16,7 @@ library;
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -50,12 +51,7 @@ const studioLyricsStyleIds = <String>{
   'aesthetic_fisheye_visual',
   'aesthetic_visual',
   'design_branches',
-  'design_web',
   'design_constellation',
-  'design_native_thread',
-  'design_orbit',
-  'design_rain',
-  'design_typewriter',
 };
 
 bool isStudioLyricsAnimation(String id) => studioLyricsStyleIds.contains(id);
@@ -89,17 +85,6 @@ Widget buildStudioLyricsLine({
         isRtl: isRtl,
         reduceMotion: reduceMotion,
       );
-    case 'design_web':
-      return _WebLine(
-        lineText: lineText,
-        words: words,
-        positionMs: positionMs,
-        positionListenable: positionListenable,
-        accent: accent,
-        primary: primary,
-        secondary: secondary,
-        fontSize: fontSize,
-      );
     case 'design_constellation':
       return _ConstellationLine(
         lineText: lineText,
@@ -111,51 +96,6 @@ Widget buildStudioLyricsLine({
         secondary: secondary,
         fontSize: fontSize,
         isRtl: isRtl,
-      );
-    case 'design_orbit':
-      return _OrbitLine(
-        lineText: lineText,
-        words: words,
-        positionMs: positionMs,
-        positionListenable: positionListenable,
-        accent: accent,
-        primary: primary,
-        secondary: secondary,
-        fontSize: fontSize,
-      );
-    case 'design_rain':
-      return _RainLine(
-        lineText: lineText,
-        words: words,
-        positionMs: positionMs,
-        positionListenable: positionListenable,
-        accent: accent,
-        primary: primary,
-        secondary: secondary,
-        fontSize: fontSize,
-        isRtl: isRtl,
-      );
-    case 'design_typewriter':
-      return _TypewriterLine(
-        words: words,
-        positionMs: positionMs,
-        positionListenable: positionListenable,
-        accent: accent,
-        primary: primary,
-        fontSize: fontSize,
-        isRtl: isRtl,
-      );
-    case 'design_native_thread':
-      return _MessageBubbleLine(
-        words: words,
-        positionMs: positionMs,
-        positionListenable: positionListenable,
-        accent: accent,
-        primary: primary,
-        secondary: secondary,
-        fontSize: fontSize,
-        isRtl: isRtl,
-        reduceMotion: reduceMotion,
       );
     case 'aesthetic_ship':
       return _AestheticShip(
@@ -1679,82 +1619,692 @@ class _AestheticVisual extends StatelessWidget {
       builder: (position) {
         final active = _activeIndex(words, position);
         final word = words[active];
-        final icon = _iconFor(word.text);
+        final icon = _iconFor(word.text) ?? FluentIcons.favorite_star;
+        final seed = _hashText(word.text);
         return SizedBox(
-          height: fontSize * 1.9,
-          child: Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                final scale = Tween<double>(begin: 0.6, end: 1).animate(
-                  CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
-                );
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(scale: scale, child: child),
-                );
-              },
-              child: FittedBox(
-                key: ValueKey('$active-${word.text}'),
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      word.text.toUpperCase(),
-                      style: _wordStyle(
-                        color: primary,
-                        fontSize: fontSize * 1.28,
-                        glow: true,
-                      ),
+          height: fontSize * 2.8,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              // A whole ring of supporting icons lights up around the word,
+              // so the style is always dense with pictures, not just one.
+              for (var i = 0; i < 10; i++)
+                _satellite(seed: seed, index: i),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  final scale = Tween<double>(begin: 0.6, end: 1).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutBack,
                     ),
-                    if (icon != null) ...[
+                  );
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(scale: scale, child: child),
+                  );
+                },
+                child: FittedBox(
+                  key: ValueKey('$active-${word.text}'),
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        word.text.toUpperCase(),
+                        style: _wordStyle(
+                          color: primary,
+                          fontSize: fontSize * 1.28,
+                          glow: true,
+                        ),
+                      ),
                       SizedBox(width: fontSize * 0.3),
                       Icon(icon, size: fontSize * 0.9, color: accent),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         );
       },
     );
   }
+
+  /// One faint icon in the ring around the word. The ring placement and icon
+  /// choice come from the word hash, so it changes on every lyric line but
+  /// stays still while that word is sung.
+  Widget _satellite({required int seed, required int index}) {
+    final angle = (seed % 360) / 180 * math.pi + index * math.pi / 5;
+    final rx = fontSize * (2.0 + ((seed >> (index * 3)) & 7) * 0.25);
+    final ry = fontSize * (0.75 + ((seed >> (index * 5)) & 7) * 0.08);
+    final icon = _iconPalette[(seed + index * 11) % _iconPalette.length];
+    return Transform.translate(
+      offset: Offset(math.cos(angle) * rx, math.sin(angle) * ry),
+      child: Opacity(
+        opacity: 0.38 + (index % 4) * 0.12,
+        child: Icon(
+          icon,
+          size: fontSize * (0.26 + (index % 3) * 0.08),
+          color: accent,
+        ),
+      ),
+    );
+  }
 }
 
+/// The stand-by icon set. A word outside the table still gets a stable icon
+/// picked from here, so Icon Spark never falls back to text alone.
+const _iconPalette = <IconData>[
+  FluentIcons.favorite_star,
+  FluentIcons.heart,
+  FluentIcons.music_note,
+  FluentIcons.sunny,
+  FluentIcons.clear_night,
+  FluentIcons.cloud,
+  FluentIcons.drop,
+  FluentIcons.snowflake,
+  FluentIcons.lightning_bolt,
+  FluentIcons.flame_solid,
+  FluentIcons.flower,
+  FluentIcons.city_next,
+  FluentIcons.rocket,
+  FluentIcons.globe,
+  FluentIcons.camera,
+  FluentIcons.headset,
+  FluentIcons.compass_n_w,
+  FluentIcons.mountain_climbing,
+  FluentIcons.ferry,
+  FluentIcons.balloons,
+  FluentIcons.diamond,
+  FluentIcons.crown,
+  FluentIcons.shield,
+  FluentIcons.trophy,
+  FluentIcons.code,
+  FluentIcons.game,
+  FluentIcons.color,
+  FluentIcons.chat,
+];
+
+/// Icon vocabulary for Icon Spark and Fisheye Icons: 300+ everyday lyric
+/// words mapped to a Fluent icon, plus a hashed fallback above.
 IconData? _iconFor(String text) {
   final w = text.toLowerCase().replaceAll(RegExp(r"[^a-z']"), '');
+  if (w.isEmpty) return null;
   const icons = <String, IconData>{
-    'love': FluentIcons.heart,
+    // Love, people and affection.
+    'love': FluentIcons.heart_fill,
+    'loved': FluentIcons.heart_fill,
+    'lover': FluentIcons.heart_fill,
+    'lovers': FluentIcons.heart_fill,
     'heart': FluentIcons.heart,
+    'hearts': FluentIcons.heart,
+    'heartbeat': FluentIcons.heart,
+    'kiss': FluentIcons.heart,
+    'kisses': FluentIcons.heart,
+    'hug': FluentIcons.contact_heart,
+    'soul': FluentIcons.contact_heart,
+    'baby': FluentIcons.contact_heart,
+    'honey': FluentIcons.heart,
+    'darling': FluentIcons.heart,
+    'sweet': FluentIcons.cake,
+    'sweetheart': FluentIcons.heart,
+    'girl': FluentIcons.contact_heart,
+    'boy': FluentIcons.contact_heart,
+    'friend': FluentIcons.people,
+    'friends': FluentIcons.people,
+    'family': FluentIcons.family,
+    'people': FluentIcons.people,
+    'crowd': FluentIcons.people,
+    'stranger': FluentIcons.contact,
+    'mother': FluentIcons.contact_heart,
+    'father': FluentIcons.contact_heart,
+    'sister': FluentIcons.contact_heart,
+    'brother': FluentIcons.contact_heart,
+
+    // Home, night and sky.
     'home': FluentIcons.home,
+    'house': FluentIcons.home,
+    'room': FluentIcons.home,
+    'roof': FluentIcons.home,
+    'bed': FluentIcons.home,
+    'sleep': FluentIcons.clear_night,
+    'sleeping': FluentIcons.clear_night,
+    'dream': FluentIcons.cloud,
+    'dreams': FluentIcons.cloud,
+    'dreaming': FluentIcons.cloud,
     'night': FluentIcons.clear_night,
+    'nights': FluentIcons.clear_night,
+    'midnight': FluentIcons.clear_night,
+    'tonight': FluentIcons.clear_night,
     'moon': FluentIcons.clear_night,
+    'moonlight': FluentIcons.clear_night,
     'star': FluentIcons.favorite_star,
     'stars': FluentIcons.favorite_star,
+    'starlight': FluentIcons.favorite_star,
+    'sky': FluentIcons.cloud,
+    'skies': FluentIcons.cloud,
+    'sun': FluentIcons.sunny,
+    'sunshine': FluentIcons.sunny,
+    'sunny': FluentIcons.sunny,
+    'sunrise': FluentIcons.partly_sunny_day,
+    'dawn': FluentIcons.partly_sunny_day,
+    'morning': FluentIcons.sunny,
+    'day': FluentIcons.sunny,
+    'daylight': FluentIcons.sunny,
+    'light': FluentIcons.lightbulb,
+    'lights': FluentIcons.lightbulb,
+    'shine': FluentIcons.lightbulb,
+    'shining': FluentIcons.lightbulb,
+    'glow': FluentIcons.lightbulb,
+    'bright': FluentIcons.sunny,
+
+    // Fire, weather and water.
+    'fire': FluentIcons.flame_solid,
+    'flame': FluentIcons.flame_solid,
+    'flames': FluentIcons.flame_solid,
+    'burn': FluentIcons.flame_solid,
+    'burning': FluentIcons.flame_solid,
+    'hot': FluentIcons.flame_solid,
+    'warm': FluentIcons.flame_solid,
+    'spark': FluentIcons.lightning_bolt,
+    'sparks': FluentIcons.lightning_bolt,
+    'lightning': FluentIcons.lightning_bolt,
+    'thunder': FluentIcons.thunderstorms,
+    'storm': FluentIcons.thunderstorms,
+    'storms': FluentIcons.thunderstorms,
+    'rain': FluentIcons.rain,
+    'raining': FluentIcons.rain,
+    'rainy': FluentIcons.rain,
+    'tears': FluentIcons.drop,
+    'tear': FluentIcons.drop,
+    'snow': FluentIcons.snowflake,
+    'snowing': FluentIcons.snowflake,
+    'cold': FluentIcons.snowflake,
+    'ice': FluentIcons.snowflake,
+    'frozen': FluentIcons.snowflake,
+    'winter': FluentIcons.snowflake,
+    'cloud': FluentIcons.cloud,
+    'clouds': FluentIcons.cloud,
+    'cloudy': FluentIcons.cloud,
+    'fog': FluentIcons.cloud,
+    'smoke': FluentIcons.cloud,
+    'wind': FluentIcons.cloud,
+    'breeze': FluentIcons.cloud,
+    'air': FluentIcons.cloud,
+    'breathe': FluentIcons.cloud,
+    'breathing': FluentIcons.cloud,
+    'weather': FluentIcons.partly_sunny_day,
+    'sea': FluentIcons.ferry,
+    'ocean': FluentIcons.ferry,
+    'waves': FluentIcons.ferry,
+    'water': FluentIcons.drop,
+    'river': FluentIcons.ferry,
+    'lake': FluentIcons.ferry,
+    'swim': FluentIcons.ferry,
+    'swimming': FluentIcons.ferry,
+    'drown': FluentIcons.drop,
+    'drowning': FluentIcons.drop,
+    'boat': FluentIcons.ferry,
+    'ship': FluentIcons.ferry,
+    'sail': FluentIcons.ferry,
+    'sailing': FluentIcons.ferry,
+    'beach': FluentIcons.ferry,
+    'shore': FluentIcons.ferry,
+    'tide': FluentIcons.ferry,
+    'anchor': FluentIcons.anchor_lock,
+
+    // Streets, travelling and places.
+    'city': FluentIcons.city_next,
+    'town': FluentIcons.city_next,
+    'street': FluentIcons.city_next,
+    'streets': FluentIcons.city_next,
+    'road': FluentIcons.city_next,
+    'roads': FluentIcons.city_next,
+    'drive': FluentIcons.car,
+    'driving': FluentIcons.car,
+    'car': FluentIcons.car,
+    'cars': FluentIcons.car,
+    'ride': FluentIcons.car,
+    'taxi': FluentIcons.car,
+    'bus': FluentIcons.bus,
+    'train': FluentIcons.train,
+    'plane': FluentIcons.airplane,
+    'flight': FluentIcons.airplane,
+    'fly': FluentIcons.airplane,
+    'flying': FluentIcons.airplane,
+    'airport': FluentIcons.airplane,
+    'travel': FluentIcons.map_pin,
+    'journey': FluentIcons.map_pin,
+    'adventure': FluentIcons.compass_n_w,
+    'wander': FluentIcons.compass_n_w,
+    'map': FluentIcons.map_pin,
+    'roadtrip': FluentIcons.map_pin,
+
+    // Money, shopping and objects.
+    'money': FluentIcons.money,
+    'cash': FluentIcons.money,
+    'rich': FluentIcons.money,
+    'pay': FluentIcons.payment_card,
+    'paid': FluentIcons.payment_card,
+    'payment': FluentIcons.payment_card,
+    'bill': FluentIcons.bill,
+    'bills': FluentIcons.bill,
+    'bank': FluentIcons.bank,
+    'dollar': FluentIcons.money,
+    'dollars': FluentIcons.money,
+    'coin': FluentIcons.bank,
+    'coins': FluentIcons.bank,
+    'credit': FluentIcons.payment_card,
+    'card': FluentIcons.payment_card,
+    'gold': FluentIcons.medal,
+    'silver': FluentIcons.medal,
+    'price': FluentIcons.tag,
+    'tag': FluentIcons.tag,
+    'ticket': FluentIcons.ticket,
+    'tickets': FluentIcons.ticket,
+    'shopping': FluentIcons.shopping_cart,
+    'shop': FluentIcons.shopping_cart,
+    'store': FluentIcons.shopping_cart,
+    'buy': FluentIcons.shopping_cart,
+    'bought': FluentIcons.shopping_cart,
+    'sell': FluentIcons.money,
+    'sold': FluentIcons.money,
+    'gift': FluentIcons.giftbox,
+    'gifts': FluentIcons.giftbox,
+    'present': FluentIcons.giftbox,
+    'door': FluentIcons.door,
+    'doors': FluentIcons.door,
+    'key': FluentIcons.lock,
+    'keys': FluentIcons.lock,
+    'lock': FluentIcons.lock,
+    'locked': FluentIcons.lock,
+    'unlock': FluentIcons.lock,
+    'open': FluentIcons.door,
+    'close': FluentIcons.door,
+    'closed': FluentIcons.door,
+
+    // Time and dates.
     'time': FluentIcons.clock,
+    'times': FluentIcons.clock,
     'clock': FluentIcons.clock,
+    'hour': FluentIcons.clock,
+    'hours': FluentIcons.clock,
+    'minute': FluentIcons.clock,
+    'minutes': FluentIcons.clock,
+    'second': FluentIcons.timer,
+    'seconds': FluentIcons.timer,
+    'forever': FluentIcons.timer,
+    'always': FluentIcons.timer,
+    'never': FluentIcons.timer,
+    'yesterday': FluentIcons.history,
+    'tomorrow': FluentIcons.calendar,
+    'today': FluentIcons.calendar,
+    'evening': FluentIcons.clear_night,
+    'date': FluentIcons.calendar,
+    'week': FluentIcons.calendar,
+    'month': FluentIcons.calendar,
+    'year': FluentIcons.calendar,
+    'years': FluentIcons.calendar,
+    'birthday': FluentIcons.birthday_cake,
+    'anniversary': FluentIcons.cake,
+    'party': FluentIcons.balloons,
+    'holiday': FluentIcons.balloons,
+    'christmas': FluentIcons.snowflake,
+
+    // Music and performance.
     'music': FluentIcons.music_note,
     'song': FluentIcons.music_note,
+    'songs': FluentIcons.playlist_music,
     'sing': FluentIcons.microphone,
-    'voice': FluentIcons.microphone,
-    'fire': FluentIcons.equalizer,
-    'dance': FluentIcons.equalizer,
-    'dancing': FluentIcons.equalizer,
-    'light': FluentIcons.lightbulb,
-    'shine': FluentIcons.lightbulb,
-    'dreams': FluentIcons.cloud,
-    'dream': FluentIcons.cloud,
-    'cloud': FluentIcons.cloud,
+    'singing': FluentIcons.microphone,
+    'sung': FluentIcons.microphone,
+    'melody': FluentIcons.guitar,
+    'tune': FluentIcons.guitar,
+    'beat': FluentIcons.speakers,
+    'rhythm': FluentIcons.speakers,
+    'guitar': FluentIcons.guitar,
+    'piano': FluentIcons.music_note,
+    'drum': FluentIcons.speakers,
+    'drums': FluentIcons.speakers,
+    'bass': FluentIcons.speakers,
+    'chorus': FluentIcons.microphone,
+    'radio': FluentIcons.headset,
+    'stereo': FluentIcons.speakers,
+    'speaker': FluentIcons.speakers,
+    'headphones': FluentIcons.headset,
+    'listen': FluentIcons.headset,
+    'listening': FluentIcons.headset,
+    'dance': FluentIcons.balloons,
+    'dancing': FluentIcons.balloons,
+    'danced': FluentIcons.balloons,
+    'play': FluentIcons.game,
+    'playing': FluentIcons.game,
+    'played': FluentIcons.game,
+    'game': FluentIcons.game,
+    'games': FluentIcons.game,
+    'playlist': FluentIcons.playlist_music,
+
+    // Talking, messages and writing.
+    'phone': FluentIcons.phone,
+    'call': FluentIcons.phone,
+    'calling': FluentIcons.phone,
+    'ringing': FluentIcons.phone,
+    'text': FluentIcons.chat,
+    'message': FluentIcons.chat,
+    'messages': FluentIcons.chat,
+    'chat': FluentIcons.chat,
+    'talk': FluentIcons.chat,
+    'talking': FluentIcons.chat,
+    'speak': FluentIcons.microphone,
+    'say': FluentIcons.chat,
+    'said': FluentIcons.chat,
+    'tell': FluentIcons.chat,
+    'told': FluentIcons.chat,
+    'word': FluentIcons.chat,
+    'words': FluentIcons.chat,
+    'whisper': FluentIcons.chat,
+    'shout': FluentIcons.microphone,
+    'scream': FluentIcons.microphone,
+    'mail': FluentIcons.mail,
+    'letter': FluentIcons.mail,
+    'letters': FluentIcons.mail,
+    'write': FluentIcons.mail,
+    'writing': FluentIcons.mail,
+    'wrote': FluentIcons.mail,
+    'book': FluentIcons.book_answers,
+    'books': FluentIcons.library,
+    'read': FluentIcons.book_answers,
+    'reading': FluentIcons.book_answers,
+    'story': FluentIcons.book_answers,
+    'stories': FluentIcons.book_answers,
+    'page': FluentIcons.book_answers,
+    'pages': FluentIcons.book_answers,
+    'paper': FluentIcons.book_answers,
+    'poem': FluentIcons.book_answers,
+    'poetry': FluentIcons.book_answers,
+
+    // Eyes and feelings.
+    'eye': FluentIcons.red_eye,
+    'eyes': FluentIcons.red_eye,
+    'see': FluentIcons.red_eye,
+    'seen': FluentIcons.red_eye,
+    'saw': FluentIcons.red_eye,
+    'look': FluentIcons.red_eye,
+    'looking': FluentIcons.red_eye,
+    'watch': FluentIcons.red_eye,
+    'watching': FluentIcons.red_eye,
+    'face': FluentIcons.emoji,
+    'smile': FluentIcons.emoji,
+    'smiling': FluentIcons.emoji,
+    'laugh': FluentIcons.emoji,
+    'laughing': FluentIcons.emoji,
+    'happy': FluentIcons.emoji,
+    'joy': FluentIcons.balloons,
+    'hope': FluentIcons.sunny,
+    'hopeful': FluentIcons.sunny,
+    'free': FluentIcons.airplane,
+    'freedom': FluentIcons.airplane,
+    'alive': FluentIcons.heart_fill,
+    'life': FluentIcons.heart_fill,
+    'live': FluentIcons.heart_fill,
+    'living': FluentIcons.heart_fill,
+    'sad': FluentIcons.sad,
+    'sadness': FluentIcons.sad,
+    'cry': FluentIcons.sad,
+    'crying': FluentIcons.sad,
+    'pain': FluentIcons.sad,
+    'hurt': FluentIcons.heart_broken,
+    'hurting': FluentIcons.heart_broken,
+    'broken': FluentIcons.heart_broken,
+    'broke': FluentIcons.heart_broken,
+    'heartbreak': FluentIcons.heart_broken,
+    'lonely': FluentIcons.emoji_disappointed,
+    'alone': FluentIcons.emoji_disappointed,
+    'empty': FluentIcons.emoji_neutral,
+    'lost': FluentIcons.compass_n_w,
+    'miss': FluentIcons.contact_heart,
+    'missing': FluentIcons.contact_heart,
+
+    // Movement, power and royalty.
+    'run': FluentIcons.running,
+    'running': FluentIcons.running,
+    'ran': FluentIcons.running,
+    'walk': FluentIcons.running,
+    'walking': FluentIcons.running,
+    'walked': FluentIcons.running,
+    'move': FluentIcons.running,
+    'moving': FluentIcons.running,
+    'jump': FluentIcons.running,
+    'jumping': FluentIcons.running,
+    'fall': FluentIcons.drop,
+    'falling': FluentIcons.drop,
+    'fell': FluentIcons.drop,
+    'rise': FluentIcons.sunny,
+    'rising': FluentIcons.sunny,
+    'climb': FluentIcons.mountain_climbing,
+    'climbing': FluentIcons.mountain_climbing,
+    'high': FluentIcons.mountain_climbing,
+    'top': FluentIcons.mountain_climbing,
+    'fight': FluentIcons.shield,
+    'fighting': FluentIcons.shield,
+    'fought': FluentIcons.shield,
+    'war': FluentIcons.shield,
+    'battle': FluentIcons.shield,
+    'win': FluentIcons.trophy,
+    'winning': FluentIcons.trophy,
+    'won': FluentIcons.trophy,
+    'lose': FluentIcons.sad,
+    'losing': FluentIcons.sad,
+    'strong': FluentIcons.shield,
+    'stronger': FluentIcons.shield,
+    'brave': FluentIcons.shield,
+    'power': FluentIcons.lightning_bolt,
+    'king': FluentIcons.crown,
+    'queen': FluentIcons.crown,
+    'crown': FluentIcons.crown,
+    'throne': FluentIcons.crown,
+    'royal': FluentIcons.crown,
+    'diamond': FluentIcons.diamond,
+    'diamonds': FluentIcons.diamond,
+    'ring': FluentIcons.diamond,
+    'rings': FluentIcons.diamond,
+    'jewel': FluentIcons.diamond,
+    'victory': FluentIcons.trophy,
+    'champion': FluentIcons.medal,
+    'medal': FluentIcons.medal,
+    'goal': FluentIcons.bullseye,
+    'aim': FluentIcons.bullseye,
+    'focus': FluentIcons.bullseye,
+
+    // School, work and technology.
+    'school': FluentIcons.education,
+    'class': FluentIcons.education,
+    'teacher': FluentIcons.education,
+    'learn': FluentIcons.education,
+    'learning': FluentIcons.education,
+    'study': FluentIcons.education,
+    'studying': FluentIcons.education,
+    'student': FluentIcons.education,
+    'college': FluentIcons.education,
+    'work': FluentIcons.laptop_selected,
+    'working': FluentIcons.laptop_selected,
+    'job': FluentIcons.laptop_selected,
+    'office': FluentIcons.office_chat,
+    'business': FluentIcons.office_chat,
+    'boss': FluentIcons.contact,
+    'computer': FluentIcons.tablet,
+    'code': FluentIcons.code,
+    'coding': FluentIcons.code,
+    'program': FluentIcons.code,
+    'hacker': FluentIcons.code,
+    'internet': FluentIcons.wifi,
+    'online': FluentIcons.wifi,
+    'wifi': FluentIcons.wifi,
+    'signal': FluentIcons.wifi,
+    'robot': FluentIcons.robot,
+    'machine': FluentIcons.robot,
+    'tech': FluentIcons.robot,
+    'future': FluentIcons.rocket,
+    'digital': FluentIcons.code,
+    'tablet': FluentIcons.tablet,
+    'keyboard': FluentIcons.keyboard_classic,
+    'plug': FluentIcons.plug,
+    'battery': FluentIcons.plug,
+    'calculator': FluentIcons.calculator,
+    'chart': FluentIcons.chart,
+    'history': FluentIcons.history,
+    'factory': FluentIcons.factory,
+    'library': FluentIcons.library,
+
+    // Pictures, food and nights out.
+    'camera': FluentIcons.camera,
+    'photo': FluentIcons.photo,
+    'photos': FluentIcons.photo,
+    'picture': FluentIcons.photo,
+    'pictures': FluentIcons.photo,
+    'film': FluentIcons.video,
+    'movie': FluentIcons.video,
+    'movies': FluentIcons.video,
+    'video': FluentIcons.video,
+    'videos': FluentIcons.video,
+    'screen': FluentIcons.video,
+    'tv': FluentIcons.video,
+    'television': FluentIcons.video,
+    'show': FluentIcons.video,
+    'food': FluentIcons.eat_drink,
+    'eat': FluentIcons.eat_drink,
+    'eating': FluentIcons.eat_drink,
+    'ate': FluentIcons.eat_drink,
+    'dinner': FluentIcons.eat_drink,
+    'lunch': FluentIcons.eat_drink,
+    'breakfast': FluentIcons.coffee,
+    'hungry': FluentIcons.eat_drink,
+    'cake': FluentIcons.cake,
+    'sugar': FluentIcons.cake,
+    'coffee': FluentIcons.coffee,
+    'tea': FluentIcons.coffee,
+    'cup': FluentIcons.coffee,
+    'drink': FluentIcons.cocktails,
+    'drinking': FluentIcons.cocktails,
+    'drank': FluentIcons.cocktails,
+    'wine': FluentIcons.cocktails,
+    'beer': FluentIcons.beer_mug,
+    'whiskey': FluentIcons.cocktails,
+    'alcohol': FluentIcons.cocktails,
+    'drunk': FluentIcons.cocktails,
+    'cocktail': FluentIcons.cocktails,
+    'cocktails': FluentIcons.cocktails,
+
+    // Nature, space and animals.
+    'flower': FluentIcons.flower,
+    'flowers': FluentIcons.flower,
+    'rose': FluentIcons.flower,
+    'roses': FluentIcons.flower,
+    'garden': FluentIcons.flower,
+    'bloom': FluentIcons.flower,
+    'blooming': FluentIcons.flower,
+    'spring': FluentIcons.flower,
+    'tree': FluentIcons.flower,
+    'trees': FluentIcons.flower,
+    'leaf': FluentIcons.flower,
+    'leaves': FluentIcons.flower,
+    'forest': FluentIcons.flower,
+    'mountain': FluentIcons.mountain_climbing,
+    'mountains': FluentIcons.mountain_climbing,
+    'hill': FluentIcons.mountain_climbing,
+    'hills': FluentIcons.mountain_climbing,
+    'earth': FluentIcons.globe,
+    'world': FluentIcons.globe,
+    'globe': FluentIcons.globe,
+    'planet': FluentIcons.globe,
+    'space': FluentIcons.rocket,
+    'universe': FluentIcons.globe,
+    'galaxy': FluentIcons.favorite_star,
+    'rocket': FluentIcons.rocket,
+    'spaceship': FluentIcons.rocket,
+    'astronaut': FluentIcons.rocket,
+    'mars': FluentIcons.globe,
+    'cat': FluentIcons.cat,
+    'cats': FluentIcons.cat,
+    'kitten': FluentIcons.cat,
+    'dog': FluentIcons.cat,
+    'dogs': FluentIcons.cat,
+    'puppy': FluentIcons.cat,
+    'pet': FluentIcons.cat,
+    'bird': FluentIcons.airplane,
+    'birds': FluentIcons.airplane,
+    'fish': FluentIcons.ferry,
+    'butterfly': FluentIcons.flower,
+    'bee': FluentIcons.bug,
+    'animal': FluentIcons.cat,
+    'animals': FluentIcons.cat,
+
+    // Faith, colour and the body.
+    'god': FluentIcons.favorite_star,
+    'heaven': FluentIcons.favorite_star,
+    'angel': FluentIcons.favorite_star,
+    'pray': FluentIcons.favorite_star,
+    'prayer': FluentIcons.favorite_star,
+    'faith': FluentIcons.favorite_star,
+    'bless': FluentIcons.favorite_star,
+    'blessed': FluentIcons.favorite_star,
+    'holy': FluentIcons.favorite_star,
+    'devil': FluentIcons.emoji_disappointed,
+    'hell': FluentIcons.emoji_disappointed,
+    'sin': FluentIcons.emoji_disappointed,
+    'demon': FluentIcons.emoji_disappointed,
+    'monster': FluentIcons.emoji_disappointed,
+    'ghost': FluentIcons.emoji_neutral,
+    'dark': FluentIcons.clear_night,
+    'darkness': FluentIcons.clear_night,
+    'shadow': FluentIcons.clear_night,
+    'black': FluentIcons.color,
+    'white': FluentIcons.color,
+    'red': FluentIcons.color,
+    'blue': FluentIcons.color,
+    'green': FluentIcons.color,
+    'yellow': FluentIcons.color,
+    'purple': FluentIcons.color,
+    'pink': FluentIcons.color,
+    'colour': FluentIcons.color,
+    'color': FluentIcons.color,
+    'shirt': FluentIcons.shirt,
+    'clothes': FluentIcons.shirt,
+    'dress': FluentIcons.shirt,
+    'jacket': FluentIcons.shirt,
+    'shoes': FluentIcons.shirt,
+    'hat': FluentIcons.shirt,
+    'glasses': FluentIcons.glasses,
+    'health': FluentIcons.health,
+    'sick': FluentIcons.health,
+    'ill': FluentIcons.medical,
+    'doctor': FluentIcons.medical,
+    'hospital': FluentIcons.hospital,
+    'medicine': FluentIcons.pill,
+    'pill': FluentIcons.pill,
+    'pills': FluentIcons.pill,
+    'flag': FluentIcons.flag,
+    'nation': FluentIcons.flag,
+    'country': FluentIcons.flag,
+    'police': FluentIcons.shield,
+    'cop': FluentIcons.shield,
+    'crime': FluentIcons.shield,
+    'brush': FluentIcons.brush,
+    'paint': FluentIcons.brush,
+    'art': FluentIcons.color,
+    'draw': FluentIcons.brush,
+    'drawing': FluentIcons.brush,
   };
-  return icons[w];
+  final exact = icons[w];
+  if (exact != null) return exact;
+  return _iconPalette[_hashText(w) % _iconPalette.length];
 }
 
-// ---------------------------------------------------------------------------
-// Signature designs: Branches / Web / Constellation / Message Thread
+// Signature designs: Branches / Constellation
 // ---------------------------------------------------------------------------
 
 /// How much of [word] has been sung at [positionMs], 0..1.
@@ -1768,22 +2318,7 @@ double _wordProgress(StudioLyricWord word, int positionMs) {
   );
 }
 
-List<double> _wordProgressList(List<StudioLyricWord> words, int positionMs) => [
-  for (final word in words) _wordProgress(word, positionMs),
-];
-
-/// Rainfall fall offset, 1 = still in the cloud, 0 = landed. The word drops
-/// fast and lifts a touch as it settles, so nothing snaps to the baseline.
-double _rainFall(double progress) {
-  final p = progress.clamp(0.0, 1.0);
-  if (p <= 0) return 1;
-  if (p >= 1) return 0;
-  final fall = Curves.easeInCubic.transform((p / 0.78).clamp(0.0, 1.0));
-  final bounce = p < 0.78 ? 0.0 : math.sin((p - 0.78) / 0.22 * math.pi) * 0.16;
-  return (1 - fall + bounce).clamp(0.0, 1.15);
-}
-
-/// One word anchor on a spine (Branches) or sky path (Constellation).
+/// One word anchor on a spine (Branches) or a sky star (Constellation).
 class _SpineNode {
   final Offset point;
   final double textLeft;
@@ -1847,7 +2382,7 @@ _SpineLayout _layoutSpine({
 
 /// Branches: a vine draws itself under the line and each word lights a node
 /// on it as the singer reaches that word.
-class _BranchesLine extends StatelessWidget {
+class _BranchesLine extends StatefulWidget {
   final String lineText;
   final List<StudioLyricWord> words;
   final int positionMs;
@@ -1873,37 +2408,68 @@ class _BranchesLine extends StatelessWidget {
   });
 
   @override
+  State<_BranchesLine> createState() => _BranchesLineState();
+}
+
+class _BranchesLineState extends State<_BranchesLine> {
+  // The spine, vine path and its metrics depend only on the line and the
+  // canvas size. Caching them keeps the 60 fps position tick from measuring
+  // every word and walking the path again on each frame.
+  _SpineLayout? _layout;
+  Path? _vine;
+  PathMetric? _metric;
+  String _cacheKey = '';
+
+  void _ensureGeometry(double width, double height) {
+    final key =
+        '${widget.lineText}|${widget.words.length}|'
+        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
+        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
+    if (key == _cacheKey) return;
+    _cacheKey = key;
+    final layout = _layoutSpine(
+      words: widget.words,
+      width: width,
+      height: height,
+      fontSize: widget.fontSize,
+      seedText: widget.lineText,
+      isRtl: widget.isRtl,
+      labelsBelow: false,
+      amplitude: widget.fontSize * 0.26,
+      baseline: 0.66,
+    );
+    final vine = _vinePath([for (final node in layout.nodes) node.point]);
+    // PathMetrics is single-pass, so take the first metric from its iterator
+    // instead of asking isEmpty and then first.
+    final metrics = vine.computeMetrics().iterator;
+    _layout = layout;
+    _vine = vine;
+    _metric = metrics.moveNext() ? metrics.current : null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
+      listenable: widget.positionListenable,
+      initial: widget.positionMs,
       builder: (position) {
         return LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth.isFinite
                 ? constraints.maxWidth
                 : MediaQuery.sizeOf(context).width;
-            final height = math.max(fontSize * 2.6, 96.0);
-            final layout = _layoutSpine(
-              words: words,
-              width: width,
-              height: height,
-              fontSize: fontSize,
-              seedText: lineText,
-              isRtl: isRtl,
-              labelsBelow: false,
-              amplitude: fontSize * 0.26,
-              baseline: 0.66,
-            );
-            final revealed = _revealedCount(words, position);
-            final preview = _isPreview(words, position);
+            final height = math.max(widget.fontSize * 2.6, 96.0);
+            _ensureGeometry(width, height);
+            final layout = _layout!;
+            final revealed = _revealedCount(widget.words, position);
+            final preview = _isPreview(widget.words, position);
             final active = preview ? -1 : revealed - 1;
             final activeProgress = active >= 0
-                ? _wordProgress(words[active], position)
+                ? _wordProgress(widget.words[active], position)
                 : 0.0;
             var fraction = 0.0;
             if (active >= 0) {
-              fraction = (active + activeProgress) / words.length;
+              fraction = (active + activeProgress) / widget.words.length;
             }
             return SizedBox(
               width: width,
@@ -1915,16 +2481,18 @@ class _BranchesLine extends StatelessWidget {
                     child: CustomPaint(
                       painter: _BranchesPainter(
                         points: [for (final node in layout.nodes) node.point],
+                        vine: _vine,
+                        metric: _metric,
                         size: layout.size,
                         fraction: fraction.clamp(0.0, 1.0),
                         revealed: revealed,
                         active: active,
                         activeProgress: activeProgress,
-                        accent: accent,
+                        accent: widget.accent,
                       ),
                     ),
                   ),
-                  for (var i = 0; i < words.length; i++)
+                  for (var i = 0; i < widget.words.length; i++)
                     Positioned(
                       left: layout.nodes[i].textLeft,
                       top: layout.nodes[i].textTop,
@@ -1933,25 +2501,25 @@ class _BranchesLine extends StatelessWidget {
                             ? 1 + 0.06 * math.sin(activeProgress * math.pi)
                             : 1,
                         alignment: Alignment.bottomCenter,
-                        duration: reduceMotion
+                        duration: widget.reduceMotion
                             ? Duration.zero
                             : const Duration(milliseconds: 200),
                         curve: Curves.easeOutCubic,
                         child: AnimatedDefaultTextStyle(
-                          duration: reduceMotion
+                          duration: widget.reduceMotion
                               ? Duration.zero
                               : const Duration(milliseconds: 220),
                           curve: Curves.easeOutCubic,
                           style: _wordStyle(
                             color: i == active
-                                ? accent
+                                ? widget.accent
                                 : i < revealed
-                                ? primary
-                                : secondary.withValues(alpha: 0.42),
+                                ? widget.primary
+                                : widget.secondary.withValues(alpha: 0.42),
                             fontSize: layout.size,
                             glow: i == active,
                           ),
-                          child: Text(words[i].text.toUpperCase()),
+                          child: Text(widget.words[i].text.toUpperCase()),
                         ),
                       ),
                     ),
@@ -1965,8 +2533,31 @@ class _BranchesLine extends StatelessWidget {
   }
 }
 
+/// The vine under a Branches line, one quadratic curve between star nodes.
+Path _vinePath(List<Offset> points) {
+  final path = Path();
+  if (points.isEmpty) return path;
+  path.moveTo(points.first.dx, points.first.dy);
+  if (points.length == 1) {
+    path.lineTo(points.first.dx + 0.1, points.first.dy);
+    return path;
+  }
+  for (var i = 1; i < points.length; i++) {
+    final a = points[i - 1];
+    final b = points[i];
+    final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    path.quadraticBezierTo(a.dx, a.dy, mid.dx, mid.dy);
+    if (i == points.length - 1) {
+      path.quadraticBezierTo(b.dx, b.dy, b.dx, b.dy);
+    }
+  }
+  return path;
+}
+
 class _BranchesPainter extends CustomPainter {
   final List<Offset> points;
+  final Path? vine;
+  final PathMetric? metric;
   final double size;
   final double fraction;
   final int revealed;
@@ -1976,6 +2567,8 @@ class _BranchesPainter extends CustomPainter {
 
   const _BranchesPainter({
     required this.points,
+    required this.vine,
+    required this.metric,
     required this.size,
     required this.fraction,
     required this.revealed,
@@ -1984,42 +2577,22 @@ class _BranchesPainter extends CustomPainter {
     required this.accent,
   });
 
-  Path _vine() {
-    final path = Path();
-    if (points.isEmpty) return path;
-    path.moveTo(points.first.dx, points.first.dy);
-    if (points.length == 1) {
-      path.lineTo(points.first.dx + 0.1, points.first.dy);
-      return path;
-    }
-    for (var i = 1; i < points.length; i++) {
-      final a = points[i - 1];
-      final b = points[i];
-      final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
-      path.quadraticBezierTo(a.dx, a.dy, mid.dx, mid.dy);
-      if (i == points.length - 1) {
-        path.quadraticBezierTo(b.dx, b.dy, b.dx, b.dy);
-      }
-    }
-    return path;
-  }
-
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    final path = _vine();
-    final metrics = path.computeMetrics().toList();
-    if (metrics.isEmpty) return;
-    final metric = metrics.first;
-    final grown = metric.length * fraction;
+    final metric = this.metric;
+    final vine = this.vine;
+    if (metric == null || vine == null) return;
 
     canvas.drawPath(
-      path,
+      vine,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.6
         ..strokeCap = StrokeCap.round
         ..color = Colors.white.withValues(alpha: 0.12),
     );
+
+    final grown = metric.length * fraction;
 
     // Leaf pairs sprout along the part of the vine that has grown, alternating
     // sides, so the stem reads as a plant rather than a line.
@@ -2043,14 +2616,15 @@ class _BranchesPainter extends CustomPainter {
 
     if (grown > 0) {
       final lit = metric.extractPath(0, grown);
+      // A wide translucent stroke instead of a blurred one: the glow used to
+      // run a mask blur over the whole grown path on every frame.
       canvas.drawPath(
         lit,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 9
+          ..strokeWidth = 10
           ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.10)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+          ..color = accent.withValues(alpha: 0.11),
       );
       canvas.drawPath(
         lit,
@@ -2148,6 +2722,8 @@ class _BranchesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BranchesPainter oldDelegate) =>
+      oldDelegate.metric != metric ||
+      oldDelegate.vine != vine ||
       oldDelegate.revealed != revealed ||
       oldDelegate.fraction != fraction ||
       oldDelegate.active != active ||
@@ -2156,345 +2732,109 @@ class _BranchesPainter extends CustomPainter {
       !listEquals(oldDelegate.points, points);
 }
 
-/// Web: each line is spun from a centre hub, one strand per word, with the
-/// strands and the concentric web lighting up as the words are sung.
-class _WebLine extends StatelessWidget {
-  final String lineText;
-  final List<StudioLyricWord> words;
-  final int positionMs;
-  final ValueListenable<int>? positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final double fontSize;
+/// A real night sky: the line's words are stars at scattered, irregular
+/// positions, joined into a constellation figure, with each word labelling
+/// its own star from below.
+class _ConstellationLayout {
+  final List<_SpineNode> nodes;
+  final double size;
+  final List<Offset> sky;
+  final List<double> segments;
+  final double length;
 
-  const _WebLine({
-    required this.lineText,
-    required this.words,
-    required this.positionMs,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.fontSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
-      builder: (position) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final height = math.max(fontSize * 3.4, 140.0);
-            final n = words.length;
-            final center = Offset(width / 2, height / 2);
-            final radius = math.min(width * 0.34, height * 0.34);
-            final labelSize = math.max(
-              10.0,
-              math.min(fontSize * 0.36, radius * 0.42),
-            );
-            final progress = _wordProgressList(words, position);
-            final preview = _isPreview(words, position);
-            final revealed = _revealedCount(words, position);
-            final active = preview ? -1 : revealed - 1;
-            final activeProgress = active >= 0
-                ? _wordProgress(words[active], position)
-                : 0.0;
-            final trace = active >= 0 ? (active + activeProgress) / n : 0.0;
-            final nodes = <Offset>[];
-            final labels = <_WebLabel>[];
-            final phase = (_hashText(lineText) % 628) / 100;
-            for (var i = 0; i < n; i++) {
-              final angle = -math.pi / 2 + (2 * math.pi * i) / n + phase * 0.02;
-              final r = radius * (i.isEven ? 0.8 : 1.0);
-              final point = Offset(
-                center.dx + math.cos(angle) * r,
-                center.dy + math.sin(angle) * r,
-              );
-              nodes.add(point);
-              final outward = labelSize * 1.5;
-              final dx = point.dx + math.cos(angle) * outward;
-              final dy = point.dy + math.sin(angle) * outward;
-              final w = _visualLength(words[i].text) * labelSize * 0.66;
-              labels.add(
-                _WebLabel(
-                  left: (dx - w / 2).clamp(0.0, math.max(0.0, width - w)),
-                  top: (dy - labelSize * 0.55).clamp(
-                    0.0,
-                    math.max(0.0, height - labelSize * 1.1),
-                  ),
-                  width: w,
-                ),
-              );
-            }
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _WebPainter(
-                        hub: center,
-                        nodes: nodes,
-                        progress: progress,
-                        radius: radius,
-                        revealed: revealed,
-                        active: active,
-                        activeProgress: activeProgress,
-                        trace: trace.clamp(0.0, 1.0),
-                        accent: accent,
-                      ),
-                    ),
-                  ),
-                  for (var i = 0; i < n; i++)
-                    Positioned(
-                      left: labels[i].left,
-                      top: labels[i].top,
-                      width: labels[i].width,
-                      child: AnimatedScale(
-                        scale: i == active ? 1.16 : 1,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          style: _wordStyle(
-                            color: i == active
-                                ? accent
-                                : i < revealed
-                                ? primary
-                                : secondary.withValues(alpha: 0.42),
-                            fontSize: labelSize,
-                            glow: i == active,
-                          ).copyWith(letterSpacing: 0),
-                          child: Text(
-                            words[i].text.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _WebLabel {
-  final double left;
-  final double top;
-  final double width;
-
-  const _WebLabel({required this.left, required this.top, required this.width});
-}
-
-class _WebPainter extends CustomPainter {
-  final Offset hub;
-  final List<Offset> nodes;
-  final List<double> progress;
-  final double radius;
-  final int revealed;
-  final int active;
-  final double activeProgress;
-  final double trace;
-  final Color accent;
-
-  const _WebPainter({
-    required this.hub,
+  const _ConstellationLayout({
     required this.nodes,
-    required this.progress,
-    required this.radius,
-    required this.revealed,
-    required this.active,
-    required this.activeProgress,
-    required this.trace,
-    required this.accent,
+    required this.size,
+    required this.sky,
+    required this.segments,
+    required this.length,
   });
-
-  @override
-  void paint(Canvas canvas, Size canvasSize) {
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.08);
-    const ringFactors = [0.34, 0.62, 0.9];
-    for (final factor in ringFactors) {
-      canvas.drawCircle(hub, radius * factor, ring);
-    }
-    // The rings fill in clockwise as the singer moves through the line.
-    if (trace > 0) {
-      for (var r = 0; r < ringFactors.length; r++) {
-        final rect = Rect.fromCircle(
-          center: hub,
-          radius: radius * ringFactors[r],
-        );
-        canvas.drawArc(
-          rect,
-          -math.pi / 2 + r * 0.42,
-          2 * math.pi * trace,
-          false,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2
-            ..strokeCap = StrokeCap.round
-            ..color = accent.withValues(alpha: 0.10 + r * 0.07),
-        );
-      }
-    }
-
-    final faintStrand = Paint()
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.08);
-    for (final node in nodes) {
-      canvas.drawLine(hub, node, faintStrand);
-    }
-
-    if (nodes.length > 1) {
-      final thread = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = Colors.white.withValues(alpha: 0.06);
-      for (var i = 0; i < nodes.length; i++) {
-        final a = nodes[i];
-        final b = nodes[(i + 1) % nodes.length];
-        final ctrl = Offset.lerp(
-          hub,
-          Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2),
-          0.72,
-        )!;
-        canvas.drawPath(
-          Path()
-            ..moveTo(a.dx, a.dy)
-            ..quadraticBezierTo(ctrl.dx, ctrl.dy, b.dx, b.dy),
-          thread,
-        );
-      }
-    }
-
-    for (var i = 0; i < nodes.length; i++) {
-      final p = progress[i];
-      if (p <= 0) continue;
-      final tip = Offset.lerp(hub, nodes[i], p)!;
-      canvas.drawLine(
-        hub,
-        tip,
-        Paint()
-          ..strokeWidth = 1.4
-          ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.25 + 0.5 * p),
-      );
-      if (p >= 1) {
-        final done = i == active;
-        canvas.drawCircle(
-          nodes[i],
-          radius * (done ? 0.075 : 0.055),
-          Paint()..color = accent.withValues(alpha: done ? 0.18 : 0.10),
-        );
-        canvas.drawCircle(
-          nodes[i],
-          radius * 0.035,
-          Paint()..color = accent.withValues(alpha: 0.65),
-        );
-        canvas.drawCircle(
-          nodes[i],
-          radius * 0.012,
-          Paint()..color = Colors.white.withValues(alpha: 0.8),
-        );
-      }
-    }
-
-    if (nodes.length > 1) {
-      for (var i = 0; i < nodes.length; i++) {
-        final j = (i + 1) % nodes.length;
-        final both = math.min(progress[i], progress[j]);
-        if (both <= 0) continue;
-        final a = nodes[i];
-        final b = nodes[j];
-        final ctrl = Offset.lerp(
-          hub,
-          Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2),
-          0.72,
-        )!;
-        final metric =
-            (Path()
-                  ..moveTo(a.dx, a.dy)
-                  ..quadraticBezierTo(ctrl.dx, ctrl.dy, b.dx, b.dy))
-                .computeMetrics()
-                .first;
-        canvas.drawPath(
-          metric.extractPath(0, metric.length * both),
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2
-            ..color = both >= 1
-                ? accent.withValues(alpha: 0.35)
-                : Colors.white.withValues(alpha: 0.16),
-        );
-        if (both >= 1) {
-          // A dew drop hangs where two finished strands meet.
-          final mid = a * 0.25 + ctrl * 0.5 + b * 0.25;
-          canvas.drawCircle(
-            mid,
-            4.2,
-            Paint()..color = accent.withValues(alpha: 0.12),
-          );
-          canvas.drawCircle(
-            mid,
-            1.6,
-            Paint()..color = Colors.white.withValues(alpha: 0.65),
-          );
-        }
-      }
-    }
-
-    final lit = revealed > 0;
-    final pulse = active >= 0
-        ? 0.5 + 0.5 * math.sin(activeProgress.clamp(0.0, 1.0) * math.pi)
-        : 0.0;
-    canvas.drawCircle(
-      hub,
-      radius * (0.10 + 0.04 * pulse + (lit ? 0.02 : 0)),
-      Paint()
-        ..color = accent.withValues(alpha: (lit ? 0.22 : 0.10) + 0.10 * pulse),
-    );
-    canvas.drawCircle(
-      hub,
-      radius * 0.045,
-      Paint()..color = accent.withValues(alpha: lit ? 0.95 : 0.45),
-    );
-    canvas.drawCircle(
-      hub,
-      radius * 0.018,
-      Paint()..color = Colors.white.withValues(alpha: 0.85),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _WebPainter oldDelegate) =>
-      oldDelegate.revealed != revealed ||
-      oldDelegate.active != active ||
-      oldDelegate.activeProgress != activeProgress ||
-      oldDelegate.trace != trace ||
-      oldDelegate.accent != accent ||
-      !listEquals(oldDelegate.progress, progress) ||
-      !listEquals(oldDelegate.nodes, nodes);
 }
 
-/// Constellation: the line is a sky path; every word is a star that lights
-/// as it is sung and the traced line follows the singer across the stars.
-class _ConstellationLine extends StatelessWidget {
+_ConstellationLayout _layoutConstellation({
+  required List<StudioLyricWord> words,
+  required double width,
+  required double height,
+  required double fontSize,
+  required String seedText,
+  required bool isRtl,
+}) {
+  final n = words.length;
+  final seed = _hashText(seedText);
+  final random = math.Random(seed ^ 0x2c1b3c6d);
+
+  // Labels are measured once; the random star scatter below never changes
+  // their width, so a long line is shrunk until every label fits.
+  var size = fontSize * 0.46;
+  var widths = List<double>.filled(n, 0);
+  for (var attempt = 0; attempt < 12; attempt++) {
+    widths = [for (final word in words) _visualLength(word.text) * size];
+    final total =
+        widths.fold<double>(0, (a, b) => a + b) + size * 0.7 * (n - 1);
+    if (total <= width * 0.9 || size <= 10) break;
+    size *= 0.88;
+  }
+
+  final labelTotal = widths.fold<double>(0, (a, b) => a + b);
+  final free = math.max(0.0, width * 0.92 - labelTotal);
+  final gaps = [
+    for (var i = 0; i <= n; i++) free * (0.35 + random.nextDouble()),
+  ];
+  final gapSum = gaps.fold<double>(0, (a, b) => a + b);
+  final gapScale = free <= 0 || gapSum == 0 ? 0.0 : free / gapSum;
+  final top = height * 0.10;
+  final bottom = height * 0.50;
+  var x = width * 0.04 + gaps[0] * gapScale;
+  var lastY = height * 0.33;
+  final nodes = <_SpineNode>[];
+  for (var i = 0; i < n; i++) {
+    final index = isRtl ? n - 1 - i : i;
+    var y = top + random.nextDouble() * (bottom - top);
+    // Neighbouring stars should not line up like a ruler.
+    if ((y - lastY).abs() < size * 0.8) {
+      y = y < lastY
+          ? lastY - size * (0.9 + random.nextDouble())
+          : lastY + size * (0.9 + random.nextDouble());
+      y = y.clamp(top, bottom);
+    }
+    lastY = y;
+    final centerX = x + widths[index] / 2;
+    nodes.add(
+      _SpineNode(
+        Offset(centerX, y),
+        centerX - widths[index] / 2,
+        y + size * (0.55 + random.nextDouble() * 0.35),
+      ),
+    );
+    x += widths[index] + gaps[i + 1] * gapScale;
+  }
+
+  final skyRandom = math.Random(seed ^ 0x1f123bb5);
+  final sky = [
+    for (var i = 0; i < 64; i++)
+      Offset(skyRandom.nextDouble() * width, skyRandom.nextDouble() * height),
+  ];
+
+  final segments = <double>[];
+  var length = 0.0;
+  for (var i = 1; i < nodes.length; i++) {
+    final distance = (nodes[i].point - nodes[i - 1].point).distance;
+    segments.add(distance);
+    length += distance;
+  }
+
+  return _ConstellationLayout(
+    nodes: nodes,
+    size: size,
+    sky: sky,
+    segments: segments,
+    length: length,
+  );
+}
+
+/// Constellation: every word is a star at its own scattered spot in the sky,
+/// connected into a figure that lights and draws itself as the line is sung.
+class _ConstellationLine extends StatefulWidget {
   final String lineText;
   final List<StudioLyricWord> words;
   final int positionMs;
@@ -2518,37 +2858,54 @@ class _ConstellationLine extends StatelessWidget {
   });
 
   @override
+  State<_ConstellationLine> createState() => _ConstellationLineState();
+}
+
+class _ConstellationLineState extends State<_ConstellationLine> {
+  _ConstellationLayout? _layout;
+  String _cacheKey = '';
+
+  _ConstellationLayout _ensureLayout(double width, double height) {
+    final key =
+        '${widget.lineText}|${widget.words.length}|'
+        '${width.toStringAsFixed(1)}|${height.toStringAsFixed(1)}|'
+        '${widget.fontSize.toStringAsFixed(1)}|${widget.isRtl}';
+    if (key != _cacheKey || _layout == null) {
+      _cacheKey = key;
+      _layout = _layoutConstellation(
+        words: widget.words,
+        width: width,
+        height: height,
+        fontSize: widget.fontSize,
+        seedText: widget.lineText,
+        isRtl: widget.isRtl,
+      );
+    }
+    return _layout!;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
+      listenable: widget.positionListenable,
+      initial: widget.positionMs,
       builder: (position) {
         return LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth.isFinite
                 ? constraints.maxWidth
                 : MediaQuery.sizeOf(context).width;
-            final height = math.max(fontSize * 2.8, 110.0);
-            final layout = _layoutSpine(
-              words: words,
-              width: width,
-              height: height,
-              fontSize: fontSize,
-              seedText: lineText,
-              isRtl: isRtl,
-              labelsBelow: true,
-              amplitude: fontSize * 0.42,
-              baseline: 0.40,
-            );
-            final revealed = _revealedCount(words, position);
-            final preview = _isPreview(words, position);
+            final height = math.max(widget.fontSize * 4.0, 170.0);
+            final layout = _ensureLayout(width, height);
+            final revealed = _revealedCount(widget.words, position);
+            final preview = _isPreview(widget.words, position);
             final active = preview ? -1 : revealed - 1;
             final activeProgress = active >= 0
-                ? _wordProgress(words[active], position)
+                ? _wordProgress(widget.words[active], position)
                 : 0.0;
             var traced = 0.0;
             if (active >= 0) {
-              traced = (active + activeProgress) / words.length;
+              traced = (active + activeProgress) / widget.words.length;
             }
             return SizedBox(
               width: width,
@@ -2561,18 +2918,20 @@ class _ConstellationLine extends StatelessWidget {
                       painter: _ConstellationPainter(
                         points: [for (final node in layout.nodes) node.point],
                         size: layout.size,
+                        sky: layout.sky,
+                        segments: layout.segments,
+                        length: layout.length,
                         traced: traced.clamp(0.0, 1.0),
                         revealed: revealed,
                         active: active,
                         activeProgress: activeProgress,
                         phase: position / 640,
-                        accent: accent,
-                        ink: primary,
-                        seed: _hashText(lineText),
+                        accent: widget.accent,
+                        ink: widget.primary,
                       ),
                     ),
                   ),
-                  for (var i = 0; i < words.length; i++)
+                  for (var i = 0; i < widget.words.length; i++)
                     Positioned(
                       left: layout.nodes[i].textLeft,
                       top: layout.nodes[i].textTop,
@@ -2586,14 +2945,14 @@ class _ConstellationLine extends StatelessWidget {
                           curve: Curves.easeOutCubic,
                           style: _wordStyle(
                             color: i == active
-                                ? accent
+                                ? widget.accent
                                 : i < revealed
-                                ? primary
-                                : secondary.withValues(alpha: 0.40),
+                                ? widget.primary
+                                : widget.secondary.withValues(alpha: 0.40),
                             fontSize: layout.size,
                             glow: i == active,
                           ),
-                          child: Text(words[i].text.toUpperCase()),
+                          child: Text(widget.words[i].text.toUpperCase()),
                         ),
                       ),
                     ),
@@ -2610,6 +2969,9 @@ class _ConstellationLine extends StatelessWidget {
 class _ConstellationPainter extends CustomPainter {
   final List<Offset> points;
   final double size;
+  final List<Offset> sky;
+  final List<double> segments;
+  final double length;
   final double traced;
   final int revealed;
   final int active;
@@ -2617,11 +2979,13 @@ class _ConstellationPainter extends CustomPainter {
   final double phase;
   final Color accent;
   final Color ink;
-  final int seed;
 
   const _ConstellationPainter({
     required this.points,
     required this.size,
+    required this.sky,
+    required this.segments,
+    required this.length,
     required this.traced,
     required this.revealed,
     required this.active,
@@ -2629,48 +2993,20 @@ class _ConstellationPainter extends CustomPainter {
     required this.phase,
     required this.accent,
     required this.ink,
-    required this.seed,
   });
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    final random = math.Random(seed ^ 0x1f123bb5);
-    final sky = Paint();
-    for (var i = 0; i < 52; i++) {
-      final twinkle = 0.5 + 0.5 * math.sin(phase + i * 1.73);
-      final base = 0.03 + random.nextDouble() * 0.08;
-      final big = i % 9 == 0;
-      final star = Offset(
-        random.nextDouble() * canvasSize.width,
-        random.nextDouble() * canvasSize.height,
-      );
-      sky.color = Colors.white.withValues(alpha: base + twinkle * 0.10);
-      canvas.drawCircle(
-        star,
-        (big ? 1.2 : 0.55) + random.nextDouble() * 0.9,
-        sky,
-      );
-      if (big) {
-        final arm = 3.2 + twinkle * 2.2;
-        final cross = Paint()
-          ..strokeWidth = 0.7
-          ..color = Colors.white.withValues(alpha: 0.10 + twinkle * 0.12);
-        canvas.drawLine(
-          Offset(star.dx - arm, star.dy),
-          Offset(star.dx + arm, star.dy),
-          cross,
-        );
-        canvas.drawLine(
-          Offset(star.dx, star.dy - arm),
-          Offset(star.dx, star.dy + arm),
-          cross,
-        );
-      }
-    }
+    _paintSky(canvas);
 
-    final litLength = traced * points.length;
+    final lit = traced * length;
+    var run = 0.0;
     for (var i = 1; i < points.length; i++) {
-      final coverage = (litLength - (i - 1)).clamp(0.0, 1.0);
+      final segment = segments[i - 1];
+      final coverage = segment <= 0
+          ? (lit >= run ? 1.0 : 0.0)
+          : ((lit - run) / segment).clamp(0.0, 1.0);
+      run += segment;
       if (coverage <= 0) {
         _dashedLine(
           canvas,
@@ -2684,6 +3020,7 @@ class _ConstellationPainter extends CustomPainter {
         continue;
       }
       final end = Offset.lerp(points[i - 1], points[i], coverage)!;
+      // Wide translucent stroke in place of a mask blur: cheaper per frame.
       canvas.drawLine(
         points[i - 1],
         end,
@@ -2691,8 +3028,7 @@ class _ConstellationPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 7
           ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.07 + 0.05 * coverage)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..color = accent.withValues(alpha: 0.07 + 0.05 * coverage),
       );
       canvas.drawLine(
         points[i - 1],
@@ -2795,25 +3131,50 @@ class _ConstellationPainter extends CustomPainter {
     }
   }
 
-  /// Point at [t] (0..1) along the constellation polyline.
+  /// The faint background sky. Star positions are pre-scattered by the
+  /// layout, so only the twinkle changes from frame to frame.
+  void _paintSky(Canvas canvas) {
+    final paint = Paint();
+    for (var i = 0; i < sky.length; i++) {
+      final twinkle = 0.5 + 0.5 * math.sin(phase + i * 1.73);
+      final big = i % 9 == 0;
+      final base = 0.03 + ((i * 37) % 9) / 100;
+      paint.color = Colors.white.withValues(alpha: base + twinkle * 0.10);
+      canvas.drawCircle(
+        sky[i],
+        (big ? 1.2 : 0.55) + ((i * 13) % 5) * 0.18,
+        paint,
+      );
+      if (big) {
+        final arm = 3.2 + twinkle * 2.2;
+        final cross = Paint()
+          ..strokeWidth = 0.7
+          ..color = Colors.white.withValues(alpha: 0.10 + twinkle * 0.12);
+        canvas.drawLine(
+          Offset(sky[i].dx - arm, sky[i].dy),
+          Offset(sky[i].dx + arm, sky[i].dy),
+          cross,
+        );
+        canvas.drawLine(
+          Offset(sky[i].dx, sky[i].dy - arm),
+          Offset(sky[i].dx, sky[i].dy + arm),
+          cross,
+        );
+      }
+    }
+  }
+
+  /// Point at [t] (0..1) along the constellation figure.
   Offset? _pointAt(double t) {
     if (points.isEmpty) return null;
-    if (points.length == 1) return points.first;
-    final lengths = <double>[];
-    var total = 0.0;
-    for (var i = 1; i < points.length; i++) {
-      final length = (points[i] - points[i - 1]).distance;
-      lengths.add(length);
-      total += length;
-    }
-    if (total == 0) return points.first;
-    var target = t.clamp(0.0, 1.0) * total;
-    for (var i = 0; i < lengths.length; i++) {
-      if (target <= lengths[i]) {
-        final f = lengths[i] == 0 ? 0.0 : target / lengths[i];
+    if (points.length == 1 || length <= 0) return points.first;
+    var target = t.clamp(0.0, 1.0) * length;
+    for (var i = 0; i < segments.length; i++) {
+      if (target <= segments[i]) {
+        final f = segments[i] == 0 ? 0.0 : target / segments[i];
         return Offset.lerp(points[i], points[i + 1], f);
       }
-      target -= lengths[i];
+      target -= segments[i];
     }
     return points.last;
   }
@@ -2853,1150 +3214,4 @@ class _ConstellationPainter extends CustomPainter {
       oldDelegate.phase != phase ||
       oldDelegate.accent != accent ||
       !listEquals(oldDelegate.points, points);
-}
-
-/// One lyric bubble for the Native message-thread design. Public because the
-/// full-screen stage stacks past lines and the next line with it.
-Widget buildNativeThreadBubble({
-  required List<StudioLyricWord> words,
-  required int positionMs,
-  required ValueListenable<int>? positionListenable,
-  required Color accent,
-  required Color primary,
-  required Color secondary,
-  required double fontSize,
-  required bool reduceMotion,
-  bool sung = false,
-  bool typing = false,
-}) {
-  return _positionAware(
-    listenable: positionListenable,
-    initial: positionMs,
-    builder: (position) {
-      final preview = typing || words.isEmpty || _isPreview(words, position);
-      final revealed = words.isEmpty ? 0 : _revealedCount(words, position);
-      final active = preview ? -1 : revealed - 1;
-      // iMessage reading: a finished line is a grey incoming message, the line
-      // being sung is a blue outgoing one. Typing stays on the left.
-      final outgoing = !sung && !typing;
-      final radius = fontSize * 0.86;
-      final bubbleColor = outgoing
-          ? accent.withValues(alpha: 0.92)
-          : Colors.white.withValues(alpha: 0.10);
-      final textColor = outgoing ? Colors.white : primary;
-      final pending = outgoing
-          ? Colors.white.withValues(alpha: 0.52)
-          : secondary.withValues(alpha: 0.5);
-      final clock = _clockLabel(words.isEmpty ? position : words.first.startMs);
-
-      final bubble = Container(
-        padding: EdgeInsets.fromLTRB(
-          fontSize * 0.66,
-          fontSize * 0.40,
-          fontSize * 0.66,
-          fontSize * 0.32,
-        ),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(radius),
-            topRight: Radius.circular(radius),
-            bottomLeft: Radius.circular(outgoing ? radius : radius * 0.16),
-            bottomRight: Radius.circular(outgoing ? radius * 0.16 : radius),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: fontSize * 0.7,
-              offset: const Offset(0, 3),
-            ),
-            if (outgoing)
-              BoxShadow(
-                color: accent.withValues(alpha: 0.24),
-                blurRadius: fontSize * 1.2,
-              ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (typing)
-              _typingDots(position, fontSize, secondary, reduceMotion)
-            else
-              Wrap(
-                spacing: fontSize * 0.30,
-                runSpacing: fontSize * 0.08,
-                children: [
-                  for (var i = 0; i < words.length; i++)
-                    AnimatedScale(
-                      scale: i == active ? 1.07 : 1,
-                      duration: reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedDefaultTextStyle(
-                        duration: reduceMotion
-                            ? Duration.zero
-                            : const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        style:
-                            _wordStyle(
-                              color: i < revealed || sung
-                                  ? (i == active
-                                        ? (outgoing ? Colors.white : accent)
-                                        : textColor)
-                                  : pending,
-                              fontSize: fontSize,
-                              glow: i == active,
-                            ).copyWith(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.1,
-                              height: 1.14,
-                            ),
-                        child: Text(words[i].text),
-                      ),
-                    ),
-                ],
-              ),
-            if (!typing) ...[
-              SizedBox(height: fontSize * 0.18),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    clock,
-                    style: TextStyle(
-                      fontSize: fontSize * 0.20,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.2,
-                      color: outgoing
-                          ? Colors.white.withValues(alpha: 0.60)
-                          : secondary.withValues(alpha: 0.65),
-                    ),
-                  ),
-                  if (outgoing) ...[
-                    SizedBox(width: fontSize * 0.22),
-                    Text(
-                      sung ? 'Read' : 'Delivered',
-                      style: TextStyle(
-                        fontSize: fontSize * 0.20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
-                        color: Colors.white.withValues(alpha: 0.78),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ],
-        ),
-      );
-
-      final bubbleWithTail = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          bubble,
-          Positioned(
-            bottom: -1,
-            left: outgoing ? null : -fontSize * 0.20,
-            right: outgoing ? -fontSize * 0.20 : null,
-            child: CustomPaint(
-              size: Size(fontSize * 0.34, fontSize * 0.30),
-              painter: _BubbleTailPainter(color: bubbleColor, right: outgoing),
-            ),
-          ),
-        ],
-      );
-
-      return Align(
-        alignment: outgoing ? Alignment.centerRight : Alignment.centerLeft,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: fontSize * 0.34),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!outgoing) ...[
-                _threadAvatar(fontSize, accent),
-                SizedBox(width: fontSize * 0.32),
-              ],
-              Flexible(child: bubbleWithTail),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Widget _threadAvatar(double fontSize, Color accent) {
-  return Container(
-    width: fontSize * 0.78,
-    height: fontSize * 0.78,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          accent.withValues(alpha: 0.90),
-          accent.withValues(alpha: 0.38),
-        ],
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: accent.withValues(alpha: 0.28),
-          blurRadius: fontSize * 0.5,
-        ),
-      ],
-    ),
-    child: Icon(
-      FluentIcons.music_note,
-      size: fontSize * 0.40,
-      color: Colors.white,
-    ),
-  );
-}
-
-Widget _typingDots(
-  int position,
-  double fontSize,
-  Color color,
-  bool reduceMotion,
-) {
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (var i = 0; i < 3; i++)
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: fontSize * 0.05),
-          child: Opacity(
-            opacity: reduceMotion
-                ? 0.55
-                : 0.25 +
-                      0.6 *
-                          ((math.sin(position / 240 + i * 1.25) + 1) / 2).clamp(
-                            0.0,
-                            1.0,
-                          ),
-            child: Container(
-              width: fontSize * 0.17,
-              height: fontSize * 0.17,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
-String _clockLabel(int positionMs) {
-  final total = (positionMs.abs() / 1000).floor();
-  final minutes = total ~/ 60;
-  final seconds = total % 60;
-  return '$minutes:${seconds.toString().padLeft(2, '0')}';
-}
-
-class _BubbleTailPainter extends CustomPainter {
-  final Color color;
-  final bool right;
-
-  const _BubbleTailPainter({required this.color, required this.right});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final path = Path()
-      ..moveTo(w, 0)
-      ..cubicTo(w * 0.34, h * 0.06, w * 0.10, h * 0.55, 0, h)
-      ..cubicTo(w * 0.32, h * 0.90, w * 0.62, h * 0.90, w, h * 0.90)
-      ..close();
-    if (right) {
-      canvas.translate(w, 0);
-      canvas.scale(-1, 1);
-    }
-    canvas.drawPath(path, Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(covariant _BubbleTailPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.right != right;
-}
-
-/// Native Design: the song reads as a message thread, one bubble per line.
-class _MessageBubbleLine extends StatelessWidget {
-  final List<StudioLyricWord> words;
-  final int positionMs;
-  final ValueListenable<int>? positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final double fontSize;
-  final bool isRtl;
-  final bool reduceMotion;
-
-  const _MessageBubbleLine({
-    required this.words,
-    required this.positionMs,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.fontSize,
-    required this.isRtl,
-    required this.reduceMotion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-        return SizedBox(
-          width: width,
-          child: Align(
-            alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: width * 0.9),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: isRtl
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: fontSize * 0.2,
-                      bottom: fontSize * 0.18,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          FluentIcons.music_note,
-                          size: fontSize * 0.34,
-                          color: accent.withValues(alpha: 0.85),
-                        ),
-                        SizedBox(width: fontSize * 0.18),
-                        Text(
-                          'LYRICS',
-                          style: TextStyle(
-                            fontSize: fontSize * 0.22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.4,
-                            color: secondary.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  buildNativeThreadBubble(
-                    words: words,
-                    positionMs: positionMs,
-                    positionListenable: positionListenable,
-                    accent: accent,
-                    primary: primary,
-                    secondary: secondary,
-                    fontSize: fontSize * 0.9,
-                    reduceMotion: reduceMotion,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Orbit: the words circle a glowing centre, and each one brightens as the
-/// playback arc sweeps past it.
-class _OrbitLine extends StatelessWidget {
-  final String lineText;
-  final List<StudioLyricWord> words;
-  final int positionMs;
-  final ValueListenable<int>? positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final double fontSize;
-
-  const _OrbitLine({
-    required this.lineText,
-    required this.words,
-    required this.positionMs,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.fontSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
-      builder: (position) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final height = math.max(fontSize * 3.0, 130.0);
-            final n = words.length;
-            final center = Offset(width / 2, height / 2);
-            final rx = math.min(width * 0.30, height * 0.34);
-            final ry = math.min(height * 0.30, width * 0.22);
-            final labelSize = math.max(
-              10.0,
-              math.min(fontSize * 0.38, rx * 0.34),
-            );
-            final progress = _wordProgressList(words, position);
-            final preview = _isPreview(words, position);
-            final revealed = _revealedCount(words, position);
-            final active = preview ? -1 : revealed - 1;
-            final activeProgress = active >= 0
-                ? _wordProgress(words[active], position)
-                : 0.0;
-            var traced = 0.0;
-            if (active >= 0) {
-              traced = (active + activeProgress) / words.length;
-            }
-            final labels = <_WebLabel>[];
-            for (var i = 0; i < n; i++) {
-              final angle = -math.pi / 2 + (2 * math.pi * i) / n;
-              final point = Offset(
-                center.dx + math.cos(angle) * rx,
-                center.dy + math.sin(angle) * ry,
-              );
-              final w = _visualLength(words[i].text) * labelSize * 0.62;
-              labels.add(
-                _WebLabel(
-                  left: (point.dx - w / 2).clamp(0.0, math.max(0.0, width - w)),
-                  top: (point.dy - labelSize * 0.55).clamp(
-                    0.0,
-                    math.max(0.0, height - labelSize * 1.1),
-                  ),
-                  width: w,
-                ),
-              );
-            }
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _OrbitPainter(
-                        center: center,
-                        rx: rx,
-                        ry: ry,
-                        progress: progress,
-                        traced: traced.clamp(0.0, 1.0),
-                        revealed: revealed,
-                        active: active,
-                        activeProgress: activeProgress,
-                        accent: accent,
-                      ),
-                    ),
-                  ),
-                  for (var i = 0; i < n; i++)
-                    Positioned(
-                      left: labels[i].left,
-                      top: labels[i].top,
-                      width: labels[i].width,
-                      child: AnimatedScale(
-                        scale: i == active ? 1.14 : 1,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          style: _wordStyle(
-                            color: i == active
-                                ? accent
-                                : i < revealed
-                                ? primary
-                                : secondary.withValues(alpha: 0.46),
-                            fontSize: labelSize,
-                            glow: i == active,
-                          ).copyWith(letterSpacing: 0),
-                          child: Text(
-                            words[i].text.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _OrbitPainter extends CustomPainter {
-  final Offset center;
-  final double rx;
-  final double ry;
-  final List<double> progress;
-  final double traced;
-  final int revealed;
-  final int active;
-  final double activeProgress;
-  final Color accent;
-
-  const _OrbitPainter({
-    required this.center,
-    required this.rx,
-    required this.ry,
-    required this.progress,
-    required this.traced,
-    required this.revealed,
-    required this.active,
-    required this.activeProgress,
-    required this.accent,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final orbit = Rect.fromCenter(
-      center: center,
-      width: rx * 2,
-      height: ry * 2,
-    );
-
-    // Dashed outer orbit plus a tilted inner one, like a small solar system.
-    final dash = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.12);
-    const dashes = 72;
-    for (var i = 0; i < dashes; i++) {
-      canvas.drawArc(
-        orbit,
-        (2 * math.pi * i) / dashes,
-        math.pi / dashes * 0.85,
-        false,
-        dash,
-      );
-    }
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(-0.55);
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset.zero, width: rx * 1.55, height: ry * 1.45),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..color = Colors.white.withValues(alpha: 0.05),
-    );
-    canvas.restore();
-
-    // The sung arc fades in from its tail, then a satellite sits on its head.
-    if (traced > 0) {
-      const segments = 40;
-      final span = 2 * math.pi * traced;
-      for (var i = 0; i < segments; i++) {
-        final t = (i + 1) / segments;
-        canvas.drawArc(
-          orbit,
-          -math.pi / 2 + span * (i / segments),
-          span / segments * 1.06,
-          false,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.4 + 1.6 * t
-            ..strokeCap = StrokeCap.round
-            ..color = accent.withValues(alpha: 0.06 + 0.48 * t),
-        );
-      }
-      final headAngle = -math.pi / 2 + 2 * math.pi * traced;
-      final head = Offset(
-        center.dx + math.cos(headAngle) * rx,
-        center.dy + math.sin(headAngle) * ry,
-      );
-      canvas.drawCircle(
-        head,
-        rx * 0.10,
-        Paint()..color = accent.withValues(alpha: 0.18),
-      );
-      canvas.drawCircle(
-        head,
-        rx * 0.035,
-        Paint()..color = Colors.white.withValues(alpha: 0.95),
-      );
-    }
-
-    for (var i = 0; i < progress.length; i++) {
-      final angle = -math.pi / 2 + (2 * math.pi * i) / progress.length;
-      final point = Offset(
-        center.dx + math.cos(angle) * rx,
-        center.dy + math.sin(angle) * ry,
-      );
-      final lit = i < revealed;
-      if (i == active) {
-        final open = activeProgress.clamp(0.0, 1.0);
-        canvas.drawCircle(
-          point,
-          rx * (0.10 + 0.05 * open),
-          Paint()..color = accent.withValues(alpha: 0.16),
-        );
-        canvas.drawCircle(
-          point,
-          rx * 0.07,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2
-            ..color = accent.withValues(alpha: 0.65),
-        );
-      }
-      canvas.drawCircle(
-        point,
-        lit ? 3.4 : 1.8,
-        Paint()..color = lit ? accent : Colors.white.withValues(alpha: 0.26),
-      );
-    }
-
-    final glowRect = Rect.fromCircle(center: center, radius: rx * 0.6);
-    canvas.drawCircle(
-      center,
-      rx * 0.6,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [
-            accent.withValues(alpha: traced > 0 ? 0.30 : 0.12),
-            accent.withValues(alpha: 0),
-          ],
-        ).createShader(glowRect),
-    );
-    canvas.drawCircle(
-      center,
-      rx * 0.10,
-      Paint()..color = accent.withValues(alpha: 0.35),
-    );
-    canvas.drawCircle(
-      center,
-      rx * 0.045,
-      Paint()..color = Colors.white.withValues(alpha: 0.95),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _OrbitPainter oldDelegate) =>
-      oldDelegate.traced != traced ||
-      oldDelegate.revealed != revealed ||
-      oldDelegate.active != active ||
-      oldDelegate.activeProgress != activeProgress ||
-      oldDelegate.accent != accent ||
-      !listEquals(oldDelegate.progress, progress);
-}
-
-/// Rainfall: words hover as drops and settle onto the line as they are sung,
-/// with a soft splash where each one lands.
-class _RainLine extends StatelessWidget {
-  final String lineText;
-  final List<StudioLyricWord> words;
-  final int positionMs;
-  final ValueListenable<int>? positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final double fontSize;
-  final bool isRtl;
-
-  const _RainLine({
-    required this.lineText,
-    required this.words,
-    required this.positionMs,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.fontSize,
-    required this.isRtl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
-      builder: (position) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final height = math.max(fontSize * 3.0, 124.0);
-            final layout = _layoutSpine(
-              words: words,
-              width: width,
-              height: height,
-              fontSize: fontSize,
-              seedText: lineText,
-              isRtl: isRtl,
-              labelsBelow: true,
-              amplitude: 0,
-              baseline: 0.66,
-            );
-            final revealed = _revealedCount(words, position);
-            final preview = _isPreview(words, position);
-            final active = preview ? -1 : revealed - 1;
-            final progress = _wordProgressList(words, position);
-            final fall = fontSize * 1.9;
-            final activeProgress = active >= 0
-                ? _wordProgress(words[active], position)
-                : 0.0;
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _RainPainter(
-                        points: [for (final node in layout.nodes) node.point],
-                        progress: progress,
-                        size: layout.size,
-                        fall: fall,
-                        accent: accent,
-                        seed: _hashText(lineText),
-                      ),
-                    ),
-                  ),
-                  for (var i = 0; i < words.length; i++)
-                    Positioned(
-                      left: layout.nodes[i].textLeft,
-                      top:
-                          layout.nodes[i].textTop -
-                          _rainFall(progress[i]) * fall -
-                          (i.isEven ? 0 : fontSize * 0.16),
-                      child: Transform.scale(
-                        scale: progress[i] > 0.78
-                            ? 1 +
-                                  0.10 *
-                                      math.sin(
-                                        (progress[i] - 0.78) / 0.22 * math.pi,
-                                      )
-                            : 1,
-                        alignment: Alignment.bottomCenter,
-                        child: Opacity(
-                          opacity: (0.16 + 0.84 * progress[i]).clamp(0.0, 1.0),
-                          child: AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOutCubic,
-                            style:
-                                _wordStyle(
-                                  color: i == active
-                                      ? accent
-                                      : progress[i] > 0
-                                      ? primary
-                                      : secondary.withValues(alpha: 0.5),
-                                  fontSize: layout.size,
-                                  glow:
-                                      i == active ||
-                                      (activeProgress > 0 && progress[i] >= 1),
-                                ).copyWith(
-                                  shadows: [
-                                    Shadow(
-                                      color: accent.withValues(alpha: 0.3),
-                                      blurRadius: layout.size * 0.35,
-                                      offset: Offset(0, layout.size * 0.12),
-                                    ),
-                                  ],
-                                ),
-                            child: Text(words[i].text.toUpperCase()),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _RainPainter extends CustomPainter {
-  final List<Offset> points;
-  final List<double> progress;
-  final double size;
-  final double fall;
-  final Color accent;
-  final int seed;
-
-  const _RainPainter({
-    required this.points,
-    required this.progress,
-    required this.size,
-    required this.fall,
-    required this.accent,
-    required this.seed,
-  });
-
-  @override
-  void paint(Canvas canvas, Size canvasSize) {
-    final random = math.Random(seed ^ 0x2c1b3c6d);
-    final streak = Paint()
-      ..strokeWidth = 0.9
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 34; i++) {
-      final x = random.nextDouble() * canvasSize.width;
-      final top = random.nextDouble() * canvasSize.height * 0.7;
-      final length = size * (0.3 + random.nextDouble() * 0.8);
-      streak.color = Colors.white.withValues(
-        alpha: 0.03 + random.nextDouble() * 0.06,
-      );
-      canvas.drawLine(
-        Offset(x, top),
-        Offset(x - size * 0.08, top + length),
-        streak,
-      );
-    }
-
-    if (points.isEmpty) return;
-    final baseline = points.first.dy + size * 0.55;
-    final wet = Rect.fromLTRB(
-      points.first.dx - size,
-      baseline,
-      points.last.dx + size,
-      baseline + 1,
-    );
-    canvas.drawLine(
-      Offset(points.first.dx - size, baseline),
-      Offset(points.last.dx + size, baseline),
-      Paint()
-        ..strokeWidth = 1
-        ..shader = LinearGradient(
-          colors: [
-            accent.withValues(alpha: 0),
-            accent.withValues(alpha: 0.30),
-            accent.withValues(alpha: 0),
-          ],
-        ).createShader(wet),
-    );
-
-    for (var i = 0; i < points.length && i < progress.length; i++) {
-      final p = progress[i];
-      if (p <= 0) continue;
-      final x = points[i].dx;
-      final drop = _rainFall(p);
-      final wordTop =
-          points[i].dy +
-          size * 0.52 -
-          drop * fall -
-          (i.isEven ? 0 : size * 0.16);
-
-      if (p < 1) {
-        // The falling word keeps a thin streak and a droplet above it.
-        final length = fall * 0.42 * drop;
-        final head = wordTop - size * 0.28;
-        canvas.drawLine(
-          Offset(x, head),
-          Offset(x, head - length),
-          Paint()
-            ..strokeWidth = 1.4
-            ..strokeCap = StrokeCap.round
-            ..color = accent.withValues(alpha: 0.10 + 0.32 * (1 - drop)),
-        );
-        canvas.drawCircle(
-          Offset(x, head - length),
-          1.8,
-          Paint()..color = Colors.white.withValues(alpha: 0.55),
-        );
-      }
-
-      if (p > 0.72 && p < 1) {
-        final t = ((p - 0.72) / 0.28).clamp(0.0, 1.0);
-        for (var ring = 0; ring < 2; ring++) {
-          final rt = (t + ring * 0.32).clamp(0.0, 1.0);
-          canvas.drawOval(
-            Rect.fromCenter(
-              center: Offset(x, baseline),
-              width: size * (0.35 + 1.5 * rt),
-              height: size * (0.10 + 0.35 * rt),
-            ),
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1
-              ..color = accent.withValues(
-                alpha: (1 - rt) * (ring == 0 ? 0.5 : 0.26),
-              ),
-          );
-        }
-      }
-
-      if (p >= 1) {
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: Offset(x, baseline + size * 0.10),
-            width: size * 1.05,
-            height: size * 0.18,
-          ),
-          Paint()..color = accent.withValues(alpha: 0.10),
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _RainPainter oldDelegate) =>
-      !listEquals(oldDelegate.progress, progress) ||
-      !listEquals(oldDelegate.points, points) ||
-      oldDelegate.fall != fall ||
-      oldDelegate.accent != accent;
-}
-
-/// Typewriter: the line types itself out character by character with a
-/// blinking block cursor, in the accent, on a terminal strip.
-class _TypewriterLine extends StatelessWidget {
-  final List<StudioLyricWord> words;
-  final int positionMs;
-  final ValueListenable<int>? positionListenable;
-  final Color accent;
-  final Color primary;
-  final double fontSize;
-  final bool isRtl;
-
-  const _TypewriterLine({
-    required this.words,
-    required this.positionMs,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.fontSize,
-    required this.isRtl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _positionAware(
-      listenable: positionListenable,
-      initial: positionMs,
-      builder: (position) {
-        final finished = words.isNotEmpty && position >= words.last.endMs;
-        final blink = (math.sin(position / 380) + 1) / 2;
-        final typeSize = fontSize * 0.74;
-        final preview = words.isEmpty || _isPreview(words, position);
-        final revealed = words.isEmpty ? 0 : _revealedCount(words, position);
-        final active = preview ? -1 : revealed - 1;
-        var fraction = 0.0;
-        if (active >= 0) {
-          fraction =
-              (active + _wordProgress(words[active], position)) / words.length;
-        }
-        final mono = TextStyle(
-          fontFamily: 'Consolas',
-          fontSize: typeSize,
-          height: 1.35,
-          letterSpacing: 0.6,
-          fontWeight: FontWeight.w500,
-          color: primary,
-          shadows: [
-            Shadow(
-              color: accent.withValues(alpha: 0.30),
-              blurRadius: typeSize * 0.4,
-            ),
-          ],
-        );
-        return SizedBox(
-          height: math.max(fontSize * 2.6, 116),
-          width: double.infinity,
-          child: Align(
-            alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.34),
-                borderRadius: BorderRadius.circular(fontSize * 0.22),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.16),
-                    blurRadius: fontSize * 0.9,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      fontSize * 0.42,
-                      fontSize * 0.26,
-                      fontSize * 0.42,
-                      0,
-                    ),
-                    child: Row(
-                      children: [
-                        for (final dot in [
-                          accent.withValues(alpha: 0.90),
-                          primary.withValues(alpha: 0.35),
-                          Colors.white.withValues(alpha: 0.18),
-                        ])
-                          Container(
-                            width: fontSize * 0.13,
-                            height: fontSize * 0.13,
-                            margin: EdgeInsets.only(right: fontSize * 0.12),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: dot,
-                            ),
-                          ),
-                        const Spacer(),
-                        Text(
-                          'lyrics.txt',
-                          style: TextStyle(
-                            fontFamily: 'Consolas',
-                            fontSize: fontSize * 0.20,
-                            letterSpacing: 0.6,
-                            color: Colors.white.withValues(alpha: 0.35),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      fontSize * 0.5,
-                      fontSize * 0.22,
-                      fontSize * 0.5,
-                      fontSize * 0.18,
-                    ),
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '> ',
-                            style: mono.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: accent.withValues(alpha: 0.85),
-                              shadows: const [],
-                            ),
-                          ),
-                          ..._spans(position, active, mono),
-                          if (!finished)
-                            TextSpan(
-                              text: '▍',
-                              style: mono.copyWith(
-                                color: accent.withValues(
-                                  alpha: 0.25 + 0.70 * blink,
-                                ),
-                                shadows: const [],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      fontSize * 0.5,
-                      0,
-                      fontSize * 0.5,
-                      fontSize * 0.28,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          finished ? 'SYNCED' : 'TYPING',
-                          style: TextStyle(
-                            fontFamily: 'Consolas',
-                            fontSize: fontSize * 0.18,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w700,
-                            color: accent.withValues(alpha: 0.80),
-                          ),
-                        ),
-                        SizedBox(width: fontSize * 0.26),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(99),
-                            child: Container(
-                              height: 2,
-                              color: Colors.white.withValues(alpha: 0.08),
-                              child: FractionallySizedBox(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: fraction.clamp(0.0, 1.0),
-                                child: ColoredBox(
-                                  color: accent.withValues(alpha: 0.75),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: fontSize * 0.26),
-                        Text(
-                          '${(fraction * 100).round().toString().padLeft(2, '0')}%',
-                          style: TextStyle(
-                            fontFamily: 'Consolas',
-                            fontSize: fontSize * 0.18,
-                            color: Colors.white.withValues(alpha: 0.40),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Typed characters so far, with the current word in the accent.
-  List<TextSpan> _spans(int position, int active, TextStyle mono) {
-    final spans = <TextSpan>[];
-    for (var i = 0; i < words.length; i++) {
-      final word = words[i];
-      if (position < word.startMs) break;
-      final letters = word.text.runes.map(String.fromCharCode).toList();
-      if (letters.isEmpty) continue;
-      final count = (letters.length * _wordProgress(word, position))
-          .ceil()
-          .clamp(1, letters.length);
-      if (spans.isNotEmpty) spans.add(TextSpan(text: ' ', style: mono));
-      spans.add(
-        TextSpan(
-          text: letters.take(count).join(),
-          style: i == active
-              ? mono.copyWith(
-                  color: accent,
-                  shadows: [
-                    Shadow(
-                      color: accent.withValues(alpha: 0.55),
-                      blurRadius: mono.fontSize! * 0.55,
-                    ),
-                  ],
-                )
-              : mono,
-        ),
-      );
-    }
-    return spans;
-  }
 }
