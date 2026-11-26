@@ -2908,11 +2908,20 @@ class _BranchesMotionPainter extends CustomPainter {
       !identical(oldDelegate.words, words) ||
       !identical(oldDelegate.points, points);
 }
+class _ConstellationEdge {
+  final Offset from;
+  final Offset to;
+
+  const _ConstellationEdge(this.from, this.to);
+}
+
 class _ConstellationLayout {
   final List<_SpineNode> nodes;
   final List<Offset> points;
   final double size;
   final List<Offset> sky;
+  final List<Offset> nebulae;
+  final List<_ConstellationEdge> links;
   final Path spine;
   final PathMetric? metric;
   final double length;
@@ -2922,6 +2931,8 @@ class _ConstellationLayout {
     required this.points,
     required this.size,
     required this.sky,
+    required this.nebulae,
+    required this.links,
     required this.spine,
     required this.metric,
     required this.length,
@@ -2986,9 +2997,30 @@ _ConstellationLayout _layoutConstellation({
   final points = [for (final node in nodes) node.point];
   final skyRandom = math.Random(seed ^ 0x1f123bb5);
   final sky = [
-    for (var i = 0; i < 64; i++)
+    for (var i = 0; i < 88; i++)
       Offset(skyRandom.nextDouble() * width, skyRandom.nextDouble() * height),
   ];
+  final nebulaRandom = math.Random(seed ^ 0x7f4a7c15);
+  final nebulae = [
+    for (var i = 0; i < 3; i++)
+      Offset(
+        width * (0.18 + nebulaRandom.nextDouble() * 0.64),
+        height * (0.16 + nebulaRandom.nextDouble() * 0.46),
+      ),
+  ];
+
+  // The lyric order forms the main traced figure; secondary chords turn it
+  // into a recognizable star map instead of a single zig-zag line.
+  final links = <_ConstellationEdge>[];
+  for (var i = 1; i < points.length; i++) {
+    links.add(_ConstellationEdge(points[i - 1], points[i]));
+  }
+  for (var i = 0; i + 2 < points.length; i += 3) {
+    links.add(_ConstellationEdge(points[i], points[i + 2]));
+  }
+  for (var i = 1; i + 3 < points.length; i += 4) {
+    links.add(_ConstellationEdge(points[i], points[i + 3]));
+  }
 
   final spine = Path();
   if (points.isNotEmpty) {
@@ -3005,6 +3037,8 @@ _ConstellationLayout _layoutConstellation({
     points: points,
     size: size,
     sky: sky,
+    nebulae: nebulae,
+    links: links,
     spine: spine,
     metric: metric,
     length: metric?.length ?? 0,
@@ -3176,6 +3210,64 @@ class _ConstellationLineState extends State<_ConstellationLine> {
   }
 }
 
+void _paintConstellationSparkle(
+  Canvas canvas,
+  Offset center,
+  double radius,
+  Paint paint,
+) {
+  final path = Path()
+    ..moveTo(center.dx, center.dy - radius)
+    ..quadraticBezierTo(
+      center.dx + radius * 0.16,
+      center.dy - radius * 0.16,
+      center.dx + radius,
+      center.dy,
+    )
+    ..quadraticBezierTo(
+      center.dx + radius * 0.16,
+      center.dy + radius * 0.16,
+      center.dx,
+      center.dy + radius,
+    )
+    ..quadraticBezierTo(
+      center.dx - radius * 0.16,
+      center.dy + radius * 0.16,
+      center.dx - radius,
+      center.dy,
+    )
+    ..quadraticBezierTo(
+      center.dx - radius * 0.16,
+      center.dy - radius * 0.16,
+      center.dx,
+      center.dy - radius,
+    )
+    ..close();
+  canvas.drawPath(path, paint);
+}
+
+void _paintConstellationDashedLine(
+  Canvas canvas,
+  Offset start,
+  Offset end,
+  Paint paint, {
+  double dashLength = 5,
+  double gapLength = 4,
+}) {
+  final delta = end - start;
+  final length = delta.distance;
+  if (length <= 0.1) return;
+  final direction = delta / length;
+  for (var distance = 0.0; distance < length; distance += dashLength + gapLength) {
+    final stop = math.min(distance + dashLength, length);
+    canvas.drawLine(
+      start + direction * distance,
+      start + direction * stop,
+      paint,
+    );
+  }
+}
+
 class _ConstellationBasePainter extends CustomPainter {
   final _ConstellationLayout layout;
   final int revealed;
@@ -3189,67 +3281,140 @@ class _ConstellationBasePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    // Fixed star field: no per-frame trigonometry, random values or twinkles.
+    // Soft nebula clouds sit behind the stars. They are cached with this
+    // static layer and never participate in the playback-rate repaint loop.
+    for (var i = 0; i < layout.nebulae.length; i++) {
+      final center = layout.nebulae[i];
+      final radius = math.min(canvasSize.width * 0.24, canvasSize.height * 0.72);
+      final tint = i.isEven ? accent : const Color(0xFF6EA8FF);
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              tint.withValues(alpha: 0.055),
+              tint.withValues(alpha: 0.018),
+              Colors.transparent,
+            ],
+            stops: const [0, 0.52, 1],
+          ).createShader(rect),
+      );
+    }
+
+    // Layered star field: tiny dust, medium stars and a few bright four-point
+    // stars. Positions are seeded per lyric line so the map remains stable.
     for (var i = 0; i < layout.sky.length; i++) {
       final star = layout.sky[i];
-      final big = i % 9 == 0;
+      final major = i % 11 == 0;
+      final medium = !major && i % 4 == 0;
+      final radius = major
+          ? 1.75 + ((i * 13) % 4) * 0.22
+          : medium
+          ? 1.05
+          : 0.55;
+      final alpha = major
+          ? 0.36
+          : medium
+          ? 0.19
+          : 0.09 + ((i * 37) % 9) / 180;
       canvas.drawCircle(
         star,
-        big ? 1.7 : 0.75,
-        Paint()
-          ..color = Colors.white.withValues(
-            alpha: big ? 0.12 : 0.07 + ((i * 37) % 9) / 180,
-          ),
+        radius,
+        Paint()..color = Colors.white.withValues(alpha: alpha),
       );
-      if (big) {
+      if (major) {
+        _paintConstellationSparkle(
+          canvas,
+          star,
+          3.2 + ((i * 7) % 4) * 0.5,
+          Paint()..color = Colors.white.withValues(alpha: 0.22),
+        );
+      } else if (medium) {
         final cross = Paint()
-          ..strokeWidth = 0.7
-          ..color = Colors.white.withValues(alpha: 0.13);
+          ..strokeWidth = 0.65
+          ..color = Colors.white.withValues(alpha: 0.14);
         canvas.drawLine(
-          Offset(star.dx - 3.5, star.dy),
-          Offset(star.dx + 3.5, star.dy),
+          Offset(star.dx - 2.5, star.dy),
+          Offset(star.dx + 2.5, star.dy),
           cross,
         );
         canvas.drawLine(
-          Offset(star.dx, star.dy - 3.5),
-          Offset(star.dx, star.dy + 3.5),
+          Offset(star.dx, star.dy - 2.5),
+          Offset(star.dx, star.dy + 2.5),
           cross,
         );
       }
     }
 
-    final guide = Paint()
+    final primaryLinks = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.09);
-    canvas.drawPath(layout.spine, guide);
+      ..strokeWidth = 1.15
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.17);
+    final secondaryLinks = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round
+      ..color = accent.withValues(alpha: 0.12);
+    for (var i = 0; i < layout.links.length; i++) {
+      final link = layout.links[i];
+      _paintConstellationDashedLine(
+        canvas,
+        link.from,
+        link.to,
+        i < layout.points.length - 1 ? primaryLinks : secondaryLinks,
+        dashLength: i < layout.points.length - 1 ? 6 : 3,
+        gapLength: i < layout.points.length - 1 ? 4 : 5,
+      );
+    }
 
+    // Word stars remain distinct from the surrounding sky, with a halo,
+    // small diffraction spikes and a crisp centre like a real star chart.
     for (var i = 0; i < layout.points.length; i++) {
       final point = layout.points[i];
       if (i < revealed) {
         canvas.drawCircle(
           point,
-          layout.size * 0.42,
-          Paint()..color = accent.withValues(alpha: 0.12),
+          layout.size * 0.52,
+          Paint()..color = accent.withValues(alpha: 0.10),
         );
         canvas.drawCircle(
           point,
-          layout.size * 0.12,
-          Paint()..color = Colors.white.withValues(alpha: 0.92),
+          layout.size * 0.28,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.9
+            ..color = accent.withValues(alpha: 0.46),
+        );
+        _paintConstellationSparkle(
+          canvas,
+          point,
+          layout.size * (i == revealed - 1 ? 0.42 : 0.30),
+          Paint()
+            ..color = i == revealed - 1
+                ? Colors.white.withValues(alpha: 0.98)
+                : accent.withValues(alpha: 0.88),
+        );
+        canvas.drawCircle(
+          point,
+          layout.size * 0.065,
+          Paint()..color = Colors.white,
         );
       } else {
         canvas.drawCircle(
           point,
-          layout.size * 0.07,
-          Paint()..color = Colors.white.withValues(alpha: 0.32),
+          layout.size * 0.10,
+          Paint()..color = Colors.white.withValues(alpha: 0.50),
         );
         canvas.drawCircle(
           point,
-          layout.size * 0.18,
+          layout.size * 0.25,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.8
-            ..color = Colors.white.withValues(alpha: 0.10),
+            ..strokeWidth = 0.9
+            ..color = Colors.white.withValues(alpha: 0.16),
         );
       }
     }
@@ -3296,9 +3461,17 @@ class _ConstellationMotionPainter extends CustomPainter {
         trace,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 7
+          ..strokeWidth = 12
           ..strokeCap = StrokeCap.round
-          ..color = accent.withValues(alpha: 0.10),
+          ..color = accent.withValues(alpha: 0.11),
+      );
+      canvas.drawPath(
+        trace,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.18),
       );
       canvas.drawPath(
         trace,
@@ -3307,6 +3480,19 @@ class _ConstellationMotionPainter extends CustomPainter {
           ..strokeWidth = 1.6
           ..strokeCap = StrokeCap.round
           ..color = accent.withValues(alpha: 0.74),
+      );
+    }
+
+    // A few background stars shimmer gently. Only eight positions are
+    // evaluated on the animated layer; the full sky stays cached.
+    final phase = position / 820.0;
+    for (var i = 0; i < layout.sky.length; i += 11) {
+      final star = layout.sky[i];
+      final twinkle = 0.55 + 0.45 * math.sin(phase + i * 1.73);
+      canvas.drawCircle(
+        star,
+        0.7 + twinkle * 1.0,
+        Paint()..color = Colors.white.withValues(alpha: 0.10 + twinkle * 0.22),
       );
     }
 
@@ -3338,11 +3524,22 @@ class _ConstellationMotionPainter extends CustomPainter {
     }
 
     final point = layout.points[active];
-    final flare = layout.size * (0.55 + 0.32 * progress);
+    final flare = layout.size * (0.62 + 0.40 * progress);
     canvas.drawCircle(
       point,
-      flare * 0.62,
-      Paint()..color = accent.withValues(alpha: 0.18 + 0.08 * progress),
+      flare * 1.12,
+      Paint()..color = accent.withValues(alpha: 0.065 + 0.045 * progress),
+    );
+    canvas.drawCircle(
+      point,
+      flare * 0.72,
+      Paint()..color = accent.withValues(alpha: 0.22 + 0.08 * progress),
+    );
+    _paintConstellationSparkle(
+      canvas,
+      point,
+      flare * 0.52,
+      Paint()..color = Colors.white.withValues(alpha: 0.9),
     );
     final lens = Paint()
       ..strokeWidth = 1
