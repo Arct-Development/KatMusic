@@ -16,6 +16,7 @@ import '../../core/audio/stream_models.dart';
 import '../../features/equalizer/equalizer_panel.dart';
 import '../../features/podcasts/podcast_repository.dart';
 import '../../features/player/playback_service.dart';
+import '../../features/settings/theme_controller.dart';
 import '../../features/search/search_repository.dart';
 import '../mini_player/mini_player.dart';
 import '../components/infobar_host.dart';
@@ -799,6 +800,11 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     // Now Playing lays its own stage out around the dock, so it keeps it.
     final floatDock = waveGlassOn(context) && !immersive && !isNowPlaying;
     const floatDockH = WaveDensity.dock + 1;
+    // The wallpaper is painted under the router (see app.dart); the shell's
+    // own opaque Mica would hide it, so it goes clear while one is set.
+    final wallpaperOn = ref.watch(
+      themeControllerProvider.select((t) => t.wallpaperPath.isNotEmpty),
+    );
 
     if (_miniOpen) {
       return Mica(
@@ -817,7 +823,9 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     // wave_hotkeys.dart), which runs before focus dispatch and works from
     // anywhere. Enter is deliberately left to focused controls.
     return Mica(
-      backgroundColor: waveBackground(context),
+      backgroundColor: wallpaperOn
+          ? const Color(0x00000000)
+          : waveBackground(context),
       // Single pointer observer for the whole chrome. Route
       // transitions anchor at wherever the user last released the
       // pointer (see WaveRouteOrigin): one Listener here beats a global

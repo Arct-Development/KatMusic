@@ -2,6 +2,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// One named family of lyric animations. Settings and the Now Playing menu
+/// show these as separate groups so the Essentials, Studio and Aesthetic
+/// styles don't read as one long collapsed list.
+class LyricsAnimationFamily {
+  final String label;
+  final String subtitle;
+  final List<String> styles;
+
+  const LyricsAnimationFamily(this.label, this.subtitle, this.styles);
+}
+
 /// Settings + session persistence.
 ///
 /// Key names mirror KatMusic `SettingsPreferences` /
@@ -234,28 +245,129 @@ class Prefs {
       _sp.setString('lw_lyrics_provider', v);
 
   static const lyricsAnimationOptions = <String, String>{
-    'apple_fluid': 'Apple Fluid',
-    'glow_pulse': 'Luminous Glow',
-    'karaoke_bounce': 'Rhythm Bounce',
-    'kinetic_pop': 'Kinetic Pop',
-    'neon_cyber': 'Neon Cyber',
-    'italic_wave': 'Silk Italic',
-    'glitch_snap': 'Chromatic Glitch',
-    'elastic_tilt': '3D Stage Tilt',
-    'lyrical_studio': 'Lyrical Studio',
-    'lyrical_studio_stack': 'Studio Stack',
-    'lyrical_studio_slide': 'Studio Slide',
-    'lyrical_studio_zoom': 'Studio Zoom',
-    'lyrical_studio_letters': 'Studio Letters',
-    'lyrical_studio_scatter': 'Studio Scatter',
-    'lyrical_studio_flow': 'Studio Flow',
-    'lyrical_studio_graph': 'Studio Graph',
-    'aesthetic_ship': 'Aesthetic Ship',
-    'aesthetic_fisheye': 'Aesthetic Fisheye',
-    'aesthetic_fisheye_visual': 'Aesthetic Fisheye Visual',
-    'aesthetic_visual': 'Aesthetic Visual',
-    'smooth_fade': 'Classic Fade',
+    'apple_fluid': 'Liquid Glass',
+    'glow_pulse': 'Aurora Bloom',
+    'karaoke_bounce': 'Pulse Bounce',
+    'kinetic_pop': 'Hyper Pop',
+    'neon_cyber': 'Neon Circuit',
+    'italic_wave': 'Silk Tide',
+    'glitch_snap': 'Broken Signal',
+    'elastic_tilt': 'Stage Lean',
+    'smooth_fade': 'Quiet Fade',
+    'lyrical_studio': 'Studio Auto',
+    'lyrical_studio_stack': 'Skyline Stack',
+    'lyrical_studio_slide': 'Runway Sweep',
+    'lyrical_studio_zoom': 'Warp In',
+    'lyrical_studio_letters': 'Flip Letters',
+    'lyrical_studio_scatter': 'Paper Collage',
+    'lyrical_studio_flow': 'Steady Flow',
+    'lyrical_studio_graph': 'Lyric Tree',
+    'aesthetic_ship': 'Drift Wall',
+    'aesthetic_fisheye': 'Fisheye Stack',
+    'aesthetic_fisheye_visual': 'Fisheye Icons',
+    'aesthetic_visual': 'Icon Spark',
+    'design_branches': 'Branches',
+    'design_web': 'Spider Web',
+    'design_constellation': 'Constellation',
+    'design_native_thread': 'Message Thread',
+    'design_orbit': 'Orbit',
+    'design_rain': 'Rainfall',
+    'design_typewriter': 'Typewriter',
   };
+
+  /// Animation families in picker order. Every id in
+  /// [lyricsAnimationOptions] belongs to exactly one family.
+  static const lyricsAnimationFamilies = <LyricsAnimationFamily>[
+    LyricsAnimationFamily(
+      'Essentials',
+      'Clean, readable motion for everyday listening',
+      [
+        'apple_fluid',
+        'glow_pulse',
+        'karaoke_bounce',
+        'kinetic_pop',
+        'neon_cyber',
+        'italic_wave',
+        'glitch_snap',
+        'elastic_tilt',
+        'smooth_fade',
+      ],
+    ),
+    LyricsAnimationFamily(
+      'Kinetic Studio',
+      'Bold type-in layouts ported from LyricalStudio',
+      [
+        'lyrical_studio',
+        'lyrical_studio_stack',
+        'lyrical_studio_slide',
+        'lyrical_studio_zoom',
+        'lyrical_studio_letters',
+        'lyrical_studio_scatter',
+        'lyrical_studio_flow',
+        'lyrical_studio_graph',
+      ],
+    ),
+    LyricsAnimationFamily(
+      'Aesthetic 3D',
+      'Depth and perspective ported from theaestheticslyrics',
+      [
+        'aesthetic_ship',
+        'aesthetic_fisheye',
+        'aesthetic_fisheye_visual',
+        'aesthetic_visual',
+      ],
+    ),
+    LyricsAnimationFamily(
+      'Signature Designs',
+      'Illustrated lines: vines, webs, constellations and messages',
+      [
+        'design_branches',
+        'design_web',
+        'design_constellation',
+        'design_native_thread',
+        'design_orbit',
+        'design_rain',
+        'design_typewriter',
+      ],
+    ),
+  ];
+
+  /// Album-lit glow around the full-screen Studio stage.
+  static const studioGlowModes = <(String, String)>[
+    ('off', 'Off'),
+    ('pulse', 'Music Sync'),
+    ('breath', 'Idle breathing'),
+    ('steady', 'Steady'),
+  ];
+
+  String get studioGlowMode {
+    final value = _sp.getString('lw_studio_glow_mode') ?? 'pulse';
+    return studioGlowModes.any((mode) => mode.$1 == value) ? value : 'pulse';
+  }
+
+  Future<void> setStudioGlowMode(String value) => _sp.setString(
+        'lw_studio_glow_mode',
+        studioGlowModes.any((mode) => mode.$1 == value) ? value : 'pulse',
+      );
+
+  /// Edge band size as a fraction of the shorter screen side.
+  double get studioGlowThickness =>
+      (_sp.getDouble('lw_studio_glow_thickness') ?? 0.28).clamp(0.1, 0.5);
+
+  Future<void> setStudioGlowThickness(double value) =>
+      _sp.setDouble('lw_studio_glow_thickness', value.clamp(0.1, 0.5));
+
+  double get studioGlowIntensity =>
+      (_sp.getDouble('lw_studio_glow_intensity') ?? 0.55).clamp(0.15, 1.0);
+
+  Future<void> setStudioGlowIntensity(double value) =>
+      _sp.setDouble('lw_studio_glow_intensity', value.clamp(0.15, 1.0));
+
+  static LyricsAnimationFamily lyricsAnimationFamilyOf(String id) =>
+      lyricsAnimationFamilies.firstWhere(
+        (family) => family.styles.contains(id),
+        orElse: () => lyricsAnimationFamilies.first,
+      );
 
   String get lyricsAnimation {
     final v = _sp.getString('lw_lyrics_animation') ?? 'apple_fluid';
@@ -266,6 +378,10 @@ class Prefs {
         'lw_lyrics_animation',
         lyricsAnimationOptions.containsKey(v) ? v : 'apple_fluid',
       );
+
+  /// The style's family label, for the Now Playing hint.
+  String get lyricsAnimationFamilyLabel =>
+      lyricsAnimationFamilyOf(lyricsAnimation).label;
 
   /// Multiplier on the lyrics type size. Snapped to the steps the
   /// lyrics view and Settings both offer.
@@ -453,6 +569,23 @@ class Prefs {
   /// App font: '' Windows default, else an id from `appFonts`.
   String get appFont => _sp.getString('lw_app_font') ?? '';
   Future<void> setAppFont(String v) => _sp.setString('lw_app_font', v);
+
+  /// App wallpaper: a local image painted behind the shell, or ''.
+  String get wallpaperPath => _sp.getString('lw_wallpaper_path') ?? '';
+  Future<void> setWallpaperPath(String v) =>
+      _sp.setString('lw_wallpaper_path', v.trim());
+
+  /// Scrim over the wallpaper, 0 = untouched image, 0.9 = nearly hidden.
+  double get wallpaperDim =>
+      (_sp.getDouble('lw_wallpaper_dim') ?? 0.55).clamp(0.0, 0.9);
+  Future<void> setWallpaperDim(double v) =>
+      _sp.setDouble('lw_wallpaper_dim', v.clamp(0.0, 0.9));
+
+  /// Installed theme files (an `AppThemeFile.toJson` list as raw JSON, so core
+  /// storage stays free of the feature model).
+  String get customThemesJson => _sp.getString('lw_custom_themes') ?? '[]';
+  Future<void> setCustomThemesJson(String v) =>
+      _sp.setString('lw_custom_themes', v);
 
   bool get wavySeekbar => _sp.getBool('lw_wavy_seekbar') ?? false;
   Future<void> setWavySeekbar(bool v) => _sp.setBool('lw_wavy_seekbar', v);

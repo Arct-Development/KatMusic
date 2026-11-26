@@ -5,7 +5,7 @@
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STYLES = [["Classic", "Full player, tabs, queue and controls."], ["Poster", "Large circular artwork and expressive track text."], ["Timeline", "Progress-led layout with oversized timestamps."], ["Lyrics Stage", "Lyrics-focused view with synced highlighting and source controls."], ["iPod", "A compact, tactile player inspired by classic music devices."], ["Full Video", "Immersive playback with animated Canvas artwork when available."]];
-  const TICKER = ["Listen Together", "Jam QR invites", "KatMusic Codes", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Android · Windows · macOS · Linux", "Open source"];
+  const TICKER = ["Listen Together", "Jam QR invites", "KatMusic Codes", "Liquid Glass UI", "YouTube Music catalogue", "Word-synced lyrics", "28 lyric animations", "Signature Designs", "Theme files", "Your own wallpaper", "Studio edge glow", "Shareable lyric cards", "Native C++ audio", "Parametric EQ", "Automix", "Offline downloads", "Six player styles", "Android · Windows · macOS · Linux", "Open source"];
 
   /* ---------- platforms ---------- */
   const ICONS = {

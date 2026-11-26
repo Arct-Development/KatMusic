@@ -188,6 +188,12 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   LyricsTranslationKey? _tkValue;
   int _armedAutoHide = 0;
   LyricsResult? _currentResult;
+
+  /// Live bridge to the full-screen Studio stage while it is open, so a
+  /// track change replaces the stage's song instead of leaving the previous
+  /// song's lyrics playing there.
+  final ValueNotifier<StudioStageFeed?> _stageFeed =
+      ValueNotifier<StudioStageFeed?>(null);
   bool _lastTransliteration = true;
   bool _lastWordByWord = true;
 
@@ -445,16 +451,35 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   }
 
   void _openStudioStage(LyricsResult result, String style) {
+    _stageFeed.value = StudioStageFeed(widget.track, result);
     unawaited(
       showStudioLyricsStage(
         context,
         track: widget.track,
         result: result,
+        feed: _stageFeed,
         positionListenable: _interpolatedPositionMs,
         activeLineListenable: _activeLineIndex,
         style: style,
-      ),
+      ).whenComplete(() {
+        if (mounted) _stageFeed.value = null;
+      }),
     );
+  }
+
+  /// Pushes the current track/lyrics to an open Studio stage after the frame
+  /// (notifying a listener mid-build would mark the stage dirty too early).
+  void _syncStageFeed(PlayableTrack track, LyricsResult result) {
+    final current = _stageFeed.value;
+    if (current == null) return;
+    if (current.track.queueKey == track.queueKey &&
+        identical(current.result, result)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _stageFeed.value == null) return;
+      _stageFeed.value = StudioStageFeed(track, result);
+    });
   }
 
   /// A short excerpt around the line being sung, or the opening lines.
@@ -490,6 +515,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     _ticker.dispose();
     _interpolatedPositionMs.dispose();
     _activeLineIndex.dispose();
+    _stageFeed.dispose();
     _isSelectingNotifier.removeListener(_onSelectingChanged);
     _isSelectingNotifier.dispose();
     super.dispose();
@@ -732,20 +758,33 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     _syncPlaybackClock();
 
     return async.when(
-      loading: () => ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 200),
-        child: const WaveLoading(label: 'Finding lyrics…'),
-      ),
-      error: (e, _) => ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 200),
-        child: WaveError(
-          title: 'Lyrics unavailable',
-          message: 'Check your connection and try again.',
-          onRetry: () => ref.invalidate(waveLyricsProvider(widget.track)),
-        ),
-      ),
+      loading: () {
+        _syncStageFeed(
+          widget.track,
+          const LyricsResult(lines: [], isSynced: false),
+        );
+        return ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 200),
+          child: const WaveLoading(label: 'Finding lyrics…'),
+        );
+      },
+      error: (e, _) {
+        _syncStageFeed(
+          widget.track,
+          const LyricsResult(lines: [], isSynced: false),
+        );
+        return ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 200),
+          child: WaveError(
+            title: 'Lyrics unavailable',
+            message: 'Check your connection and try again.',
+            onRetry: () => ref.invalidate(waveLyricsProvider(widget.track)),
+          ),
+        );
+      },
       data: (result) {
         final effectiveResult = _effectiveResultFor(result);
+        _syncStageFeed(widget.track, effectiveResult);
 
         // Header controls (the source switcher + close) must survive the
         // no-lyrics states. Switching source can legitimately land on a

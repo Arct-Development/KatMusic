@@ -23,6 +23,30 @@ void main() {
     }
   });
 
+  test('animation families cover every style exactly once', () {
+    final seen = <String>{};
+    for (final family in Prefs.lyricsAnimationFamilies) {
+      expect(family.styles, isNotEmpty, reason: family.label);
+      for (final id in family.styles) {
+        expect(
+          Prefs.lyricsAnimationOptions.containsKey(id),
+          isTrue,
+          reason: '$id in ${family.label} has no label',
+        );
+        expect(
+          seen.add(id),
+          isTrue,
+          reason: '$id is listed in more than one family',
+        );
+      }
+    }
+    expect(seen, equals(Prefs.lyricsAnimationOptions.keys.toSet()));
+    expect(
+      Prefs.lyricsAnimationFamilyOf('design_branches').label,
+      'Signature Designs',
+    );
+  });
+
   for (final id in studioLyricsStyleIds) {
     testWidgets('renders $id in a narrow lyrics rail', (tester) async {
       final position = ValueNotifier<int>(2000);

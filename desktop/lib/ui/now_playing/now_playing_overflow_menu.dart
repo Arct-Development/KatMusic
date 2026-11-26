@@ -309,7 +309,7 @@ class _NowPlayingOverflowMenuContentState
 
     final animationKey = prefs.lyricsAnimation;
     final animationLabel =
-        Prefs.lyricsAnimationOptions[animationKey] ?? 'Apple Fluid';
+        Prefs.lyricsAnimationOptions[animationKey] ?? 'Liquid Glass';
 
     // Lyrics provider state (matches _SourceMenu in KaraokeLyricsView)
     final override = ref.watch(lyricsProviderOverrideProvider(queueKey));
@@ -548,15 +548,24 @@ class _NowPlayingOverflowMenuContentState
           onSubmenuActivity: _cancelCloseSubmenu,
           hasOtherOpenSubmenu: _hasOtherSubmenuOpen,
           items: () => [
-            for (final entry in Prefs.lyricsAnimationOptions.entries)
+            for (final family in Prefs.lyricsAnimationFamilies) ...[
+              // Disabled row doubles as the family heading: the menu model
+              // only carries actions/separators/submenus.
               WaveMenuAction(
-                leading: menuMark(animationKey == entry.key),
-                label: entry.value,
-                onPressed: () async {
-                  await ref.read(prefsProvider).setLyricsAnimation(entry.key);
-                  _bumpLyricsPrefs();
-                },
+                leading: const SizedBox(width: 12),
+                label: family.label.toUpperCase(),
+                onPressed: null,
               ),
+              for (final id in family.styles)
+                WaveMenuAction(
+                  leading: menuMark(animationKey == id),
+                  label: Prefs.lyricsAnimationOptions[id] ?? id,
+                  onPressed: () async {
+                    await ref.read(prefsProvider).setLyricsAnimation(id);
+                    _bumpLyricsPrefs();
+                  },
+                ),
+            ],
           ],
         ),
 

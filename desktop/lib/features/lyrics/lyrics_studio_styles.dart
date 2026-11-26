@@ -49,6 +49,13 @@ const studioLyricsStyleIds = <String>{
   'aesthetic_fisheye',
   'aesthetic_fisheye_visual',
   'aesthetic_visual',
+  'design_branches',
+  'design_web',
+  'design_constellation',
+  'design_native_thread',
+  'design_orbit',
+  'design_rain',
+  'design_typewriter',
 };
 
 bool isStudioLyricsAnimation(String id) => studioLyricsStyleIds.contains(id);
@@ -69,6 +76,87 @@ Widget buildStudioLyricsLine({
 }) {
   if (words.isEmpty) return const SizedBox.shrink();
   switch (style) {
+    case 'design_branches':
+      return _BranchesLine(
+        lineText: lineText,
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+        isRtl: isRtl,
+        reduceMotion: reduceMotion,
+      );
+    case 'design_web':
+      return _WebLine(
+        lineText: lineText,
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+      );
+    case 'design_constellation':
+      return _ConstellationLine(
+        lineText: lineText,
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+        isRtl: isRtl,
+      );
+    case 'design_orbit':
+      return _OrbitLine(
+        lineText: lineText,
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+      );
+    case 'design_rain':
+      return _RainLine(
+        lineText: lineText,
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+        isRtl: isRtl,
+      );
+    case 'design_typewriter':
+      return _TypewriterLine(
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        fontSize: fontSize,
+        isRtl: isRtl,
+      );
+    case 'design_native_thread':
+      return _MessageBubbleLine(
+        words: words,
+        positionMs: positionMs,
+        positionListenable: positionListenable,
+        accent: accent,
+        primary: primary,
+        secondary: secondary,
+        fontSize: fontSize,
+        isRtl: isRtl,
+        reduceMotion: reduceMotion,
+      );
     case 'aesthetic_ship':
       return _AestheticShip(
         lineText: lineText,
@@ -1663,4 +1751,1494 @@ IconData? _iconFor(String text) {
     'cloud': FluentIcons.cloud,
   };
   return icons[w];
+}
+
+// ---------------------------------------------------------------------------
+// Signature designs: Branches / Web / Constellation / Message Thread
+// ---------------------------------------------------------------------------
+
+/// How much of [word] has been sung at [positionMs], 0..1.
+double _wordProgress(StudioLyricWord word, int positionMs) {
+  if (word.endMs <= word.startMs) {
+    return positionMs >= word.startMs ? 1.0 : 0.0;
+  }
+  return ((positionMs - word.startMs) / (word.endMs - word.startMs)).clamp(
+    0.0,
+    1.0,
+  );
+}
+
+List<double> _wordProgressList(List<StudioLyricWord> words, int positionMs) => [
+  for (final word in words) _wordProgress(word, positionMs),
+];
+
+/// One word anchor on a spine (Branches) or sky path (Constellation).
+class _SpineNode {
+  final Offset point;
+  final double textLeft;
+  final double textTop;
+
+  const _SpineNode(this.point, this.textLeft, this.textTop);
+}
+
+class _SpineLayout {
+  final List<_SpineNode> nodes;
+  final double size;
+
+  const _SpineLayout(this.nodes, this.size);
+}
+
+/// Places words along a gently waving horizontal spine, shrinking the type
+/// until the whole line fits [width].
+_SpineLayout _layoutSpine({
+  required List<StudioLyricWord> words,
+  required double width,
+  required double height,
+  required double fontSize,
+  required String seedText,
+  required bool isRtl,
+  required bool labelsBelow,
+  required double amplitude,
+  required double baseline,
+}) {
+  final n = words.length;
+  var size = fontSize * (labelsBelow ? 0.46 : 0.62);
+  final gapFactor = labelsBelow ? 0.62 : 0.46;
+  var widths = List<double>.filled(n, 0);
+  for (var attempt = 0; attempt < 12; attempt++) {
+    widths = [for (final word in words) _visualLength(word.text) * size];
+    final total =
+        widths.fold<double>(0, (a, b) => a + b) + size * gapFactor * (n - 1);
+    if (total <= width * 0.94 || size <= 11) break;
+    size *= 0.88;
+  }
+  final total =
+      widths.fold<double>(0, (a, b) => a + b) + size * gapFactor * (n - 1);
+  final phase = (_hashText(seedText) % 628) / 100;
+  final rowY = height * baseline;
+  var x = math.max(0.0, (width - total) / 2);
+  final nodes = <_SpineNode>[];
+  for (var i = 0; i < n; i++) {
+    final index = isRtl ? n - 1 - i : i;
+    final centerX = x + widths[index] / 2;
+    final y = rowY + math.sin(i * 1.12 + phase) * amplitude;
+    nodes.add(
+      _SpineNode(
+        Offset(centerX, y),
+        centerX - widths[index] / 2,
+        labelsBelow ? y + size * 0.52 : y - size * 1.08,
+      ),
+    );
+    x += widths[index] + size * gapFactor;
+  }
+  return _SpineLayout(nodes, size);
+}
+
+/// Branches: a vine draws itself under the line and each word lights a node
+/// on it as the singer reaches that word.
+class _BranchesLine extends StatelessWidget {
+  final String lineText;
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+  final bool isRtl;
+  final bool reduceMotion;
+
+  const _BranchesLine({
+    required this.lineText,
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+    required this.isRtl,
+    required this.reduceMotion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final height = math.max(fontSize * 2.6, 96.0);
+            final layout = _layoutSpine(
+              words: words,
+              width: width,
+              height: height,
+              fontSize: fontSize,
+              seedText: lineText,
+              isRtl: isRtl,
+              labelsBelow: false,
+              amplitude: fontSize * 0.26,
+              baseline: 0.66,
+            );
+            final revealed = _revealedCount(words, position);
+            final preview = _isPreview(words, position);
+            final active = preview ? -1 : revealed - 1;
+            var fraction = 0.0;
+            if (active >= 0) {
+              fraction =
+                  (active + _wordProgress(words[active], position)) /
+                  words.length;
+            }
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _BranchesPainter(
+                        points: [for (final node in layout.nodes) node.point],
+                        size: layout.size,
+                        fraction: fraction.clamp(0.0, 1.0),
+                        revealed: revealed,
+                        accent: accent,
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < words.length; i++)
+                    Positioned(
+                      left: layout.nodes[i].textLeft,
+                      top: layout.nodes[i].textTop,
+                      child: AnimatedDefaultTextStyle(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        style: _wordStyle(
+                          color: i == active
+                              ? accent
+                              : i < revealed
+                              ? primary
+                              : secondary.withValues(alpha: 0.5),
+                          fontSize: layout.size,
+                          glow: i == active,
+                        ),
+                        child: Text(words[i].text.toUpperCase()),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _BranchesPainter extends CustomPainter {
+  final List<Offset> points;
+  final double size;
+  final double fraction;
+  final int revealed;
+  final Color accent;
+
+  const _BranchesPainter({
+    required this.points,
+    required this.size,
+    required this.fraction,
+    required this.revealed,
+    required this.accent,
+  });
+
+  Path _vine() {
+    final path = Path();
+    if (points.isEmpty) return path;
+    path.moveTo(points.first.dx, points.first.dy);
+    if (points.length == 1) {
+      path.lineTo(points.first.dx + 0.1, points.first.dy);
+      return path;
+    }
+    for (var i = 1; i < points.length; i++) {
+      final a = points[i - 1];
+      final b = points[i];
+      final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+      path.quadraticBezierTo(a.dx, a.dy, mid.dx, mid.dy);
+      if (i == points.length - 1) path.quadraticBezierTo(b.dx, b.dy, b.dx, b.dy);
+    }
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final metrics = _vine().computeMetrics().toList();
+    if (metrics.isEmpty) return;
+    final metric = metrics.first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round
+        ..color = Colors.white.withValues(alpha: 0.14),
+    );
+    if (fraction > 0) {
+      canvas.drawPath(
+        metric.extractPath(0, metric.length * fraction),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.85),
+      );
+    }
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
+      if (i < revealed) {
+        canvas.drawCircle(p, size * 0.24, Paint()..color = accent.withValues(alpha: 0.16));
+        canvas.drawCircle(p, size * 0.10, Paint()..color = accent);
+        final leaf = Path()
+          ..moveTo(p.dx, p.dy)
+          ..quadraticBezierTo(
+            p.dx + size * 0.34,
+            p.dy - size * 0.30,
+            p.dx + size * 0.50,
+            p.dy - size * 0.02,
+          )
+          ..quadraticBezierTo(
+            p.dx + size * 0.30,
+            p.dy + size * 0.20,
+            p.dx,
+            p.dy,
+          )
+          ..close();
+        canvas.drawPath(leaf, Paint()..color = accent.withValues(alpha: 0.28));
+      } else {
+        canvas.drawCircle(
+          p,
+          size * 0.07,
+          Paint()..color = Colors.white.withValues(alpha: 0.26),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BranchesPainter oldDelegate) =>
+      oldDelegate.revealed != revealed ||
+      oldDelegate.fraction != fraction ||
+      oldDelegate.accent != accent ||
+      !listEquals(oldDelegate.points, points);
+}
+
+/// Web: each line is spun from a centre hub, one strand per word, with the
+/// strands and the concentric web lighting up as the words are sung.
+class _WebLine extends StatelessWidget {
+  final String lineText;
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+
+  const _WebLine({
+    required this.lineText,
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final height = math.max(fontSize * 3.4, 140.0);
+            final n = words.length;
+            final center = Offset(width / 2, height / 2);
+            final radius = math.min(width * 0.34, height * 0.34);
+            final labelSize = math.max(
+              10.0,
+              math.min(fontSize * 0.36, radius * 0.42),
+            );
+            final progress = _wordProgressList(words, position);
+            final preview = _isPreview(words, position);
+            final revealed = _revealedCount(words, position);
+            final active = preview ? -1 : revealed - 1;
+            final nodes = <Offset>[];
+            final labels = <_WebLabel>[];
+            final phase = (_hashText(lineText) % 628) / 100;
+            for (var i = 0; i < n; i++) {
+              final angle =
+                  -math.pi / 2 + (2 * math.pi * i) / n + phase * 0.02;
+              final r = radius * (i.isEven ? 0.8 : 1.0);
+              final point = Offset(
+                center.dx + math.cos(angle) * r,
+                center.dy + math.sin(angle) * r,
+              );
+              nodes.add(point);
+              final outward = labelSize * 1.15;
+              final dx = point.dx + math.cos(angle) * outward;
+              final dy = point.dy + math.sin(angle) * outward;
+              final w = _visualLength(words[i].text) * labelSize * 0.62;
+              labels.add(
+                _WebLabel(
+                  left: (dx - w / 2).clamp(0.0, math.max(0.0, width - w)),
+                  top: (dy - labelSize * 0.55).clamp(
+                    0.0,
+                    math.max(0.0, height - labelSize * 1.1),
+                  ),
+                  width: w,
+                ),
+              );
+            }
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _WebPainter(
+                        hub: center,
+                        nodes: nodes,
+                        progress: progress,
+                        radius: radius,
+                        revealed: revealed,
+                        accent: accent,
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < n; i++)
+                    Positioned(
+                      left: labels[i].left,
+                      top: labels[i].top,
+                      width: labels[i].width,
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        style: _wordStyle(
+                          color: i == active
+                              ? accent
+                              : i < revealed
+                              ? primary
+                              : secondary.withValues(alpha: 0.5),
+                          fontSize: labelSize,
+                          glow: i == active,
+                        ).copyWith(letterSpacing: 0),
+                        child: Text(
+                          words[i].text.toUpperCase(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _WebLabel {
+  final double left;
+  final double top;
+  final double width;
+
+  const _WebLabel({
+    required this.left,
+    required this.top,
+    required this.width,
+  });
+}
+
+class _WebPainter extends CustomPainter {
+  final Offset hub;
+  final List<Offset> nodes;
+  final List<double> progress;
+  final double radius;
+  final int revealed;
+  final Color accent;
+
+  const _WebPainter({
+    required this.hub,
+    required this.nodes,
+    required this.progress,
+    required this.radius,
+    required this.revealed,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final ring = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.08);
+    for (final factor in const [0.34, 0.62, 0.9]) {
+      canvas.drawCircle(hub, radius * factor, ring);
+    }
+
+    final faintStrand = Paint()
+      ..strokeWidth = 1
+      ..color = Colors.white.withValues(alpha: 0.08);
+    for (final node in nodes) {
+      canvas.drawLine(hub, node, faintStrand);
+    }
+
+    if (nodes.length > 1) {
+      final thread = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.06);
+      for (var i = 0; i < nodes.length; i++) {
+        final a = nodes[i];
+        final b = nodes[(i + 1) % nodes.length];
+        final ctrl = Offset.lerp(
+          hub,
+          Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2),
+          0.72,
+        )!;
+        canvas.drawPath(
+          Path()
+            ..moveTo(a.dx, a.dy)
+            ..quadraticBezierTo(ctrl.dx, ctrl.dy, b.dx, b.dy),
+          thread,
+        );
+      }
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      final p = progress[i];
+      if (p <= 0) continue;
+      final tip = Offset.lerp(hub, nodes[i], p)!;
+      canvas.drawLine(
+        hub,
+        tip,
+        Paint()
+          ..strokeWidth = 1.4
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.25 + 0.5 * p),
+      );
+      if (p >= 1) {
+        canvas.drawCircle(
+          nodes[i],
+          radius * 0.045,
+          Paint()..color = accent.withValues(alpha: 0.5),
+        );
+      }
+    }
+
+    if (nodes.length > 1) {
+      for (var i = 0; i < nodes.length; i++) {
+        final j = (i + 1) % nodes.length;
+        final both = math.min(progress[i], progress[j]);
+        if (both <= 0) continue;
+        final a = nodes[i];
+        final b = nodes[j];
+        final ctrl = Offset.lerp(
+          hub,
+          Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2),
+          0.72,
+        )!;
+        final metric = (Path()
+              ..moveTo(a.dx, a.dy)
+              ..quadraticBezierTo(ctrl.dx, ctrl.dy, b.dx, b.dy))
+            .computeMetrics()
+            .first;
+        canvas.drawPath(
+          metric.extractPath(0, metric.length * both),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2
+            ..color = both >= 1
+                ? accent.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.16),
+        );
+      }
+    }
+
+    final lit = revealed > 0;
+    canvas.drawCircle(
+      hub,
+      radius * (lit ? 0.10 : 0.07),
+      Paint()..color = accent.withValues(alpha: lit ? 0.22 : 0.10),
+    );
+    canvas.drawCircle(
+      hub,
+      radius * 0.045,
+      Paint()..color = accent.withValues(alpha: lit ? 0.95 : 0.45),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WebPainter oldDelegate) =>
+      oldDelegate.revealed != revealed ||
+      oldDelegate.accent != accent ||
+      !listEquals(oldDelegate.progress, progress) ||
+      !listEquals(oldDelegate.nodes, nodes);
+}
+
+/// Constellation: the line is a sky path; every word is a star that lights
+/// as it is sung and the traced line follows the singer across the stars.
+class _ConstellationLine extends StatelessWidget {
+  final String lineText;
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+  final bool isRtl;
+
+  const _ConstellationLine({
+    required this.lineText,
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+    required this.isRtl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final height = math.max(fontSize * 2.8, 110.0);
+            final layout = _layoutSpine(
+              words: words,
+              width: width,
+              height: height,
+              fontSize: fontSize,
+              seedText: lineText,
+              isRtl: isRtl,
+              labelsBelow: true,
+              amplitude: fontSize * 0.42,
+              baseline: 0.40,
+            );
+            final revealed = _revealedCount(words, position);
+            final preview = _isPreview(words, position);
+            final active = preview ? -1 : revealed - 1;
+            var traced = 0.0;
+            if (active >= 0) {
+              traced =
+                  (active + _wordProgress(words[active], position)) /
+                  words.length;
+            }
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _ConstellationPainter(
+                        points: [for (final node in layout.nodes) node.point],
+                        size: layout.size,
+                        traced: traced.clamp(0.0, 1.0),
+                        revealed: revealed,
+                        accent: accent,
+                        ink: primary,
+                        seed: _hashText(lineText),
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < words.length; i++)
+                    Positioned(
+                      left: layout.nodes[i].textLeft,
+                      top: layout.nodes[i].textTop,
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        style: _wordStyle(
+                          color: i == active
+                              ? accent
+                              : i < revealed
+                              ? primary
+                              : secondary.withValues(alpha: 0.45),
+                          fontSize: layout.size,
+                          glow: i == active,
+                        ),
+                        child: Text(words[i].text.toUpperCase()),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ConstellationPainter extends CustomPainter {
+  final List<Offset> points;
+  final double size;
+  final double traced;
+  final int revealed;
+  final Color accent;
+  final Color ink;
+  final int seed;
+
+  const _ConstellationPainter({
+    required this.points,
+    required this.size,
+    required this.traced,
+    required this.revealed,
+    required this.accent,
+    required this.ink,
+    required this.seed,
+  });
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final random = math.Random(seed ^ 0x1f123bb5);
+    final sky = Paint();
+    for (var i = 0; i < 42; i++) {
+      sky.color = Colors.white.withValues(
+        alpha: 0.04 + random.nextDouble() * 0.10,
+      );
+      canvas.drawCircle(
+        Offset(
+          random.nextDouble() * canvasSize.width,
+          random.nextDouble() * canvasSize.height,
+        ),
+        0.5 + random.nextDouble() * 1.2,
+        sky,
+      );
+    }
+
+    final litLength = traced * points.length;
+    for (var i = 1; i < points.length; i++) {
+      final coverage = (litLength - (i - 1)).clamp(0.0, 1.0);
+      if (coverage <= 0) {
+        _dashedLine(
+          canvas,
+          points[i - 1],
+          points[i],
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = Colors.white.withValues(alpha: 0.10),
+        );
+        continue;
+      }
+      final end = Offset.lerp(points[i - 1], points[i], coverage)!;
+      canvas.drawLine(
+        points[i - 1],
+        end,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round
+          ..color = Color.lerp(ink, accent, coverage)!.withValues(
+            alpha: 0.35 + 0.45 * coverage,
+          ),
+      );
+    }
+
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
+      if (i < revealed) {
+        final isActive = i == revealed - 1;
+        canvas.drawCircle(
+          p,
+          size * (isActive ? 0.56 : 0.36),
+          Paint()..color = accent.withValues(alpha: isActive ? 0.26 : 0.12),
+        );
+        _sparkle(
+          canvas,
+          p,
+          size * (isActive ? 0.34 : 0.24),
+          Paint()..color = isActive ? Colors.white : accent,
+        );
+      } else {
+        canvas.drawCircle(
+          p,
+          size * 0.07,
+          Paint()..color = Colors.white.withValues(alpha: 0.35),
+        );
+        canvas.drawCircle(
+          p,
+          size * 0.17,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..color = Colors.white.withValues(alpha: 0.10),
+        );
+      }
+    }
+  }
+
+  void _sparkle(Canvas canvas, Offset p, double r, Paint paint) {
+    final path = Path()
+      ..moveTo(p.dx, p.dy - r)
+      ..quadraticBezierTo(p.dx + r * 0.16, p.dy - r * 0.16, p.dx + r, p.dy)
+      ..quadraticBezierTo(p.dx + r * 0.16, p.dy + r * 0.16, p.dx, p.dy + r)
+      ..quadraticBezierTo(p.dx - r * 0.16, p.dy + r * 0.16, p.dx - r, p.dy)
+      ..quadraticBezierTo(p.dx - r * 0.16, p.dy - r * 0.16, p.dx, p.dy - r)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _dashedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
+    const dash = 5.0;
+    const gap = 4.0;
+    final delta = b - a;
+    final distance = delta.distance;
+    if (distance == 0) return;
+    final step = delta / distance;
+    var start = 0.0;
+    while (start < distance) {
+      final end = math.min(start + dash, distance);
+      canvas.drawLine(a + step * start, a + step * end, paint);
+      start = end + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConstellationPainter oldDelegate) =>
+      oldDelegate.revealed != revealed ||
+      oldDelegate.traced != traced ||
+      oldDelegate.accent != accent ||
+      !listEquals(oldDelegate.points, points);
+}
+
+/// One lyric bubble for the Native message-thread design. Public because the
+/// full-screen stage stacks past lines and the next line with it.
+Widget buildNativeThreadBubble({
+  required List<StudioLyricWord> words,
+  required int positionMs,
+  required ValueListenable<int>? positionListenable,
+  required Color accent,
+  required Color primary,
+  required Color secondary,
+  required double fontSize,
+  required bool reduceMotion,
+  bool sung = false,
+  bool typing = false,
+}) {
+  return _positionAware(
+    listenable: positionListenable,
+    initial: positionMs,
+    builder: (position) {
+      final preview = typing || words.isEmpty || _isPreview(words, position);
+      final revealed = words.isEmpty ? 0 : _revealedCount(words, position);
+      final active = preview ? -1 : revealed - 1;
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          margin: EdgeInsets.only(bottom: fontSize * 0.24),
+          padding: EdgeInsets.symmetric(
+            horizontal: fontSize * 0.62,
+            vertical: fontSize * 0.44,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: sung ? 0.10 : 0.07),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(fontSize * 0.9),
+              topRight: Radius.circular(fontSize * 0.9),
+              bottomRight: Radius.circular(fontSize * 0.9),
+              bottomLeft: Radius.circular(fontSize * 0.22),
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: sung ? 0.12 : 0.10),
+            ),
+          ),
+          child: typing
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: fontSize * 0.05,
+                        ),
+                        child: Opacity(
+                          opacity: reduceMotion
+                              ? 0.55
+                              : 0.25 +
+                                    0.6 *
+                                        ((math.sin(position / 240 + i * 1.25) +
+                                                    1) /
+                                                2)
+                                            .clamp(0.0, 1.0),
+                          child: Container(
+                            width: fontSize * 0.17,
+                            height: fontSize * 0.17,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: secondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              : Wrap(
+                  spacing: fontSize * 0.30,
+                  runSpacing: fontSize * 0.08,
+                  children: [
+                    for (var i = 0; i < words.length; i++)
+                      AnimatedDefaultTextStyle(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        style: _wordStyle(
+                          color: sung || i < revealed
+                              ? (i == active ? accent : primary)
+                              : secondary.withValues(alpha: 0.45),
+                          fontSize: fontSize,
+                          glow: i == active,
+                        ).copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          height: 1.12,
+                        ),
+                        child: Text(words[i].text),
+                      ),
+                  ],
+                ),
+        ),
+      );
+    },
+  );
+}
+
+/// Native Design: the song reads as a message thread, one bubble per line.
+class _MessageBubbleLine extends StatelessWidget {
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+  final bool isRtl;
+  final bool reduceMotion;
+
+  const _MessageBubbleLine({
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+    required this.isRtl,
+    required this.reduceMotion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        return SizedBox(
+          width: width,
+          child: Align(
+            alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: width * 0.9),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: isRtl
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: fontSize * 0.2,
+                      bottom: fontSize * 0.18,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          FluentIcons.music_note,
+                          size: fontSize * 0.34,
+                          color: accent.withValues(alpha: 0.85),
+                        ),
+                        SizedBox(width: fontSize * 0.18),
+                        Text(
+                          'LYRICS',
+                          style: TextStyle(
+                            fontSize: fontSize * 0.22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.4,
+                            color: secondary.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  buildNativeThreadBubble(
+                    words: words,
+                    positionMs: positionMs,
+                    positionListenable: positionListenable,
+                    accent: accent,
+                    primary: primary,
+                    secondary: secondary,
+                    fontSize: fontSize * 0.9,
+                    reduceMotion: reduceMotion,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Orbit: the words circle a glowing centre, and each one brightens as the
+/// playback arc sweeps past it.
+class _OrbitLine extends StatelessWidget {
+  final String lineText;
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+
+  const _OrbitLine({
+    required this.lineText,
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final height = math.max(fontSize * 3.0, 130.0);
+            final n = words.length;
+            final center = Offset(width / 2, height / 2);
+            final rx = math.min(width * 0.30, height * 0.34);
+            final ry = math.min(height * 0.30, width * 0.22);
+            final labelSize = math.max(
+              10.0,
+              math.min(fontSize * 0.38, rx * 0.34),
+            );
+            final progress = _wordProgressList(words, position);
+            final preview = _isPreview(words, position);
+            final revealed = _revealedCount(words, position);
+            final active = preview ? -1 : revealed - 1;
+            var traced = 0.0;
+            if (active >= 0) {
+              traced =
+                  (active + _wordProgress(words[active], position)) /
+                  words.length;
+            }
+            final labels = <_WebLabel>[];
+            for (var i = 0; i < n; i++) {
+              final angle = -math.pi / 2 + (2 * math.pi * i) / n;
+              final point = Offset(
+                center.dx + math.cos(angle) * rx,
+                center.dy + math.sin(angle) * ry,
+              );
+              final w = _visualLength(words[i].text) * labelSize * 0.62;
+              labels.add(
+                _WebLabel(
+                  left: (point.dx - w / 2).clamp(
+                    0.0,
+                    math.max(0.0, width - w),
+                  ),
+                  top: (point.dy - labelSize * 0.55).clamp(
+                    0.0,
+                    math.max(0.0, height - labelSize * 1.1),
+                  ),
+                  width: w,
+                ),
+              );
+            }
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _OrbitPainter(
+                        center: center,
+                        rx: rx,
+                        ry: ry,
+                        progress: progress,
+                        traced: traced.clamp(0.0, 1.0),
+                        revealed: revealed,
+                        accent: accent,
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < n; i++)
+                    Positioned(
+                      left: labels[i].left,
+                      top: labels[i].top,
+                      width: labels[i].width,
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        style: _wordStyle(
+                          color: i == active
+                              ? accent
+                              : i < revealed
+                              ? primary
+                              : secondary.withValues(alpha: 0.5),
+                          fontSize: i == active ? labelSize * 1.15 : labelSize,
+                          glow: i == active,
+                        ).copyWith(letterSpacing: 0),
+                        child: Text(
+                          words[i].text.toUpperCase(),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _OrbitPainter extends CustomPainter {
+  final Offset center;
+  final double rx;
+  final double ry;
+  final List<double> progress;
+  final double traced;
+  final int revealed;
+  final Color accent;
+
+  const _OrbitPainter({
+    required this.center,
+    required this.rx,
+    required this.ry,
+    required this.progress,
+    required this.traced,
+    required this.revealed,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final orbit = Rect.fromCenter(
+      center: center,
+      width: rx * 2,
+      height: ry * 2,
+    );
+    canvas.drawOval(
+      orbit,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.10),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: rx * 1.25, height: ry * 1.25),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
+        ..color = Colors.white.withValues(alpha: 0.05),
+    );
+
+    if (traced > 0) {
+      final arc = Path()
+        ..addArc(orbit, -math.pi / 2, 2 * math.pi * traced);
+      canvas.drawPath(
+        arc,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..strokeCap = StrokeCap.round
+          ..color = accent.withValues(alpha: 0.55),
+      );
+    }
+
+    for (var i = 0; i < progress.length; i++) {
+      final angle = -math.pi / 2 + (2 * math.pi * i) / progress.length;
+      final point = Offset(
+        center.dx + math.cos(angle) * rx,
+        center.dy + math.sin(angle) * ry,
+      );
+      final lit = i < revealed;
+      canvas.drawCircle(
+        point,
+        lit ? 3.2 : 1.8,
+        Paint()
+          ..color = lit
+              ? accent
+              : Colors.white.withValues(alpha: 0.28),
+      );
+    }
+
+    canvas.drawCircle(
+      center,
+      rx * 0.16,
+      Paint()..color = accent.withValues(alpha: traced > 0 ? 0.20 : 0.08),
+    );
+    canvas.drawCircle(
+      center,
+      rx * 0.05,
+      Paint()..color = accent.withValues(alpha: 0.9),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _OrbitPainter oldDelegate) =>
+      oldDelegate.traced != traced ||
+      oldDelegate.revealed != revealed ||
+      oldDelegate.accent != accent ||
+      !listEquals(oldDelegate.progress, progress);
+}
+
+/// Rainfall: words hover as drops and settle onto the line as they are sung,
+/// with a soft splash where each one lands.
+class _RainLine extends StatelessWidget {
+  final String lineText;
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final double fontSize;
+  final bool isRtl;
+
+  const _RainLine({
+    required this.lineText,
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.fontSize,
+    required this.isRtl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final height = math.max(fontSize * 3.0, 124.0);
+            final layout = _layoutSpine(
+              words: words,
+              width: width,
+              height: height,
+              fontSize: fontSize,
+              seedText: lineText,
+              isRtl: isRtl,
+              labelsBelow: true,
+              amplitude: 0,
+              baseline: 0.66,
+            );
+            final revealed = _revealedCount(words, position);
+            final preview = _isPreview(words, position);
+            final active = preview ? -1 : revealed - 1;
+            final progress = _wordProgressList(words, position);
+            final fall = fontSize * 1.9;
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _RainPainter(
+                        points: [for (final node in layout.nodes) node.point],
+                        progress: progress,
+                        size: layout.size,
+                        accent: accent,
+                        seed: _hashText(lineText),
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < words.length; i++)
+                    Positioned(
+                      left: layout.nodes[i].textLeft,
+                      top:
+                          layout.nodes[i].textTop -
+                          (1 - Curves.easeInCubic.transform(progress[i])) *
+                              fall -
+                          (i.isEven ? 0 : fontSize * 0.16),
+                      child: Opacity(
+                        opacity: (0.22 + 0.78 * progress[i]).clamp(0.0, 1.0),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          style: _wordStyle(
+                            color: i == active
+                                ? accent
+                                : progress[i] > 0
+                                ? primary
+                                : secondary.withValues(alpha: 0.55),
+                            fontSize: layout.size,
+                            glow: i == active,
+                          ),
+                          child: Text(words[i].text.toUpperCase()),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _RainPainter extends CustomPainter {
+  final List<Offset> points;
+  final List<double> progress;
+  final double size;
+  final Color accent;
+  final int seed;
+
+  const _RainPainter({
+    required this.points,
+    required this.progress,
+    required this.size,
+    required this.accent,
+    required this.seed,
+  });
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final random = math.Random(seed ^ 0x2c1b3c6d);
+    final streak = Paint()
+      ..strokeWidth = 0.9
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 26; i++) {
+      final x = random.nextDouble() * canvasSize.width;
+      final top = random.nextDouble() * canvasSize.height * 0.6;
+      final length = size * (0.25 + random.nextDouble() * 0.55);
+      streak.color = Colors.white.withValues(
+        alpha: 0.03 + random.nextDouble() * 0.05,
+      );
+      canvas.drawLine(
+        Offset(x, top),
+        Offset(x - size * 0.06, top + length),
+        streak,
+      );
+    }
+
+    if (points.isEmpty) return;
+    final baseline = points.first.dy;
+    canvas.drawLine(
+      Offset(points.first.dx - size, baseline + size * 0.5),
+      Offset(points.last.dx + size, baseline + size * 0.5),
+      Paint()
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.10),
+    );
+
+    for (var i = 0; i < points.length && i < progress.length; i++) {
+      final p = progress[i];
+      if (p <= 0.62 || p >= 1) continue;
+      final t = ((p - 0.62) / 0.38).clamp(0.0, 1.0);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(points[i].dx, baseline + size * 0.62),
+          width: size * (0.4 + 1.1 * t),
+          height: size * (0.12 + 0.28 * t),
+        ),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = accent.withValues(alpha: (1 - t) * 0.55),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RainPainter oldDelegate) =>
+      !listEquals(oldDelegate.progress, progress) ||
+      !listEquals(oldDelegate.points, points) ||
+      oldDelegate.accent != accent;
+}
+
+/// Typewriter: the line types itself out character by character with a
+/// blinking block cursor, in the accent, on a terminal strip.
+class _TypewriterLine extends StatelessWidget {
+  final List<StudioLyricWord> words;
+  final int positionMs;
+  final ValueListenable<int>? positionListenable;
+  final Color accent;
+  final Color primary;
+  final double fontSize;
+  final bool isRtl;
+
+  const _TypewriterLine({
+    required this.words,
+    required this.positionMs,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.fontSize,
+    required this.isRtl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _positionAware(
+      listenable: positionListenable,
+      initial: positionMs,
+      builder: (position) {
+        final typed = _typedText(position);
+        final finished =
+            words.isNotEmpty && position >= words.last.endMs;
+        final blink = (math.sin(position / 380) + 1) / 2;
+        final typeSize = fontSize * 0.78;
+        return SizedBox(
+          height: math.max(fontSize * 1.9, 84),
+          width: double.infinity,
+          child: Align(
+            alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: fontSize * 0.5,
+                vertical: fontSize * 0.32,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(fontSize * 0.18),
+                border: Border(
+                  left: BorderSide(
+                    color: accent.withValues(alpha: 0.65),
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '> ',
+                      style: TextStyle(
+                        fontFamily: 'Consolas',
+                        fontSize: typeSize,
+                        fontWeight: FontWeight.w700,
+                        color: accent.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    TextSpan(
+                      text: typed,
+                      style: TextStyle(
+                        fontFamily: 'Consolas',
+                        fontSize: typeSize,
+                        height: 1.35,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w500,
+                        color: primary,
+                        shadows: [
+                          Shadow(
+                            color: accent.withValues(alpha: 0.30),
+                            blurRadius: typeSize * 0.4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!finished)
+                      TextSpan(
+                        text: '▍',
+                        style: TextStyle(
+                          fontFamily: 'Consolas',
+                          fontSize: typeSize,
+                          color: accent.withValues(
+                            alpha: 0.30 + 0.65 * blink,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _typedText(int position) {
+    final parts = <String>[];
+    for (final word in words) {
+      if (position < word.startMs) break;
+      final letters = word.text.runes.map(String.fromCharCode).toList();
+      if (letters.isEmpty) continue;
+      final progress = _wordProgress(word, position);
+      final count = (letters.length * progress).ceil().clamp(
+        1,
+        letters.length,
+      );
+      parts.add(letters.take(count).join());
+    }
+    return parts.join(' ');
+  }
 }

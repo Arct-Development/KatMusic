@@ -171,3 +171,20 @@ dialog.dm[open]{animation:rise .35s both}
 /* nav: one extra link (Donate) — trim link padding a touch so the pill keeps its breathing room */
 @media(min-width:861px){.links a{padding:9px 10px}}
 @media(min-width:861px) and (max-width:1080px){.links a{padding:9px 7px;font-size:13.5px}.nav .btn{padding:0 14px}.dlpill{padding:7px 10px}}
+
+/* Lyric animations showcase preview — additive. */
+.mini-stage{position:relative;min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(120% 120% at 50% 0%,#0d1626,#070a11 70%);overflow:hidden;padding:30px}
+.mini-edge{position:absolute;inset:0;background:
+  linear-gradient(0deg,#7db9ff00,#7db9ff44) top/100% 26% no-repeat,
+  linear-gradient(180deg,#e0507a00,#e0507a33) bottom/100% 26% no-repeat,
+  linear-gradient(90deg,#7db9ff3a,transparent 30%) left/26% 100% no-repeat,
+  linear-gradient(270deg,#e0507a30,transparent 30%) right/26% 100% no-repeat;
+  filter:blur(6px);animation:edgePulse 3.4s ease-in-out infinite}
+@keyframes edgePulse{50%{opacity:.55;filter:blur(10px)}}
+.mini-line{display:flex;gap:.3em;flex-wrap:wrap;justify-content:center;position:relative;z-index:1}
+.mini-word{font-family:var(--disp);font-size:clamp(22px,3.4vw,40px);color:#fff;opacity:.25;animation:miniLit 3.4s ease-in-out infinite;animation-delay:calc(var(--i)*.32s)}
+@keyframes miniLit{0%,30%{opacity:.25;color:#dfeaf7;text-shadow:none}45%,80%{opacity:1;color:#fff;text-shadow:0 0 22px #2f7fff99}100%{opacity:.25}}
+.mini-meta{position:absolute;left:18px;bottom:14px;display:flex;flex-direction:column;gap:2px;z-index:1}
+.mini-meta b{font-family:var(--disp);font-size:13px;color:#eaf2ff}
+.mini-meta span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8fa3bd}
+@media(prefers-reduced-motion:reduce){.mini-word{opacity:1;color:#fff;animation:none}.mini-edge{animation:none}}

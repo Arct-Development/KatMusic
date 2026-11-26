@@ -41,6 +41,7 @@ import '../../features/lastfm/auth_repository.dart';
 import '../auth/lastfm_key_guide.dart';
 import '../../features/settings/accent.dart';
 import '../../features/settings/theme_controller.dart';
+import '../../features/settings/theme_files.dart';
 import '../../features/audio_output/output_controller.dart';
 import '../../features/audio_output/output_path_sheet.dart';
 import '../../features/lyrics/lyrics_providers.dart';
@@ -1035,6 +1036,10 @@ class _Appearance extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 8),
+        const _ThemeFilesCard(),
+        const SizedBox(height: 8),
+        _WallpaperCard(onUpdate: onUpdate),
+        const SizedBox(height: 8),
         _Group(
           id: 'appearance.haze',
           title: 'Haze material',
@@ -1231,6 +1236,327 @@ class _Appearance extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Theme files: the built-in gallery plus any imported `.json` themes.
+/// Applying one goes through the same setters Appearance uses, so the
+/// result stays inside the normal theme controls.
+class _ThemeFilesCard extends ConsumerStatefulWidget {
+  const _ThemeFilesCard();
+
+  @override
+  ConsumerState<_ThemeFilesCard> createState() => _ThemeFilesCardState();
+}
+
+class _ThemeFilesCardState extends ConsumerState<_ThemeFilesCard> {
+  bool _busy = false;
+
+  void _note(String message, {bool error = false}) {
+    if (!mounted) return;
+    displayInfoBar(
+      context,
+      builder: (context, close) => InfoBar(
+        title: Text(message),
+        severity: error ? InfoBarSeverity.error : InfoBarSeverity.success,
+        onClose: close,
+      ),
+    );
+  }
+
+  Future<void> _applyTheme(AppThemeFile theme) async {
+    await applyThemeFile(
+      ref.read(prefsProvider),
+      ref.read(themeControllerProvider.notifier),
+      theme,
+    );
+    if (!mounted) return;
+    setState(() {});
+    _note('${theme.name} applied');
+  }
+
+  Future<void> _deleteTheme(AppThemeFile theme) async {
+    await deleteThemeFile(ref.read(prefsProvider), theme.name);
+    if (!mounted) return;
+    setState(() {});
+    _note('${theme.name} removed');
+  }
+
+  Future<void> _importTheme() async {
+    setState(() => _busy = true);
+    try {
+      final files = await FilePicker.pickFiles(
+        dialogTitle: 'Import KatMusic theme',
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+      );
+      if (files.isEmpty) return;
+      final bytes = await files.first.readAsBytes();
+      if (bytes.isEmpty) return;
+      AppThemeFile? theme;
+      try {
+        theme = AppThemeFile.fromJson(jsonDecode(utf8.decode(bytes)));
+      } on FormatException {
+        theme = null;
+      }
+      if (!mounted) return;
+      if (theme == null) {
+        _note('That file is not a KatMusic theme', error: true);
+        return;
+      }
+      await saveThemeFile(ref.read(prefsProvider), theme);
+      if (!mounted) return;
+      setState(() {});
+      _note('${theme.name} installed');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _exportTheme() async {
+    final prefs = ref.read(prefsProvider);
+    final theme = themeFileFromCurrent(prefs);
+    final safe = theme.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final saved = await FilePicker.saveFile(
+      dialogTitle: 'Save KatMusic theme',
+      fileName: '$safe.json',
+      bytes: utf8.encode(
+        const JsonEncoder.withIndent('  ').convert(theme.toJson()),
+      ),
+      mimeType: 'application/json',
+      type: FileType.custom,
+      allowedExtensions: const ['json'],
+    );
+    if (saved != null) _note('Theme saved');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = ref.watch(prefsProvider);
+    final installed = readThemeFiles(prefs);
+    final themes = <AppThemeFile>[...builtInThemeFiles, ...installed];
+    return _Group(
+      id: 'appearance.themes',
+      title: 'Theme files',
+      subtitle: 'Apply a theme, or import a shared .json theme file',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final theme in themes)
+                _ThemeFileCard(
+                  theme: theme,
+                  onTap: _busy ? null : () => _applyTheme(theme),
+                  onDelete: installed.any((t) => t.name == theme.name)
+                      ? () => _deleteTheme(theme)
+                      : null,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Button(
+                onPressed: _busy ? null : _importTheme,
+                child: const Text('Import theme…'),
+              ),
+              const SizedBox(width: 8),
+              Button(
+                onPressed: _busy ? null : _exportTheme,
+                child: const Text('Export current'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Wallpaper: a local image behind the whole shell, with a dim scrim so
+/// text keeps its contrast. Theme files may carry one.
+class _WallpaperCard extends ConsumerWidget {
+  final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
+
+  const _WallpaperCard({required this.onUpdate});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final prefs = ref.watch(prefsProvider);
+    final path = prefs.wallpaperPath;
+    final exists = path.isNotEmpty && File(path).existsSync();
+    final radius = BorderRadius.circular(8);
+    return _Group(
+      id: 'appearance.wallpaper',
+      title: 'Wallpaper',
+      subtitle: 'A background image behind the app, like a desktop theme',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: waveSurface(context),
+              borderRadius: radius,
+              border: Border.all(color: waveDivider(context)),
+              image: exists
+                  ? DecorationImage(
+                      image: FileImage(File(path)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: exists
+                ? null
+                : Center(
+                    child: Text(
+                      'No wallpaper',
+                      style: WaveType.meta.copyWith(
+                        color: waveTextTertiary(context),
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Button(
+                onPressed: () async {
+                  final files = await FilePicker.pickFiles(
+                    dialogTitle: 'Choose wallpaper',
+                    type: FileType.image,
+                  );
+                  final picked = files.isEmpty ? null : files.first.path;
+                  if (picked == null) return;
+                  await onUpdate((p) => p.setWallpaperPath(picked));
+                },
+                child: Text(exists ? 'Change image…' : 'Choose image…'),
+              ),
+              if (exists) ...[
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: () => onUpdate((p) => p.setWallpaperPath('')),
+                  child: const Text('Remove'),
+                ),
+              ],
+            ],
+          ),
+          _GlowSlider(
+            label: 'Dim',
+            value: prefs.wallpaperDim,
+            min: 0.0,
+            max: 0.9,
+            display: (v) => '${(v * 100).round()}%',
+            onChanged: (v) => onUpdate((p) => p.setWallpaperDim(v)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Theme files can carry a wallpaper path; a theme only applies '
+            'it when that image exists on this PC.',
+            style: WaveType.meta.copyWith(
+              color: waveTextTertiary(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeFileCard extends StatelessWidget {
+  final AppThemeFile theme;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
+
+  const _ThemeFileCard({
+    required this.theme,
+    required this.onTap,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(10);
+    return Tooltip(
+      message: theme.author.isEmpty
+          ? theme.name
+          : '${theme.name} · ${theme.author}',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 168,
+            decoration: BoxDecoration(
+              color: waveSurface(context),
+              borderRadius: radius,
+              border: Border.all(color: waveDivider(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.baseColor,
+                        theme.accentColor.withValues(alpha: 0.85),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(9),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Aa',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: onAccentFor(theme.accentColor),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          theme.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: WaveType.trackTitle,
+                        ),
+                      ),
+                      if (onDelete != null)
+                        GestureDetector(
+                          onTap: onDelete,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              FluentIcons.delete,
+                              size: 13,
+                              color: waveTextTertiary(context),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1570,55 +1896,50 @@ class _Lyrics extends ConsumerWidget {
           title: 'Lyrics animation',
           subtitle:
               'Synced lyrics style · Studio/Aesthetic ports by LyricalStudio + theaestheticslyrics (MIT)',
-          child: _BehaviourSelectRow(
-            title: 'Animation style',
-            subtitle: switch (prefs.lyricsAnimation) {
-              'glow_pulse' =>
-                'Rich centered radial glow bloom with steady alignment',
-              'karaoke_bounce' => 'Energetic rhythmic syllable bounce',
-              'kinetic_pop' =>
-                'Ultra-bold punchy type with spring-popping syllables',
-              'neon_cyber' =>
-                'Accent-lit cyberpunk neon glow with forward kinetic slant',
-              'italic_wave' =>
-                'Expressive luxury italic type rippling like a liquid wave',
-              'glitch_snap' =>
-                'RGB chromatic split with crisp digital snap-in pulses',
-              'elastic_tilt' =>
-                '3D perspective stage lean with elastic overshoot motion',
-              'lyrical_studio' =>
-                'Auto kinetic typography: Stack, Slide, Zoom, Letters, Scatter, Flow and Graph',
-              'lyrical_studio_stack' =>
-                'Words stack into big rows and slide up as they are sung',
-              'lyrical_studio_slide' =>
-                'Huge staggered rows sweep in from alternating edges',
-              'lyrical_studio_zoom' =>
-                'Words fly in from huge and blurred, settling into centered rows',
-              'lyrical_studio_letters' =>
-                'Every letter flips in on its own like a split-flap board',
-              'lyrical_studio_scatter' =>
-                'A collage of different sizes, offsets and vertical words',
-              'lyrical_studio_flow' =>
-                'The whole line stays visible and lights up word by word',
-              'lyrical_studio_graph' =>
-                'A lyric tree: words joined by curves, leaves hanging below',
-              'aesthetic_ship' =>
-                'A drifting 3D word wall with the sung word popping forward',
-              'aesthetic_fisheye' =>
-                'A convex word stack focused on the word nearest the glass',
-              'aesthetic_fisheye_visual' =>
-                'Fisheye word stack with a matching icon on the sung word',
-              'aesthetic_visual' =>
-                'One large word at a time with a matching icon',
-              'smooth_fade' => 'Minimalist clean highlight without motion',
-              _ => 'Smooth fluid syllable wipe with gentle micro-float',
-            },
-            value: prefs.lyricsAnimation,
-            options: [
-              for (final entry in Prefs.lyricsAnimationOptions.entries)
-                WaveSelectOption(value: entry.key, label: entry.value),
+          child: _LyricsAnimationPicker(onUpdate: onUpdate),
+        ),
+        const SizedBox(height: 8),
+        _Group(
+          id: 'lyrics.studio_glow',
+          title: 'Studio edge glow',
+          subtitle:
+              'Album colours wrapped around the full-screen Studio stage',
+          child: Column(
+            children: [
+              _BehaviourSelectRow(
+                title: 'Animation',
+                subtitle: switch (prefs.studioGlowMode) {
+                  'off' => 'No edge glow',
+                  'breath' => 'A slow idle breath of album light',
+                  'steady' => 'A still band of album colour',
+                  _ => 'Pulses with each sung word',
+                },
+                value: prefs.studioGlowMode,
+                options: [
+                  for (final mode in Prefs.studioGlowModes)
+                    WaveSelectOption(value: mode.$1, label: mode.$2),
+                ],
+                onChanged: (v) => onUpdate((p) => p.setStudioGlowMode(v)),
+              ),
+              _GlowSlider(
+                label: 'Thickness',
+                value: prefs.studioGlowThickness,
+                min: 0.10,
+                max: 0.50,
+                display: (v) => '${(v * 100).round()}% of the short edge',
+                onChanged: (v) =>
+                    onUpdate((p) => p.setStudioGlowThickness(v)),
+              ),
+              _GlowSlider(
+                label: 'Glow',
+                value: prefs.studioGlowIntensity,
+                min: 0.15,
+                max: 1.0,
+                display: (v) => '${(v * 100).round()}%',
+                onChanged: (v) =>
+                    onUpdate((p) => p.setStudioGlowIntensity(v)),
+              ),
             ],
-            onChanged: (v) => onUpdate((p) => p.setLyricsAnimation(v)),
           ),
         ),
         const SizedBox(height: 8),
@@ -4150,6 +4471,222 @@ class _SwitchRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: rowContent,
+    );
+  }
+}
+
+/// Grouped animation picker: one chip per family, then only that family's
+/// styles in the dropdown. Keeps Essentials, Studio, Aesthetic and Signature
+/// designs from reading as one long collapsed list.
+class _LyricsAnimationPicker extends ConsumerStatefulWidget {
+  final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
+
+  const _LyricsAnimationPicker({required this.onUpdate});
+
+  @override
+  ConsumerState<_LyricsAnimationPicker> createState() =>
+      _LyricsAnimationPickerState();
+}
+
+class _LyricsAnimationPickerState extends ConsumerState<_LyricsAnimationPicker> {
+  String? _family;
+
+  static const _descriptions = <String, String>{
+    'apple_fluid': 'Smooth fluid syllable wipe with a gentle micro-float',
+    'glow_pulse': 'Rich centered glow that blooms as each word is sung',
+    'karaoke_bounce': 'Energetic rhythmic syllable bounce',
+    'kinetic_pop': 'Ultra-bold type with spring-popping syllables',
+    'neon_cyber': 'Accent-lit cyberpunk glow with a forward kinetic slant',
+    'italic_wave': 'Expressive luxury italic type rippling like liquid',
+    'glitch_snap': 'RGB chromatic split with crisp digital snap-ins',
+    'elastic_tilt': '3D perspective stage lean with elastic overshoot',
+    'smooth_fade': 'Minimalist clean highlight without motion',
+    'lyrical_studio': 'Auto kinetic typography that picks a layout per line',
+    'lyrical_studio_stack': 'Words stack into big rows and slide up as sung',
+    'lyrical_studio_slide':
+      'Huge staggered rows sweep in from alternating edges',
+    'lyrical_studio_zoom':
+      'Words fly in huge and blurred, settling into centered rows',
+    'lyrical_studio_letters': 'Every letter flips in like a split-flap board',
+    'lyrical_studio_scatter': 'A collage of sizes, offsets and vertical words',
+    'lyrical_studio_flow': 'The line stays visible and lights word by word',
+    'lyrical_studio_graph': 'A lyric tree: words joined by curves, leaves below',
+    'aesthetic_ship': 'A drifting 3D word wall with the sung word popping out',
+    'aesthetic_fisheye': 'A convex word stack focused on the nearest word',
+    'aesthetic_fisheye_visual':
+      'Fisheye word stack with an icon on the sung word',
+    'aesthetic_visual': 'One large word at a time with a matching icon',
+    'design_branches': 'A vine draws itself and every word lights a node',
+    'design_web': 'Each line spun into a spider web, a strand per word',
+    'design_constellation': 'Each line traced as a constellation, star by star',
+    'design_native_thread': 'The song as a message thread, one bubble per line',
+    'design_orbit': 'Words circle a glowing hub, lit as the arc sweeps past',
+    'design_rain': 'Words fall into place word by word, with a soft splash',
+    'design_typewriter': 'The line types itself out with a blinking cursor',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = ref.watch(prefsProvider);
+    final current = prefs.lyricsAnimation;
+    final currentFamily = Prefs.lyricsAnimationFamilyOf(current);
+    final family = Prefs.lyricsAnimationFamilies.firstWhere(
+      (candidate) => candidate.label == _family,
+      orElse: () => currentFamily,
+    );
+    final inFamily = family.styles.contains(current);
+    final description = inFamily
+        ? (_descriptions[current] ?? currentFamily.subtitle)
+        : 'Currently in ${currentFamily.label}. Pick a style to switch.';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Animation style', style: WaveType.trackTitle),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final candidate in Prefs.lyricsAnimationFamilies)
+              _AnimationFamilyChip(
+                label: candidate.label,
+                selected: candidate.label == family.label,
+                onTap: () => setState(() => _family = candidate.label),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        WaveSelect<String>(
+          expanded: true,
+          minMenuWidth: 220,
+          value: inFamily ? current : null,
+          placeholder: 'Choose a ${family.label.toLowerCase()} style',
+          options: [
+            for (final id in family.styles)
+              WaveSelectOption(
+                value: id,
+                label: Prefs.lyricsAnimationOptions[id] ?? id,
+              ),
+          ],
+          onChanged: (v) => widget.onUpdate((p) => p.setLyricsAnimation(v)),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          family.subtitle,
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          description,
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+        ),
+      ],
+    );
+  }
+}
+
+class _GlowSlider extends StatefulWidget {
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final String Function(double) display;
+  final Future<void> Function(double) onChanged;
+
+  const _GlowSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.display,
+    required this.onChanged,
+  });
+
+  @override
+  State<_GlowSlider> createState() => _GlowSliderState();
+}
+
+class _GlowSliderState extends State<_GlowSlider> {
+  double? _drag;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _drag ?? widget.value;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.label, style: WaveType.trackTitle),
+                Text(
+                  widget.display(value),
+                  style: WaveType.meta.copyWith(
+                    color: waveTextSecondary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 180,
+            child: Slider(
+              value: value,
+              min: widget.min,
+              max: widget.max,
+              onChanged: (v) => setState(() => _drag = v),
+              onChangeEnd: (v) {
+                setState(() => _drag = null);
+                widget.onChanged(v);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimationFamilyChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AnimationFamilyChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = FluentTheme.of(context).accentColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? accent.withValues(alpha: 0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? accent.withValues(alpha: 0.55)
+                : waveDivider(context),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            color: selected ? accent : waveTextSecondary(context),
+          ),
+        ),
+      ),
     );
   }
 }

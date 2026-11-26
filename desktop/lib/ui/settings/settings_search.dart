@@ -135,7 +135,20 @@ const settingsSearchEntries = <SettingsSearchEntry>[
     title: 'Lyrics animation',
     subtitle: 'Visual animation style for synced lyrics',
     keywords:
-        'lyrics animation style apple fluid glow bounce pulse smooth fade karaoke studio kinetic ship fisheye visual graph scatter slide zoom letters flow',
+        'lyrics animation style liquid glass aurora bloom pulse hyper pop neon '
+        'circuit silk tide broken signal stage lean quiet fade karaoke studio '
+        'auto skyline stack runway sweep warp flip letters paper collage steady '
+        'flow lyric tree drift wall fisheye icons icon spark branches spider web '
+        'constellation message thread orbit rainfall typewriter',
+  ),
+  SettingsSearchEntry(
+    id: 'lyrics.studio_glow',
+    section: 'lyrics',
+    title: 'Studio edge glow',
+    subtitle: 'Album colours wrapped around the full-screen Studio stage',
+    keywords:
+        'studio fullscreen edge glow lumn ambient light album colour color '
+        'music sync pulse breath thickness intensity border vignette',
   ),
   SettingsSearchEntry(
     id: 'lyrics.timing',
@@ -153,6 +166,24 @@ const settingsSearchEntries = <SettingsSearchEntry>[
         'dark light midnight pearl custom artwork cover theme background base tint '
         'glass glassmorphism frosted translucent blur '
         'accent colour color picker palette mode personalize',
+  ),
+  SettingsSearchEntry(
+    id: 'appearance.themes',
+    section: 'appearance',
+    title: 'Theme files',
+    subtitle: 'Apply a theme, or import a shared .json theme file',
+    keywords:
+        'theme files preset gallery import export share json vencord '
+        'betterdiscord custom look skin',
+  ),
+  SettingsSearchEntry(
+    id: 'appearance.wallpaper',
+    section: 'appearance',
+    title: 'Wallpaper',
+    subtitle: 'A background image behind the app, like a desktop theme',
+    keywords:
+        'wallpaper background image picture photo desktop theme dim scrim '
+        'vencord betterdiscord',
   ),
   SettingsSearchEntry(
     id: 'appearance.haze',
