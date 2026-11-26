@@ -54,24 +54,7 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
   ConsumerState<StudioLyricsStage> createState() => _StudioLyricsStageState();
 }
 
-class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _drift;
-
-  @override
-  void initState() {
-    super.initState();
-    _drift = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 31),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _drift.dispose();
-    super.dispose();
-  }
+class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage> {
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +164,6 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                               primary: primary,
                               secondary: secondary,
                               reduceMotion: reduceMotion,
-                              drift: _drift,
                             );
                           },
                         ),
@@ -280,7 +262,6 @@ class _StageLyrics extends StatelessWidget {
   final Color primary;
   final Color secondary;
   final bool reduceMotion;
-  final AnimationController drift;
 
   const _StageLyrics({
     required this.result,
@@ -292,7 +273,6 @@ class _StageLyrics extends StatelessWidget {
     required this.primary,
     required this.secondary,
     required this.reduceMotion,
-    required this.drift,
   });
 
   @override
@@ -380,8 +360,8 @@ class _StageLyrics extends StatelessWidget {
               Expanded(
                 child: Center(
                   child: _StageDrift(
-                    controller: drift,
-                    enabled: style.startsWith('lyrical_studio'),
+                    enabled:
+                        style.startsWith('lyrical_studio') && !reduceMotion,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1240),
                       child: lineWidget,
@@ -433,31 +413,60 @@ class _ContextLine extends StatelessWidget {
   }
 }
 
-class _StageDrift extends StatelessWidget {
-  final AnimationController controller;
+class _StageDrift extends StatefulWidget {
   final bool enabled;
   final Widget child;
 
-  const _StageDrift({
-    required this.controller,
-    required this.enabled,
-    required this.child,
-  });
+  const _StageDrift({required this.enabled, required this.child});
+
+  @override
+  State<_StageDrift> createState() => _StageDriftState();
+}
+
+class _StageDriftState extends State<_StageDrift>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 31),
+    );
+    if (widget.enabled) _controller.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StageDrift oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled == widget.enabled) return;
+    if (widget.enabled) {
+      _controller.repeat();
+    } else {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled) return child;
+    if (!widget.enabled) return widget.child;
     return AnimatedBuilder(
-      animation: controller,
-      child: child,
+      animation: _controller,
+      child: RepaintBoundary(child: widget.child),
       builder: (context, child) {
-        final t = controller.value * math.pi * 2;
+        final t = _controller.value * math.pi * 2;
         return Transform.translate(
           offset: Offset(math.sin(t / 7.3) * 5, math.cos(t / 9.1) * 4),
           child: Transform.rotate(
             angle: math.sin(t / 11.7) * 0.004,
-            // Cache the lyric subtree while only its slow stage transform moves.
-            child: RepaintBoundary(child: child),
+            child: child,
           ),
         );
       },
