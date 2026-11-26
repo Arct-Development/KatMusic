@@ -20,9 +20,20 @@ import 'lyrics_studio_styles.dart';
 /// the current cover's palette, and keeps a slow ambient drift underneath.
 /// The Graph style gets a camera that follows the song down a continuous
 /// vine instead of re-laying out only the active line.
+/// What the stage should render right now. The lyrics rail keeps this
+/// updated while the stage is open, so a track change swaps the song
+/// instead of leaving the previous song's lines on screen.
+class StudioStageFeed {
+  final PlayableTrack track;
+  final LyricsResult result;
+
+  const StudioStageFeed(this.track, this.result);
+}
+
 class StudioLyricsStage extends ConsumerStatefulWidget {
   final PlayableTrack track;
   final LyricsResult result;
+  final ValueListenable<StudioStageFeed?>? feed;
   final ValueListenable<int> positionListenable;
   final ValueListenable<int> activeLineListenable;
   final String initialStyle;
@@ -32,6 +43,7 @@ class StudioLyricsStage extends ConsumerStatefulWidget {
     super.key,
     required this.track,
     required this.result,
+    this.feed,
     required this.positionListenable,
     required this.activeLineListenable,
     required this.initialStyle,
@@ -63,14 +75,30 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
 
   @override
   Widget build(BuildContext context) {
+    final feed = widget.feed;
+    if (feed == null) return _buildStage(context, widget.track, widget.result);
+    return ValueListenableBuilder<StudioStageFeed?>(
+      valueListenable: feed,
+      builder: (context, live, _) => _buildStage(
+        context,
+        live?.track ?? widget.track,
+        live?.result ?? widget.result,
+      ),
+    );
+  }
+
+  Widget _buildStage(
+    BuildContext context,
+    PlayableTrack liveTrack,
+    LyricsResult result,
+  ) {
     final watched = ref.watch(prefsProvider.select((p) => p.lyricsAnimation));
     final style = isStudioLyricsAnimation(watched)
         ? watched
         : widget.initialStyle;
+
     final palette =
-        ref
-            .watch(artworkPaletteProvider(widget.track.artworkUrl))
-            .valueOrNull ??
+        ref.watch(artworkPaletteProvider(liveTrack.artworkUrl)).valueOrNull ??
         ArtworkPalette.fallback;
     final accent = accentFromPalette(palette) ?? palette.vibrant;
     final primary = Color.lerp(const Color(0xFFF6F4EF), palette.cream, 0.22)!;
@@ -78,6 +106,13 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
     final backdrop = Color.lerp(palette.shadow, const Color(0xFF080B12), 0.58)!;
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final glowMode = ref.watch(prefsProvider.select((p) => p.studioGlowMode));
+    final glowThickness = ref.watch(
+      prefsProvider.select((p) => p.studioGlowThickness),
+    );
+    final glowIntensity = ref.watch(
+      prefsProvider.select((p) => p.studioGlowIntensity),
+    );
 
     final paletteColors = <Color>[
       accent,
@@ -102,7 +137,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                 Positioned.fill(
                   child: RepaintBoundary(
                     child: WaveAmbientMesh(
-                      artworkUrl: widget.track.artworkUrl,
+                      artworkUrl: liveTrack.artworkUrl,
                       isFullBleed: true,
                       cinematic: true,
                       apple: true,
@@ -125,13 +160,27 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                   ),
                 ),
               ),
+              if (glowMode != 'off')
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: _StageEdgeGlow(
+                      top: accent,
+                      bottom: palette.lightVibrant,
+                      mode: glowMode,
+                      thickness: glowThickness,
+                      intensity: glowIntensity,
+                      positionListenable: widget.positionListenable,
+                      lines: result.lines,
+                    ),
+                  ),
+                ),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(28, 20, 28, 22),
                   child: Column(
                     children: [
                       _StageTopBar(
-                        track: widget.track,
+                        track: liveTrack,
                         styleLabel:
                             Prefs.lyricsAnimationOptions[style] ?? 'Studio',
                         onClose: () => Navigator.of(context).maybePop(),
@@ -142,7 +191,8 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                           valueListenable: widget.activeLineListenable,
                           builder: (context, activeIndex, _) {
                             return _StageLyrics(
-                              result: widget.result,
+                              result: result,
+                              loading: false,
                               activeIndex: activeIndex,
                               style: style,
                               positionListenable: widget.positionListenable,
@@ -157,7 +207,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                       ),
                       const SizedBox(height: 12),
                       _StageFooter(
-                        result: widget.result,
+                        result: result,
                         activeLineListenable: widget.activeLineListenable,
                         primary: primary,
                       ),
@@ -171,6 +221,187 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
       ),
     );
   }
+}
+
+/// Lumn-style edge light: the album's two strongest colours wrap the screen
+/// and the glow swells with the sung words, drifts like a breath, or stays
+/// steady. Painted as gradient bands, so there is no per-frame blur.
+class _StageEdgeGlow extends StatelessWidget {
+  final Color top;
+  final Color bottom;
+  final String mode;
+  final double thickness;
+  final double intensity;
+  final ValueListenable<int> positionListenable;
+  final List<LyricLine> lines;
+
+  const _StageEdgeGlow({
+    required this.top,
+    required this.bottom,
+    required this.mode,
+    required this.thickness,
+    required this.intensity,
+    required this.positionListenable,
+    required this.lines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: positionListenable,
+      builder: (context, positionMs, _) {
+        final seconds = positionMs / 1000;
+        final vocal = _vocalPulse(lines, positionMs);
+        final pulse = switch (mode) {
+          'breath' => 0.55 + 0.45 * math.sin(seconds * 0.9),
+          'steady' => 1.0,
+          _ => 0.35 + 0.65 * vocal,
+        };
+        return CustomPaint(
+          painter: _EdgeGlowPainter(
+            top: top,
+            bottom: bottom,
+            thickness: thickness,
+            intensity: intensity,
+            pulse: pulse.clamp(0.0, 1.0),
+            drift: seconds,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Glow strength for the word being sung right now: it rises into the word
+/// and falls away before the next one, so the light rides the vocal.
+double _vocalPulse(List<LyricLine> lines, int positionMs) {
+  if (lines.isEmpty) return 0.3 + 0.15 * math.sin(positionMs / 900);
+  var active = -1;
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].timeMs <= positionMs) {
+      active = i;
+    } else {
+      break;
+    }
+  }
+  if (active < 0) return 0.3;
+  final line = lines[active];
+  final syllables = line.syllables;
+  if (syllables.isEmpty) {
+    final duration = math.max(600, line.durationMs);
+    final progress = ((positionMs - line.timeMs) / duration).clamp(0.0, 1.0);
+    return math.sin(math.pi * progress) * 0.8;
+  }
+  for (final syllable in syllables) {
+    final duration = math.max(120, syllable.durationMs);
+    if (positionMs >= syllable.timeMs &&
+        positionMs <= syllable.timeMs + duration) {
+      final progress = ((positionMs - syllable.timeMs) / duration).clamp(
+        0.0,
+        1.0,
+      );
+      return math.sin(math.pi * progress);
+    }
+  }
+  return 0.35;
+}
+
+class _EdgeGlowPainter extends CustomPainter {
+  final Color top;
+  final Color bottom;
+  final double thickness;
+  final double intensity;
+  final double pulse;
+  final double drift;
+
+  const _EdgeGlowPainter({
+    required this.top,
+    required this.bottom,
+    required this.thickness,
+    required this.intensity,
+    required this.pulse,
+    required this.drift,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final band =
+        math.min(size.width, size.height) * thickness * (0.9 + 0.35 * pulse);
+    final alpha = ((0.18 + 0.6 * intensity) * (0.55 + 0.45 * pulse)).clamp(
+      0.0,
+      0.85,
+    );
+    final warm = top.withValues(alpha: alpha);
+    final cool = bottom.withValues(alpha: alpha * 0.85);
+    final sway = math.sin(drift * 0.35) * 0.12;
+
+    void paintBand(Rect rect, Alignment begin, Alignment end, Color color) {
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: begin,
+            end: end,
+            colors: [color, color.withValues(alpha: 0)],
+          ).createShader(rect),
+      );
+    }
+
+    paintBand(
+      Rect.fromLTWH(0, 0, size.width, band),
+      Alignment(-0.6 + sway, -1),
+      Alignment(0.6 + sway, 1),
+      warm,
+    );
+    paintBand(
+      Rect.fromLTWH(0, size.height - band, size.width, band),
+      Alignment(-0.6 - sway, 1),
+      Alignment(0.6 - sway, -1),
+      cool,
+    );
+    paintBand(
+      Rect.fromLTWH(0, 0, band, size.height),
+      Alignment(-1, -0.4 + sway),
+      Alignment(1, 0.4 + sway),
+      cool,
+    );
+    paintBand(
+      Rect.fromLTWH(size.width - band, 0, band, size.height),
+      Alignment(1, -0.4 - sway),
+      Alignment(-1, 0.4 - sway),
+      warm,
+    );
+
+    final cornerRadius = band * 1.5;
+    for (final (corner, color) in [
+      (Offset.zero, warm),
+      (Offset(size.width, 0), warm),
+      (Offset(0, size.height), cool),
+      (Offset(size.width, size.height), cool),
+    ]) {
+      final rect = Rect.fromCircle(center: corner, radius: cornerRadius);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: alpha * 0.55),
+              Colors.transparent,
+            ],
+            stops: const [0, 1],
+          ).createShader(rect),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EdgeGlowPainter oldDelegate) =>
+      oldDelegate.pulse != pulse ||
+      oldDelegate.drift != drift ||
+      oldDelegate.thickness != thickness ||
+      oldDelegate.intensity != intensity ||
+      oldDelegate.top != top ||
+      oldDelegate.bottom != bottom;
 }
 
 class _StageTopBar extends StatelessWidget {
@@ -241,6 +472,7 @@ class _StageTopBar extends StatelessWidget {
 
 class _StageLyrics extends StatelessWidget {
   final LyricsResult result;
+  final bool loading;
   final int activeIndex;
   final String style;
   final ValueListenable<int> positionListenable;
@@ -252,6 +484,7 @@ class _StageLyrics extends StatelessWidget {
 
   const _StageLyrics({
     required this.result,
+    required this.loading,
     required this.activeIndex,
     required this.style,
     required this.positionListenable,
@@ -268,7 +501,7 @@ class _StageLyrics extends StatelessWidget {
     if (lines.isEmpty) {
       return Center(
         child: Text(
-          'No timed lyrics for this track',
+          loading ? 'Loading lyrics…' : 'No timed lyrics for this track',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
@@ -280,6 +513,18 @@ class _StageLyrics extends StatelessWidget {
     final active = activeIndex.clamp(0, lines.length - 1);
     if (style == 'lyrical_studio_graph') {
       return _StudioGraphCamera(
+        result: result,
+        activeIndex: active,
+        positionListenable: positionListenable,
+        accent: accent[active % accent.length],
+        primary: primary,
+        secondary: secondary,
+        reduceMotion: reduceMotion,
+      );
+    }
+
+    if (style == 'design_native_thread') {
+      return _NativeThreadView(
         result: result,
         activeIndex: active,
         positionListenable: positionListenable,
@@ -366,6 +611,99 @@ class _StageLyrics extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Message-thread stage: past lines stay as sent bubbles, the current line is
+/// being typed word by word, and the next line waits as a typing indicator.
+class _NativeThreadView extends StatelessWidget {
+  final LyricsResult result;
+  final int activeIndex;
+  final ValueListenable<int> positionListenable;
+  final Color accent;
+  final Color primary;
+  final Color secondary;
+  final bool reduceMotion;
+
+  const _NativeThreadView({
+    required this.result,
+    required this.activeIndex,
+    required this.positionListenable,
+    required this.accent,
+    required this.primary,
+    required this.secondary,
+    required this.reduceMotion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = result.lines;
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final current = activeIndex.clamp(0, lines.length - 1);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fontSize = math.min(
+          34.0,
+          math.max(18.0, constraints.maxWidth * 0.028),
+        );
+        // Every line is a message: the newest sits at the bottom, older lines
+        // stack above it, and the next line shows a typing bubble underneath.
+        final bubbles = <Widget>[
+          if (current + 1 < lines.length)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: buildNativeThreadBubble(
+                words: const [],
+                positionMs: positionListenable.value,
+                positionListenable: positionListenable,
+                accent: accent,
+                primary: primary,
+                secondary: secondary,
+                fontSize: fontSize * 0.8,
+                reduceMotion: reduceMotion,
+                typing: true,
+              ),
+            ),
+          for (var i = current; i >= 0 && i > current - 80; i--)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: _threadBubble(
+                line: lines[i],
+                isCurrent: i == current,
+                fontSize: i == current ? fontSize : fontSize * 0.86,
+              ),
+            ),
+        ];
+        return Align(
+          alignment: Alignment.bottomLeft,
+          child: ListView(
+            reverse: true,
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+            children: bubbles,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _threadBubble({
+    required LyricLine line,
+    required bool isCurrent,
+    required double fontSize,
+  }) {
+    return buildNativeThreadBubble(
+      words: _wordsForLine(line),
+      positionMs: isCurrent
+          ? positionListenable.value
+          : line.timeMs + math.max(line.durationMs, 900),
+      positionListenable: isCurrent ? positionListenable : null,
+      accent: accent,
+      primary: primary,
+      secondary: secondary,
+      fontSize: fontSize,
+      reduceMotion: reduceMotion,
+      sung: !isCurrent,
     );
   }
 }
@@ -636,6 +974,7 @@ Future<void> showStudioLyricsStage(
   BuildContext context, {
   required PlayableTrack track,
   required LyricsResult result,
+  ValueListenable<StudioStageFeed?>? feed,
   required ValueListenable<int> positionListenable,
   required ValueListenable<int> activeLineListenable,
   required String style,
@@ -649,6 +988,7 @@ Future<void> showStudioLyricsStage(
           StudioLyricsStage(
             track: track,
             result: result,
+            feed: feed,
             positionListenable: positionListenable,
             activeLineListenable: activeLineListenable,
             initialStyle: style,

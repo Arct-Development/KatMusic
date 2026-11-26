@@ -40,6 +40,10 @@ class ThemeState {
   /// App font id (see `appFonts`); '' = Windows default.
   final String font;
 
+  /// Local image painted behind the shell, or ''.
+  final String wallpaperPath;
+  final double wallpaperDim;
+
   const ThemeState({
     required this.accent,
     required this.amoled,
@@ -54,6 +58,8 @@ class ThemeState {
     this.wavySeekbar = false,
     this.glass = false,
     this.font = '',
+    this.wallpaperPath = '',
+    this.wallpaperDim = 0.55,
   });
 
   /// The palette for the Custom theme, or null for Midnight / Pearl.
@@ -83,6 +89,8 @@ class ThemeController extends StateNotifier<ThemeState> {
           wavySeekbar: _prefs.wavySeekbar,
           glass: _prefs.glassmorphism,
           font: _prefs.appFont,
+          wallpaperPath: _prefs.wallpaperPath,
+          wallpaperDim: _prefs.wallpaperDim,
         ));
 
   void refresh() {
@@ -100,6 +108,8 @@ class ThemeController extends StateNotifier<ThemeState> {
       wavySeekbar: _prefs.wavySeekbar,
       glass: _prefs.glassmorphism,
       font: _prefs.appFont,
+      wallpaperPath: _prefs.wallpaperPath,
+      wallpaperDim: _prefs.wallpaperDim,
     );
   }
 

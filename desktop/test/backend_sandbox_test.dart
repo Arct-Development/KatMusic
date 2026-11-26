@@ -1,6 +1,7 @@
-// Phases 3-4 need the Windows quickjs_cipher.dll; excluded on Linux/macOS CI
-// with `--exclude-tags golden,live,native`.
-@Tags(['native'])
+// Phases 3-4 need the Windows quickjs_cipher.dll plus live YouTube assets, so
+// they are CI-excluded everywhere via `--exclude-tags golden,live` (Windows)
+// and `--exclude-tags golden,live,native` (Linux/macOS).
+@Tags(['native', 'live'])
 library;
 
 import 'dart:io';

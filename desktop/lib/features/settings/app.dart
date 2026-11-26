@@ -301,18 +301,21 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
     final effectiveGlass = !performanceMode && theme.glass;
     final surfaces = effectiveGlass ? base.glass(light: light) : base;
     final font = ref.watch(appFontFamilyProvider).valueOrNull;
+    final wallpaper = theme.wallpaperPath.isNotEmpty;
     final darkTheme = buildWaveFluentTheme(
       accent: accent,
       isLight: false,
       amoled: theme.amoled,
       custom: light ? null : surfaces,
       fontFamily: font,
+      wallpaper: wallpaper,
     );
     final lightTheme = buildWaveFluentTheme(
       accent: accent,
       isLight: true,
       custom: light ? surfaces : null,
       fontFamily: font,
+      wallpaper: wallpaper,
     );
 
     return WaveHazeScope(
@@ -379,6 +382,19 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
 
                 final uiScale = ref.watch(uiScaleProvider);
                 Widget root = content;
+                if (wallpaper) {
+                  root = Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _AppWallpaper(
+                        path: theme.wallpaperPath,
+                        dim: theme.wallpaperDim,
+                        light: light,
+                      ),
+                      content,
+                    ],
+                  );
+                }
                 if ((uiScale - 1.0).abs() >= 0.001) {
                   root = LayoutBuilder(
                     builder: (context, constraints) {
@@ -423,6 +439,40 @@ class _KatMusicAppState extends ConsumerState<KatMusicApp> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Theme wallpaper: a local image under every route, with a scrim so text
+/// keeps its contrast. Missing files fall back to the theme background.
+class _AppWallpaper extends StatelessWidget {
+  final String path;
+  final double dim;
+  final bool light;
+
+  const _AppWallpaper({
+    required this.path,
+    required this.dim,
+    required this.light,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) =>
+              ColoredBox(color: waveBackground(context)),
+        ),
+        ColoredBox(
+          color: (light ? Colors.white : Colors.black).withValues(alpha: dim),
+        ),
+      ],
     );
   }
 }
