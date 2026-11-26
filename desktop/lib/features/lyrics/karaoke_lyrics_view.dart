@@ -152,6 +152,8 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
   late final Ticker _ticker;
   final ValueNotifier<int> _interpolatedPositionMs = ValueNotifier<int>(0);
   final ValueNotifier<int> _activeLineIndex = ValueNotifier<int>(-1);
+  final ValueNotifier<bool> _studioIsPlaying = ValueNotifier<bool>(false);
+  final ValueNotifier<double> _studioPlaybackSpeed = ValueNotifier<double>(1.0);
   // Clock subscriptions owned here (initState/dispose), not watched in
   // build: position/isPlaying/speed tick 10Hz and feed only ticker/drift
   // side effects, never widget output.
@@ -460,6 +462,8 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
         feed: _stageFeed,
         positionListenable: _interpolatedPositionMs,
         activeLineListenable: _activeLineIndex,
+        isPlayingListenable: _studioIsPlaying,
+        playbackSpeedListenable: _studioPlaybackSpeed,
         style: style,
       ).whenComplete(() {
         if (mounted) _stageFeed.value = null;
@@ -515,6 +519,8 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     _ticker.dispose();
     _interpolatedPositionMs.dispose();
     _activeLineIndex.dispose();
+    _studioIsPlaying.dispose();
+    _studioPlaybackSpeed.dispose();
     _stageFeed.dispose();
     _isSelectingNotifier.removeListener(_onSelectingChanged);
     _isSelectingNotifier.dispose();
@@ -562,6 +568,12 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     final audioMs = snap.position.inMilliseconds;
     _isPlaying = snap.isPlaying;
     _speed = snap.speed <= 0 ? 1.0 : snap.speed;
+    if (_studioIsPlaying.value != _isPlaying) {
+      _studioIsPlaying.value = _isPlaying;
+    }
+    if (_studioPlaybackSpeed.value != _speed) {
+      _studioPlaybackSpeed.value = _speed;
+    }
     final now = DateTime.now();
 
     if (!_isPlaying || !_ticker.isActive) {
