@@ -139,7 +139,11 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                     child: WaveAmbientMesh(
                       artworkUrl: liveTrack.artworkUrl,
                       isFullBleed: true,
-                      cinematic: true,
+                      // The cinematic aura adds a large, continuously
+                      // composited layer. Studio keeps its cover palette
+                      // ambience, but uses the static mesh in fullscreen:
+                      // the words and timing remain fully animated.
+                      cinematic: false,
                       apple: true,
                     ),
                   ),
@@ -225,8 +229,9 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
 
 /// Lumn-style edge light: the album's two strongest colours wrap the screen
 /// and the glow swells with the sung words, drifts like a breath, or stays
-/// steady. Painted as gradient bands, so there is no per-frame blur.
-class _StageEdgeGlow extends StatelessWidget {
+/// steady. It is intentionally rate-limited: playback position can be
+/// published much more frequently than a screen needs to repaint this effect.
+class _StageEdgeGlow extends StatefulWidget {
   final Color top;
   final Color bottom;
   final String mode;
@@ -246,25 +251,46 @@ class _StageEdgeGlow extends StatelessWidget {
   });
 
   @override
+  State<_StageEdgeGlow> createState() => _StageEdgeGlowState();
+}
+
+class _StageEdgeGlowState extends State<_StageEdgeGlow> {
+  static const _minRepaintInterval = Duration(milliseconds: 66);
+  int _lastPositionMs = -1;
+  DateTime _lastPaintUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
-      valueListenable: positionListenable,
+      valueListenable: widget.positionListenable,
       builder: (context, positionMs, _) {
-        final seconds = positionMs / 1000;
-        final vocal = _vocalPulse(lines, positionMs);
-        final pulse = switch (mode) {
+        final now = DateTime.now();
+        final shouldUpdate = _lastPositionMs < 0 ||
+            now.difference(_lastPaintUpdate) >= _minRepaintInterval;
+        if (shouldUpdate) {
+          _lastPositionMs = positionMs;
+          _lastPaintUpdate = now;
+        }
+        final sampledPosition = _lastPositionMs < 0 ? positionMs : _lastPositionMs;
+        final seconds = sampledPosition / 1000;
+        final vocal = widget.mode == 'steady'
+            ? 1.0
+            : _vocalPulse(widget.lines, sampledPosition);
+        final pulse = switch (widget.mode) {
           'breath' => 0.55 + 0.45 * math.sin(seconds * 0.9),
           'steady' => 1.0,
           _ => 0.35 + 0.65 * vocal,
         };
-        return CustomPaint(
-          painter: _EdgeGlowPainter(
-            top: top,
-            bottom: bottom,
-            thickness: thickness,
-            intensity: intensity,
-            pulse: pulse.clamp(0.0, 1.0),
-            drift: seconds,
+        return RepaintBoundary(
+          child: CustomPaint(
+            painter: _EdgeGlowPainter(
+              top: widget.top,
+              bottom: widget.bottom,
+              thickness: widget.thickness,
+              intensity: widget.intensity,
+              pulse: pulse.clamp(0.0, 1.0),
+              drift: seconds,
+            ),
           ),
         );
       },
@@ -276,12 +302,18 @@ class _StageEdgeGlow extends StatelessWidget {
 /// and falls away before the next one, so the light rides the vocal.
 double _vocalPulse(List<LyricLine> lines, int positionMs) {
   if (lines.isEmpty) return 0.3 + 0.15 * math.sin(positionMs / 900);
+  // Lyric lines are time-ordered. Binary search avoids walking the entire
+  // track on every sampled glow update.
+  var low = 0;
+  var high = lines.length - 1;
   var active = -1;
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i].timeMs <= positionMs) {
-      active = i;
+  while (low <= high) {
+    final mid = low + ((high - low) >> 1);
+    if (lines[mid].timeMs <= positionMs) {
+      active = mid;
+      low = mid + 1;
     } else {
-      break;
+      high = mid - 1;
     }
   }
   if (active < 0) return 0.3;
@@ -615,437 +647,4 @@ class _StageLyrics extends StatelessWidget {
   }
 }
 
-/// Message-thread stage: past lines stay as sent bubbles, the current line is
-/// being typed word by word, and the next line waits as a typing indicator.
-class _NativeThreadView extends StatelessWidget {
-  final LyricsResult result;
-  final int activeIndex;
-  final ValueListenable<int> positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final bool reduceMotion;
-
-  const _NativeThreadView({
-    required this.result,
-    required this.activeIndex,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.reduceMotion,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = result.lines;
-    if (lines.isEmpty) return const SizedBox.shrink();
-    final current = activeIndex.clamp(0, lines.length - 1);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fontSize = math.min(
-          34.0,
-          math.max(18.0, constraints.maxWidth * 0.028),
-        );
-        // Every line is a message: the newest sits at the bottom, older lines
-        // stack above it, and the next line shows a typing bubble underneath.
-        final bubbles = <Widget>[
-          if (current + 1 < lines.length)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: buildNativeThreadBubble(
-                words: const [],
-                positionMs: positionListenable.value,
-                positionListenable: positionListenable,
-                accent: accent,
-                primary: primary,
-                secondary: secondary,
-                fontSize: fontSize * 0.8,
-                reduceMotion: reduceMotion,
-                typing: true,
-              ),
-            ),
-          for (var i = current; i >= 0 && i > current - 80; i--)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: _threadBubble(
-                line: lines[i],
-                isCurrent: i == current,
-                fontSize: i == current ? fontSize : fontSize * 0.86,
-              ),
-            ),
-        ];
-        return Align(
-          alignment: Alignment.bottomLeft,
-          child: ListView(
-            reverse: true,
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
-            children: bubbles,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _threadBubble({
-    required LyricLine line,
-    required bool isCurrent,
-    required double fontSize,
-  }) {
-    return buildNativeThreadBubble(
-      words: _wordsForLine(line),
-      positionMs: isCurrent
-          ? positionListenable.value
-          : line.timeMs + math.max(line.durationMs, 900),
-      positionListenable: isCurrent ? positionListenable : null,
-      accent: accent,
-      primary: primary,
-      secondary: secondary,
-      fontSize: fontSize,
-      reduceMotion: reduceMotion,
-      sung: !isCurrent,
-    );
-  }
-}
-
-class _ContextLine extends StatelessWidget {
-  final String text;
-  final double fontSize;
-  final Color color;
-
-  const _ContextLine({
-    required this.text,
-    required this.fontSize,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-          color: color.withValues(alpha: 0.18),
-        ),
-      ),
-    );
-  }
-}
-
-class _StageDrift extends StatelessWidget {
-  final AnimationController controller;
-  final bool enabled;
-  final Widget child;
-
-  const _StageDrift({
-    required this.controller,
-    required this.enabled,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!enabled) return child;
-    return AnimatedBuilder(
-      animation: controller,
-      child: child,
-      builder: (context, child) {
-        final t = controller.value * math.pi * 2;
-        return Transform.translate(
-          offset: Offset(math.sin(t / 7.3) * 5, math.cos(t / 9.1) * 4),
-          child: Transform.rotate(
-            angle: math.sin(t / 11.7) * 0.004,
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StageFooter extends StatelessWidget {
-  final LyricsResult result;
-  final ValueListenable<int> activeLineListenable;
-  final Color primary;
-
-  const _StageFooter({
-    required this.result,
-    required this.activeLineListenable,
-    required this.primary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: activeLineListenable,
-      builder: (context, active, _) {
-        final total = result.lines.length;
-        return Row(
-          children: [
-            Text(
-              total == 0 ? '' : 'LINE ${(active + 1).clamp(1, total)} / $total',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: primary.withValues(alpha: 0.34),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              'ESC TO CLOSE',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: primary.withValues(alpha: 0.28),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Camera-following Graph stage: the active line stays centred while the
-/// surrounding lines glide past, instead of rebuilding one isolated tree.
-class _StudioGraphCamera extends StatefulWidget {
-  final LyricsResult result;
-  final int activeIndex;
-  final ValueListenable<int> positionListenable;
-  final Color accent;
-  final Color primary;
-  final Color secondary;
-  final bool reduceMotion;
-
-  const _StudioGraphCamera({
-    required this.result,
-    required this.activeIndex,
-    required this.positionListenable,
-    required this.accent,
-    required this.primary,
-    required this.secondary,
-    required this.reduceMotion,
-  });
-
-  @override
-  State<_StudioGraphCamera> createState() => _StudioGraphCameraState();
-}
-
-class _StudioGraphCameraState extends State<_StudioGraphCamera> {
-  late final ScrollController _scroll;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll = ScrollController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _followCamera(immediate: true);
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _StudioGraphCamera oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.activeIndex != widget.activeIndex) {
-      _followCamera();
-    }
-  }
-
-  void _followCamera({bool immediate = false}) {
-    if (!_scroll.hasClients) return;
-    final rowHeight = _rowHeight(context);
-    final target = (widget.activeIndex * rowHeight).clamp(
-      0.0,
-      _scroll.position.maxScrollExtent,
-    );
-    if (immediate || widget.reduceMotion) {
-      _scroll.jumpTo(target);
-      return;
-    }
-    _scroll.animateTo(
-      target,
-      duration: const Duration(milliseconds: 680),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  double _rowHeight(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    return math.max(180.0, math.min(320.0, h * 0.34));
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = widget.result.lines;
-    final rowHeight = _rowHeight(context);
-    return ClipRect(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final height = constraints.maxHeight;
-          return ListView.builder(
-            controller: _scroll,
-            physics: const NeverScrollableScrollPhysics(),
-            itemExtent: rowHeight,
-            padding: EdgeInsets.symmetric(
-              vertical: math.max(0, (height - rowHeight) / 2),
-            ),
-            itemCount: lines.length,
-            itemBuilder: (context, i) {
-              final line = lines[i];
-              final isActive = i == widget.activeIndex;
-              final past = i < widget.activeIndex;
-              final int position = isActive
-                  ? widget.positionListenable.value
-                  : past
-                  ? line.timeMs + math.max<int>(line.durationMs, 1200) + 500
-                  : line.timeMs - 1000;
-              final words = _wordsForLine(line);
-              return Opacity(
-                opacity: isActive ? 1 : 0.34,
-                child: SizedBox(
-                  height: rowHeight,
-                  child: Center(
-                    child: buildStudioLyricsLine(
-                      style: 'lyrical_studio_graph',
-                      lineText: line.text,
-                      words: words,
-                      positionMs: position,
-                      positionListenable: isActive
-                          ? widget.positionListenable
-                          : null,
-                      accent: widget.accent,
-                      primary: widget.primary,
-                      secondary: widget.secondary,
-                      fontSize: math.max(42.0, rowHeight * 0.2),
-                      isRtl: line.isRtl,
-                      reduceMotion: widget.reduceMotion,
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _StageButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _StageButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.09),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-        ),
-        child: Icon(icon, size: 17, color: Colors.white.withValues(alpha: 0.9)),
-      ),
-    );
-  }
-}
-
-/// Opens the full-screen Studio stage over the current lyrics view.
-Future<void> showStudioLyricsStage(
-  BuildContext context, {
-  required PlayableTrack track,
-  required LyricsResult result,
-  ValueListenable<StudioStageFeed?>? feed,
-  required ValueListenable<int> positionListenable,
-  required ValueListenable<int> activeLineListenable,
-  required String style,
-}) {
-  return Navigator.of(context, rootNavigator: true).push<void>(
-    PageRouteBuilder<void>(
-      opaque: true,
-      transitionDuration: const Duration(milliseconds: 260),
-      reverseTransitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          StudioLyricsStage(
-            track: track,
-            result: result,
-            feed: feed,
-            positionListenable: positionListenable,
-            activeLineListenable: activeLineListenable,
-            initialStyle: style,
-          ),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-          FadeTransition(opacity: animation, child: child),
-    ),
-  );
-}
-
-/// Turns a timed lyric line into the word list the Studio renderers expect.
-List<StudioLyricWord> _wordsForLine(LyricLine line) {
-  final syllables = line.syllables;
-  if (syllables.isNotEmpty) {
-    final groups = <List<LyricSyllable>>[];
-    var current = <LyricSyllable>[];
-    for (var i = 0; i < syllables.length; i++) {
-      final syllable = syllables[i];
-      current.add(syllable);
-      var end = syllable.text.endsWith(' ');
-      if (!end && i == syllables.length - 1) {
-        end = true;
-      } else if (!end) {
-        final next = syllables[i + 1];
-        end =
-            next.text.startsWith(' ') ||
-            !line.text.contains('${syllable.text}${next.text}');
-      }
-      if (end) {
-        groups.add(current);
-        current = [];
-      }
-    }
-    if (current.isNotEmpty) groups.add(current);
-    return [
-      for (final group in groups)
-        StudioLyricWord(
-          text: group.map((s) => s.text).join().trim(),
-          startMs: group.first.timeMs,
-          endMs: group.last.timeMs + math.max(80, group.last.durationMs),
-          isBackground: group.every((s) => s.isBackground),
-        ),
-    ].where((word) => word.text.isNotEmpty).toList();
-  }
-
-  final text = line.text.trim();
-  if (text.isEmpty) return const [];
-  final words = text.split(RegExp(r'\s+'));
-  final start = line.timeMs;
-  final duration = line.durationMs > 0 ? line.durationMs : 2400;
-  final step = duration / words.length;
-  return [
-    for (var i = 0; i < words.length; i++)
-      StudioLyricWord(
-        text: words[i],
-        startMs: start + (i * step).round(),
-        endMs: start + ((i + 1) * step).round(),
-      ),
-  ];
-}
+${s.substring(s.indexOf("/// Message-thread stage:"))}
