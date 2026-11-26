@@ -1008,6 +1008,7 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
                             artist: widget.track.artist,
                             activeLineListenable: _activeLineIndex,
                             positionListenable: _interpolatedPositionMs,
+                            designPositionListenable: _designPositionMs,
                             compact: widget.compact,
                             wordByWord: wordByWord,
                             animationStyle: animationStyle,
@@ -1452,18 +1453,12 @@ class _WaveKaraokeLyricLineState extends State<WaveKaraokeLyricLine> {
               isBackground: word.syllables.every((s) => s.isBackground),
             ),
       ]..removeWhere((word) => word.text.isEmpty);
-      final designStyle =
-          widget.animationStyle == 'design_branches' ||
-          widget.animationStyle == 'design_constellation';
       content = buildStudioLyricsLine(
         style: widget.animationStyle,
         lineText: widget.line.text,
         words: studioWords,
-        positionMs: designStyle
-            ? _designPositionMs.value
-            : (widget.positionListenable?.value ?? widget.positionMs),
-        positionListenable:
-            designStyle ? _designPositionMs : widget.positionListenable,
+        positionMs: widget.positionListenable?.value ?? widget.positionMs,
+        positionListenable: widget.positionListenable,
         accent: accent,
         primary: activeTextColor,
         secondary: activeTextColor.withValues(alpha: 0.55),
@@ -3180,6 +3175,7 @@ class _AppleLineLyricsView extends StatefulWidget {
   final List<String?> translations;
   final ValueNotifier<int> activeLineListenable;
   final ValueNotifier<int> positionListenable;
+  final ValueNotifier<int> designPositionListenable;
   final bool compact;
   final bool wordByWord;
   final String animationStyle;
@@ -3199,6 +3195,7 @@ class _AppleLineLyricsView extends StatefulWidget {
     this.translations = const [],
     required this.activeLineListenable,
     required this.positionListenable,
+    required this.designPositionListenable,
     required this.compact,
     this.wordByWord = true,
     this.animationStyle = 'apple_fluid',
@@ -3593,14 +3590,20 @@ class _AppleLineLyricsViewState extends State<_AppleLineLyricsView> {
                 final studioStyle = isStudioLyricsAnimation(
                   widget.animationStyle,
                 );
+                final isDesignStyle =
+                    widget.animationStyle == 'design_branches' ||
+                    widget.animationStyle == 'design_constellation';
                 final isWordKaraoke =
                     (widget.wordByWord || studioStyle) &&
                     widget.result.isWordSynced;
                 final lineWidget = WaveKaraokeLyricLine(
                   line: line,
                   positionMs: 0,
-                  positionListenable:
-                      (isActive && (isWordKaraoke || studioStyle))
+                  positionListenable: !isActive
+                      ? null
+                      : isDesignStyle
+                      ? widget.designPositionListenable
+                      : (isWordKaraoke || studioStyle)
                       ? widget.positionListenable
                       : null,
                   isActive: isActive,
