@@ -139,10 +139,7 @@ class _StudioLyricsStageState extends ConsumerState<StudioLyricsStage>
                     child: WaveAmbientMesh(
                       artworkUrl: liveTrack.artworkUrl,
                       isFullBleed: true,
-                      // The cinematic aura continuously composites several
-                      // full-window layers. Keep Studio's palette ambience,
-                      // but use the static mesh for a lighter fullscreen stage.
-                      cinematic: false,
+                      cinematic: true,
                       apple: true,
                     ),
                   ),
@@ -260,16 +257,14 @@ class _StageEdgeGlow extends StatelessWidget {
           'steady' => 1.0,
           _ => 0.35 + 0.65 * vocal,
         };
-        return RepaintBoundary(
-          child: CustomPaint(
-            painter: _EdgeGlowPainter(
-              top: top,
-              bottom: bottom,
-              thickness: thickness,
-              intensity: intensity,
-              pulse: pulse.clamp(0.0, 1.0),
-              drift: seconds,
-            ),
+        return CustomPaint(
+          painter: _EdgeGlowPainter(
+            top: top,
+            bottom: bottom,
+            thickness: thickness,
+            intensity: intensity,
+            pulse: pulse.clamp(0.0, 1.0),
+            drift: seconds,
           ),
         );
       },
@@ -281,18 +276,12 @@ class _StageEdgeGlow extends StatelessWidget {
 /// and falls away before the next one, so the light rides the vocal.
 double _vocalPulse(List<LyricLine> lines, int positionMs) {
   if (lines.isEmpty) return 0.3 + 0.15 * math.sin(positionMs / 900);
-  // Lyric lines are time-ordered; binary search keeps the vocal pulse
-  // lookup cheap even for long tracks.
-  var low = 0;
-  var high = lines.length - 1;
   var active = -1;
-  while (low <= high) {
-    final mid = low + ((high - low) >> 1);
-    if (lines[mid].timeMs <= positionMs) {
-      active = mid;
-      low = mid + 1;
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].timeMs <= positionMs) {
+      active = i;
     } else {
-      high = mid - 1;
+      break;
     }
   }
   if (active < 0) return 0.3;
