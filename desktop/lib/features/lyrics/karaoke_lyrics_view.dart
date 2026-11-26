@@ -264,12 +264,18 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
         res.isInstrumental) {
       return false;
     }
-    // Line-synced lyrics only change state at line boundaries: no Ticker
-    // (a Ticker makes the engine composite the whole window every vsync).
-    // [_armLineTimer] lands each boundary exactly instead.
+    // Most line-synced styles only need an exact frame at each line
+    // boundary, so they stay on [_armLineTimer]. Branches and Constellation
+    // animate the vine/star trace continuously, including when the source
+    // only provides line timings (their word timings are interpolated).
+    final prefs = ref.read(prefsProvider);
     final isPerfMode = ref.read(performanceModeProvider);
-    final wordByWord = isPerfMode ? false : ref.read(prefsProvider).wordByWord;
-    if (!wordByWord || !res.isWordSynced) {
+    final needsDesignClock =
+        !isPerfMode &&
+        (prefs.lyricsAnimation == 'design_branches' ||
+            prefs.lyricsAnimation == 'design_constellation');
+    final wordByWord = isPerfMode ? false : prefs.wordByWord;
+    if (!needsDesignClock && (!wordByWord || !res.isWordSynced)) {
       return false;
     }
     final pos = _getCurrentPositionMs();
@@ -327,9 +333,14 @@ class _WaveKaraokeLyricsViewState extends ConsumerState<WaveKaraokeLyricsView>
     if (!_isEffectivelyActive || !_isPlaying) return;
     final res = _currentResult;
     if (res == null || !res.isSynced || res.lines.isEmpty) return;
+    final prefs = ref.read(prefsProvider);
     final isPerfMode = ref.read(performanceModeProvider);
-    final wordByWord = isPerfMode ? false : ref.read(prefsProvider).wordByWord;
-    if (!wordByWord || !res.isWordSynced) return;
+    final needsDesignClock =
+        !isPerfMode &&
+        (prefs.lyricsAnimation == 'design_branches' ||
+            prefs.lyricsAnimation == 'design_constellation');
+    final wordByWord = isPerfMode ? false : prefs.wordByWord;
+    if (!needsDesignClock && (!wordByWord || !res.isWordSynced)) return;
 
     final pos = _getCurrentPositionMs();
     final firstStart = res.lines.first.timeMs;
