@@ -784,6 +784,8 @@ Future<void> showStudioLyricsStage(
   ValueListenable<StudioStageFeed?>? feed,
   required ValueListenable<int> positionListenable,
   required ValueListenable<int> activeLineListenable,
+  ValueListenable<bool>? isPlayingListenable,
+  ValueListenable<double>? playbackSpeedListenable,
   required String style,
 }) {
   return Navigator.of(context, rootNavigator: true).push<void>(
@@ -798,6 +800,8 @@ Future<void> showStudioLyricsStage(
             feed: feed,
             positionListenable: positionListenable,
             activeLineListenable: activeLineListenable,
+            isPlayingListenable: isPlayingListenable,
+            playbackSpeedListenable: playbackSpeedListenable,
             initialStyle: style,
           ),
       transitionsBuilder: (context, animation, secondaryAnimation, child) =>
