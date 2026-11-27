@@ -100,109 +100,40 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # Flutter's Windows runner and some plugins use the MSVC runtime.
-          # Portable builds must carry the x64 CRT beside katmusic.exe so a
-          # clean Windows install does not need a separate redistributable.
-          $vswhere = Join-Path "${env:ProgramFiles(x86)}" "Microsoft Visual Studio\Installer\vswhere.exe"
-          if (-not (Test-Path $vswhere)) {
-            throw "vswhere.exe was not found; cannot locate the MSVC runtime."
+          # Ship the x64 MSVC runtime beside katmusic.exe for portable installs.
+          $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+          $vswhere = Join-Path $programFilesX86 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path -LiteralPath $vswhere)) {
+            throw 'vswhere.exe was not found; cannot locate the MSVC runtime.'
           }
 
           $vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (-not $vsInstall) {
-            throw "Visual Studio C++ Build Tools were not found."
+            throw 'Visual Studio C++ Build Tools were not found.'
           }
 
-          $redistRoot = Join-Path $vsInstall "VC\Redist\MSVC"
-          $crt = Get-ChildItem -Path $redistRoot -Directory -Recurse -Filter "Microsoft.VC143.CRT" |
-            Where-Object {
-              $_.FullName -match '[\\/]x64[\\/]Microsoft\.VC143\.CRT        if: runner.os == 'Windows'
-        run: Copy-Item quickjs_cipher.dll build/windows/x64/runner/Release/quickjs_cipher.dll -Force
-
-      - name: Package
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#desktop-v}"
-          else
-            VERSION=$(sed -n 's/^version: \([0-9][^+]*\).*/\1/p' pubspec.yaml | head -n1)
-            if [ -z "$VERSION" ]; then VERSION="0.0.0"; fi
-            VERSION="${VERSION}-${GITHUB_SHA::7}"
-          fi
-          OUT="dist/KatMusic-v${VERSION}-${{ matrix.package }}"
-          mkdir -p dist stage/KatMusic
-          cp -R "${{ matrix.artifact }}/." stage/KatMusic/
-          if [ "${{ runner.os }}" = "Linux" ]; then
-            if [ -f "linux/runner/katmusic_launcher.sh" ] && [ -f "stage/KatMusic/katmusic" ]; then
-              if [ ! -f "stage/KatMusic/katmusic.bin" ]; then
-                mv stage/KatMusic/katmusic stage/KatMusic/katmusic.bin
-              fi
-              cp linux/runner/katmusic_launcher.sh stage/KatMusic/katmusic
-              chmod +x stage/KatMusic/katmusic stage/KatMusic/katmusic.bin
-            fi
-          fi
-          case "${{ runner.os }}" in
-            Windows) (cd stage && 7z a -tzip "../${OUT}" KatMusic > /dev/null) ;;
-            macOS) ditto -c -k --sequesterRsrc --keepParent stage/KatMusic "$OUT" ;;
-            *) tar -czf "$OUT" -C stage KatMusic ;;
-          esac
-          ls -lh dist
-
-      - name: Upload desktop package
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop-${{ matrix.name }}
-          path: desktop/dist/*
-          if-no-files-found: error
-
-  publish:
-    name: Attach desktop packages to release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download desktop packages
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: List packages
-        run: ls -lh dist
-
-      - name: Publish to GitHub release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" dist/* \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "KatMusic Desktop ${GITHUB_REF_NAME#desktop-v}" \
-            --generate-notes \
-            || gh release upload "${GITHUB_REF_NAME}" dist/* \
-              --repo "${GITHUB_REPOSITORY}" --clobber
- -and
-              (Test-Path (Join-Path $_.FullName "vcruntime140_1.dll"))
-            } |
-            Sort-Object { $_.Parent.Name } -Descending |
-            Select-Object -First 1
+          $redistRoot = Join-Path $vsInstall 'VC\Redist\MSVC'
+          $crt = Get-ChildItem -Path $redistRoot -Directory |
+            Sort-Object Name -Descending |
+            ForEach-Object {
+              $candidate = Join-Path $_.FullName 'x64\Microsoft.VC143.CRT'
+              if (Test-Path (Join-Path $candidate 'vcruntime140_1.dll')) {
+                $candidate
+              }
+            } | Select-Object -First 1
 
           if (-not $crt) {
-            throw "The x64 Microsoft.VC143.CRT redistributable folder was not found under $redistRoot."
+            throw "The x64 Microsoft.VC143.CRT folder was not found under $redistRoot."
           }
 
-          $bundle = Join-Path (Get-Location) "build/windows/x64/runner/Release"
-          Copy-Item -Path (Join-Path $crt.FullName "*.dll") -Destination $bundle -Force
-          Copy-Item -Path (Join-Path $crt.FullName "*.manifest") -Destination $bundle -Force -ErrorAction SilentlyContinue
-
-          foreach ($name in @("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")) {
+          $bundle = Join-Path (Get-Location) 'build/windows/x64/runner/Release'
+          Get-ChildItem -Path $crt -File | Copy-Item -Destination $bundle -Force
+          foreach ($name in @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll')) {
             if (-not (Test-Path (Join-Path $bundle $name))) {
               throw "Required MSVC runtime file $name was not copied to the Windows bundle."
             }
           }
-
-          Get-ChildItem $bundle -Filter "*140*.dll" | Select-Object Name, Length
+          Get-ChildItem $bundle -Filter '*140*.dll' | Select-Object Name, Length
 
       - name: Bundle QuickJS native library
         if: runner.os == 'Windows'
